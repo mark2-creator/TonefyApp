@@ -35,7 +35,7 @@ export default function IdeaToVideoScreen({ navigation }) {
         Alert.alert('Error', data.error || 'Failed to generate script');
       }
     } catch (err) {
-      Alert.alert('Error', 'Could not connect to server. Make sure backend is running.');
+      Alert.alert('Error', 'Could not connect to server.');
     }
     setLoading(false);
     setLoadingMsg('');
@@ -67,12 +67,23 @@ export default function IdeaToVideoScreen({ navigation }) {
 
   const generateVideo = async () => {
     setLoading(true);
-    setLoadingMsg('🎬 Searching for video clips...');
     try {
+      // Step 1: Extract keywords from script
+      setLoadingMsg('🔍 Analyzing script for best visuals...');
+      const kwRes = await fetch(`${BACKEND}/api/extract-keywords`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: script }),
+      });
+      const kwData = await kwRes.json();
+      const keywords = kwData.keywords || [prompt];
+
+      // Step 2: Search Pexels with keywords
+      setLoadingMsg('🎬 Fetching matching video clips...');
       const searchRes = await fetch(`${BACKEND}/api/search-pexels-videos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: prompt }),
+        body: JSON.stringify({ query: prompt, keywords }),
       });
       const searchData = await searchRes.json();
       if (!searchData.videos || searchData.videos.length === 0) {
@@ -80,15 +91,16 @@ export default function IdeaToVideoScreen({ navigation }) {
         setLoading(false);
         return;
       }
-      setLoadingMsg('🎬 Merging video and audio...');
-      const selectedVideo = searchData.videos[0];
+
+      // Step 3: Merge video and audio
+      setLoadingMsg('🎬 Merging clips and audio...');
       const mergeRes = await fetch(`${BACKEND}/api/idea-to-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
           voiceover: script,
-          selectedVideos: searchData.videos.slice(0, 4),
+          selectedVideos: searchData.videos.slice(0, 6),
           audioUrl,
         }),
       });
@@ -147,35 +159,26 @@ export default function IdeaToVideoScreen({ navigation }) {
             onPress={generateScript}
             disabled={loading || !prompt.trim()}
           >
-            {loading && step === 1 ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.btnText}>✨ Generate Script</Text>
-            )}
+            {loading && step === 1 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
           </TouchableOpacity>
         </View>
 
         {/* Step 2 - Script */}
         {step >= 2 && (
           <View style={styles.card}>
-            <Text style={styles.cardLabel}>📄 Generated Script</Text>
+            <Text style={styles.cardLabel}>📄 Generated Script (Editable)</Text>
             <TextInput
-              style={[styles.textArea, { minHeight: 120 }]}
+              style={[styles.textArea, { minHeight: 150, color: '#fff' }]}
               value={script}
               onChangeText={setScript}
               multiline
-              color="#fff"
             />
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={generateVoiceover}
               disabled={loading}
             >
-              {loading && step === 2 ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>
-              )}
+              {loading && step === 2 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -190,11 +193,7 @@ export default function IdeaToVideoScreen({ navigation }) {
               onPress={generateVideo}
               disabled={loading}
             >
-              {loading && step === 3 ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.btnText}>🎬 Generate Video</Text>
-              )}
+              {loading && step === 3 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎬 Generate Video</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -204,18 +203,19 @@ export default function IdeaToVideoScreen({ navigation }) {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>🎬 Video Ready!</Text>
             <Text style={styles.successText}>✅ Your video has been generated!</Text>
-            <Text style={styles.videoUrl}>
-              {`https://api.fitlifesolutions.site${videoUrl}`}
-            </Text>
+            <Text style={styles.videoUrl}>{`${BACKEND}${videoUrl}`}</Text>
+            <TouchableOpacity
+              style={[styles.btn, { marginBottom: 10 }]}
+              onPress={() => {
+                const fullUrl = `${BACKEND}${videoUrl}`;
+                Alert.alert('Video URL', fullUrl, [{ text: 'OK' }]);
+              }}
+            >
+              <Text style={styles.btnText}>📋 Copy Video Link</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: '#7c3aed' }]}
-              onPress={() => {
-                setStep(1);
-                setPrompt('');
-                setScript('');
-                setAudioUrl('');
-                setVideoUrl('');
-              }}
+              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); }}
             >
               <Text style={styles.btnText}>🔄 Create Another Video</Text>
             </TouchableOpacity>
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginBottom: 16 },
   cardLabel: { color: '#2ecc71', fontWeight: 'bold', fontSize: 14, marginBottom: 12 },
   textArea: { backgroundColor: '#0a0a0a', color: '#fff', borderRadius: 8, padding: 12, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#333', fontSize: 14, marginBottom: 12 },
-  btn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 14, alignItems: 'center' },
+  btn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 14, alignItems: 'center', marginBottom: 4 },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   successText: { color: '#2ecc71', fontSize: 14, marginBottom: 12 },
