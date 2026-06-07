@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
-const BACKEND = 'http://173.212.232.182:5000';
+const BACKEND = 'https://api.fitlifesolutions.site';
 
 export default function IdeaToVideoScreen({ navigation }) {
   const [prompt, setPrompt] = useState('');
@@ -205,7 +205,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.cardLabel}>🎬 Video Ready!</Text>
             <Text style={styles.successText}>✅ Your video has been generated!</Text>
             <Text style={styles.videoUrl}>
-              {`http://173.212.232.182:5000${videoUrl}`}
+              {`https://api.fitlifesolutions.site${videoUrl}`}
             </Text>
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: '#7c3aed' }]}
