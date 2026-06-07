@@ -1,30 +1,28 @@
 {
   "expo": {
-    "name": "TonefyApp",
+    "name": "Tonefy AI",
     "slug": "TonefyApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
-    "ios": {
-      "supportsTablet": true
+    "updates": {
+      "url": "https://u.expo.dev/757fe01f-6fc0-436f-a1d4-882befda2cc6"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0a0a0a"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.ahumuza21213.TonefyApp"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
