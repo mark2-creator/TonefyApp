@@ -88,7 +88,7 @@ export default function IdeaToVideoScreen({ navigation }) {
         body: JSON.stringify({
           prompt,
           voiceover: script,
-          selectedVideo,
+          selectedVideos: searchData.videos.slice(0, 4),
           audioUrl,
         }),
       });
