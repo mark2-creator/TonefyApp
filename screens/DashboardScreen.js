@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView
+  StyleSheet, SafeAreaView, StatusBar
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -52,18 +52,16 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <Text style={styles.logo}>Tonefy AI</Text>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
-
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.welcome}>Welcome! 👋</Text>
         <Text style={styles.subtitle}>Choose a workflow to get started</Text>
-
         {sections.map((section, i) => (
           <View key={i} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -90,7 +88,7 @@ export default function DashboardScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: StatusBar.currentHeight + 10 || 20, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   logo: { color: '#2ecc71', fontSize: 20, fontWeight: 'bold' },
   logoutBtn: { borderWidth: 1, borderColor: '#444', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
   logoutText: { color: '#aaa', fontSize: 13 },
