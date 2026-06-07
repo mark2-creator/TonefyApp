@@ -1,39 +1,41 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar
+  StyleSheet, StatusBar, Platform
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
+
+const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 const sections = [
   {
     title: '🎬 Video',
     cards: [
-      { title: 'Idea to Video', desc: 'Transform ideas into stunning videos', icon: '✨', color: '#7c3aed' },
-      { title: 'Script to Video', desc: 'Turn your scripts into engaging videos', icon: '📄', color: '#2563eb' },
-      { title: 'URL to Video', desc: 'Convert web pages into videos', icon: '🔗', color: '#0d9488' },
-      { title: 'PPT to Video', desc: 'Transform presentations into videos', icon: '📊', color: '#ea580c' },
-      { title: 'Edit Video', desc: 'Add subtitles and B-rolls', icon: '✂️', color: '#dc2626' },
-      { title: 'Record', desc: 'Turn recordings into polished videos', icon: '🎙️', color: '#16a34a' },
+      { title: 'Idea to Video', desc: 'Transform ideas into stunning videos', icon: '✨' },
+      { title: 'Script to Video', desc: 'Turn your scripts into engaging videos', icon: '📄' },
+      { title: 'URL to Video', desc: 'Convert web pages into videos', icon: '🔗' },
+      { title: 'PPT to Video', desc: 'Transform presentations into videos', icon: '📊' },
+      { title: 'Edit Video', desc: 'Add subtitles and B-rolls', icon: '✂️' },
+      { title: 'Record', desc: 'Turn recordings into polished videos', icon: '🎙️' },
     ],
   },
   {
     title: '🎵 Audio',
     cards: [
-      { title: 'Idea to Audio', desc: 'Transform ideas into audio', icon: '✨', color: '#7c3aed' },
-      { title: 'Script to Audio', desc: 'Turn scripts into audio', icon: '📄', color: '#2563eb' },
-      { title: 'Voiceover', desc: 'Create AI voiceovers', icon: '🔊', color: '#0ea5e9' },
-      { title: 'Podcast', desc: 'Turn text into podcast episodes', icon: '🎙️', color: '#ca8a04' },
-      { title: 'Music', desc: 'Generate background music', icon: '🎵', color: '#ec4899' },
+      { title: 'Idea to Audio', desc: 'Transform ideas into audio', icon: '✨' },
+      { title: 'Script to Audio', desc: 'Turn scripts into audio', icon: '📄' },
+      { title: 'Voiceover', desc: 'Create AI voiceovers', icon: '🔊' },
+      { title: 'Podcast', desc: 'Turn text into podcast episodes', icon: '🎙️' },
+      { title: 'Music', desc: 'Generate background music', icon: '🎵' },
     ],
   },
   {
     title: '🎨 Design',
     cards: [
-      { title: 'Thumbnail', desc: 'Create stunning thumbnails', icon: '🖼️', color: '#7c3aed' },
-      { title: 'Social Post', desc: 'Create engaging social posts', icon: '👥', color: '#2563eb' },
-      { title: 'Presentation', desc: 'Create engaging presentations', icon: '📊', color: '#ea580c' },
+      { title: 'Thumbnail', desc: 'Create stunning thumbnails', icon: '🖼️' },
+      { title: 'Social Post', desc: 'Create engaging social posts', icon: '👥' },
+      { title: 'Presentation', desc: 'Create engaging presentations', icon: '📊' },
     ],
   },
 ];
@@ -45,13 +47,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const handleCardPress = (title) => {
-    if (title === 'Idea to Video') {
-      navigation.navigate('IdeaToVideo');
-    }
+    if (title === 'Idea to Video') navigation.navigate('IdeaToVideo');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <Text style={styles.logo}>Tonefy AI</Text>
@@ -67,11 +67,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <View style={styles.grid}>
               {section.cards.map((card, j) => (
-                <TouchableOpacity
-                  key={j}
-                  style={styles.card}
-                  onPress={() => handleCardPress(card.title)}
-                >
+                <TouchableOpacity key={j} style={styles.card} onPress={() => handleCardPress(card.title)}>
                   <Text style={styles.cardIcon}>{card.icon}</Text>
                   <Text style={styles.cardTitle}>{card.title}</Text>
                   <Text style={styles.cardDesc}>{card.desc}</Text>
@@ -82,13 +78,13 @@ export default function DashboardScreen({ navigation }) {
         ))}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: StatusBar.currentHeight + 10 || 20, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   logo: { color: '#2ecc71', fontSize: 20, fontWeight: 'bold' },
   logoutBtn: { borderWidth: 1, borderColor: '#444', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
   logoutText: { color: '#aaa', fontSize: 13 },
