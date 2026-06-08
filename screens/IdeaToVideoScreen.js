@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, ActivityIndicator,
@@ -23,6 +23,20 @@ const ProgressBar = ({ progress, label }) => (
   </View>
 );
 
+async function fetchWithTimeout(url, options, timeoutMs = 300000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('Request timed out after ' + Math.round(timeoutMs / 1000) + 's');
+    throw err;
+  }
+}
+
 export default function IdeaToVideoScreen({ navigation }) {
   const [prompt, setPrompt] = useState('');
   const [script, setScript] = useState('');
@@ -31,13 +45,15 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [progress, setProgress] = useState(0);
+  const [activeStep, setActiveStep] = useState(0); // which step is loading
   const [step, setStep] = useState(1);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const progressInterval = useRef(null);
 
   const startProgress = (start, end, duration) => {
+    if (progressInterval.current) clearInterval(progressInterval.current);
     setProgress(start);
-    const steps = 20;
+    const steps = 30;
     const increment = (end - start) / steps;
     const delay = duration / steps;
     let current = start;
@@ -52,76 +68,94 @@ export default function IdeaToVideoScreen({ navigation }) {
     }, delay);
   };
 
-  const stopProgress = () => {
+  const stopProgress = (finalValue = 100) => {
     if (progressInterval.current) clearInterval(progressInterval.current);
+    setProgress(finalValue);
+  };
+
+  const resetLoading = () => {
+    stopProgress(0);
+    setLoading(false);
+    setLoadingMsg('');
+    setProgress(0);
+    setActiveStep(0);
   };
 
   const generateScript = async () => {
     if (!prompt.trim()) return Alert.alert('Error', 'Enter a prompt first');
     setLoading(true);
+    setActiveStep(1);
     setLoadingMsg('Generating script with AI...');
-    startProgress(0, 90, 3000);
+    startProgress(0, 90, 4000);
     try {
-      const res = await fetch(`${BACKEND}/api/generate-script`, {
+      const res = await fetchWithTimeout(`${BACKEND}/api/generate-script`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
-      });
+      }, 30000);
       const data = await res.json();
-      stopProgress(); setProgress(100);
+      stopProgress(100);
       if (data.script) { setScript(data.script); setStep(2); }
       else Alert.alert('Error', data.error || 'Failed to generate script');
-    } catch (err) { Alert.alert('Error', 'Could not connect to server.'); }
-    setLoading(false); setLoadingMsg(''); setProgress(0);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not connect to server.');
+    }
+    resetLoading();
   };
 
   const generateVoiceover = async () => {
     if (!script.trim()) return Alert.alert('Error', 'Script is empty');
     setLoading(true);
+    setActiveStep(2);
     setLoadingMsg('Generating AI voiceover...');
     startProgress(0, 90, 20000);
     try {
-      const res = await fetch(`${BACKEND}/api/generate-audio`, {
+      const res = await fetchWithTimeout(`${BACKEND}/api/generate-audio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: script }),
-      });
+      }, 60000);
       const data = await res.json();
-      stopProgress(); setProgress(100);
+      stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
       else Alert.alert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) { Alert.alert('Error', 'Could not connect to server.'); }
-    setLoading(false); setLoadingMsg(''); setProgress(0);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not connect to server.');
+    }
+    resetLoading();
   };
 
   const generateVideo = async () => {
     setLoading(true);
+    setActiveStep(3);
     try {
       setLoadingMsg('Analyzing script...');
       startProgress(0, 15, 3000);
-      const kwRes = await fetch(`${BACKEND}/api/extract-keywords`, {
+      const kwRes = await fetchWithTimeout(`${BACKEND}/api/extract-keywords`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: script }),
-      });
+      }, 15000);
       const kwData = await kwRes.json();
       const keywords = kwData.keywords || [prompt];
 
       setLoadingMsg('Fetching video clips...');
       startProgress(15, 30, 5000);
-      const searchRes = await fetch(`${BACKEND}/api/search-pexels-videos`, {
+      const searchRes = await fetchWithTimeout(`${BACKEND}/api/search-pexels-videos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: prompt, keywords }),
-      });
+      }, 20000);
       const searchData = await searchRes.json();
       if (!searchData.videos || searchData.videos.length === 0) {
-        Alert.alert('Error', 'No videos found'); setLoading(false); return;
+        Alert.alert('Error', 'No videos found');
+        resetLoading();
+        return;
       }
 
-      setLoadingMsg('Merging clips & audio...');
+      setLoadingMsg('Merging clips & audio (this takes ~2 min)...');
       startProgress(30, 95, 120000);
-      const mergeRes = await fetch(`${BACKEND}/api/idea-to-video`, {
+      const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,16 +163,16 @@ export default function IdeaToVideoScreen({ navigation }) {
           selectedVideos: searchData.videos.slice(0, 6),
           audioUrl, aspectRatio,
         }),
-      });
+      }, 300000);
       const mergeData = await mergeRes.json();
-      stopProgress(); setProgress(100);
+      stopProgress(100);
       if (mergeData.videoUrl) { setVideoUrl(mergeData.videoUrl); setStep(4); }
       else Alert.alert('Error', mergeData.error || 'Failed to generate video');
-    } catch (err) { 
-      stopProgress();
-      Alert.alert('Error', 'Connection timeout. Video may still be processing. Try again.'); 
+    } catch (err) {
+      stopProgress(0);
+      Alert.alert('Error', err.message || 'Connection failed. Please try again.');
     }
-    setLoading(false); setLoadingMsg(''); setProgress(0);
+    resetLoading();
   };
 
   return (
@@ -195,13 +229,15 @@ export default function IdeaToVideoScreen({ navigation }) {
             multiline
             numberOfLines={4}
           />
-          {loading && step === 1 && <ProgressBar progress={progress} label="Generating script..." />}
+          {loading && activeStep === 1 && <ProgressBar progress={progress} label={loadingMsg} />}
           <TouchableOpacity
             style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]}
             onPress={generateScript}
             disabled={loading || !prompt.trim()}
           >
-            {loading && step === 1 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
+            {loading && activeStep === 1
+              ? <ActivityIndicator color="#000" />
+              : <Text style={styles.btnText}>✨ Generate Script</Text>}
           </TouchableOpacity>
         </View>
 
@@ -215,13 +251,15 @@ export default function IdeaToVideoScreen({ navigation }) {
               onChangeText={setScript}
               multiline
             />
-            {loading && step === 2 && <ProgressBar progress={progress} label="Generating voiceover..." />}
+            {loading && activeStep === 2 && <ProgressBar progress={progress} label={loadingMsg} />}
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={generateVoiceover}
               disabled={loading}
             >
-              {loading && step === 2 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
+              {loading && activeStep === 2
+                ? <ActivityIndicator color="#000" />
+                : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -231,13 +269,15 @@ export default function IdeaToVideoScreen({ navigation }) {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>🎙️ Voiceover Ready!</Text>
             <Text style={styles.successText}>✅ Audio generated successfully</Text>
-            {loading && step === 3 && <ProgressBar progress={progress} label={loadingMsg} />}
+            {loading && activeStep === 3 && <ProgressBar progress={progress} label={loadingMsg} />}
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={generateVideo}
               disabled={loading}
             >
-              {loading && step === 3 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎬 Generate Video</Text>}
+              {loading && activeStep === 3
+                ? <ActivityIndicator color="#000" />
+                : <Text style={styles.btnText}>🎬 Generate Video</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -248,12 +288,16 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.cardLabel}>🎬 Video Ready!</Text>
             <Text style={styles.successText}>✅ Your video has been generated!</Text>
             <Text style={styles.videoUrl}>{`${BACKEND}${videoUrl}`}</Text>
-            <TouchableOpacity style={[styles.btn, { marginBottom: 10 }]}
-              onPress={() => Alert.alert('Video URL', `${BACKEND}${videoUrl}`, [{ text: 'OK' }])}>
+            <TouchableOpacity
+              style={[styles.btn, { marginBottom: 10 }]}
+              onPress={() => Alert.alert('Video URL', `${BACKEND}${videoUrl}`, [{ text: 'OK' }])}
+            >
               <Text style={styles.btnText}>📋 Copy Video Link</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.btn, { backgroundColor: '#7c3aed' }]}
-              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); setProgress(0); }}>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: '#7c3aed' }]}
+              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); setProgress(0); setActiveStep(0); }}
+            >
               <Text style={styles.btnText}>🔄 Create Another Video</Text>
             </TouchableOpacity>
           </View>
