@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, ActivityIndicator,
@@ -9,10 +9,19 @@ const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
 
 const ASPECT_RATIOS = [
-  { id: '16:9', label: '16:9', icon: '🖥️', desc: 'Landscape (YouTube)' },
-  { id: '9:16', label: '9:16', icon: '📱', desc: 'Portrait (TikTok/Reels)' },
-  { id: '1:1', label: '1:1', icon: '⬛', desc: 'Square (Instagram)' },
+  { id: '16:9', label: '16:9', icon: '🖥️', desc: 'YouTube' },
+  { id: '9:16', label: '9:16', icon: '📱', desc: 'TikTok/Reels' },
+  { id: '1:1', label: '1:1', icon: '⬛', desc: 'Instagram' },
 ];
+
+const ProgressBar = ({ progress, label }) => (
+  <View style={styles.progressBarContainer}>
+    <View style={styles.progressBarBg}>
+      <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+    </View>
+    <Text style={styles.progressText}>{label} {Math.round(progress)}%</Text>
+  </View>
+);
 
 export default function IdeaToVideoScreen({ navigation }) {
   const [prompt, setPrompt] = useState('');
@@ -21,13 +30,37 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
+  const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(1);
   const [aspectRatio, setAspectRatio] = useState('9:16');
+  const progressInterval = useRef(null);
+
+  const startProgress = (start, end, duration) => {
+    setProgress(start);
+    const steps = 20;
+    const increment = (end - start) / steps;
+    const delay = duration / steps;
+    let current = start;
+    progressInterval.current = setInterval(() => {
+      current += increment;
+      if (current >= end) {
+        clearInterval(progressInterval.current);
+        setProgress(end);
+      } else {
+        setProgress(Math.round(current));
+      }
+    }, delay);
+  };
+
+  const stopProgress = () => {
+    if (progressInterval.current) clearInterval(progressInterval.current);
+  };
 
   const generateScript = async () => {
     if (!prompt.trim()) return Alert.alert('Error', 'Enter a prompt first');
     setLoading(true);
-    setLoadingMsg('✨ Generating script with AI...');
+    setLoadingMsg('Generating script with AI...');
+    startProgress(0, 90, 3000);
     try {
       const res = await fetch(`${BACKEND}/api/generate-script`, {
         method: 'POST',
@@ -35,16 +68,18 @@ export default function IdeaToVideoScreen({ navigation }) {
         body: JSON.stringify({ prompt }),
       });
       const data = await res.json();
+      stopProgress(); setProgress(100);
       if (data.script) { setScript(data.script); setStep(2); }
       else Alert.alert('Error', data.error || 'Failed to generate script');
     } catch (err) { Alert.alert('Error', 'Could not connect to server.'); }
-    setLoading(false); setLoadingMsg('');
+    setLoading(false); setLoadingMsg(''); setProgress(0);
   };
 
   const generateVoiceover = async () => {
     if (!script.trim()) return Alert.alert('Error', 'Script is empty');
     setLoading(true);
-    setLoadingMsg('🎙️ Generating AI voiceover...');
+    setLoadingMsg('Generating AI voiceover...');
+    startProgress(0, 90, 20000);
     try {
       const res = await fetch(`${BACKEND}/api/generate-audio`, {
         method: 'POST',
@@ -52,16 +87,18 @@ export default function IdeaToVideoScreen({ navigation }) {
         body: JSON.stringify({ text: script }),
       });
       const data = await res.json();
+      stopProgress(); setProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
       else Alert.alert('Error', data.error || 'Failed to generate voiceover');
     } catch (err) { Alert.alert('Error', 'Could not connect to server.'); }
-    setLoading(false); setLoadingMsg('');
+    setLoading(false); setLoadingMsg(''); setProgress(0);
   };
 
   const generateVideo = async () => {
     setLoading(true);
     try {
-      setLoadingMsg('🔍 Analyzing script for best visuals...');
+      setLoadingMsg('Analyzing script...');
+      startProgress(0, 15, 3000);
       const kwRes = await fetch(`${BACKEND}/api/extract-keywords`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,7 +107,8 @@ export default function IdeaToVideoScreen({ navigation }) {
       const kwData = await kwRes.json();
       const keywords = kwData.keywords || [prompt];
 
-      setLoadingMsg('🎬 Fetching matching video clips...');
+      setLoadingMsg('Fetching video clips...');
+      startProgress(15, 30, 5000);
       const searchRes = await fetch(`${BACKEND}/api/search-pexels-videos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,7 +119,8 @@ export default function IdeaToVideoScreen({ navigation }) {
         Alert.alert('Error', 'No videos found'); setLoading(false); return;
       }
 
-      setLoadingMsg(`🎬 Creating ${aspectRatio} video...`);
+      setLoadingMsg('Merging clips & audio...');
+      startProgress(30, 95, 120000);
       const mergeRes = await fetch(`${BACKEND}/api/idea-to-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,10 +131,14 @@ export default function IdeaToVideoScreen({ navigation }) {
         }),
       });
       const mergeData = await mergeRes.json();
+      stopProgress(); setProgress(100);
       if (mergeData.videoUrl) { setVideoUrl(mergeData.videoUrl); setStep(4); }
       else Alert.alert('Error', mergeData.error || 'Failed to generate video');
-    } catch (err) { Alert.alert('Error', 'Could not connect to server.'); }
-    setLoading(false); setLoadingMsg('');
+    } catch (err) { 
+      stopProgress();
+      Alert.alert('Error', 'Connection timeout. Video may still be processing. Try again.'); 
+    }
+    setLoading(false); setLoadingMsg(''); setProgress(0);
   };
 
   return (
@@ -110,7 +153,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Progress */}
+        {/* Progress Steps */}
         <View style={styles.progressRow}>
           {['Idea', 'Script', 'Voice', 'Video'].map((s, i) => (
             <View key={i} style={styles.progressItem}>
@@ -122,7 +165,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Aspect Ratio Selector */}
+        {/* Aspect Ratio */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>📐 Video Format</Text>
           <View style={styles.ratioRow}>
@@ -140,7 +183,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Step 1 - Prompt */}
+        {/* Step 1 */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>📝 Your Idea</Text>
           <TextInput
@@ -152,6 +195,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             multiline
             numberOfLines={4}
           />
+          {loading && step === 1 && <ProgressBar progress={progress} label="Generating script..." />}
           <TouchableOpacity
             style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]}
             onPress={generateScript}
@@ -161,7 +205,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Step 2 - Script */}
+        {/* Step 2 */}
         {step >= 2 && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>📄 Generated Script (Editable)</Text>
@@ -171,6 +215,7 @@ export default function IdeaToVideoScreen({ navigation }) {
               onChangeText={setScript}
               multiline
             />
+            {loading && step === 2 && <ProgressBar progress={progress} label="Generating voiceover..." />}
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={generateVoiceover}
@@ -181,11 +226,12 @@ export default function IdeaToVideoScreen({ navigation }) {
           </View>
         )}
 
-        {/* Step 3 - Audio */}
+        {/* Step 3 */}
         {step >= 3 && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>🎙️ Voiceover Ready!</Text>
             <Text style={styles.successText}>✅ Audio generated successfully</Text>
+            {loading && step === 3 && <ProgressBar progress={progress} label={loadingMsg} />}
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={generateVideo}
@@ -196,7 +242,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           </View>
         )}
 
-        {/* Step 4 - Video */}
+        {/* Step 4 */}
         {step >= 4 && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>🎬 Video Ready!</Text>
@@ -207,16 +253,9 @@ export default function IdeaToVideoScreen({ navigation }) {
               <Text style={styles.btnText}>📋 Copy Video Link</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.btn, { backgroundColor: '#7c3aed' }]}
-              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); }}>
+              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); setProgress(0); }}>
               <Text style={styles.btnText}>🔄 Create Another Video</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {loading && (
-          <View style={styles.loadingCard}>
-            <ActivityIndicator color="#2ecc71" size="large" />
-            <Text style={styles.loadingText}>{loadingMsg}</Text>
           </View>
         )}
       </ScrollView>
@@ -253,6 +292,8 @@ const styles = StyleSheet.create({
   btnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   successText: { color: '#2ecc71', fontSize: 14, marginBottom: 12 },
   videoUrl: { color: '#888', fontSize: 11, marginBottom: 12, lineHeight: 16 },
-  loadingCard: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 24, alignItems: 'center', marginBottom: 16 },
-  loadingText: { color: '#2ecc71', marginTop: 12, fontSize: 14, textAlign: 'center' },
+  progressBarContainer: { marginBottom: 12 },
+  progressBarBg: { height: 8, backgroundColor: '#0a0a0a', borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
+  progressBarFill: { height: 8, backgroundColor: '#2ecc71', borderRadius: 4 },
+  progressText: { color: '#2ecc71', fontSize: 12, textAlign: 'center' },
 });
