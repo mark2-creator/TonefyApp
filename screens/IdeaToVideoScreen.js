@@ -18,6 +18,17 @@ const ASPECT_RATIOS = [
   { id: '1:1', label: '⬛', icon: '⬛', desc: 'Instagram' },
 ];
 
+const VOICES = [
+  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',    icon: '🇺🇸' },
+  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',    icon: '🇬🇧' },
+  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',    icon: '🇦🇺' },
+  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',      icon: '🇺🇸' },
+  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',      icon: '🇬🇧' },
+  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',    icon: '🎙️' },
+  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2',  icon: '🇺🇸' },
+  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2',  icon: '🇬🇧' },
+];
+
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -70,6 +81,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('9:16');
+  const [voiceId, setVoiceId] = useState('gtts-us');
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -126,7 +138,7 @@ export default function IdeaToVideoScreen({ navigation }) {
     try {
       const res = await fetchWithTimeout(`${BACKEND}/api/generate-audio`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: script }),
+        body: JSON.stringify({ text: script, voiceId }),
       }, 60000);
       const data = await res.json();
       stopProgress(100);
@@ -142,7 +154,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       setLoadingMsg('Analyzing script...'); startProgress(0, 15, 3000);
       const kwRes = await fetchWithTimeout(`${BACKEND}/api/extract-keywords`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: script }),
+        body: JSON.stringify({ text: script, voiceId }),
       }, 15000);
       const kwData = await kwRes.json();
       const keywords = kwData.keywords || [prompt];
@@ -226,6 +238,16 @@ export default function IdeaToVideoScreen({ navigation }) {
             multiline
             numberOfLines={4}
           />
+          <Text style={styles.sectionLabel}>🎙️ Voice</Text>
+          <View style={styles.voiceGrid}>
+            {VOICES.map((v) => (
+              <TouchableOpacity key={v.id} style={[styles.voiceBtn, voiceId === v.id && styles.voiceBtnActive]} onPress={() => setVoiceId(v.id)}>
+                <Text style={styles.voiceIcon}>{v.icon}</Text>
+                <Text style={[styles.voiceName, voiceId === v.id && styles.voiceNameActive]}>{v.label}</Text>
+                <Text style={styles.voiceAccent}>{v.accent}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <Text style={styles.sectionLabel}>📐 Video Format</Text>
           <View style={styles.ratioRow}>
             {ASPECT_RATIOS.map((r) => (
@@ -339,4 +361,11 @@ const styles = StyleSheet.create({
   progressBarFill: { height: 8, backgroundColor: '#2ecc71', borderRadius: 4 },
   progressText: { color: '#2ecc71', fontSize: 12, textAlign: 'center' },
   videoPlayer: { width: '100%', height: 220, borderRadius: 10, marginBottom: 16, backgroundColor: '#000' },
+  voiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  voiceBtn: { width: '22%', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 8, alignItems: 'center', borderWidth: 1, borderColor: '#333' },
+  voiceBtnActive: { borderColor: '#2ecc71', backgroundColor: '#0d2b1a' },
+  voiceIcon: { fontSize: 16, marginBottom: 2 },
+  voiceName: { color: '#888', fontWeight: 'bold', fontSize: 11 },
+  voiceNameActive: { color: '#2ecc71' },
+  voiceAccent: { color: '#555', fontSize: 9, textAlign: 'center', marginTop: 1 },
 });
