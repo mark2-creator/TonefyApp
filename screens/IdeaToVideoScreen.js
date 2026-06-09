@@ -7,6 +7,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import VoicePicker from '../components/VoicePicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -16,17 +17,6 @@ const ASPECT_RATIOS = [
   { id: '16:9', label: '16:9', icon: '🖥️', desc: 'YouTube' },
   { id: '9:16', label: '9:16', icon: '📱', desc: 'TikTok/Reels' },
   { id: '1:1', label: '⬛', icon: '⬛', desc: 'Instagram' },
-];
-
-const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',    icon: '🇺🇸' },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',    icon: '🇬🇧' },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',    icon: '🇦🇺' },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',      icon: '🇺🇸' },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',      icon: '🇬🇧' },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',    icon: '🎙️' },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2',  icon: '🇺🇸' },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2',  icon: '🇬🇧' },
 ];
 
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
@@ -351,11 +341,5 @@ const styles = StyleSheet.create({
   progressBarFill: { height: 8, backgroundColor: '#2ecc71', borderRadius: 4 },
   progressText: { color: '#2ecc71', fontSize: 12, textAlign: 'center' },
   videoPlayer: { width: '100%', height: 220, borderRadius: 10, marginBottom: 16, backgroundColor: '#000' },
-  voiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  voiceBtn: { width: '22%', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 8, alignItems: 'center', borderWidth: 1, borderColor: '#333' },
-  voiceBtnActive: { borderColor: '#2ecc71', backgroundColor: '#0d2b1a' },
-  voiceIcon: { fontSize: 16, marginBottom: 2 },
-  voiceName: { color: '#888', fontWeight: 'bold', fontSize: 11 },
-  voiceNameActive: { color: '#2ecc71' },
-  voiceAccent: { color: '#555', fontSize: 9, textAlign: 'center', marginTop: 1 },
+
 });
