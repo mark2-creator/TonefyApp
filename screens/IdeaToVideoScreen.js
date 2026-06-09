@@ -8,6 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import VoicePicker from '../components/VoicePicker';
+import CaptionStylePicker from '../components/CaptionStylePicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -72,6 +73,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [voiceId, setVoiceId] = useState('gtts-us');
+  const [captionStyle, setCaptionStyle] = useState('classic');
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -238,6 +240,7 @@ export default function IdeaToVideoScreen({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+          <CaptionStylePicker selectedId={captionStyle} onSelect={setCaptionStyle} />
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
           <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
