@@ -230,6 +230,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             multiline
             numberOfLines={4}
           />
+          <VoicePicker selectedId={voiceId} onSelect={setVoiceId} />
           <Text style={styles.sectionLabel}>📐 Video Format</Text>
           <View style={styles.ratioRow}>
             {ASPECT_RATIOS.map((r) => (
