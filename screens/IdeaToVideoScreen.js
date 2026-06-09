@@ -163,7 +163,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           selectedVideos: searchData.videos.slice(0, 3),
           audioUrl, aspectRatio,
         }),
-      }, 120000);
+      }, 300000);
       const mergeData = await mergeRes.json();
       stopProgress(100);
       if (mergeData.videoUrl) { setVideoUrl(mergeData.videoUrl); setStep(4); }
