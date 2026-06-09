@@ -30,12 +30,12 @@ const ASPECT_RATIOS = [
 ];
 
 const CAPTION_STYLES = [
-  { id: 'classic',  label: 'Classic',  desc: 'White + outline',  preview: '⬜', color: '#fff' },
-  { id: 'tiktok',   label: 'TikTok',   desc: 'Bold yellow',      preview: '🟨', color: '#FFD700' },
-  { id: 'bold',     label: 'Bold',     desc: 'Large & thick',    preview: '⬜', color: '#fff' },
-  { id: 'neon',     label: 'Neon',     desc: 'Green glow',       preview: '🟩', color: '#00FF7F' },
-  { id: 'fire',     label: 'Fire',     desc: 'Orange fire',      preview: '🟧', color: '#FF6600' },
-  { id: 'minimal',  label: 'Minimal',  desc: 'Clean & simple',   preview: '⬜', color: '#ddd' },
+  { id: 'classic',  label: 'Classic',  desc: 'White + black outline',   color: '#fff',    bg: 'transparent', bold: false, shadow: false },
+  { id: 'tiktok',   label: 'TikTok',   desc: 'Bold yellow, thick stroke',color: '#FFD700', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'bold',     label: 'Bold',     desc: 'Large white, heavy stroke', color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'neon',     label: 'Neon',     desc: 'Glowing green text',       color: '#00FF7F', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'fire',     label: 'Fire',     desc: 'Burning orange text',      color: '#FF6600', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'minimal',  label: 'Minimal',  desc: 'Small clean white text',   color: '#fff',    bg: 'transparent', bold: false, shadow: false },
 ];
 
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
@@ -80,6 +80,33 @@ function SelectorRow({ icon, label, value, onPress }) {
   );
 }
 
+function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
+  const isCaption = item.color !== undefined && item.icon === undefined;
+  return (
+    <TouchableOpacity
+      style={[styles.optionRow, selectedId === item.id && styles.optionRowActive]}
+      onPress={() => { onSelect(item.id); onClose(); }}
+    >
+      {isCaption ? (
+        <View style={styles.captionPreviewBox}>
+          <Text style={[
+            styles.captionPreviewText,
+            { color: item.color, fontWeight: item.bold ? 'bold' : 'normal' },
+            item.shadow && { textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
+          ]}>Caption</Text>
+        </View>
+      ) : (
+        <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
+      )}
+      <View style={styles.optionText}>
+        <Text style={[styles.optionLabel, selectedId === item.id && styles.optionLabelActive]}>{item.label}</Text>
+        <Text style={styles.optionDesc}>{item.accent || item.desc}</Text>
+      </View>
+      {selectedId === item.id && <Text style={styles.optionCheck}>✓</Text>}
+    </TouchableOpacity>
+  );
+}
+
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -91,19 +118,7 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
             data={options}
             keyExtractor={item => item.id}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.optionRow, selectedId === item.id && styles.optionRowActive]}
-                onPress={() => { onSelect(item.id); onClose(); }}
-              >
-                <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
-                <View style={styles.optionText}>
-                  <Text style={[styles.optionLabel, selectedId === item.id && styles.optionLabelActive]}>
-                    {item.label}
-                  </Text>
-                  <Text style={styles.optionDesc}>{item.accent || item.desc}</Text>
-                </View>
-                {selectedId === item.id && <Text style={styles.optionCheck}>✓</Text>}
-              </TouchableOpacity>
+              <CaptionOptionRow item={item} selectedId={selectedId} onSelect={onSelect} onClose={onClose} />
             )}
           />
         </View>
@@ -397,4 +412,6 @@ const styles = StyleSheet.create({
   optionLabelActive: { color: '#2ecc71' },
   optionDesc: { color: '#666', fontSize: 12, marginTop: 2 },
   optionCheck: { color: '#2ecc71', fontSize: 18, fontWeight: 'bold' },
+  captionPreviewBox: { width: 90, height: 36, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  captionPreviewText: { fontSize: 16 },
 });
