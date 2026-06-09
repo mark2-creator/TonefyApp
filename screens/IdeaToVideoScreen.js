@@ -4,6 +4,7 @@ import {
   StyleSheet, ScrollView, ActivityIndicator,
   Alert, StatusBar
 } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -37,6 +38,21 @@ async function fetchWithTimeout(url, options, timeoutMs = 300000) {
   }
 }
 
+function VideoPlayer({ videoUrl }) {
+  const player = useVideoPlayer(videoUrl, p => {
+    p.loop = true;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={styles.videoPlayer}
+      allowsFullscreen
+      allowsPictureInPicture
+    />
+  );
+}
+
 export default function IdeaToVideoScreen({ navigation }) {
   const [prompt, setPrompt] = useState('');
   const [script, setScript] = useState('');
@@ -45,7 +61,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [progress, setProgress] = useState(0);
-  const [activeStep, setActiveStep] = useState(0); // which step is loading
+  const [activeStep, setActiveStep] = useState(0);
   const [step, setStep] = useState(1);
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const progressInterval = useRef(null);
@@ -59,111 +75,79 @@ export default function IdeaToVideoScreen({ navigation }) {
     let current = start;
     progressInterval.current = setInterval(() => {
       current += increment;
-      if (current >= end) {
-        clearInterval(progressInterval.current);
-        setProgress(end);
-      } else {
-        setProgress(Math.round(current));
-      }
+      if (current >= end) { clearInterval(progressInterval.current); setProgress(end); }
+      else setProgress(Math.round(current));
     }, delay);
   };
 
-  const stopProgress = (finalValue = 100) => {
-    if (progressInterval.current) clearInterval(progressInterval.current);
-    setProgress(finalValue);
-  };
+  const stopProgress = (v = 100) => { if (progressInterval.current) clearInterval(progressInterval.current); setProgress(v); };
 
-  const resetLoading = () => {
-    stopProgress(0);
-    setLoading(false);
-    setLoadingMsg('');
-    setProgress(0);
-    setActiveStep(0);
-  };
+  const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); setActiveStep(0); };
 
   const generateScript = async () => {
     if (!prompt.trim()) return Alert.alert('Error', 'Enter a prompt first');
-    setLoading(true);
-    setActiveStep(1);
-    setLoadingMsg('Generating script with AI...');
+    setLoading(true); setActiveStep(1); setLoadingMsg('Generating script with AI...');
     startProgress(0, 90, 4000);
     try {
       const res = await fetchWithTimeout(`${BACKEND}/api/generate-script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       }, 30000);
       const data = await res.json();
       stopProgress(100);
       if (data.script) { setScript(data.script); setStep(2); }
       else Alert.alert('Error', data.error || 'Failed to generate script');
-    } catch (err) {
-      Alert.alert('Error', err.message || 'Could not connect to server.');
-    }
+    } catch (err) { Alert.alert('Error', err.message || 'Could not connect to server.'); }
     resetLoading();
   };
 
   const generateVoiceover = async () => {
     if (!script.trim()) return Alert.alert('Error', 'Script is empty');
-    setLoading(true);
-    setActiveStep(2);
-    setLoadingMsg('Generating AI voiceover...');
+    setLoading(true); setActiveStep(2); setLoadingMsg('Generating AI voiceover...');
     startProgress(0, 90, 20000);
     try {
       const res = await fetchWithTimeout(`${BACKEND}/api/generate-audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: script }),
       }, 60000);
       const data = await res.json();
       stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
       else Alert.alert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) {
-      Alert.alert('Error', err.message || 'Could not connect to server.');
-    }
+    } catch (err) { Alert.alert('Error', err.message || 'Could not connect to server.'); }
     resetLoading();
   };
 
   const generateVideo = async () => {
-    setLoading(true);
-    setActiveStep(3);
+    setLoading(true); setActiveStep(3);
     try {
-      setLoadingMsg('Analyzing script...');
-      startProgress(0, 15, 3000);
+      setLoadingMsg('Analyzing script...'); startProgress(0, 15, 3000);
       const kwRes = await fetchWithTimeout(`${BACKEND}/api/extract-keywords`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: script }),
       }, 15000);
       const kwData = await kwRes.json();
       const keywords = kwData.keywords || [prompt];
 
-      setLoadingMsg('Fetching video clips...');
-      startProgress(15, 30, 5000);
+      setLoadingMsg('Fetching video clips...'); startProgress(15, 30, 5000);
       const searchRes = await fetchWithTimeout(`${BACKEND}/api/search-pexels-videos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: prompt, keywords }),
       }, 20000);
       const searchData = await searchRes.json();
       if (!searchData.videos || searchData.videos.length === 0) {
-        Alert.alert('Error', 'No videos found');
-        resetLoading();
-        return;
+        Alert.alert('Error', 'No videos found'); resetLoading(); return;
       }
 
-      setLoadingMsg('Merging clips & audio (this takes ~2 min)...');
-      startProgress(30, 95, 120000);
+      setLoadingMsg('Merging clips & audio (~15 sec)...'); startProgress(30, 95, 30000);
       const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt, voiceover: script,
-          selectedVideos: searchData.videos.slice(0, 6),
+          selectedVideos: searchData.videos.slice(0, 3),
           audioUrl, aspectRatio,
         }),
-      }, 300000);
+      }, 120000);
       const mergeData = await mergeRes.json();
       stopProgress(100);
       if (mergeData.videoUrl) { setVideoUrl(mergeData.videoUrl); setStep(4); }
@@ -174,6 +158,8 @@ export default function IdeaToVideoScreen({ navigation }) {
     }
     resetLoading();
   };
+
+  const fullVideoUrl = videoUrl ? `${BACKEND}${videoUrl}` : null;
 
   return (
     <View style={styles.container}>
@@ -187,7 +173,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Progress Steps */}
+        {/* Steps */}
         <View style={styles.progressRow}>
           {['Idea', 'Script', 'Voice', 'Video'].map((s, i) => (
             <View key={i} style={styles.progressItem}>
@@ -204,11 +190,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           <Text style={styles.cardLabel}>📐 Video Format</Text>
           <View style={styles.ratioRow}>
             {ASPECT_RATIOS.map((r) => (
-              <TouchableOpacity
-                key={r.id}
-                style={[styles.ratioBtn, aspectRatio === r.id && styles.ratioBtnActive]}
-                onPress={() => setAspectRatio(r.id)}
-              >
+              <TouchableOpacity key={r.id} style={[styles.ratioBtn, aspectRatio === r.id && styles.ratioBtnActive]} onPress={() => setAspectRatio(r.id)}>
                 <Text style={styles.ratioIcon}>{r.icon}</Text>
                 <Text style={[styles.ratioLabel, aspectRatio === r.id && styles.ratioLabelActive]}>{r.label}</Text>
                 <Text style={styles.ratioDesc}>{r.desc}</Text>
@@ -220,24 +202,10 @@ export default function IdeaToVideoScreen({ navigation }) {
         {/* Step 1 */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>📝 Your Idea</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="e.g. A motivational video about morning routines..."
-            placeholderTextColor="#555"
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={4}
-          />
+          <TextInput style={styles.textArea} placeholder="e.g. A motivational video about morning routines..." placeholderTextColor="#555" value={prompt} onChangeText={setPrompt} multiline numberOfLines={4} />
           {loading && activeStep === 1 && <ProgressBar progress={progress} label={loadingMsg} />}
-          <TouchableOpacity
-            style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]}
-            onPress={generateScript}
-            disabled={loading || !prompt.trim()}
-          >
-            {loading && activeStep === 1
-              ? <ActivityIndicator color="#000" />
-              : <Text style={styles.btnText}>✨ Generate Script</Text>}
+          <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
+            {loading && activeStep === 1 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
           </TouchableOpacity>
         </View>
 
@@ -245,21 +213,10 @@ export default function IdeaToVideoScreen({ navigation }) {
         {step >= 2 && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>📄 Generated Script (Editable)</Text>
-            <TextInput
-              style={[styles.textArea, { minHeight: 150, color: '#fff' }]}
-              value={script}
-              onChangeText={setScript}
-              multiline
-            />
+            <TextInput style={[styles.textArea, { minHeight: 150, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
             {loading && activeStep === 2 && <ProgressBar progress={progress} label={loadingMsg} />}
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={generateVoiceover}
-              disabled={loading}
-            >
-              {loading && activeStep === 2
-                ? <ActivityIndicator color="#000" />
-                : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
+            <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVoiceover} disabled={loading}>
+              {loading && activeStep === 2 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -270,36 +227,27 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.cardLabel}>🎙️ Voiceover Ready!</Text>
             <Text style={styles.successText}>✅ Audio generated successfully</Text>
             {loading && activeStep === 3 && <ProgressBar progress={progress} label={loadingMsg} />}
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={generateVideo}
-              disabled={loading}
-            >
-              {loading && activeStep === 3
-                ? <ActivityIndicator color="#000" />
-                : <Text style={styles.btnText}>🎬 Generate Video</Text>}
+            <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
+              {loading && activeStep === 3 ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎬 Generate Video</Text>}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Step 4 */}
-        {step >= 4 && (
+        {/* Step 4 - Video Ready with Player */}
+        {step >= 4 && fullVideoUrl && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>🎬 Video Ready!</Text>
-            <Text style={styles.successText}>✅ Your video has been generated!</Text>
-            <Text style={styles.videoUrl}>{`${BACKEND}${videoUrl}`}</Text>
-            <TouchableOpacity
-              style={[styles.btn, { marginBottom: 10 }]}
-              onPress={() => Alert.alert('Video URL', `${BACKEND}${videoUrl}`, [{ text: 'OK' }])}
-            >
-              <Text style={styles.btnText}>📋 Copy Video Link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: '#7c3aed' }]}
-              onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); setProgress(0); setActiveStep(0); }}
-            >
-              <Text style={styles.btnText}>🔄 Create Another Video</Text>
-            </TouchableOpacity>
+            <VideoPlayer videoUrl={fullVideoUrl} />
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={[styles.btn, { flex: 1, marginRight: 8 }]}
+                onPress={() => Alert.alert('Video URL', fullVideoUrl, [{ text: 'OK' }])}>
+                <Text style={styles.btnText}>📋 Copy Link</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, { flex: 1, backgroundColor: '#7c3aed' }]}
+                onPress={() => { setStep(1); setPrompt(''); setScript(''); setAudioUrl(''); setVideoUrl(''); setProgress(0); setActiveStep(0); }}>
+                <Text style={styles.btnText}>🔄 New Video</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -335,9 +283,10 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   successText: { color: '#2ecc71', fontSize: 14, marginBottom: 12 },
-  videoUrl: { color: '#888', fontSize: 11, marginBottom: 12, lineHeight: 16 },
   progressBarContainer: { marginBottom: 12 },
   progressBarBg: { height: 8, backgroundColor: '#0a0a0a', borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
   progressBarFill: { height: 8, backgroundColor: '#2ecc71', borderRadius: 4 },
   progressText: { color: '#2ecc71', fontSize: 12, textAlign: 'center' },
+  videoPlayer: { width: '100%', height: 220, borderRadius: 10, marginBottom: 12, backgroundColor: '#000' },
+  actionRow: { flexDirection: 'row', marginTop: 8 },
 });
