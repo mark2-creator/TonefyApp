@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, StatusBar, Dimensions
+  StyleSheet, ActivityIndicator, Alert, StatusBar, Dimensions, ScrollView
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Clipboard from 'expo-clipboard';
@@ -218,7 +218,7 @@ export default function IdeaToVideoScreen({ navigation }) {
 
       {/* STEP 1 — Idea & Format */}
       {step === 1 && (
-        <View style={styles.stepContainer}>
+        <ScrollView style={styles.stepContainer} contentContainerStyle={{ paddingBottom: 40 }}>
           <Text style={styles.stepTitle}>💡 Your Idea</Text>
           <Text style={styles.stepSub}>What do you want your video to be about?</Text>
           <TextInput
