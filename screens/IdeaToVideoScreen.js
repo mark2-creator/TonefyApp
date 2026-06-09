@@ -246,7 +246,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       )}
 
       {/* STEP 2 — Script */}
