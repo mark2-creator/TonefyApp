@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
