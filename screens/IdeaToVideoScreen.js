@@ -238,16 +238,6 @@ export default function IdeaToVideoScreen({ navigation }) {
             multiline
             numberOfLines={4}
           />
-          <Text style={styles.sectionLabel}>🎙️ Voice</Text>
-          <View style={styles.voiceGrid}>
-            {VOICES.map((v) => (
-              <TouchableOpacity key={v.id} style={[styles.voiceBtn, voiceId === v.id && styles.voiceBtnActive]} onPress={() => setVoiceId(v.id)}>
-                <Text style={styles.voiceIcon}>{v.icon}</Text>
-                <Text style={[styles.voiceName, voiceId === v.id && styles.voiceNameActive]}>{v.label}</Text>
-                <Text style={styles.voiceAccent}>{v.accent}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
           <Text style={styles.sectionLabel}>📐 Video Format</Text>
           <View style={styles.ratioRow}>
             {ASPECT_RATIOS.map((r) => (
