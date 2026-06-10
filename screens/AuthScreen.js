@@ -16,7 +16,7 @@ import { auth } from '../firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export default function AuthScreen() {
+export default function AuthScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,8 +25,8 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
-    webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
+    androidClientId: 'YOUR_ANDROID_CLIENT_ID',
+    webClientId: 'YOUR_WEB_CLIENT_ID',
   });
 
   React.useEffect(() => {
