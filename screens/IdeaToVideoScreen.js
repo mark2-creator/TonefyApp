@@ -10,7 +10,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
-const BACKEND = 'https://api.fitlifesolutions.site';
+const BACKEND = 'http://api.fitlifesolutions.site';
 
 const VOICES = [
   { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: '🇺🇸' },
