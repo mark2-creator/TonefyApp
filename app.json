@@ -14,9 +14,7 @@
     "updates": {
       "url": "https://u.expo.dev/757fe01f-6fc0-436f-a1d4-882befda2cc6"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
