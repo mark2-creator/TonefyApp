@@ -220,7 +220,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       const searchData = await searchRes.json();
       if (!searchData.videos?.length) { Alert.alert('Error', 'No videos found'); resetLoading(); return; }
 
-      setLoadingMsg('Merging clips & audio...'); startProgress(30, 95, 60000);
+      setLoadingMsg('Starting video generation...'); startProgress(30, 40, 3000);
       const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -228,11 +228,29 @@ export default function IdeaToVideoScreen({ navigation }) {
           selectedVideos: searchData.videos.slice(0, 3),
           audioUrl, aspectRatio, captionStyle,
         }),
-      }, 300000);
-      const mergeData = await mergeRes.json();
+      }, 15000);
+      const { jobId, error: jobError } = await mergeRes.json();
+      if (!jobId) { Alert.alert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
+
+      // Poll for job completion
+      setLoadingMsg('Generating your video...'); startProgress(40, 95, 120000);
+      const result = await new Promise((resolve, reject) => {
+        const interval = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`${BACKEND}/api/job/${jobId}`);
+            const job = await pollRes.json();
+            if (job.message) setLoadingMsg(job.message);
+            if (job.progress) setProgress(job.progress);
+            if (job.status === 'done') { clearInterval(interval); resolve(job); }
+            else if (job.status === 'failed') { clearInterval(interval); reject(new Error(job.message)); }
+          } catch (e) { clearInterval(interval); reject(e); }
+        }, 3000);
+        setTimeout(() => { clearInterval(interval); reject(new Error('Video generation timed out')); }, 300000);
+      });
+
       stopProgress(100);
-      if (mergeData.videoUrl) { setVideoUrl(mergeData.videoUrl); setStep(4); }
-      else Alert.alert('Error', mergeData.error || 'Failed to generate video');
+      if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(4); }
+      else Alert.alert('Error', 'Failed to generate video');
     } catch (err) { stopProgress(0); Alert.alert('Error', err.message); }
     resetLoading();
   };
