@@ -7,16 +7,38 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithCredential,
 } from 'firebase/auth';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { auth } from '../firebase';
 
-export default function AuthScreen({ navigation }) {
+WebBrowser.maybeCompleteAuthSession();
+
+export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
+    webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
+  });
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      setLoading(true);
+      signInWithCredential(auth, credential)
+        .catch(e => Alert.alert('Google Sign-In Error', e.message))
+        .finally(() => setLoading(false));
+    }
+  }, [response]);
 
   const handleSubmit = async () => {
     if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
@@ -31,7 +53,6 @@ export default function AuthScreen({ navigation }) {
         }
         await createUserWithEmailAndPassword(auth, email, password);
       }
-      navigation.replace('Dashboard');
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -98,7 +119,22 @@ export default function AuthScreen({ navigation }) {
         {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.submitText}>{isLogin ? 'Login' : 'Sign Up'}</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => { setIsLogin(!isLogin); }}>
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>OR</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={() => promptAsync()}
+        disabled={!request || loading}
+      >
+        <Text style={styles.googleIcon}>G</Text>
+        <Text style={styles.googleText}>Continue with Google</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
         <Text style={styles.switchText}>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <Text style={styles.switchLink}>{isLogin ? 'Sign Up' : 'Login'}</Text>
@@ -120,6 +156,12 @@ const styles = StyleSheet.create({
   forgotText: { color: '#2ecc71', alignSelf: 'flex-end', marginBottom: 20, fontSize: 13 },
   submitBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 16, width: '100%', alignItems: 'center', marginBottom: 20 },
   submitText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
+  divider: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#333' },
+  dividerText: { color: '#666', marginHorizontal: 12, fontSize: 13 },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 25, padding: 14, width: '100%', marginBottom: 24 },
+  googleIcon: { color: '#4285F4', fontWeight: 'bold', fontSize: 18, marginRight: 10 },
+  googleText: { color: '#333', fontWeight: 'bold', fontSize: 15 },
   switchText: { color: '#aaa', fontSize: 14, textAlign: 'center' },
   switchLink: { color: '#2ecc71', fontWeight: 'bold' },
 });
