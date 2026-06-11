@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, ActivityIndicator, Alert
+  StyleSheet, ScrollView, ActivityIndicator, Alert, Image
 } from 'react-native';
 import {
   signInWithEmailAndPassword,
@@ -25,8 +25,8 @@ export default function AuthScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: 'YOUR_ANDROID_CLIENT_ID',
-    webClientId: 'YOUR_WEB_CLIENT_ID',
+    androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
+    webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
   });
 
   React.useEffect(() => {
@@ -130,7 +130,7 @@ export default function AuthScreen({ navigation }) {
         onPress={() => promptAsync()}
         disabled={!request || loading}
       >
-        <Text style={styles.googleIcon}>G</Text>
+        <Image source={require('../assets/google-logo.png')} style={{ width: 20, height: 20, marginRight: 10 }} />
         <Text style={styles.googleText}>Continue with Google</Text>
       </TouchableOpacity>
 
