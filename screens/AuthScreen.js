@@ -29,6 +29,8 @@ export default function AuthScreen({ navigation }) {
     androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
   });
 
+  React.useEffect(() => { if (request?.redirectUri) Alert.alert('Redirect URI', request.redirectUri); }, [request]);
+
   React.useEffect(() => {
     if (response?.type === 'success') {
       const { id_token } = response.params;
