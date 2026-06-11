@@ -27,8 +27,6 @@ export default function AuthScreen({ navigation }) {
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
-    webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
-    redirectUri: Linking.createURL('redirect'),
   });
 
   React.useEffect(() => {
