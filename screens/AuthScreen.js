@@ -18,6 +18,7 @@ import { auth } from '../firebase';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen({ navigation }) {
+  React.useEffect(() => { Alert.alert('DEBUG', 'AuthScreen loaded'); }, []);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
