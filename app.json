@@ -24,13 +24,14 @@
     },
     "extra": {
       "eas": {
-        "projectId": "757fe01f-6fc0-436f-a1d4-882befda2cc6"
+        "projectId": "56d3d905-50cd-4d43-9773-a8e496d09dfa"
       }
     },
     "plugins": [
       "expo-video",
       "expo-web-browser"
     ],
-    "scheme": "tonefyai"
+    "scheme": "tonefyai",
+    "owner": "ahumuza254"
   }
 }
