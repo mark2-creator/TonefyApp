@@ -12,7 +12,7 @@
       "backgroundColor": "#0a0a0a"
     },
     "updates": {
-      "url": "https://u.expo.dev/757fe01f-6fc0-436f-a1d4-882befda2cc6"
+      "url": "https://u.expo.dev/56d3d905-50cd-4d43-9773-a8e496d09dfa"
     },
     "runtimeVersion": "1.0.0",
     "android": {
@@ -33,6 +33,7 @@
       "@react-native-google-signin/google-signin"
     ],
     "scheme": "tonefyai",
-    "owner": "ahumuza254"
+    "owner": "ahumuza254",
+    "ios": {}
   }
 }
