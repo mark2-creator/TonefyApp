@@ -27,6 +27,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="tonefyai"/>
+        <data android:scheme="com.ahumuza21213.TonefyApp" android:path="/oauthredirect"/>
       </intent-filter>
     </activity>
   </application>
