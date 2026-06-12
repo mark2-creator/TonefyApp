@@ -43,6 +43,25 @@ export default function AuthScreen({ navigation }) {
     }
   };
 
+  const getFriendlyError = (error) => {
+    switch (error.code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Incorrect email or password';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later';
+      default:
+        return error.message;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
     setLoading(true);
@@ -57,7 +76,7 @@ export default function AuthScreen({ navigation }) {
         await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', getFriendlyError(error));
     }
     setLoading(false);
   };
