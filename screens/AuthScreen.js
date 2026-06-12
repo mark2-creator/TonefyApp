@@ -10,12 +10,9 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
 } from 'firebase/auth';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../firebase';
 
-WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -25,21 +22,26 @@ export default function AuthScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '527163602306-3tblorgmrpa0gvo24t85ehk1d8d0dqoa.apps.googleusercontent.com',
-  });
-
-
   React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
+    GoogleSignin.configure({
+      webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
       setLoading(true);
-      signInWithCredential(auth, credential)
-        .catch(e => Alert.alert('Google Sign-In Error', e.message))
-        .finally(() => setLoading(false));
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken || userInfo.idToken;
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    } catch (error) {
+      Alert.alert('Google Sign-In Error', error.message);
+    } finally {
+      setLoading(false);
     }
-  }, [response]);
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
@@ -128,8 +130,8 @@ export default function AuthScreen({ navigation }) {
 
       <TouchableOpacity
         style={styles.googleBtn}
-        onPress={() => promptAsync()}
-        disabled={!request || loading}
+        onPress={handleGoogleSignIn}
+        disabled={loading}
       >
         <Image source={require('../assets/google-logo.png')} style={{ width: 20, height: 20, marginRight: 10 }} />
         <Text style={styles.googleText}>Continue with Google</Text>
