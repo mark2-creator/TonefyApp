@@ -204,28 +204,20 @@ export default function IdeaToVideoScreen({ navigation }) {
   const generateVideo = async () => {
     setLoading(true);
     try {
-      setLoadingMsg('Analyzing script...'); startProgress(0, 15, 3000);
-      const kwRes = await fetchWithTimeout(`${BACKEND}/api/extract-keywords`, {
+      setLoadingMsg('Analyzing script into scenes...'); startProgress(0, 20, 4000);
+      const segRes = await fetchWithTimeout(`${BACKEND}/api/extract-segments`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: script }),
-      }, 15000);
-      const kwData = await kwRes.json();
-      const keywords = kwData.keywords || [prompt];
+      }, 30000);
+      const segData = await segRes.json();
+      const segments = segData.segments;
+      if (!segments?.length) { Alert.alert('Error', segData.error || 'Failed to analyze script'); resetLoading(); return; }
 
-      setLoadingMsg('Fetching video clips...'); startProgress(15, 30, 5000);
-      const searchRes = await fetchWithTimeout(`${BACKEND}/api/search-pexels-videos`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: prompt, keywords }),
-      }, 20000);
-      const searchData = await searchRes.json();
-      if (!searchData.videos?.length) { Alert.alert('Error', 'No videos found'); resetLoading(); return; }
-
-      setLoadingMsg('Starting video generation...'); startProgress(30, 40, 3000);
-      const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video`, {
+      setLoadingMsg('Starting video generation...'); startProgress(20, 35, 3000);
+      const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video-v2`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt, voiceover: script,
-          selectedVideos: searchData.videos.slice(0, 3),
+          voiceover: script, segments,
           audioUrl, aspectRatio, captionStyle,
         }),
       }, 15000);
