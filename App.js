@@ -9,6 +9,7 @@ import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
+import MyVideosScreen from './screens/MyVideosScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,7 @@ export default function App() {
           <>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="IdeaToVideo" component={IdeaToVideoScreen} />
+            <Stack.Screen name="MyVideos" component={MyVideosScreen} />
           </>
         ) : (
           <>

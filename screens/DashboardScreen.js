@@ -55,9 +55,14 @@ export default function DashboardScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <Text style={styles.logo}>Tonefy AI</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TouchableOpacity onPress={() => navigation.navigate('MyVideos')} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>🎬 Videos</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
+        </View>
       </View>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.welcome}>Welcome! 👋</Text>
