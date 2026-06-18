@@ -355,6 +355,9 @@ export default function IdeaToVideoScreen({ navigation }) {
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>🎬 Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
+          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2ecc71' }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
+            <Text style={styles.btnText}>🚀 Post / Schedule</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={copyLink}>
             <Text style={styles.btnText}>📋 Copy Link</Text>
           </TouchableOpacity>

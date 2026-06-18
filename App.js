@@ -8,6 +8,8 @@ import { auth } from './firebase';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
+import EditPostVideoScreen from './screens/EditPostVideoScreen';
+import ConnectAccountsScreen from './screens/ConnectAccountsScreen';
 import MainTabs from './screens/MainTabs';
 
 const Stack = createNativeStackNavigator();
@@ -36,6 +38,8 @@ export default function App() {
           <>
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="IdeaToVideo" component={IdeaToVideoScreen} />
+            <Stack.Screen name="EditPostVideo" component={EditPostVideoScreen} />
+            <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
           </>
         ) : (
           <>
