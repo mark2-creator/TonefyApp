@@ -8,6 +8,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { getAuth } from 'firebase/auth';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -39,6 +40,13 @@ const CAPTION_STYLES = [
 ];
 
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
+  try {
+    const user = getAuth().currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      options = { ...options, headers: { ...options?.headers, Authorization: `Bearer ${token}` } };
+    }
+  } catch (e) { console.warn('Token error:', e); }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
