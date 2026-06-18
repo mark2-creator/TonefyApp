@@ -1,21 +1,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from './DashboardScreen';
 import MyVideosScreen from './MyVideosScreen';
 import CalendarScreen from './CalendarScreen';
 import ProfileScreen from './ProfileScreen';
 
 const Tab = createBottomTabNavigator();
-
-function TabIcon({ emoji, label, focused }) {
-  return (
-    <View style={{ alignItems: 'center', gap: 3 }}>
-      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.6 }}>{emoji}</Text>
-      <Text style={{ fontSize: 10, fontWeight: '600', color: focused ? '#2ecc71' : '#666' }}>{label}</Text>
-    </View>
-  );
-}
 
 function EmptyScreen() {
   return null;
@@ -26,43 +18,75 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: { backgroundColor: '#111', borderTopColor: '#2a2a2a', height: 80, paddingTop: 8 },
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: '#2ecc71',
+        tabBarInactiveTintColor: '#888',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+        tabBarStyle: {
+          backgroundColor: '#111',
+          borderTopColor: '#2a2a2a',
+          height: 60,
+          paddingTop: 6,
+          paddingBottom: 6,
+        },
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home" focused={focused} /> }}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="MyVideos"
         component={MyVideosScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🎬" label="Videos" focused={focused} /> }}
+        options={{
+          tabBarLabel: 'Videos',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'videocam' : 'videocam-outline'} size={22} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="CreateTab"
         component={EmptyScreen}
         options={({ navigation }) => ({
-          tabBarButton: () => (
+          tabBarLabel: '',
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 26, color: '#2ecc71', fontWeight: '300', lineHeight: 30 }}>+</Text>
+          ),
+          tabBarButton: (props) => (
             <TouchableOpacity
+              {...props}
               onPress={() => navigation.navigate('IdeaToVideo')}
-              style={{ width: 52, height: 52, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ fontSize: 30, color: '#2ecc71', fontWeight: '300' }}>+</Text>
-            </TouchableOpacity>
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            />
           ),
         })}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Calendar" focused={focused} /> }}
+        options={{
+          tabBarLabel: 'Calendar',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} /> }}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );
