@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from './DashboardScreen';
 import MyVideosScreen from './MyVideosScreen';
@@ -14,6 +15,8 @@ function EmptyScreen() {
 }
 
 export default function MainTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -21,13 +24,13 @@ export default function MainTabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#2ecc71',
         tabBarInactiveTintColor: '#888',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: {
           backgroundColor: '#111',
           borderTopColor: '#2a2a2a',
-          height: 60,
-          paddingTop: 6,
-          paddingBottom: 6,
+          height: 60 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom || 8,
         },
       }}
     >
