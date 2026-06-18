@@ -7,9 +7,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
-import DashboardScreen from './screens/DashboardScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
-import MyVideosScreen from './screens/MyVideosScreen';
+import MainTabs from './screens/MainTabs';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,9 +34,8 @@ export default function App() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="IdeaToVideo" component={IdeaToVideoScreen} />
-            <Stack.Screen name="MyVideos" component={MyVideosScreen} />
           </>
         ) : (
           <>
