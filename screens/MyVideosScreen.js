@@ -76,11 +76,11 @@ export default function MyVideosScreen({ navigation }) {
     try {
       const q = query(
         collection(db, 'userVideos'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', user.uid)
       );
       const snap = await getDocs(q);
-      const videos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const videos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setAllVideos(videos);
       applyFilter(activeFilter, videos);
     } catch (e) {
