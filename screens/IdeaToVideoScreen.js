@@ -237,7 +237,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       const result = await new Promise((resolve, reject) => {
         const interval = setInterval(async () => {
           try {
-            const pollRes = await fetch(`${BACKEND}/api/job/${jobId}`);
+            const pollRes = await fetchWithTimeout(`${BACKEND}/api/job/${jobId}`, {}, 10000);
             const job = await pollRes.json();
             if (job.message) setLoadingMsg(job.message);
             if (job.progress) setProgress(job.progress);
