@@ -317,25 +317,52 @@ function TransitionPreview({ item }) {
         return (
           <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
             <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, {
+              opacity: anim,
+              transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1.15, 1] }) }]
+            }]} />
             <View style={{ position: 'absolute', width: W, height: H, flexDirection: 'column' }}>
               {[0,1,2,3].map(row => (
                 <View key={row} style={{ flexDirection: 'row', flex: 1 }}>
                   {[0,1,2,3].map(col => (
-                    <Animated.View key={col} style={{ flex: 1, margin: 0.5,
-                      backgroundColor: IMG_B ? colors[1] : colors[1],
-                      opacity: anim.interpolate({ inputRange: [0, Math.min(0.5+(row+col)*0.08, 0.95), 1], outputRange: [0, 1, 1] }) }} />
+                    <Animated.View key={col} style={{ flex: 1, margin: 1,
+                      backgroundColor: '#000',
+                      opacity: anim.interpolate({ inputRange: [0, Math.min(0.3+(row+col)*0.06, 0.7), Math.min(0.5+(row+col)*0.08, 0.95), 1], outputRange: [0.6, 0, 0, 0] }) }} />
                   ))}
                 </View>
               ))}
             </View>
           </View>
         );
-      case 'circleopen': case 'circlecrop': case 'radial':
+      case 'circleopen':
         return (
           <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
             <Image source={IMG_A} style={imgStyle} />
             <Animated.View style={{ borderRadius: 999, overflow: 'hidden', width: W*2, height: H*2, position: 'absolute',
               transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [0, 1] }) }] }}>
+              <Image source={IMG_B} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
+            </Animated.View>
+          </View>
+        );
+      case 'circlecrop':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+            <Image source={IMG_B} style={imgStyle} />
+            <Animated.View style={{ borderRadius: 999, overflow: 'hidden', width: W*2, height: H*2, position: 'absolute',
+              transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1, 0] }) }] }}>
+              <Image source={IMG_A} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
+            </Animated.View>
+          </View>
+        );
+      case 'radial':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.View style={{ position: 'absolute', width: W*2, height: H*2, overflow: 'hidden', borderRadius: 999,
+              transform: [
+                { scale: anim.interpolate({ inputRange: [0,1], outputRange: [0.1, 1] }) },
+                { rotate: anim.interpolate({ inputRange: [0,1], outputRange: ['0deg', '180deg'] }) }
+              ] }}>
               <Image source={IMG_B} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
             </Animated.View>
           </View>
