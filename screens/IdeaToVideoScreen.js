@@ -315,25 +315,27 @@ function TransitionPreview({ item }) {
         );
       case 'pixelize': case 'pixelate':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            {[0,1,2,3].map(row => (
-              <View key={row} style={{ flexDirection: 'row', flex: 1 }}>
-                {[0,1,2,3].map(col => (
-                  <Animated.View key={col} style={{ flex: 1, margin: 0.5,
-                    backgroundColor: (row+col)%2===0 ? 'transparent' : 'rgba(255,255,255,0.4)',
-                    opacity: anim.interpolate({ inputRange: [0, 0.5+(row+col)*0.05, 1], outputRange: [0, 1, 1] }) }} />
-                ))}
-              </View>
-            ))}
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <View style={{ position: 'absolute', width: W, height: H, flexDirection: 'column' }}>
+              {[0,1,2,3].map(row => (
+                <View key={row} style={{ flexDirection: 'row', flex: 1 }}>
+                  {[0,1,2,3].map(col => (
+                    <Animated.View key={col} style={{ flex: 1, margin: 0.5,
+                      backgroundColor: IMG_B ? colors[1] : colors[1],
+                      opacity: anim.interpolate({ inputRange: [0, Math.min(0.5+(row+col)*0.08, 0.95), 1], outputRange: [0, 1, 1] }) }} />
+                  ))}
+                </View>
+              ))}
+            </View>
           </View>
         );
       case 'circleopen': case 'circlecrop': case 'radial':
         return (
           <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
             <Image source={IMG_A} style={imgStyle} />
-            <Animated.View style={{ borderRadius: 999, overflow: 'hidden',
-              width: anim.interpolate({ inputRange: [0,1], outputRange: [0, W*2] }),
-              height: anim.interpolate({ inputRange: [0,1], outputRange: [0, H*2] }) }}>
+            <Animated.View style={{ borderRadius: 999, overflow: 'hidden', width: W*2, height: H*2, position: 'absolute',
+              transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [0, 1] }) }] }}>
               <Image source={IMG_B} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
             </Animated.View>
           </View>
