@@ -31,12 +31,18 @@ const ASPECT_RATIOS = [
 ];
 
 const CAPTION_STYLES = [
-  { id: 'classic',  label: 'Classic',  desc: 'White + black outline',   color: '#fff',    bg: 'transparent', bold: false, shadow: false },
-  { id: 'tiktok',   label: 'TikTok',   desc: 'Bold yellow, thick stroke',color: '#FFD700', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'bold',     label: 'Bold',     desc: 'Large white, heavy stroke', color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'neon',     label: 'Neon',     desc: 'Glowing green text',       color: '#00FF7F', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'fire',     label: 'Fire',     desc: 'Burning orange text',      color: '#FF6600', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'minimal',  label: 'Minimal',  desc: 'Small clean white text',   color: '#fff',    bg: 'transparent', bold: false, shadow: false },
+  { id: 'classic',   label: 'Classic',   desc: 'White + black outline',     color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'tiktok',    label: 'TikTok',    desc: 'Bold yellow, viral style',  color: '#00FFFF', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'bold',      label: 'Bold',      desc: 'Thick heavy stroke',        color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'neon',      label: 'Neon',      desc: 'Glowing green text',        color: '#7FFF00', bg: 'transparent', bold: true,  shadow: false },
+  { id: 'fire',      label: 'Fire',      desc: 'Burning orange text',       color: '#FF4500', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'sticker',   label: 'Sticker',   desc: 'White box behind text',     color: '#000',    bg: '#fff',        bold: true,  shadow: false },
+  { id: 'shadow3d',  label: '3D Shadow', desc: 'Deep 3D drop shadow',       color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'highlight', label: 'Highlight', desc: 'Alternating word colors',   color: '#00FFFF', bg: 'transparent', bold: true,  shadow: true  },
+  { id: 'outline',   label: 'Outline',   desc: 'White border, no fill',     color: '#fff',    bg: 'transparent', bold: true,  shadow: false },
+  { id: 'cinematic', label: 'Cinematic', desc: 'Elegant spaced italic',     color: '#fff',    bg: 'transparent', bold: false, shadow: true  },
+  { id: 'minimal',   label: 'Minimal',   desc: 'Small clean white text',    color: '#fff',    bg: 'transparent', bold: false, shadow: false },
+  { id: 'purple',    label: 'Purple',    desc: 'Bold purple glow',          color: '#FF00FF', bg: 'transparent', bold: true,  shadow: true  },
 ];
 
 const TRANSITION_STYLES = [
