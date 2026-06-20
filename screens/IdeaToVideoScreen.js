@@ -156,6 +156,61 @@ function SelectorRow({ icon, label, value, onPress }) {
   );
 }
 
+function CaptionPreview({ item }) {
+  const base = { fontSize: 13, fontWeight: item.bold ? 'bold' : 'normal' };
+  const shadow = item.shadow ? {
+    textShadowColor: '#000', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 4
+  } : {};
+
+  if (item.id === 'sticker') {
+    const boxColors = ['#FF6B00','#FF0090','#00CC00','#FFCC00','#0000CC','#990099'];
+    return (
+      <View style={{ width: 90, height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        {['Aa','Bb'].map((t, i) => (
+          <View key={i} style={{ backgroundColor: boxColors[i], borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>{t}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+  if (item.id === 'outline') {
+    return (
+      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ ...base, color: 'transparent', fontSize: 15, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6, letterSpacing: 1 }}>ABC</Text>
+      </View>
+    );
+  }
+  if (item.id === 'cinematic') {
+    return (
+      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#fff', fontSize: 11, fontStyle: 'italic', letterSpacing: 3 }}>CAPTION</Text>
+      </View>
+    );
+  }
+  if (item.id === 'shadow3d') {
+    return (
+      <View style={{ width: 90, height: 40, backgroundColor: '#111', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, textShadowColor: '#555', textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 1 }}>ABC</Text>
+      </View>
+    );
+  }
+  if (item.id === 'highlight') {
+    return (
+      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 3 }}>
+        <Text style={{ color: '#00FFFF', fontWeight: 'bold', fontSize: 13 }}>AB</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>CD</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ width: 90, height: 40, backgroundColor: item.bg !== 'transparent' ? item.bg : '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
+      <Text style={[base, shadow, { color: item.color, fontSize: 14, textAlign: 'center' }]}>Caption</Text>
+    </View>
+  );
+}
+
 function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
   const isCaption = item.color !== undefined && item.icon === undefined;
   return (
@@ -164,13 +219,7 @@ function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
       onPress={() => { onSelect(item.id); onClose(); }}
     >
       {isCaption ? (
-        <View style={styles.captionPreviewBox}>
-          <Text style={[
-            styles.captionPreviewText,
-            { color: item.color, fontWeight: item.bold ? 'bold' : 'normal' },
-            item.shadow && { textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
-          ]}>Caption</Text>
-        </View>
+        <CaptionPreview item={item} />
       ) : (
         <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
       )}
