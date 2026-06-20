@@ -320,7 +320,7 @@ function TransitionPreview({ item }) {
               <View key={row} style={{ flexDirection: 'row', flex: 1 }}>
                 {[0,1,2,3].map(col => (
                   <Animated.View key={col} style={{ flex: 1, margin: 0.5,
-                    backgroundColor: (row+col)%2===0 ? colors[0] : colors[1],
+                    backgroundColor: (row+col)%2===0 ? 'transparent' : 'rgba(255,255,255,0.4)',
                     opacity: anim.interpolate({ inputRange: [0, 0.5+(row+col)*0.05, 1], outputRange: [0, 1, 1] }) }} />
                 ))}
               </View>
