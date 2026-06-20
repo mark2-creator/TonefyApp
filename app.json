@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
-    },
     "updates": {
       "url": "https://u.expo.dev/56d3d905-50cd-4d43-9773-a8e496d09dfa"
     },
@@ -30,7 +25,16 @@
     "plugins": [
       "expo-video",
       "expo-web-browser",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#fefeff"
+        }
+      ]
     ],
     "scheme": "tonefyai",
     "owner": "ahumuza254",

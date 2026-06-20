@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -12,22 +13,24 @@ import EditPostVideoScreen from './screens/EditPostVideoScreen';
 import ConnectAccountsScreen from './screens/ConnectAccountsScreen';
 import MainTabs from './screens/MainTabs';
 
+SplashScreen.preventAutoHideAsync();
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [user, setUser] = React.useState(undefined);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await SplashScreen.hideAsync();
+    });
     return unsub;
   }, []);
 
   if (user === undefined) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#2ecc71" size="large" />
-      </View>
-    );
+    return null; // native splash screen stays visible during this gap
   }
 
   return (
