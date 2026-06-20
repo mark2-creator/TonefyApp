@@ -422,6 +422,41 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
 }
 
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
+  const isCaption = options.length > 0 && options[0].color !== undefined && options[0].icon === undefined;
+  if (isCaption) {
+    return (
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{title}</Text>
+            <FlatList
+              data={options}
+              keyExtractor={item => item.id}
+              numColumns={2}
+              columnWrapperStyle={{ gap: 8, paddingHorizontal: 4 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => { onSelect(item.id); onClose(); }}
+                  style={{
+                    flex: 1, marginBottom: 8,
+                    backgroundColor: selectedId === item.id ? '#1a3a1a' : '#1a1a1a',
+                    borderWidth: 1.5,
+                    borderColor: selectedId === item.id ? '#2ecc71' : '#333',
+                    borderRadius: 12, padding: 10, alignItems: 'center',
+                  }}
+                >
+                  <CaptionPreview item={item} />
+                  <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 11, fontWeight: 'bold', marginTop: 6, textAlign: 'center' }}>{item.label}</Text>
+                  <Text style={{ color: '#666', fontSize: 9, textAlign: 'center', marginTop: 2 }}>{item.desc}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
