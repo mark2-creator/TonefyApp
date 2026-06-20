@@ -40,14 +40,18 @@ const CAPTION_STYLES = [
 ];
 
 const TRANSITION_STYLES = [
-  { id: 'fade',     label: 'Fade',      desc: 'Smooth fade between scenes', icon: '🌅' },
-  { id: 'slide',    label: 'Slide',     desc: 'Slide left',                 icon: '⬅️' },
-  { id: 'slideup',  label: 'Slide Up',  desc: 'Slide upward',               icon: '⬆️' },
-  { id: 'zoom',     label: 'Zoom',      desc: 'Zoom into next scene',       icon: '🔍' },
-  { id: 'wipe',     label: 'Wipe',      desc: 'Wipe across screen',         icon: '🪟' },
-  { id: 'dissolve', label: 'Dissolve',  desc: 'Soft dissolve blend',        icon: '💧' },
-  { id: 'blur',     label: 'Blur',      desc: 'Blur fade transition',       icon: '🌫️' },
-  { id: 'none',     label: 'Cut',       desc: 'Hard cut, no transition',    icon: '✂️' },
+  { id: 'fade',       label: 'Fade',        desc: 'Smooth fade between scenes',     icon: '🌅' },
+  { id: 'flashwhite', label: 'Flash',        desc: 'Slam to white — TikTok style',   icon: '⚡' },
+  { id: 'glitch',     label: 'Glitch',       desc: 'RGB split glitch effect',        icon: '📺' },
+  { id: 'zoomdrive',  label: 'Zoom Drive',   desc: 'Punch zoom into next scene',     icon: '🚀' },
+  { id: 'swipeleft',  label: 'Swipe',        desc: 'Fast swipe with blur trail',     icon: '👆' },
+  { id: 'filmburn',   label: 'Film Burn',    desc: 'Cinematic warm burn wipe',       icon: '🎞️' },
+  { id: 'pixelate',   label: 'Pixelate',     desc: 'Pixel burst between scenes',     icon: '🟦' },
+  { id: 'slide',      label: 'Slide',        desc: 'Slide left',                     icon: '⬅️' },
+  { id: 'slideup',    label: 'Slide Up',     desc: 'Slide upward',                   icon: '⬆️' },
+  { id: 'zoom',       label: 'Zoom',         desc: 'Zoom transition',                icon: '🔍' },
+  { id: 'dissolve',   label: 'Dissolve',     desc: 'Soft dissolve blend',            icon: '💧' },
+  { id: 'none',       label: 'Cut',          desc: 'Hard cut, no transition',        icon: '✂️' },
 ];
 
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
