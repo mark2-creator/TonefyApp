@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Animated,
   StyleSheet, ActivityIndicator, Alert, StatusBar,
   Modal, FlatList, SafeAreaView
 } from 'react-native';
@@ -232,6 +232,148 @@ function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
   );
 }
 
+function TransitionPreview({ item }) {
+  const anim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 100, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    ).start();
+  }, []);
+
+  const W = 70, H = 44;
+  const colors = ['#2ecc71', '#3498db'];
+
+  // Different preview animations per transition type
+  const getPreview = () => {
+    switch(item.id) {
+      case 'fade': case 'fadeslow': case 'fadefast':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1], opacity: anim }} />
+          </View>
+        );
+      case 'slideleft': case 'slide': case 'smoothleft': case 'coverleft': case 'revealleft': case 'swipeleft': case 'wipeleft':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [W, 0] }) }] }} />
+          </View>
+        );
+      case 'slideright': case 'smoothright': case 'coverright': case 'revealright': case 'wiperight':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) }] }} />
+          </View>
+        );
+      case 'slideup': case 'smoothup': case 'coverup': case 'revealup': case 'wipeup':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [H, 0] }) }] }} />
+          </View>
+        );
+      case 'slidedown': case 'smoothdown': case 'coverdown': case 'revealdown': case 'wipedown':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) }] }} />
+          </View>
+        );
+      case 'zoomin': case 'zoomdrive':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[1] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[0],
+              transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1, 2.5] }) }],
+              opacity: anim.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0.3, 0] }) }} />
+          </View>
+        );
+      case 'fadewhite': case 'flashwhite':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: '#fff',
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }} />
+          </View>
+        );
+      case 'fadeblack': case 'blur':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: '#000',
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
+              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }} />
+          </View>
+        );
+      case 'pixelize': case 'pixelate':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            {[0,1,2,3].map(row => (
+              <View key={row} style={{ flexDirection: 'row', flex: 1 }}>
+                {[0,1,2,3].map(col => (
+                  <Animated.View key={col} style={{ flex: 1, margin: 0.5,
+                    backgroundColor: (row+col)%2===0 ? colors[0] : colors[1],
+                    opacity: anim.interpolate({ inputRange: [0, 0.5+(row+col)*0.05, 1], outputRange: [0, 1, 1] }) }} />
+                ))}
+              </View>
+            ))}
+          </View>
+        );
+      case 'circleopen': case 'circlecrop': case 'radial':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0], justifyContent: 'center', alignItems: 'center' }}>
+            <Animated.View style={{ borderRadius: 999, backgroundColor: colors[1],
+              width: anim.interpolate({ inputRange: [0,1], outputRange: [0, W*2] }),
+              height: anim.interpolate({ inputRange: [0,1], outputRange: [0, H*2] }) }} />
+          </View>
+        );
+      case 'squeezeh': case 'squeezev':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[1] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[0],
+              transform: [{ scaleX: anim.interpolate({ inputRange: [0,1], outputRange: [1, 0] }) }] }} />
+          </View>
+        );
+      case 'diagtl': case 'wipetl':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W*2, height: H*2, backgroundColor: colors[1], top: 0, left: 0,
+              transform: [
+                { translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) },
+                { translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) },
+                { rotate: '45deg' }
+              ] }} />
+          </View>
+        );
+      case 'none':
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>
+            <View style={{ flex: 1, backgroundColor: colors[0] }} />
+            <View style={{ width: 2, backgroundColor: '#fff' }} />
+            <View style={{ flex: 1, backgroundColor: colors[1] }} />
+          </View>
+        );
+      default:
+        return (
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
+            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1], opacity: anim }} />
+          </View>
+        );
+    }
+  };
+
+  return (
+    <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', marginBottom: 6 }}>
+      {getPreview()}
+    </View>
+  );
+}
+
 function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
   const groups = ['Basic', 'Trendy', 'Cinematic'];
   return (
@@ -260,12 +402,12 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
                           borderWidth: 1.5,
                           borderColor: selectedId === item.id ? '#2ecc71' : '#333',
                           borderRadius: 12,
-                          padding: 10,
+                          padding: 8,
                           alignItems: 'center',
                         }}
                       >
-                        <Text style={{ fontSize: 22, marginBottom: 4 }}>{item.icon}</Text>
-                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
+                        <TransitionPreview item={item} />
+                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
