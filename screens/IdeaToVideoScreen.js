@@ -177,6 +177,53 @@ function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
   );
 }
 
+function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
+  const groups = ['Basic', 'Trendy', 'Cinematic'];
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>🎬 Transition Style</Text>
+          <FlatList
+            data={groups}
+            keyExtractor={g => g}
+            renderItem={({ item: group }) => {
+              const items = options.filter(o => o.group === group);
+              if (!items.length) return null;
+              return (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ color: '#888', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>{group.toUpperCase()}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {items.map(item => (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => { onSelect(item.id); onClose(); }}
+                        style={{
+                          width: '30%',
+                          backgroundColor: selectedId === item.id ? '#1a3a1a' : '#1a1a1a',
+                          borderWidth: 1.5,
+                          borderColor: selectedId === item.id ? '#2ecc71' : '#333',
+                          borderRadius: 12,
+                          padding: 10,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 22, marginBottom: 4 }}>{item.icon}</Text>
+                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              );
+            }}
+          />
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -448,7 +495,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       <OptionModal visible={modal === 'voice'} title="🎙️ Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'ratio'} title="📐 Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'caption'} title="💬 Caption Style" options={CAPTION_STYLES} selectedId={captionStyle} onSelect={setCaptionStyle} onClose={() => setModal(null)} />
-      <OptionModal visible={modal === 'transition'} title="🎬 Transition Style" options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
+      <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
     </View>
   );
 }
