@@ -39,6 +39,17 @@ const CAPTION_STYLES = [
   { id: 'minimal',  label: 'Minimal',  desc: 'Small clean white text',   color: '#fff',    bg: 'transparent', bold: false, shadow: false },
 ];
 
+const TRANSITION_STYLES = [
+  { id: 'fade',     label: 'Fade',      desc: 'Smooth fade between scenes', icon: '🌅' },
+  { id: 'slide',    label: 'Slide',     desc: 'Slide left',                 icon: '⬅️' },
+  { id: 'slideup',  label: 'Slide Up',  desc: 'Slide upward',               icon: '⬆️' },
+  { id: 'zoom',     label: 'Zoom',      desc: 'Zoom into next scene',       icon: '🔍' },
+  { id: 'wipe',     label: 'Wipe',      desc: 'Wipe across screen',         icon: '🪟' },
+  { id: 'dissolve', label: 'Dissolve',  desc: 'Soft dissolve blend',        icon: '💧' },
+  { id: 'blur',     label: 'Blur',      desc: 'Blur fade transition',       icon: '🌫️' },
+  { id: 'none',     label: 'Cut',       desc: 'Hard cut, no transition',    icon: '✂️' },
+];
+
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
   try {
     const user = getAuth().currentUser;
@@ -144,6 +155,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [voiceId, setVoiceId] = useState('gtts-us');
   const [captionStyle, setCaptionStyle] = useState('classic');
+  const [transition, setTransition] = useState('fade');
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -157,6 +169,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const selectedVoice = VOICES.find(v => v.id === voiceId);
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
   const selectedCaption = CAPTION_STYLES.find(c => c.id === captionStyle);
+  const selectedTransition = TRANSITION_STYLES.find(t => t.id === transition);
 
   const startProgress = (start, end, duration) => {
     if (progressInterval.current) clearInterval(progressInterval.current);
@@ -226,7 +239,7 @@ export default function IdeaToVideoScreen({ navigation }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voiceover: script, segments,
-          audioUrl, aspectRatio, captionStyle,
+          audioUrl, aspectRatio, captionStyle, transition,
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
@@ -314,7 +327,9 @@ export default function IdeaToVideoScreen({ navigation }) {
             <View style={styles.divider} />
             <SelectorRow icon="📐" label="Format" value={`${selectedRatio.icon} ${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <View style={styles.divider} />
-            <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.preview} ${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
+            <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
+            <View style={styles.divider} />
+            <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
           </View>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
           <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
@@ -382,6 +397,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       <OptionModal visible={modal === 'voice'} title="🎙️ Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'ratio'} title="📐 Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'caption'} title="💬 Caption Style" options={CAPTION_STYLES} selectedId={captionStyle} onSelect={setCaptionStyle} onClose={() => setModal(null)} />
+      <OptionModal visible={modal === 'transition'} title="🎬 Transition Style" options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
     </View>
   );
 }
