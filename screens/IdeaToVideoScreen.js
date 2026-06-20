@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Animated,
+  View, Text, TextInput, TouchableOpacity, Animated, Image,
   StyleSheet, ActivityIndicator, Alert, StatusBar,
   Modal, FlatList, SafeAreaView
 } from 'react-native';
@@ -246,68 +246,71 @@ function TransitionPreview({ item }) {
 
   const W = 70, H = 44;
   const colors = ['#2ecc71', '#3498db'];
+  const IMG_A = { uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=60' };
+  const IMG_B = { uri: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=200&q=60' };
+  const imgStyle = { position: 'absolute', width: W, height: H, resizeMode: 'cover' };
 
   // Different preview animations per transition type
   const getPreview = () => {
     switch(item.id) {
       case 'fade': case 'fadeslow': case 'fadefast':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1], opacity: anim }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim }]} />
           </View>
         );
       case 'slideleft': case 'slide': case 'smoothleft': case 'coverleft': case 'revealleft': case 'swipeleft': case 'wipeleft':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [W, 0] }) }] }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [W, 0] }) }] }]} />
           </View>
         );
       case 'slideright': case 'smoothright': case 'coverright': case 'revealright': case 'wiperight':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) }] }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) }] }]} />
           </View>
         );
       case 'slideup': case 'smoothup': case 'coverup': case 'revealup': case 'wipeup':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [H, 0] }) }] }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [H, 0] }) }] }]} />
           </View>
         );
       case 'slidedown': case 'smoothdown': case 'coverdown': case 'revealdown': case 'wipedown':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) }] }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) }] }]} />
           </View>
         );
       case 'zoomin': case 'zoomdrive':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[1] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[0],
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_B} style={imgStyle} />
+            <Animated.Image source={IMG_A} style={[imgStyle, {
               transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1, 2.5] }) }],
-              opacity: anim.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0.3, 0] }) }} />
+              opacity: anim.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0.3, 0] }) }]} />
           </View>
         );
       case 'fadewhite': case 'flashwhite':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: '#fff',
-              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.View style={{ ...imgStyle, backgroundColor: '#fff', opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }]} />
           </View>
         );
       case 'fadeblack': case 'blur':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: '#000',
-              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1],
-              opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.View style={{ ...imgStyle, backgroundColor: '#000', opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }]} />
           </View>
         );
       case 'pixelize': case 'pixelate':
@@ -326,42 +329,49 @@ function TransitionPreview({ item }) {
         );
       case 'circleopen': case 'circlecrop': case 'radial':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0], justifyContent: 'center', alignItems: 'center' }}>
-            <Animated.View style={{ borderRadius: 999, backgroundColor: colors[1],
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.View style={{ borderRadius: 999, overflow: 'hidden',
               width: anim.interpolate({ inputRange: [0,1], outputRange: [0, W*2] }),
-              height: anim.interpolate({ inputRange: [0,1], outputRange: [0, H*2] }) }} />
+              height: anim.interpolate({ inputRange: [0,1], outputRange: [0, H*2] }) }}>
+              <Image source={IMG_B} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
+            </Animated.View>
           </View>
         );
       case 'squeezeh': case 'squeezev':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[1] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[0],
-              transform: [{ scaleX: anim.interpolate({ inputRange: [0,1], outputRange: [1, 0] }) }] }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_B} style={imgStyle} />
+            <Animated.Image source={IMG_A} style={[imgStyle, { transform: [{ scaleX: anim.interpolate({ inputRange: [0,1], outputRange: [1, 0] }) }] }]} />
           </View>
         );
       case 'diagtl': case 'wipetl':
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W*2, height: H*2, backgroundColor: colors[1], top: 0, left: 0,
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.View style={{ position: 'absolute', width: W*2, height: H*2, overflow: 'hidden', top: 0, left: 0,
               transform: [
                 { translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) },
                 { translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) },
                 { rotate: '45deg' }
-              ] }} />
+              ] }}>
+              <Image source={IMG_B} style={{ width: W*2, height: H*2, resizeMode: 'cover' }} />
+            </Animated.View>
           </View>
         );
       case 'none':
         return (
           <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>
-            <View style={{ flex: 1, backgroundColor: colors[0] }} />
+            <Image source={IMG_A} style={{ width: W/2, height: H, resizeMode: 'cover' }} />
             <View style={{ width: 2, backgroundColor: '#fff' }} />
-            <View style={{ flex: 1, backgroundColor: colors[1] }} />
+            <Image source={IMG_B} style={{ width: W/2, height: H, resizeMode: 'cover' }} />
           </View>
         );
       default:
         return (
-          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden', backgroundColor: colors[0] }}>
-            <Animated.View style={{ position: 'absolute', width: W, height: H, backgroundColor: colors[1], opacity: anim }} />
+          <View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
+            <Image source={IMG_A} style={imgStyle} />
+            <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim }]} />
           </View>
         );
     }
