@@ -107,6 +107,14 @@ const TRANSITION_STYLES = [
   { id: 'distance',    label: 'Distance',     desc: 'Distance-based blend',           icon: '🎯', group: 'Cinematic' },
 ];
 
+
+const VIDEO_SPEEDS = [
+  { id: 1.0, label: '1x', desc: 'Normal speed' },
+  { id: 1.25, label: '1.25x', desc: 'Slightly faster' },
+  { id: 1.5, label: '1.5x', desc: 'Fast' },
+  { id: 2.0, label: '2x', desc: 'Double speed' },
+];
+
 async function fetchWithTimeout(url, options, timeoutMs = 300000) {
   try {
     const user = getAuth().currentUser;
@@ -525,6 +533,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [voiceId, setVoiceId] = useState('gtts-us');
   const [captionStyle, setCaptionStyle] = useState('classic');
   const [transition, setTransition] = useState('fade');
+  const [videoSpeed, setVideoSpeed] = useState(1.0);
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -539,6 +548,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
   const selectedCaption = CAPTION_STYLES.find(c => c.id === captionStyle);
   const selectedTransition = TRANSITION_STYLES.find(t => t.id === transition);
+  const selectedSpeed = VIDEO_SPEEDS.find(s => s.id === videoSpeed) || VIDEO_SPEEDS[0];
 
   const startProgress = (start, end, duration) => {
     if (progressInterval.current) clearInterval(progressInterval.current);
@@ -608,7 +618,7 @@ export default function IdeaToVideoScreen({ navigation }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voiceover: script, segments,
-          audioUrl, aspectRatio, captionStyle, transition,
+          audioUrl, aspectRatio, captionStyle, transition, videoSpeed,
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
@@ -762,6 +772,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       <OptionModal visible={modal === 'voice'} title="🎙️ Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'ratio'} title="📐 Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'caption'} title="💬 Caption Style" options={CAPTION_STYLES} selectedId={captionStyle} onSelect={setCaptionStyle} onClose={() => setModal(null)} />
+      <OptionModal visible={modal === 'speed'} title="⚡ Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, icon: '⚡'}))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
       <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
     </View>
   );
