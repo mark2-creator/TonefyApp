@@ -698,7 +698,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       {step === 2 && (
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>📄 Your Script</Text>
-          <Text style={styles.stepSub}>Edit your AI-generated script below.</Text>
+          <Text style={styles.stepSub}>Review and edit your script below.</Text>
           <TextInput style={[styles.textArea, { flex: 1, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
           <TouchableOpacity style={styles.btnOutline} onPress={() => setStep(1)}>
