@@ -50,6 +50,7 @@ export default function DashboardScreen({ navigation }) {
 
   const handleCardPress = (title) => {
     if (title === 'Idea to Video') navigation.navigate('IdeaToVideo');
+    else if (title === 'Script to Video') navigation.navigate('ScriptToVideo');
     else if (title === 'My Videos') navigation.navigate('MyVideos');
     // Other workflows aren't built yet — no-op for now
   };
