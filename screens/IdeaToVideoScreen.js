@@ -5,6 +5,7 @@ import {
   Modal, FlatList, SafeAreaView
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -468,6 +469,114 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
   );
 }
 
+function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onTogglePlay }) {
+  const isSelected = selectedId === item.id;
+  const isPlaying = playingId === item.id;
+  return (
+    <TouchableOpacity
+      onPress={() => { onSelect({ id: item.id, name: item.name }); onClose(); }}
+      style={{
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: isSelected ? '#1a3a1a' : '#1a1a1a',
+        borderWidth: 1.5,
+        borderColor: isSelected ? '#2ecc71' : '#333',
+        borderRadius: 12, padding: 12, marginBottom: 8,
+      }}
+    >
+      <TouchableOpacity
+        onPress={() => onTogglePlay(item)}
+        style={{
+          width: 36, height: 36, borderRadius: 18,
+          backgroundColor: isPlaying ? '#2ecc71' : '#333',
+          justifyContent: 'center', alignItems: 'center', marginRight: 12,
+        }}
+      >
+        <Text style={{ fontSize: 14 }}>{isPlaying ? '⏸' : '▶️'}</Text>
+      </TouchableOpacity>
+      <Text style={{ color: isSelected ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>{item.name}</Text>
+      {isSelected && <Text style={{ color: '#2ecc71', fontSize: 16 }}>✓</Text>}
+    </TouchableOpacity>
+  );
+}
+
+function MusicModal({ visible, selectedId, onSelect, onClose }) {
+  const [tracks, setTracks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [playingId, setPlayingId] = useState(null);
+  const playerRef = useRef(null);
+
+  React.useEffect(() => {
+    if (visible && tracks.length === 0) {
+      setLoading(true);
+      setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+      fetch(`${BACKEND}/api/music-tracks`)
+        .then(r => r.json())
+        .then(data => setTracks(data.tracks || []))
+        .catch(() => setTracks([]))
+        .finally(() => setLoading(false));
+    }
+  }, [visible]);
+
+  React.useEffect(() => {
+    if (!visible && playerRef.current) {
+      try { playerRef.current.pause(); playerRef.current.release(); } catch (e) {}
+      playerRef.current = null;
+      setPlayingId(null);
+    }
+  }, [visible]);
+
+  const onTogglePlay = (item) => {
+    if (playingId === item.id) {
+      try { playerRef.current?.pause(); } catch (e) {}
+      setPlayingId(null);
+      return;
+    }
+    if (playerRef.current) {
+      try { playerRef.current.pause(); playerRef.current.release(); } catch (e) {}
+    }
+    const player = createAudioPlayer({ uri: `${BACKEND}${item.previewUrl}` });
+    playerRef.current = player;
+    player.play();
+    setPlayingId(item.id);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>🎵 Background Music</Text>
+          <TouchableOpacity
+            onPress={() => { onSelect({ id: 'none', name: 'No Music' }); onClose(); }}
+            style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: selectedId === 'none' ? '#1a3a1a' : '#1a1a1a',
+              borderWidth: 1.5,
+              borderColor: selectedId === 'none' ? '#2ecc71' : '#333',
+              borderRadius: 12, padding: 12, marginBottom: 8,
+            }}
+          >
+            <Text style={{ fontSize: 16, marginRight: 12 }}>🔇</Text>
+            <Text style={{ color: selectedId === 'none' ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>No Music</Text>
+            {selectedId === 'none' && <Text style={{ color: '#2ecc71', fontSize: 16 }}>✓</Text>}
+          </TouchableOpacity>
+          {loading ? (
+            <ActivityIndicator color="#2ecc71" style={{ marginTop: 20 }} />
+          ) : (
+            <FlatList
+              data={tracks}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <MusicTrackRow item={item} selectedId={selectedId} onSelect={onSelect} onClose={onClose} playingId={playingId} onTogglePlay={onTogglePlay} />
+              )}
+            />
+          )}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
   const isCaption = options.length > 0 && options[0].color !== undefined && options[0].icon === undefined;
   if (isCaption) {
@@ -534,6 +643,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [captionStyle, setCaptionStyle] = useState('classic');
   const [transition, setTransition] = useState('fade');
   const [videoSpeed, setVideoSpeed] = useState(1.0);
+  const [musicTrack, setMusicTrack] = useState({ id: 'mixkit-deep-meditation-109', name: 'Deep Meditation' });
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -541,7 +651,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [progress, setProgress] = useState(0);
   const [downloading, setDownloading] = useState(false);
-  const [modal, setModal] = useState(null); // 'voice' | 'ratio' | 'caption'
+  const [modal, setModal] = useState(null); // 'voice' | 'ratio' | 'caption' | 'transition' | 'music'
   const progressInterval = useRef(null);
 
   const selectedVoice = VOICES.find(v => v.id === voiceId);
@@ -619,6 +729,7 @@ export default function IdeaToVideoScreen({ navigation }) {
         body: JSON.stringify({
           voiceover: script, segments,
           audioUrl, aspectRatio, captionStyle, transition, videoSpeed,
+          musicTrack: musicTrack.id,
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
@@ -709,6 +820,8 @@ export default function IdeaToVideoScreen({ navigation }) {
             <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
             <View style={styles.divider} />
             <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
+            <View style={styles.divider} />
+            <SelectorRow icon="🎵" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
           </View>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
           <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
@@ -774,6 +887,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       <OptionModal visible={modal === 'caption'} title="💬 Caption Style" options={CAPTION_STYLES} selectedId={captionStyle} onSelect={setCaptionStyle} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'speed'} title="⚡ Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, icon: '⚡'}))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
       <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
+      <MusicModal visible={modal === 'music'} selectedId={musicTrack.id} onSelect={setMusicTrack} onClose={() => setModal(null)} />
     </View>
   );
 }

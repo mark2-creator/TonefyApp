@@ -34,7 +34,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#fefeff"
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "scheme": "tonefyai",
     "owner": "ahumuza254",
