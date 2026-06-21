@@ -557,10 +557,23 @@ export default function ScriptToVideoScreen({ navigation }) {
   const stopProgress = (v = 100) => { if (progressInterval.current) clearInterval(progressInterval.current); setProgress(v); };
   const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); };
 
-  const proceedWithScript = () => {
+  const proceedWithScript = async () => {
     if (!scriptInput.trim()) return Alert.alert('Error', 'Please enter your script first');
     setScript(scriptInput);
-    setStep(2);
+    // Go straight to voiceover generation
+    setLoading(true); setLoadingMsg('Generating AI voiceover...');
+    startProgress(0, 90, 20000);
+    try {
+      const res = await fetchWithTimeout(`${BACKEND}/api/generate-audio`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: scriptInput, voiceId }),
+      }, 60000);
+      const data = await res.json();
+      stopProgress(100);
+      if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(2); }
+      else Alert.alert('Error', data.error || 'Failed to generate voiceover');
+    } catch (err) { Alert.alert('Error', err.message); }
+    resetLoading();
   };
 
   const generateVoiceover = async () => {
@@ -620,7 +633,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       });
 
       stopProgress(100);
-      if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(4); }
+      if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(3); }
       else Alert.alert('Error', 'Failed to generate video');
     } catch (err) { stopProgress(0); Alert.alert('Error', err.message); }
     resetLoading();
@@ -662,9 +675,9 @@ export default function ScriptToVideoScreen({ navigation }) {
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Script to Video</Text>
-        <Text style={styles.stepCount}>{step}/4</Text>
+        <Text style={styles.stepCount}>{step}/3</Text>
       </View>
-      <StepDots current={step} total={4} />
+      <StepDots current={step} total={3} />
 
       {/* STEP 1 - Paste Script */}
       {step === 1 && (
@@ -694,22 +707,10 @@ export default function ScriptToVideoScreen({ navigation }) {
         </ScrollView>
       )}
 
-            {/* STEP 2 */}
+            {/* STEP 2 - Voiceover generating (handled in step 1 button) */}
+
+            {/* STEP 3 */}
       {step === 2 && (
-        <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>📄 Your Script</Text>
-          <Text style={styles.stepSub}>Review and edit your script below.</Text>
-          <TextInput style={[styles.textArea, { flex: 1, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
-          {loading && <ProgressBar progress={progress} label={loadingMsg} />}
-
-          <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVoiceover} disabled={loading}>
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* STEP 3 */}
-      {step === 3 && (
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>🎙️ Voiceover Ready!</Text>
           <Text style={styles.stepSub}>Your AI voiceover has been generated successfully.</Text>
@@ -726,7 +727,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       )}
 
       {/* STEP 4 */}
-      {step === 4 && fullVideoUrl && (
+      {step === 3 && fullVideoUrl && (
         <View style={styles.stepContainer}>
           <Text style={styles.stepTitle}>🎬 Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
