@@ -716,7 +716,7 @@ export default function UrlToVideoScreen({ navigation }) {
             <View style={styles.divider} />
             <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
           </View>
-          <TouchableOpacity style={[styles.btn, !scriptInput.trim() && styles.btnDisabled]} onPress={fetchUrlAndGenerate} disabled={loading || !urlInput.trim()}>
+          <TouchableOpacity style={[styles.btn, (!urlInput.trim() || loading) && styles.btnDisabled]} onPress={fetchUrlAndGenerate} disabled={loading || !urlInput.trim()}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🔗 Extract & Generate Video</Text>}
           </TouchableOpacity>
         </ScrollView>
