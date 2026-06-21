@@ -681,7 +681,7 @@ export default function ScriptToVideoScreen({ navigation }) {
 
       {/* STEP 1 - Paste Script */}
       {step === 1 && (
-        <ScrollView style={styles.stepContainer} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.stepContainer} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 100 }}>
           <Text style={styles.stepTitle}>📄 Your Script</Text>
           <Text style={styles.stepSub}>Paste or type your script below. Each sentence becomes a scene.</Text>
           <TextInput
