@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Tonefy AI",
-    "slug": "TonefyApp",
+    "slug": "tonefyapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,11 +15,15 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
-      "package": "com.ahumuza21213.TonefyApp"
+      "package": "com.ahumuza21213.TonefyApp",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "eas": {
-        "projectId": "56d3d905-50cd-4d43-9773-a8e496d09dfa"
+        "projectId": "545addc1-bd0d-4aca-b3e7-4a65da258ca0"
       }
     },
     "plugins": [
@@ -38,7 +42,7 @@
       "expo-audio"
     ],
     "scheme": "tonefyai",
-    "owner": "ahumuza254",
+    "owner": "markahumuza21213s-team",
     "ios": {}
   }
 }
