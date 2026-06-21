@@ -821,6 +821,8 @@ export default function IdeaToVideoScreen({ navigation }) {
             <View style={styles.divider} />
             <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
             <View style={styles.divider} />
+            <SelectorRow icon="⚡" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
+            <View style={styles.divider} />
             <SelectorRow icon="🎵" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
           </View>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
