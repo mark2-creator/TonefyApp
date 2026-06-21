@@ -714,9 +714,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           <Text style={styles.stepSub}>Edit your AI-generated script below.</Text>
           <TextInput style={[styles.textArea, { flex: 1, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
-          <TouchableOpacity style={styles.btnOutline} onPress={() => setStep(1)}>
-            <Text style={styles.btnOutlineText}>← Back</Text>
-          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVoiceover} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
           </TouchableOpacity>
@@ -733,9 +731,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.successSub}>Now we'll find matching video clips and merge everything together.</Text>
           </View>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
-          <TouchableOpacity style={styles.btnOutline} onPress={() => setStep(2)}>
-            <Text style={styles.btnOutlineText}>← Back</Text>
-          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎬 Generate Video</Text>}
           </TouchableOpacity>
