@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "updates": {
-      "url": "https://u.expo.dev/56d3d905-50cd-4d43-9773-a8e496d09dfa"
+      "url": "https://u.expo.dev/545addc1-bd0d-4aca-b3e7-4a65da258ca0"
     },
     "runtimeVersion": "1.0.0",
     "android": {
@@ -17,6 +17,8 @@
       },
       "package": "com.ahumuza21213.TonefyApp",
       "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
