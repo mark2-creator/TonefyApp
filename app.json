@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Tonefy AI",
-    "slug": "tonefyapp",
+    "slug": "TonefyApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +25,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "545addc1-bd0d-4aca-b3e7-4a65da258ca0"
+        "projectId": "56d3d905-50cd-4d43-9773-a8e496d09dfa"
       }
     },
     "plugins": [
@@ -40,11 +40,10 @@
           "resizeMode": "contain",
           "backgroundColor": "#fefeff"
         }
-      ],
-      "expo-audio"
+      ]
     ],
     "scheme": "tonefyai",
-    "owner": "markahumuza21213s-team",
+    "owner": "ahumuza254",
     "ios": {}
   }
 }

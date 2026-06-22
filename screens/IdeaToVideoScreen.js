@@ -5,7 +5,6 @@ import {
   Modal, FlatList, SafeAreaView
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -508,7 +507,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
   React.useEffect(() => {
     if (visible && tracks.length === 0) {
       setLoading(true);
-      setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+      // audio mode set natively
       fetch(`${BACKEND}/api/music-tracks`)
         .then(r => r.json())
         .then(data => setTracks(data.tracks || []))
@@ -534,9 +533,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
     if (playerRef.current) {
       try { playerRef.current.pause(); playerRef.current.release(); } catch (e) {}
     }
-    const player = createAudioPlayer({ uri: `${BACKEND}${item.previewUrl}` });
-    playerRef.current = player;
-    player.play();
+    // Music preview disabled (expo-audio removed)
     setPlayingId(item.id);
   };
 
