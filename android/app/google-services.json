@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "527163602306-bhhsu3l07iaimql9ok5krhdc6714i7e8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ahumuza21213.TonefyApp",
+            "certificate_hash": "f1afc42f86a3248a8e3dd3e8ffc3ae7ebb984226"
+          }
+        },
+        {
           "client_id": "527163602306-0md351bdfr597aa0s3jjd78tcku847t0.apps.googleusercontent.com",
           "client_type": 3
         }
