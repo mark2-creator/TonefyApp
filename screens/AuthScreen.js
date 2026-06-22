@@ -24,7 +24,7 @@ export default function AuthScreen({ navigation }) {
 
   React.useEffect(() => {
     GoogleSignin.configure({
-      webClientId: '527163602306-fi1nd4sg6s8rmnm1135rqi469kgjsc6u.apps.googleusercontent.com',
+      webClientId: '527163602306-0md351bdfr597aa0s3jjd78tcku847t0.apps.googleusercontent.com',
     });
   }, []);
 
