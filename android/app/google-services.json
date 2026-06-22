@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "527163602306",
+    "project_id": "gen-lang-client-0229110424",
+    "storage_bucket": "gen-lang-client-0229110424.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527163602306:android:8e392c1a7f7300ce0acb9b",
+        "android_client_info": {
+          "package_name": "com.ahumuza21213.TonefyApp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "527163602306-0md351bdfr597aa0s3jjd78tcku847t0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCovjbvC_kiOY6fV_xUKz0dLZbn9j7GHdQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "527163602306-0md351bdfr597aa0s3jjd78tcku847t0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
