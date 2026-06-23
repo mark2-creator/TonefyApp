@@ -509,12 +509,25 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
     if (visible && tracks.length === 0) {
       setLoading(true);
       Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
-      getAuth().currentUser.getIdToken().then(token =>
-        fetch(`${BACKEND}/api/music-tracks`, { headers: { Authorization: `Bearer ${token}` } }))
-        .then(r => r.json())
-        .then(data => setTracks(data.tracks || []))
-        .catch(() => setTracks([]))
-        .finally(() => setLoading(false));
+      const loadTracks = async () => {
+        try {
+          const user = getAuth().currentUser;
+          const headers = {};
+          if (user) {
+            const token = await user.getIdToken();
+            headers.Authorization = `Bearer ${token}`;
+          }
+          const r = await fetch(`${BACKEND}/api/music-tracks`, { headers });
+          const data = await r.json();
+          setTracks(data.tracks || []);
+        } catch(e) {
+          console.warn('Music tracks error:', e);
+          setTracks([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadTracks();
     }
   }, [visible]);
 
