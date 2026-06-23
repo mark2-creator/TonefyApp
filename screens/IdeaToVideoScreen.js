@@ -5,6 +5,7 @@ import {
   Modal, FlatList, SafeAreaView
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -507,7 +508,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
   React.useEffect(() => {
     if (visible && tracks.length === 0) {
       setLoading(true);
-      // audio mode set natively
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
       fetch(`${BACKEND}/api/music-tracks`)
         .then(r => r.json())
         .then(data => setTracks(data.tracks || []))
@@ -518,7 +519,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 
   React.useEffect(() => {
     if (!visible && playerRef.current) {
-      try { playerRef.current.pause(); playerRef.current.release(); } catch (e) {}
+      try { await playerRef.current.stopAsync(); await playerRef.current.unloadAsync(); } catch (e) {}
       playerRef.current = null;
       setPlayingId(null);
     }
@@ -526,15 +527,19 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 
   const onTogglePlay = (item) => {
     if (playingId === item.id) {
-      try { playerRef.current?.pause(); } catch (e) {}
+      try { await playerRef.current?.pauseAsync(); } catch (e) {}
       setPlayingId(null);
       return;
     }
     if (playerRef.current) {
-      try { playerRef.current.pause(); playerRef.current.release(); } catch (e) {}
+      try { await playerRef.current.stopAsync(); await playerRef.current.unloadAsync(); } catch (e) {}
     }
-    // Music preview disabled (expo-audio removed)
-    setPlayingId(item.id);
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: `${BACKEND}${item.previewUrl}` });
+      playerRef.current = sound;
+      await sound.playAsync();
+      setPlayingId(item.id);
+    } catch(e) { console.warn('Audio preview error:', e); }
   };
 
   return (
