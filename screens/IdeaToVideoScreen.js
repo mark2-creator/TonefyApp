@@ -648,6 +648,8 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [musicTrack, setMusicTrack] = useState({ id: 'mixkit-deep-meditation-109', name: 'Deep Meditation' });
   const [script, setScript] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
+  const [voiceoverPlaying, setVoiceoverPlaying] = useState(false);
+  const voiceoverPlayerRef = useRef(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -783,8 +785,31 @@ export default function IdeaToVideoScreen({ navigation }) {
     } catch (err) { setDownloading(false); Alert.alert('Error', 'Download failed: ' + err.message); }
   };
 
+  const toggleVoiceoverPreview = async () => {
+    if (voiceoverPlaying) {
+      try { await voiceoverPlayerRef.current?.pauseAsync(); } catch(e) {}
+      setVoiceoverPlaying(false);
+      return;
+    }
+    try {
+      if (voiceoverPlayerRef.current) {
+        await voiceoverPlayerRef.current.stopAsync();
+        await voiceoverPlayerRef.current.unloadAsync();
+      }
+      const { sound } = await Audio.Sound.createAsync({ uri: `${BACKEND}${audioUrl}` });
+      voiceoverPlayerRef.current = sound;
+      await sound.playAsync();
+      setVoiceoverPlaying(true);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) setVoiceoverPlaying(false);
+      });
+    } catch(e) { console.warn('Voiceover preview error:', e); }
+  };
+
   const resetAll = () => {
     setStep(1); setPrompt(''); setScript(''); setAudioUrl('');
+    setVoiceoverPlaying(false);
+    if (voiceoverPlayerRef.current) { voiceoverPlayerRef.current.stopAsync(); voiceoverPlayerRef.current.unloadAsync(); voiceoverPlayerRef.current = null; }
     setVideoUrl(''); setProgress(0); setLoadingMsg('');
   };
 
@@ -857,6 +882,9 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.successText}>✅ Audio generated successfully</Text>
             <Text style={styles.successSub}>Now we'll find matching video clips and merge everything together.</Text>
           </View>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#2ecc71' }]} onPress={toggleVoiceoverPreview}>
+            <Text style={styles.btnText}>{voiceoverPlaying ? '⏸️ Pause Preview' : '▶️ Preview Voiceover'}</Text>
+          </TouchableOpacity>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
