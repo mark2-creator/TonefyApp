@@ -509,7 +509,8 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
     if (visible && tracks.length === 0) {
       setLoading(true);
       Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
-      fetch(`${BACKEND}/api/music-tracks`)
+      getAuth().currentUser.getIdToken().then(token =>
+        fetch(`${BACKEND}/api/music-tracks`, { headers: { Authorization: `Bearer ${token}` } }))
         .then(r => r.json())
         .then(data => setTracks(data.tracks || []))
         .catch(() => setTracks([]))
