@@ -508,7 +508,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
   React.useEffect(() => {
     if (visible && tracks.length === 0) {
       setLoading(true);
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
+      Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
       fetch(`${BACKEND}/api/music-tracks`)
         .then(r => r.json())
         .then(data => setTracks(data.tracks || []))
