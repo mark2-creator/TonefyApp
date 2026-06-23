@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Animated, Image,
-  StyleSheet, ActivityIndicator, Alert, StatusBar,
+  StyleSheet, ActivityIndicator, Alert, StatusBar, ScrollView,
   Modal, FlatList, SafeAreaView
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -10,6 +10,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -154,13 +155,19 @@ const StepDots = ({ current, total }) => (
   </View>
 );
 
-function SelectorRow({ icon, label, value, onPress }) {
+function SettingCard({ icon, label, value, onPress }) {
   return (
-    <TouchableOpacity style={styles.selectorRow} onPress={onPress}>
-      <Text style={styles.selectorIcon}>{icon}</Text>
-      <Text style={styles.selectorLabel}>{label}</Text>
-      <Text style={styles.selectorValue}>{value}</Text>
-      <Text style={styles.selectorChevron}>›</Text>
+    <TouchableOpacity style={styles.settingCard} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.settingCardLeft}>
+        <View style={styles.settingCardIcon}>
+          <Text style={{ fontSize: 20 }}>{icon}</Text>
+        </View>
+        <View>
+          <Text style={styles.settingCardLabel}>{label}</Text>
+          <Text style={styles.settingCardValue}>{value}</Text>
+        </View>
+      </View>
+      <Text style={styles.settingCardChevron}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -939,18 +946,32 @@ export default function IdeaToVideoScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
-  back: { color: '#2ecc71', fontSize: 16 },
+  container: { flex: 1, backgroundColor: '#121414', paddingTop: STATUSBAR_HEIGHT },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1e2020' },
+  back: { color: '#54e98a', fontSize: 16 },
   title: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   stepCount: { color: '#555', fontSize: 14 },
   dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 12 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' },
-  dotActive: { backgroundColor: '#2ecc71', width: 24 },
-  stepContainer: { flex: 1, padding: 20 },
-  stepTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2a2a2a' },
+  dotActive: { backgroundColor: '#54e98a', width: 24, borderRadius: 4 },
+  stepContainer: { padding: 20, paddingBottom: 20 },
+  stepTitle: { color: '#e3e2e2', fontSize: 22, fontWeight: 'bold', marginLeft: 10 },
   stepSub: { color: '#888', fontSize: 14, marginBottom: 20 },
-  textArea: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 14, textAlignVertical: 'top', borderWidth: 1, borderColor: '#333', fontSize: 14, marginBottom: 16, minHeight: 100 },
+  ideaHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  ideaIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#1e2020', borderWidth: 1, borderColor: '#2a3a2a', justifyContent: 'center', alignItems: 'center' },
+  textAreaWrapper: { borderRadius: 20, borderWidth: 1, borderColor: '#2a3a2a', backgroundColor: '#1e2020', marginBottom: 24, overflow: 'hidden' },
+  textArea: { color: '#e3e2e2', padding: 18, textAlignVertical: 'top', fontSize: 16, minHeight: 130, backgroundColor: 'transparent' },
+  sectionLabel: { color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 12, paddingHorizontal: 4 },
+  settingCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e2020', borderRadius: 20, borderWidth: 1, borderColor: '#2a3a2a', padding: 14, marginBottom: 10 },
+  settingCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  settingCardIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#292a2a', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  settingCardLabel: { color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2 },
+  settingCardValue: { color: '#54e98a', fontSize: 14, fontWeight: '700' },
+  settingCardChevron: { color: '#4a5a4a', fontSize: 22 },
+  generateBtnContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 28 },
+  generateBtn: { backgroundColor: '#2ecc71', borderRadius: 28, height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, elevation: 6 },
+  generateBtnIcon: { fontSize: 20 },
+  generateBtnText: { color: '#003919', fontSize: 17, fontWeight: 'bold', letterSpacing: 0.5 },
   selectorsCard: { backgroundColor: '#1a1a1a', borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 20 },
   selectorRow: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   selectorIcon: { fontSize: 18, marginRight: 10 },
