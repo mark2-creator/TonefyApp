@@ -519,7 +519,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 
   React.useEffect(() => {
     if (!visible && playerRef.current) {
-      try { await playerRef.current.stopAsync(); await playerRef.current.unloadAsync(); } catch (e) {}
+      try { playerRef.current.stopAsync(); playerRef.current.unloadAsync(); } catch (e) {}
       playerRef.current = null;
       setPlayingId(null);
     }
@@ -532,7 +532,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
       return;
     }
     if (playerRef.current) {
-      try { await playerRef.current.stopAsync(); await playerRef.current.unloadAsync(); } catch (e) {}
+      try { playerRef.current.stopAsync(); playerRef.current.unloadAsync(); } catch (e) {}
     }
     try {
       const { sound } = await Audio.Sound.createAsync({ uri: `${BACKEND}${item.previewUrl}` });
