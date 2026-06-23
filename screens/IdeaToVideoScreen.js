@@ -519,13 +519,13 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 
   React.useEffect(() => {
     if (!visible && playerRef.current) {
-      try { playerRef.current.stopAsync(); playerRef.current.unloadAsync(); } catch (e) {}
+      (async () => { try { await playerRef.current.stopAsync(); await playerRef.current.unloadAsync(); } catch (e) {} })();
       playerRef.current = null;
       setPlayingId(null);
     }
   }, [visible]);
 
-  const onTogglePlay = (item) => {
+  const onTogglePlay = async (item) => {
     if (playingId === item.id) {
       try { await playerRef.current?.pauseAsync(); } catch (e) {}
       setPlayingId(null);
