@@ -215,6 +215,9 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
+        <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { throw new Error('Test crash for Sentry verification'); }}>
+          <Text style={styles.btnLogoutText}>🧪 Test Crash (temporary)</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
           <Text style={styles.btnLogoutText}>🚪 Log Out</Text>
         </TouchableOpacity>
