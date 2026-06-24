@@ -19,7 +19,7 @@ import * as Sentry from '@sentry/react-native';
 Sentry.init({
   dsn: 'https://09f28c777def68dfe5087145fac88129@o4511619343122432.ingest.de.sentry.io/4511619380281424',
   tracesSampleRate: 1.0,
-  enabled: !__DEV__,
+  enabled: true,
 });
 
 SplashScreen.preventAutoHideAsync();
