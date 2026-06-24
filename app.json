@@ -41,7 +41,13 @@
           "backgroundColor": "#fefeff"
         }
       ],
-      "@sentry/react-native"
+      [
+        "@sentry/react-native",
+        {
+          "organization": "fitlifesolutions",
+          "project": "react-native"
+        }
+      ]
     ],
     "scheme": "tonefyai",
     "owner": "markahumuza21213s-team",
