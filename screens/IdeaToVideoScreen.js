@@ -155,19 +155,19 @@ const StepDots = ({ current, total }) => (
   </View>
 );
 
-function SettingCard({ icon, label, value, onPress }) {
+function SettingCard({ icon, label, value, onPress, iconColor = "#54e98a", iconBg = "#1a2a1e" }) {
   return (
     <TouchableOpacity style={styles.settingCard} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.settingCardLeft}>
-        <View style={styles.settingCardIcon}>
-          <Text style={{ fontSize: 20 }}>{icon}</Text>
+        <View style={[styles.settingCardIcon, { backgroundColor: iconBg }]}>
+          <MaterialIcons name={icon} size={22} color={iconColor} />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.settingCardLabel}>{label}</Text>
-          <Text style={styles.settingCardValue}>{value}</Text>
+          <Text style={styles.settingCardValue} numberOfLines={1}>{value}</Text>
         </View>
       </View>
-      <Text style={styles.settingCardChevron}>›</Text>
+      <MaterialIcons name="chevron-right" size={22} color="#4a5a4a" />
     </TouchableOpacity>
   );
 }
@@ -848,35 +848,64 @@ export default function IdeaToVideoScreen({ navigation }) {
 
       {/* STEP 1 */}
       {step === 1 && (
-        <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>💡 Your Idea</Text>
-          <Text style={styles.stepSub}>What do you want your video to be about?</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="e.g. A motivational video about morning routines..."
-            placeholderTextColor="#555"
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={4}
-          />
-          <View style={styles.selectorsCard}>
-            <SelectorRow icon="🎙️" label="Voice" value={`${selectedVoice.icon} ${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
-            <View style={styles.divider} />
-            <SelectorRow icon="📐" label="Format" value={`${selectedRatio.icon} ${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
-            <View style={styles.divider} />
-            <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
-            <View style={styles.divider} />
-            <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
-            <View style={styles.divider} />
-            <SelectorRow icon="⚡" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
-            <View style={styles.divider} />
-            <SelectorRow icon="🎵" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20, paddingBottom: 140 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#1a2a1e', borderWidth: 1, borderColor: '#2a3a2e', alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialIcons name="lightbulb" size={22} color="#54e98a" />
+              </View>
+              <Text style={styles.stepTitle}>Your Idea</Text>
+            </View>
+            <View style={{ backgroundColor: '#111a12', borderRadius: 20, borderWidth: 1, borderColor: '#1e2e20', padding: 16, marginBottom: 8 }}>
+              <TextInput
+                style={{ color: '#e3e2e2', fontSize: 16, lineHeight: 24, minHeight: 120, textAlignVertical: 'top' }}
+                placeholder="Describe your video idea in detail..."
+                placeholderTextColor="#3a5a3e"
+                value={prompt}
+                onChangeText={setPrompt}
+                multiline
+                numberOfLines={5}
+              />
+            </View>
+            <Text style={{ color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 4 }}>PRODUCTION SETTINGS</Text>
+            <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.icon} ${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
+            <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.icon} ${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
+            <SettingCard icon="subtitles" iconColor="#34d399" iconBg="#0a2a1a" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
+            <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
+            <SettingCard icon="speed" iconColor="#fb923c" iconBg="#2a1500" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
+            <SettingCard icon="music-note" iconColor="#facc15" iconBg="#2a2000" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
+            {loading && <ProgressBar progress={progress} label={loadingMsg} />}
+          </ScrollView>
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80, backgroundColor: '#121414' }}>
+            <TouchableOpacity
+              style={[{
+                backgroundColor: '#2ecc71',
+                borderRadius: 16,
+                height: 50,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                elevation: 4,
+              }, (loading || !prompt.trim()) && { opacity: 0.4 }]}
+              onPress={generateScript}
+              disabled={loading || !prompt.trim()}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#003919" />
+                : <>
+                    <MaterialIcons name="auto-awesome" size={22} color="#003919" />
+                    <Text style={{ color: '#003919', fontSize: 16, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>Generate Script</Text>
+                  </>
+              }
+            </TouchableOpacity>
           </View>
-          {loading && <ProgressBar progress={progress} label={loadingMsg} />}
-          <TouchableOpacity style={[styles.btn, (loading || !prompt.trim()) && styles.btnDisabled]} onPress={generateScript} disabled={loading || !prompt.trim()}>
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>✨ Generate Script</Text>}
-          </TouchableOpacity>
         </View>
       )}
 
