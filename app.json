@@ -25,7 +25,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "545addc1-bd0d-4aca-b3e7-4a65da258ca0"
+        "projectId": "018af7f9-832e-4a3b-88e7-141fc911fb1e"
       }
     },
     "plugins": [
@@ -50,7 +50,7 @@
       ]
     ],
     "scheme": "tonefyai",
-    "owner": "markahumuza21213s-team",
+    "owner": "charlieanderson21213",
     "ios": {}
   }
 }
