@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import * as Sentry from '@sentry/react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Image, Alert, ActivityIndicator
@@ -215,7 +216,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { throw new Error('Test crash for Sentry verification'); }}>
+        <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { Sentry.captureException(new Error('Test crash for Sentry verification')); alert('Sent to Sentry!'); }}>
           <Text style={styles.btnLogoutText}>🧪 Test Crash (temporary)</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
