@@ -17,7 +17,7 @@ import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
-  dsn: 'https://09f28c777def68dfe5087145fac88129@o4511619343122432.ingest.de.sentry.io/4511619380281424',
+  dsn: 'https://5e8c412f592386efb8324e760011c7c9@o4511619343122432.ingest.de.sentry.io/4511619368091728',
   tracesSampleRate: 1.0,
   enabled: true,
 });
