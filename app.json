@@ -44,6 +44,13 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Tonefy AI to access your camera to record videos.",
+          "microphonePermission": "Allow Tonefy AI to access your microphone to record audio."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon-only.png",
