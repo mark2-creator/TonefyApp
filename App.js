@@ -12,6 +12,7 @@ import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
 import ScriptToVideoScreen from './screens/ScriptToVideoScreen';
 import UrlToVideoScreen from './screens/UrlToVideoScreen';
 import EditPostVideoScreen from './screens/EditPostVideoScreen';
+import EditVideoScreen from './screens/EditVideoScreen';
 import ConnectAccountsScreen from './screens/ConnectAccountsScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
@@ -53,6 +54,7 @@ function App() {
             <Stack.Screen name="ScriptToVideo" component={ScriptToVideoScreen} />
             <Stack.Screen name="UrlToVideo" component={UrlToVideoScreen} />
             <Stack.Screen name="EditPostVideo" component={EditPostVideoScreen} />
+            <Stack.Screen name="EditVideo" component={EditVideoScreen} />
             <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
           </>
         ) : (

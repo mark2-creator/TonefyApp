@@ -53,6 +53,7 @@ export default function DashboardScreen({ navigation }) {
     else if (title === 'Script to Video') navigation.navigate('ScriptToVideo');
     else if (title === 'URL to Video') navigation.navigate('UrlToVideo');
     else if (title === 'My Videos') navigation.navigate('MyVideos');
+    else if (title === 'Edit Video') navigation.navigate('EditVideo');
     // Other workflows aren't built yet — no-op for now
   };
 
