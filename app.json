@@ -37,6 +37,13 @@
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Tonefy AI to access your photos to create videos.",
+          "cameraPermission": "Allow Tonefy AI to access your camera to record media for videos."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon-only.png",
