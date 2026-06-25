@@ -61,7 +61,6 @@ export default function EditVideoScreen({ navigation }) {
 
       const uploadRes = await fetch(`${BACKEND}/api/upload-media`, {
         method: 'POST',
-        headers: { 'Content-Type': 'multipart/form-data' },
         body: formData,
       });
       const uploadData = await uploadRes.json();
