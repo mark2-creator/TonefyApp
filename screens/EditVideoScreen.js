@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Image,
+  View, Text, TouchableOpacity, Image,
   StyleSheet, ActivityIndicator, Alert, StatusBar
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import DraggableFlatList from 'react-native-draggable-flatlist';
+import Slider from '@react-native-community/slider';
 import { auth } from '../firebase';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 export default function EditVideoScreen({ navigation }) {
-  const [items, setItems] = useState([]); // { uri, type }
+  const [items, setItems] = useState([]); // { key, uri, type, fileName, duration, trimEnd }
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
@@ -29,17 +31,29 @@ export default function EditVideoScreen({ navigation }) {
       selectionLimit: 20,
     });
     if (!result.canceled) {
-      const picked = result.assets.map(a => ({
+      const picked = result.assets.map((a, idx) => ({
+        key: `${Date.now()}_${idx}`,
         uri: a.uri,
         type: a.type === 'video' ? 'video' : 'image',
-        fileName: a.fileName || `media_${Date.now()}.${a.type === 'video' ? 'mp4' : 'jpg'}`,
+        fileName: a.fileName || `media_${Date.now()}_${idx}.${a.type === 'video' ? 'mp4' : 'jpg'}`,
+        duration: 3, // default photo duration
+        sourceDuration: a.duration ? a.duration / 1000 : null, // video full length in seconds, if known
+        trimEnd: a.duration ? a.duration / 1000 : null,
       }));
       setItems(prev => [...prev, ...picked]);
     }
   }
 
-  function removeItem(index) {
-    setItems(prev => prev.filter((_, i) => i !== index));
+  function removeItem(key) {
+    setItems(prev => prev.filter(i => i.key !== key));
+  }
+
+  function updatePhotoDuration(key, value) {
+    setItems(prev => prev.map(i => i.key === key ? { ...i, duration: Math.round(value) } : i));
+  }
+
+  function updateTrimEnd(key, value) {
+    setItems(prev => prev.map(i => i.key === key ? { ...i, trimEnd: value } : i));
   }
 
   async function processVideo() {
@@ -51,7 +65,7 @@ export default function EditVideoScreen({ navigation }) {
     setMessage('Uploading media...');
     try {
       const formData = new FormData();
-      items.forEach((item, i) => {
+      items.forEach((item) => {
         formData.append('files', {
           uri: item.uri,
           name: item.fileName,
@@ -66,11 +80,19 @@ export default function EditVideoScreen({ navigation }) {
       const uploadData = await uploadRes.json();
       if (uploadData.error) throw new Error(uploadData.error);
 
+      // Merge uploaded URLs back with trim/duration metadata, preserving order
+      const mediaItems = uploadData.items.map((uploaded, i) => ({
+        url: uploaded.url,
+        type: uploaded.type,
+        duration: items[i].type === 'image' ? items[i].duration : undefined,
+        trimEnd: items[i].type === 'video' ? items[i].trimEnd : undefined,
+      }));
+
       setMessage('Starting video creation...');
       const mergeRes = await fetch(`${BACKEND}/api/media-to-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaItems: uploadData.items, userId: user?.uid }),
+        body: JSON.stringify({ mediaItems, userId: user?.uid }),
       });
       const { jobId, error } = await mergeRes.json();
       if (!jobId) throw new Error(error || 'Failed to start job');
@@ -102,6 +124,57 @@ export default function EditVideoScreen({ navigation }) {
     }, 2000);
   }
 
+  const renderItem = ({ item, drag, isActive }) => (
+    <TouchableOpacity
+      style={[styles.row, isActive && styles.rowActive]}
+      onLongPress={drag}
+      delayLongPress={150}
+    >
+      <Image source={{ uri: item.uri }} style={styles.rowThumb} />
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={styles.rowLabel}>
+          {item.type === 'video' ? '▶ Video' : '🖼 Photo'}
+        </Text>
+        {item.type === 'image' ? (
+          <View>
+            <Text style={styles.rowSubLabel}>{item.duration}s</Text>
+            <Slider
+              style={{ width: '100%', height: 30 }}
+              minimumValue={1}
+              maximumValue={10}
+              step={1}
+              value={item.duration}
+              minimumTrackTintColor="#2ecc71"
+              maximumTrackTintColor="#333"
+              thumbTintColor="#2ecc71"
+              onValueChange={(v) => updatePhotoDuration(item.key, v)}
+            />
+          </View>
+        ) : item.sourceDuration ? (
+          <View>
+            <Text style={styles.rowSubLabel}>Trim end: {item.trimEnd?.toFixed(1)}s / {item.sourceDuration.toFixed(1)}s</Text>
+            <Slider
+              style={{ width: '100%', height: 30 }}
+              minimumValue={1}
+              maximumValue={item.sourceDuration}
+              value={item.trimEnd || item.sourceDuration}
+              minimumTrackTintColor="#2ecc71"
+              maximumTrackTintColor="#333"
+              thumbTintColor="#2ecc71"
+              onValueChange={(v) => updateTrimEnd(item.key, v)}
+            />
+          </View>
+        ) : (
+          <Text style={styles.rowSubLabel}>Full length</Text>
+        )}
+      </View>
+      <TouchableOpacity style={styles.removeBtn} onPress={() => removeItem(item.key)}>
+        <Text style={styles.removeBtnText}>✕</Text>
+      </TouchableOpacity>
+      <Text style={styles.dragHandle}>≡</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
@@ -113,28 +186,23 @@ export default function EditVideoScreen({ navigation }) {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionLabel}>YOUR MEDIA</Text>
-        <View style={styles.grid}>
-          {items.map((item, i) => (
-            <View key={i} style={styles.thumbWrap}>
-              <Image source={{ uri: item.uri }} style={styles.thumb} />
-              {item.type === 'video' && <Text style={styles.videoBadge}>▶</Text>}
-              <TouchableOpacity style={styles.removeBtn} onPress={() => removeItem(i)}>
-                <Text style={styles.removeBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+      <Text style={styles.sectionLabel}>YOUR MEDIA (long-press ≡ to reorder)</Text>
+
+      <DraggableFlatList
+        data={items}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
+        onDragEnd={({ data }) => setItems(data)}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+        ListFooterComponent={
           <TouchableOpacity style={styles.addBtn} onPress={pickMedia}>
             <Text style={styles.addBtnIcon}>+</Text>
             <Text style={styles.addBtnText}>Add Media</Text>
           </TouchableOpacity>
-        </View>
+        }
+      />
 
-        <Text style={styles.hint}>
-          Add photos and videos from your device. Photos will show for 3 seconds each; videos play at full length. We'll combine them into one video.
-        </Text>
-
+      <View style={styles.bottomBar}>
         <TouchableOpacity
           style={[styles.processBtn, items.length === 0 && styles.processBtnDisabled]}
           onPress={processVideo}
@@ -149,9 +217,7 @@ export default function EditVideoScreen({ navigation }) {
             <Text style={styles.processBtnText}>🎬 Create Video</Text>
           )}
         </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -161,19 +227,20 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   back: { color: '#2ecc71', fontSize: 15, fontWeight: '600' },
   title: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  scroll: { flex: 1, padding: 16 },
-  sectionLabel: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, marginTop: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  thumbWrap: { width: '30%', aspectRatio: 1, borderRadius: 10, overflow: 'hidden', position: 'relative' },
-  thumb: { width: '100%', height: '100%' },
-  videoBadge: { position: 'absolute', bottom: 4, left: 4, color: '#fff', fontSize: 12, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 4, borderRadius: 4 },
-  removeBtn: { position: 'absolute', top: 2, right: 2, backgroundColor: 'rgba(0,0,0,0.7)', width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  removeBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  addBtn: { width: '30%', aspectRatio: 1, borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' },
+  sectionLabel: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginTop: 16, marginBottom: 8, paddingHorizontal: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#2a2a2a' },
+  rowActive: { borderColor: '#2ecc71', opacity: 0.9 },
+  rowThumb: { width: 50, height: 50, borderRadius: 8 },
+  rowLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  rowSubLabel: { color: '#888', fontSize: 11, marginTop: 2 },
+  removeBtn: { padding: 6 },
+  removeBtnText: { color: '#888', fontSize: 14 },
+  dragHandle: { color: '#666', fontSize: 22, paddingHorizontal: 4 },
+  addBtn: { borderRadius: 12, borderWidth: 1, borderColor: '#2a2a2a', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a', padding: 20, marginTop: 4 },
   addBtnIcon: { color: '#2ecc71', fontSize: 28, fontWeight: '300' },
-  addBtnText: { color: '#888', fontSize: 11, marginTop: 4 },
-  hint: { color: '#666', fontSize: 12, lineHeight: 18, marginTop: 16 },
-  processBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 16, alignItems: 'center', marginTop: 24 },
+  addBtnText: { color: '#888', fontSize: 12, marginTop: 4 },
+  bottomBar: { padding: 16, borderTopWidth: 1, borderTopColor: '#1a1a1a' },
+  processBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 16, alignItems: 'center' },
   processBtnDisabled: { backgroundColor: '#1a1a1a' },
   processBtnText: { color: '#000', fontWeight: '700', fontSize: 14 },
 });
