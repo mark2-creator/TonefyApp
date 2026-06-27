@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import * as Updates from 'expo-updates';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { onAuthStateChanged } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
@@ -15,6 +17,13 @@ import UrlToVideoScreen from './screens/UrlToVideoScreen';
 import EditPostVideoScreen from './screens/EditPostVideoScreen';
 import EditVideoScreen from './screens/EditVideoScreen';
 import ConnectAccountsScreen from './screens/ConnectAccountsScreen';
+import IdeaToAudioScreen from './screens/IdeaToAudioScreen';
+import GeneratingAudioScreen from './screens/GeneratingAudioScreen';
+import AudioResultScreen from './screens/AudioResultScreen';
+import ScriptToAudioScreen from './screens/ScriptToAudioScreen';
+import RecordToVideoScreen from './screens/RecordToVideoScreen';
+import RecordingScreen from './screens/RecordingScreen';
+import PostRecordingScreen from './screens/PostRecordingScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 
@@ -32,7 +41,41 @@ function App() {
   const [user, setUser] = React.useState(undefined);
 
   useEffect(() => {
+    async function checkUpdates() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (e) {}
+    }
+    checkUpdates();
+  }, []);
+
+  const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
+
+  useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        try {
+          const lastActiveRaw = await AsyncStorage.getItem('lastActive');
+          const lastActive = lastActiveRaw ? parseInt(lastActiveRaw, 10) : null;
+          if (lastActive && Date.now() - lastActive > SESSION_TIMEOUT_MS) {
+            await auth.signOut();
+            await AsyncStorage.removeItem('lastActive');
+            setUser(null);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await SplashScreen.hideAsync();
+            return;
+          }
+          await AsyncStorage.setItem('lastActive', Date.now().toString());
+        } catch (e) {
+          // if storage fails, fall back to trusting the Firebase session
+        }
+      } else {
+        await AsyncStorage.removeItem('lastActive');
+      }
       setUser(u);
       await new Promise(resolve => setTimeout(resolve, 1000));
       await SplashScreen.hideAsync();
@@ -58,6 +101,13 @@ function App() {
             <Stack.Screen name="EditPostVideo" component={EditPostVideoScreen} />
             <Stack.Screen name="EditVideo" component={EditVideoScreen} />
             <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
+            <Stack.Screen name="IdeaToAudio" component={IdeaToAudioScreen} />
+            <Stack.Screen name="GeneratingAudio" component={GeneratingAudioScreen} />
+            <Stack.Screen name="AudioResult" component={AudioResultScreen} />
+            <Stack.Screen name="ScriptToAudio" component={ScriptToAudioScreen} />
+            <Stack.Screen name="RecordToVideo" component={RecordToVideoScreen} />
+            <Stack.Screen name="Recording" component={RecordingScreen} />
+            <Stack.Screen name="PostRecording" component={PostRecordingScreen} />
           </>
         ) : (
           <>

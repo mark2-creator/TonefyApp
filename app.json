@@ -7,7 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "updates": {
-      "url": "https://u.expo.dev/018af7f9-832e-4a3b-88e7-141fc911fb1e"
+      "url": "https://u.expo.dev/018af7f9-832e-4a3b-88e7-141fc911fb1e",
+      "checkAutomatically": "ON_LOAD",
+      "channel": "preview"
     },
     "runtimeVersion": "1.0.0",
     "android": {

@@ -2,9 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import * as Sentry from '@sentry/react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Image, Alert, ActivityIndicator
+  ScrollView, Image, Alert, ActivityIndicator, Modal
 } from 'react-native';
-import { signOut, updateProfile, deleteUser } from 'firebase/auth';
+import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
+import QRCode from 'react-native-qrcode-svg';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -17,6 +18,13 @@ export default function ProfileScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const [tiktok, setTiktok] = useState({ connected: false, label: 'Checking...' });
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
+  const [totpSecret, setTotpSecret] = useState(null);
+  const [qrUri, setQrUri] = useState(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaSession, setMfaSession] = useState(null);
 
   const showToast = useCallback((msg) => {
     setToastMsg(msg);
@@ -25,6 +33,9 @@ export default function ProfileScreen({ navigation }) {
 
   useEffect(() => {
     if (!user) return;
+    // Check if MFA is already enrolled
+    const enrolledFactors = multiFactor(user).enrolledFactors;
+    setMfaEnabled(enrolledFactors.length > 0);
     (async () => {
       try {
         const vSnap = await getDocs(query(collection(db, 'userVideos'), where('userId', '==', user.uid)));
@@ -105,6 +116,57 @@ export default function ProfileScreen({ navigation }) {
         },
       ]
     );
+  }
+
+  async function handleEnableMfa() {
+    try {
+      setMfaLoading(true);
+      const session = await multiFactor(user).getSession();
+      const totpUri = await TotpMultiFactorGenerator.generateSecret(session);
+      setMfaSession(totpUri);
+      setQrUri(totpUri.generateQrCodeUrl(user.email, 'Tonefy AI'));
+      setShowMfaSetup(true);
+    } catch (e) {
+      Alert.alert('Error', 'Could not start 2FA setup. Try again.');
+    } finally {
+      setMfaLoading(false);
+    }
+  }
+
+  async function handleVerifyMfa() {
+    if (mfaCode.length !== 6) { Alert.alert('Error', 'Enter the 6-digit code from your authenticator app.'); return; }
+    try {
+      setMfaLoading(true);
+      const cred = TotpMultiFactorGenerator.assertionForEnrollment(mfaSession, mfaCode);
+      await multiFactor(user).enroll(cred, 'Authenticator App');
+      setMfaEnabled(true);
+      setShowMfaSetup(false);
+      setMfaCode('');
+      showToast('2FA enabled successfully!');
+    } catch (e) {
+      Alert.alert('Invalid Code', 'The code is incorrect or expired. Try again.');
+    } finally {
+      setMfaLoading(false);
+    }
+  }
+
+  async function handleDisableMfa() {
+    Alert.alert('Disable 2FA', 'Are you sure you want to disable two-factor authentication?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Disable', style: 'destructive', onPress: async () => {
+        try {
+          setMfaLoading(true);
+          const factors = multiFactor(user).enrolledFactors;
+          await multiFactor(user).unenroll(factors[0]);
+          setMfaEnabled(false);
+          showToast('2FA disabled.');
+        } catch (e) {
+          Alert.alert('Error', 'Could not disable 2FA. You may need to re-login first.');
+        } finally {
+          setMfaLoading(false);
+        }
+      }}
+    ]);
   }
 
   function handleTikTokPress() {
@@ -215,6 +277,61 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.badgeSoon}><Text style={styles.badgeSoonText}>Soon</Text></View>
           </View>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>Security</Text>
+          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.connLogo, { backgroundColor: '#1a2a1e' }]}>
+              <Text style={{ fontSize: 18 }}>🔐</Text>
+            </View>
+            <View style={styles.connInfo}>
+              <Text style={styles.connName}>Two-Factor Auth</Text>
+              <Text style={[styles.connStatus, mfaEnabled && styles.connStatusOk]}>
+                {mfaEnabled ? 'Enabled' : 'Not enabled'}
+              </Text>
+            </View>
+            {mfaLoading ? <ActivityIndicator color="#54e98a" /> : (
+              <TouchableOpacity onPress={mfaEnabled ? handleDisableMfa : handleEnableMfa}>
+                <View style={mfaEnabled ? styles.badgeConnected : styles.badgeSoon}>
+                  <Text style={mfaEnabled ? styles.badgeConnectedText : styles.badgeSoonText}>
+                    {mfaEnabled ? 'Disable' : 'Enable'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <Modal visible={showMfaSetup} transparent animationType="slide">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{ backgroundColor: '#1a1a1a', borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Setup Authenticator</Text>
+              <Text style={{ color: '#869486', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
+                Scan this QR code with Google Authenticator or Authy, then enter the 6-digit code below.
+              </Text>
+              {qrUri && <QRCode value={qrUri} size={180} backgroundColor="#fff" />}
+              <TextInput
+                style={{ marginTop: 24, backgroundColor: '#111', color: '#fff', borderRadius: 12, padding: 14, width: '100%', fontSize: 22, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: '#2a2a2a' }}
+                placeholder="000000"
+                placeholderTextColor="#444"
+                value={mfaCode}
+                onChangeText={setMfaCode}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={{ marginTop: 16, backgroundColor: '#2ecc71', borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
+                onPress={handleVerifyMfa}
+                disabled={mfaLoading}
+              >
+                {mfaLoading ? <ActivityIndicator color="#003919" /> : <Text style={{ color: '#003919', fontWeight: '700', fontSize: 15 }}>Verify & Enable 2FA</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setShowMfaSetup(false); setMfaCode(''); }} style={{ marginTop: 12 }}>
+                <Text style={{ color: '#869486', fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { Sentry.captureException(new Error('Test crash for Sentry verification')); alert('Sent to Sentry!'); }}>
           <Text style={styles.btnLogoutText}>🧪 Test Crash (temporary)</Text>
