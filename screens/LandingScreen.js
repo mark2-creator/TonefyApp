@@ -4,6 +4,7 @@ import {
   ScrollView, StatusBar, Animated, Dimensions
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Linking } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -162,35 +163,24 @@ export default function LandingScreen({ navigation }) {
             <Text style={styles.footerLogo}>Tonefy AI</Text>
           </View>
           <View style={styles.footerLinks}>
-            {['Privacy', 'Terms', 'Twitter', 'YouTube'].map((l, i) => (
-              <Text key={i} style={styles.footerLink}>{l}</Text>
+            {[
+              { label: 'Privacy', url: 'https://tonefy-ai.fitlifesolutions.site/privacy.html' },
+              { label: 'Terms', url: 'https://tonefy-ai.fitlifesolutions.site/terms.html' },
+              { label: 'Twitter', url: 'https://twitter.com/tonefyai' },
+              { label: 'YouTube', url: 'https://youtube.com/@tonefyai' },
+            ].map((l, i) => (
+              <TouchableOpacity key={i} onPress={() => Linking.openURL(l.url)}>
+                <Text style={styles.footerLink}>{l.label}</Text>
+              </TouchableOpacity>
             ))}
           </View>
           <Text style={styles.footerCopy}>© 2025 Tonefy AI. All rights reserved.</Text>
         </View>
 
-        <View style={{ height: 90 }} />
+        <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Bottom Nav */}
-      <View style={styles.bottomNav}>
-        <View style={styles.navItemActive}>
-          <MaterialIcons name="home" size={22} color="#00e38d" />
-          <Text style={[styles.navLabel, { color: '#00e38d' }]}>Home</Text>
-        </View>
-        <View style={styles.navItem}>
-          <MaterialIcons name="folder-open" size={22} color="#555" />
-          <Text style={styles.navLabel}>Projects</Text>
-        </View>
-        <View style={styles.navItem}>
-          <MaterialIcons name="auto-awesome" size={22} color="#555" />
-          <Text style={styles.navLabel}>AI Tools</Text>
-        </View>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Auth')}>
-          <MaterialIcons name="person" size={22} color="#555" />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+
     </View>
   );
 }

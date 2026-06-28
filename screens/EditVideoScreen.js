@@ -5,12 +5,12 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth } from '../firebase';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function EditVideoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -124,6 +124,15 @@ export default function EditVideoScreen({ navigation }) {
   const durMin = String(Math.floor(totalDuration / 60)).padStart(2, '0');
   const durSec = String(Math.floor(totalDuration % 60)).padStart(2, '0');
 
+  const bottomTabs = [
+    { name: 'Edit', icon: 'content-cut' },
+    { name: 'Audio', icon: 'music-note' },
+    { name: 'Text', icon: 'title' },
+    { name: 'Effects', icon: 'auto-awesome' },
+    { name: 'Overlay', icon: 'image' },
+    { name: 'Captions', icon: 'closed-caption' },
+  ];
+
   const renderItem = ({ item, drag, isActive }) => {
     const isFirst = items[0] && items[0].key === item.key;
     const isSelected = item.key === selectedKey;
@@ -138,7 +147,7 @@ export default function EditVideoScreen({ navigation }) {
           <Image source={{ uri: item.uri }} style={styles.clipThumb} resizeMode="cover" />
           {isFirst && (
             <View style={styles.coverBadge}>
-              <MaterialIcons name="edit" size={10} color="#fff" />
+              <MaterialIcons name="edit" size={9} color="#fff" />
               <Text style={styles.coverText}>Cover</Text>
             </View>
           )}
@@ -157,171 +166,166 @@ export default function EditVideoScreen({ navigation }) {
     );
   };
 
-  const bottomTabs = [
-    { name: 'Edit', icon: 'content-cut', lib: 'material' },
-    { name: 'Audio', icon: 'musical-note', lib: 'ionicon' },
-    { name: 'Text', icon: 'title', lib: 'material' },
-    { name: 'Effects', icon: 'auto-awesome', lib: 'material' },
-    { name: 'Overlay', icon: 'image', lib: 'material' },
-    { name: 'Captions', icon: 'closed-caption', lib: 'material' },
-  ];
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      {/* Top Bar */}
+      {/* TOP BAR */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
-          <MaterialIcons name="close" size={26} color="#fff" />
+          <MaterialIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.topBtn}>
-          <MaterialIcons name="search" size={26} color="#fff" />
+          <MaterialIcons name="search" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.qualityBtn}>
+          <MaterialIcons name="diamond" size={14} color="#00d4d4" />
           <Text style={styles.qualityText}>AI UHD</Text>
           <MaterialIcons name="keyboard-arrow-down" size={16} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.exportBtn, (items.length === 0 || uploading) && styles.exportBtnDisabled]}
+          style={[styles.exportBtn, items.length > 0 && !uploading && styles.exportBtnActive]}
           onPress={processVideo}
           disabled={uploading || items.length === 0}
         >
           {uploading
             ? <ActivityIndicator color="#000" size="small" />
-            : <Text style={styles.exportBtnText}>Export</Text>
+            : <Text style={[styles.exportBtnText, items.length > 0 && { color: '#000' }]}>Export</Text>
           }
         </TouchableOpacity>
       </View>
 
-      {/* Preview */}
-      <View style={styles.preview}>
-        {items.length > 0 ? (
-          <Image
-            source={{ uri: selectedItem ? selectedItem.uri : items[0].uri }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.previewEmpty}>
-            <MaterialIcons name="movie" size={52} color="#222" />
-            <Text style={styles.previewEmptyText}>Add media to get started</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Playback + scrubber row */}
-      <View style={styles.scrubberRow}>
-        <View style={styles.playbackLeft}>
-          <TouchableOpacity style={styles.playBtn}>
-            <MaterialIcons name="fullscreen" size={22} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}>
-            <MaterialIcons name="play-arrow" size={28} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}>
-            <MaterialIcons name="closed-caption" size={20} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}>
-            <MaterialIcons name="undo" size={20} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.playBtn}>
-            <MaterialIcons name="redo" size={20} color="#ccc" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Timeline */}
-      <View style={styles.timeline}>
-        {/* Time markers */}
-        <View style={styles.timeMarkers}>
-          <Text style={styles.timeMarker}>00:00</Text>
-          <Text style={styles.timeMarker}>00:02</Text>
-          <Text style={styles.timeMarker}>00:04</Text>
-        </View>
-
-        {/* Clip track row */}
-        <View style={styles.trackRow}>
-          {/* Side buttons */}
-          <View style={styles.trackSide}>
-            <TouchableOpacity style={styles.sideIconBtn}>
-              <MaterialIcons name="volume-off" size={18} color="#ccc" />
-              <Text style={styles.sideIconText}>Mute{'\n'}clip</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Clips + scrubber */}
-          <View style={{ flex: 1, position: 'relative' }}>
-            <DraggableFlatList
-              data={items}
-              keyExtractor={(item) => item.key}
-              renderItem={renderItem}
-              onDragEnd={({ data }) => setItems(data)}
-              horizontal
-              contentContainerStyle={styles.timelineContent}
-              ListFooterComponent={
-                <TouchableOpacity style={styles.addClipBtn} onPress={pickMedia}>
-                  <MaterialIcons name="add" size={30} color="#aaa" />
-                </TouchableOpacity>
-              }
+      {/* VIDEO PREVIEW - portrait 9:16 */}
+      <View style={styles.previewContainer}>
+        <View style={styles.previewFrame}>
+          {items.length > 0 ? (
+            <Image
+              source={{ uri: selectedItem ? selectedItem.uri : items[0].uri }}
+              style={styles.previewImage}
+              resizeMode="cover"
             />
-            {/* Red scrubber line */}
-            {items.length > 0 && (
-              <View style={styles.scrubberLine} />
-            )}
-          </View>
-
-          {/* Right side track icons */}
-          <View style={styles.trackSideRight}>
-            <TouchableOpacity style={styles.sideIconBtn}>
-              <MaterialIcons name="music-note" size={18} color="#ccc" />
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.sideIconBtn, { marginTop: 8 }]}>
-              <MaterialIcons name="title" size={18} color="#ccc" />
-            </TouchableOpacity>
-          </View>
+          ) : (
+            <View style={styles.previewEmpty}>
+              <MaterialIcons name="movie" size={48} color="#333" />
+              <Text style={styles.previewEmptyText}>Add media to get started</Text>
+            </View>
+          )}
         </View>
 
-        {/* Audio track */}
-        <View style={styles.auxRow}>
-          <View style={styles.trackSide} />
-          <TouchableOpacity style={styles.auxTrack} onPress={pickMedia}>
-            <MaterialIcons name="music-note" size={14} color="#555" />
-            <Text style={styles.auxLabel}>+ Add audio</Text>
+        {/* Playback controls below preview */}
+        <View style={styles.playbackRow}>
+          <TouchableOpacity style={styles.playBtn}>
+            <MaterialIcons name="arrow-back" size={22} color="#888" />
           </TouchableOpacity>
-        </View>
-
-        {/* Text track */}
-        <View style={styles.auxRow}>
-          <View style={styles.trackSide} />
-          <TouchableOpacity style={styles.auxTrack}>
-            <MaterialIcons name="title" size={14} color="#555" />
-            <Text style={styles.auxLabel}>+ Add text</Text>
+          <TouchableOpacity style={styles.playBtnMain}>
+            <MaterialIcons name="play-arrow" size={36} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.playBtn}>
+            <MaterialIcons name="arrow-forward" size={22} color="#888" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Timestamp */}
-      <View style={styles.timestampRow}>
-        <Text style={styles.timestamp}>{'00:00 / ' + durMin + ':' + durSec}</Text>
+      {/* TIMELINE SECTION */}
+      <View style={styles.timeline}>
+        {/* Timecode row */}
+        <View style={styles.timecodeRow}>
+          <Text style={styles.timecode}>{'00:00 / ' + durMin + ':' + durSec}</Text>
+          <View style={styles.timeMarkers}>
+            <Text style={styles.timeMarker}>00:00</Text>
+            <Text style={styles.timeMarker}>00:01</Text>
+            <Text style={styles.timeMarker}>00:02</Text>
+          </View>
+        </View>
+
+        {/* Track area */}
+        <View style={styles.trackArea}>
+          {/* Sidebar */}
+          <View style={styles.sidebar}>
+            <TouchableOpacity style={styles.sideBtn}>
+              <MaterialIcons name="volume-off" size={18} color="#888" />
+              <Text style={styles.sideBtnLabel}>Mute clip</Text>
+            </TouchableOpacity>
+            <View style={styles.coverThumbWrap}>
+              {items.length > 0
+                ? <Image source={{ uri: items[0].uri }} style={styles.coverThumbImg} resizeMode="cover" />
+                : <View style={styles.coverThumbEmpty} />
+              }
+              <MaterialIcons name="edit" size={10} color="#fff" style={styles.coverEditIcon} />
+              <Text style={styles.sideBtnLabel}>Cover</Text>
+            </View>
+          </View>
+
+          {/* Scrollable clips + scrubber */}
+          <View style={styles.clipsWrapper}>
+            {/* Center scrubber line */}
+            <View style={styles.scrubberLine} pointerEvents="none" />
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.clipsScroll}>
+              {/* Clip frames */}
+              {items.map((item, idx) => (
+                <TouchableOpacity key={item.key}
+                  onPress={() => setSelectedKey(item.key === selectedKey ? null : item.key)}
+                  activeOpacity={0.85}>
+                  <View style={[styles.clipFrame, item.key === selectedKey && styles.clipFrameSelected]}>
+                    <Image source={{ uri: item.uri }} style={styles.clipFrameImg} resizeMode="cover" />
+                    {idx === 0 && (
+                      <View style={styles.coverBadge}>
+                        <MaterialIcons name="edit" size={9} color="#fff" />
+                        <Text style={styles.coverText}>Cover</Text>
+                      </View>
+                    )}
+                    <View style={styles.clipBottom}>
+                      <Text style={styles.clipDuration}>
+                        {item.type === 'image' ? item.duration + 's' : (item.trimEnd ? item.trimEnd.toFixed(1) + 's' : 'Full')}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {/* Add clip button */}
+              <TouchableOpacity style={styles.addClipBtn} onPress={pickMedia}>
+                <MaterialIcons name="add" size={22} color="#888" />
+              </TouchableOpacity>
+            </ScrollView>
+
+            {/* Audio track */}
+            <View style={styles.auxTrack}>
+              <MaterialIcons name="add" size={12} color="#555" />
+              <Text style={styles.auxLabel}>Add audio</Text>
+            </View>
+
+            {/* Text track */}
+            <View style={styles.auxTrack}>
+              <MaterialIcons name="add" size={12} color="#555" />
+              <Text style={styles.auxLabel}>Add text</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
-      {/* Bottom Toolbar */}
-      <View style={[styles.bottomToolbar, { paddingBottom: insets.bottom || 12 }]}>
+      {/* Uploading overlay */}
+      {uploading && (
+        <View style={styles.uploadOverlay}>
+          <ActivityIndicator color="#00d4d4" size="large" />
+          <Text style={styles.uploadMsg}>{message}</Text>
+          <View style={styles.progressBarBg}>
+            <View style={[styles.progressBarFill, { width: progress + '%' }]} />
+          </View>
+        </View>
+      )}
+
+      {/* BOTTOM TOOLBAR */}
+      <View style={[styles.bottomToolbar, { paddingBottom: insets.bottom || 16 }]}>
         {bottomTabs.map((tab) => (
           <TouchableOpacity
             key={tab.name}
             style={styles.tabBtn}
-            onPress={() => {
-              setActiveTab(tab.name);
-              if (tab.name === 'Edit') pickMedia();
-            }}
+            onPress={() => setActiveTab(tab.name)}
           >
-            {tab.lib === 'ionicon'
-              ? <Ionicons name={tab.icon} size={22} color={activeTab === tab.name ? '#fff' : '#666'} />
-              : <MaterialIcons name={tab.icon} size={22} color={activeTab === tab.name ? '#fff' : '#666'} />
-            }
+            <MaterialIcons name={tab.icon} size={22} color={activeTab === tab.name ? '#fff' : '#555'} />
             <Text style={[styles.tabLabel, activeTab === tab.name && { color: '#fff' }]}>{tab.name}</Text>
           </TouchableOpacity>
         ))}
@@ -333,57 +337,75 @@ export default function EditVideoScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
 
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
-  topBtn: { padding: 6 },
-  qualityBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8 },
-  qualityText: { color: '#fff', fontSize: 13, fontWeight: '700', marginRight: 2 },
-  exportBtn: { backgroundColor: '#00d4d4', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 },
-  exportBtnDisabled: { backgroundColor: '#1a1a1a' },
-  exportBtnText: { color: '#000', fontWeight: '700', fontSize: 14 },
+  // Top bar
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 4 },
+  topBtn: { padding: 4 },
+  qualityBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, gap: 4, borderWidth: 1, borderColor: '#333' },
+  qualityText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  exportBtn: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 },
+  exportBtnActive: { backgroundColor: '#00d4d4' },
+  exportBtnText: { color: '#888', fontWeight: '700', fontSize: 14 },
 
-  preview: { height: 260, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  // Preview
+  previewContainer: { alignItems: 'center', paddingVertical: 8, backgroundColor: '#000' },
+  previewFrame: { width: SCREEN_WIDTH * 0.55, aspectRatio: 9/16, backgroundColor: '#111', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
   previewImage: { width: '100%', height: '100%' },
-  previewEmpty: { alignItems: 'center', justifyContent: 'center', gap: 10 },
-  previewEmptyText: { color: '#333', fontSize: 13 },
+  previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  previewEmptyText: { color: '#444', fontSize: 12 },
+  playbackRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 40, marginTop: 10 },
+  playBtn: { padding: 4 },
+  playBtnMain: { padding: 4 },
 
-  scrubberRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#111' },
-  playbackLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  playBtn: { padding: 2 },
-
-  timeline: { flex: 1, backgroundColor: '#0a0a0a' },
-  timeMarkers: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 60, paddingTop: 4, paddingBottom: 2 },
+  // Timeline
+  timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
+  timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
+  timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
+  timeMarkers: { flexDirection: 'row', gap: 16 },
   timeMarker: { color: '#444', fontSize: 10 },
 
-  trackRow: { flexDirection: 'row', alignItems: 'center', minHeight: 72 },
-  trackSide: { width: 52, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  trackSideRight: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  sideIconBtn: { alignItems: 'center', gap: 2 },
-  sideIconText: { color: '#aaa', fontSize: 9, textAlign: 'center' },
+  trackArea: { flex: 1, flexDirection: 'row' },
 
-  timelineContent: { paddingHorizontal: 4, alignItems: 'center' },
+  // Sidebar
+  sidebar: { width: 72, alignItems: 'center', paddingTop: 8, gap: 16, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
+  sideBtn: { alignItems: 'center', gap: 2 },
+  sideBtnLabel: { color: '#555', fontSize: 9, textAlign: 'center' },
+  coverThumbWrap: { alignItems: 'center', gap: 2 },
+  coverThumbImg: { width: 40, height: 48, borderRadius: 4, backgroundColor: '#1a1a1a' },
+  coverThumbEmpty: { width: 40, height: 48, borderRadius: 4, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333' },
+  coverEditIcon: { position: 'absolute', top: 2, right: -2 },
 
-  clip: { width: 80, height: 68, borderRadius: 4, overflow: 'hidden', marginRight: 2, borderWidth: 1.5, borderColor: '#222' },
+  // Clips
+  clipsWrapper: { flex: 1, position: 'relative' },
+  scrubberLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, backgroundColor: '#fff', zIndex: 10, opacity: 0.8 },
+  clipsScroll: { paddingHorizontal: 8, alignItems: 'center', paddingVertical: 6 },
+  clipFrame: { width: 72, height: 56, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1, borderColor: '#333', position: 'relative' },
+  clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
+  clipFrameImg: { width: '100%', height: '100%' },
+  coverBadge: { position: 'absolute', top: 3, left: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 3, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 4, paddingVertical: 1 },
+  coverText: { color: '#fff', fontSize: 8, fontWeight: '700' },
+  clipBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 3, paddingVertical: 1 },
+  clipDuration: { color: '#fff', fontSize: 8, fontWeight: '700' },
+  addClipBtn: { width: 40, height: 56, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', marginLeft: 2 },
+
+  // Aux tracks
+  auxTrack: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 28, borderTopWidth: 1, borderTopColor: '#111' },
+  auxLabel: { color: '#555', fontSize: 11 },
+
+  // Upload overlay
+  uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', gap: 16, zIndex: 100 },
+  uploadMsg: { color: '#aaa', fontSize: 13 },
+  progressBarBg: { width: '70%', height: 6, backgroundColor: '#222', borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: '#00d4d4', borderRadius: 3 },
+
+  // Bottom toolbar
+  bottomToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1a1a1a', backgroundColor: '#000' },
+  tabBtn: { alignItems: 'center', gap: 3, flex: 1 },
+  tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
+
+  // Legacy (kept for compatibility)
+  clip: { width: 72, height: 56, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1.5, borderColor: '#222' },
   clipDragging: { borderColor: '#00d4d4', opacity: 0.85, transform: [{ scale: 1.04 }] },
   clipSelected: { borderColor: '#00d4d4' },
   clipThumb: { width: '100%', height: '100%' },
-  coverBadge: { position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 5, paddingVertical: 2 },
-  coverText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-  clipBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 4, paddingVertical: 2 },
-  clipDuration: { color: '#fff', fontSize: 9, fontWeight: '700' },
   clipRemove: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
-
-  addClipBtn: { width: 44, height: 68, borderRadius: 4, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', marginLeft: 4 },
-
-  scrubberLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, backgroundColor: '#ff3b30', zIndex: 10 },
-
-  auxRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, minHeight: 36 },
-  auxTrack: { flex: 1, height: 32, borderRadius: 4, backgroundColor: '#111', borderWidth: 1, borderColor: '#1e1e1e', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, marginRight: 10 },
-  auxLabel: { color: '#555', fontSize: 12 },
-
-  timestampRow: { paddingHorizontal: 14, paddingVertical: 4 },
-  timestamp: { color: '#666', fontSize: 11, fontWeight: '600' },
-
-  bottomToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1a1a1a', backgroundColor: '#0a0a0a' },
-  tabBtn: { alignItems: 'center', gap: 3, flex: 1 },
-  tabLabel: { color: '#666', fontSize: 10, fontWeight: '600' },
 });

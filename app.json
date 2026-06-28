@@ -21,18 +21,8 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.CAMERA"
       ]
-    },
-    "extra": {
-      "eas": {
-        "projectId": "018af7f9-832e-4a3b-88e7-141fc911fb1e"
-      }
     },
     "plugins": [
       "expo-video",
@@ -70,7 +60,12 @@
       ]
     ],
     "scheme": "tonefyai",
-    "owner": "charlieanderson21213",
-    "ios": {}
+    "owner": "mumberemike4",
+    "ios": {},
+    "extra": {
+      "eas": {
+        "projectId": "ba6875dd-5a8f-438f-91f4-58f4ac5b17c1"
+      }
+    }
   }
 }

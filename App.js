@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
 import * as Updates from 'expo-updates';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
@@ -43,12 +44,22 @@ function App() {
   useEffect(() => {
     async function checkUpdates() {
       try {
+        if (!Updates.isEnabled) {
+          console.log('[OTA] Updates not enabled in this environment');
+          return;
+        }
+        console.log('[OTA] Checking for updates...');
         const update = await Updates.checkForUpdateAsync();
+        console.log('[OTA] Update available:', update.isAvailable);
         if (update.isAvailable) {
+          console.log('[OTA] Fetching update...');
           await Updates.fetchUpdateAsync();
+          console.log('[OTA] Reloading...');
           await Updates.reloadAsync();
         }
-      } catch (e) {}
+      } catch (e) {
+        console.log('[OTA] Error:', e.message);
+      }
     }
     checkUpdates();
   }, []);
@@ -88,6 +99,7 @@ function App() {
   }
 
   return (
+    <ThemeProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
       <StatusBar style="light" />
@@ -118,6 +130,7 @@ function App() {
       </Stack.Navigator>
     </NavigationContainer>
     </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }
 

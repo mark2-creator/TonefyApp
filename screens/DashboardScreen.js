@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import {
   View, Text, ScrollView, TouchableOpacity, Image,
-  StyleSheet, StatusBar
+  StyleSheet, StatusBar, Modal, Switch
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
@@ -14,11 +15,12 @@ const sections = [
     icon: 'movie',
     color: '#2ecc71',
     cards: [
-      { title: 'Record to Video', desc: 'Turn recordings into polished videos with subtitles.', icon: 'fiber-manual-record', color: '#ff6b6b' },
-      { title: 'Auto Edit Video', desc: 'Add subtitles and B-rolls to your existing video recordings.', icon: 'auto-fix-high', color: '#58e5c2' },
       { title: 'Idea to Video', desc: 'Transform your ideas into stunning videos.', icon: 'auto-awesome', color: '#2ecc71' },
       { title: 'Script to Video', desc: 'Transform your scripts into engaging videos.', icon: 'description', color: '#92ccff' },
-      { title: 'Empty Video', desc: 'Start creating video from a blank file.', icon: 'add-box', color: '#555' },
+      { title: 'URL to Video', desc: 'Convert web pages into videos.', icon: 'link', color: '#92ccff' },
+      { title: 'Edit Video', desc: 'Edit and combine your media into one video.', icon: 'content-cut', color: '#58e5c2' },
+      { title: 'My Videos', desc: 'Browse your video library.', icon: 'video-library', color: '#2ecc71' },
+      { title: 'Record to Video', desc: 'Turn recordings into polished videos.', icon: 'fiber-manual-record', color: '#ff6b6b' },
     ],
   },
   {
@@ -50,25 +52,34 @@ export default function DashboardScreen({ navigation }) {
     'Creator';
   const initial = (user?.displayName || user?.email || '?')[0].toUpperCase();
 
+  const [showSettings, setShowSettings] = useState(false);
+  const { theme, isDark, toggleTheme } = useTheme();
+  const darkMode = isDark;
+
   const handleCardPress = (title) => {
     if (title === 'Idea to Video') navigation.navigate('IdeaToVideo');
     else if (title === 'Script to Video') navigation.navigate('ScriptToVideo');
+    else if (title === 'URL to Video') navigation.navigate('UrlToVideo');
+    else if (title === 'Edit Video') navigation.navigate('EditVideo');
     else if (title === 'Auto Edit Video') navigation.navigate('EditVideo');
+    else if (title === 'My Videos') navigation.navigate('MainTabs', { screen: 'Videos' });
     else if (title === 'Idea to Audio') navigation.navigate('IdeaToAudio');
     else if (title === 'Script to Audio') navigation.navigate('ScriptToAudio');
     else if (title === 'Record to Video') navigation.navigate('RecordToVideo');
+    else if (title === 'Empty Video') navigation.navigate('EditVideo');
+    else if (title === 'Empty Audio') navigation.navigate('IdeaToAudio');
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.header }]}>
         <Text style={styles.logo}>Tonefy AI</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <MaterialIcons name="settings" size={22} color="#888" />
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setShowSettings(true)}>
+            <MaterialIcons name="settings" size={22} color={theme.icon} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.avatar}>
             {user?.photoURL ? (
@@ -80,11 +91,80 @@ export default function DashboardScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Settings Modal */}
+      <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.settingBg }]}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <MaterialIcons name={darkMode ? 'dark-mode' : 'light-mode'} size={22} color="#2ecc71" />
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Dark Mode</Text>
+                  <Text style={styles.settingDesc}>Switch between dark and light theme</Text>
+                </View>
+              </View>
+              <Switch
+                value={darkMode}
+                onValueChange={toggleTheme}
+                trackColor={{ false: '#333', true: '#2ecc7150' }}
+                thumbColor={darkMode ? '#2ecc71' : '#888'}
+              />
+            </View>
+
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('Profile'); }}>
+              <View style={styles.settingLeft}>
+                <MaterialIcons name="person" size={22} color="#2ecc71" />
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Profile</Text>
+                  <Text style={styles.settingDesc}>Manage your account</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#555" />
+            </TouchableOpacity>
+
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <MaterialIcons name="notifications" size={22} color="#2ecc71" />
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Notifications</Text>
+                  <Text style={styles.settingDesc}>Manage push notifications</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#555" />
+            </TouchableOpacity>
+
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <MaterialIcons name="help" size={22} color="#2ecc71" />
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Help & Support</Text>
+                  <Text style={styles.settingDesc}>Get help or report an issue</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#555" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSettings(false)}>
+              <Text style={styles.closeBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Greeting */}
         <View style={styles.greeting}>
-          <Text style={styles.welcome}>Welcome, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Choose a workflow to get started</Text>
+          <Text style={[styles.welcome, { color: theme.text }]}>Welcome, {firstName}! 👋</Text>
+          <Text style={[styles.subtitle, { color: theme.subtext }]}>Choose a workflow to get started</Text>
         </View>
 
         {/* Sections */}
@@ -92,21 +172,21 @@ export default function DashboardScreen({ navigation }) {
           <View key={i} style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name={section.icon} size={16} color={section.color} />
-              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
             </View>
             <View style={styles.grid}>
               {section.cards.map((card, j) => (
                 <TouchableOpacity
                   key={j}
-                  style={styles.card}
+                  style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
                   onPress={() => handleCardPress(card.title)}
                   activeOpacity={0.75}
                 >
                   <View style={[styles.cardIconWrap, { backgroundColor: card.color + '18' }]}>
                     <MaterialIcons name={card.icon} size={22} color={card.color} />
                   </View>
-                  <Text style={styles.cardTitle}>{card.title}</Text>
-                  <Text style={styles.cardDesc}>{card.desc}</Text>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{card.title}</Text>
+                  <Text style={[styles.cardDesc, { color: theme.subtext }]}>{card.desc}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -114,10 +194,10 @@ export default function DashboardScreen({ navigation }) {
         ))}
 
         {/* Featured banner */}
-        <View style={styles.banner}>
+        <View style={[styles.banner, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.bannerContent}>
             <Text style={styles.bannerTag}>FEATURED TOOL</Text>
-            <Text style={styles.bannerTitle}>AI Avatar{'\n'}Generation</Text>
+            <Text style={[styles.bannerTitle, { color: theme.text }]}>AI Avatar{'\n'}Generation</Text>
             <TouchableOpacity style={styles.bannerBtn}>
               <Text style={styles.bannerBtnText}>Explore Beta</Text>
             </TouchableOpacity>
@@ -175,4 +255,15 @@ const styles = StyleSheet.create({
   navItem: { alignItems: 'center', gap: 3 },
   navLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   navFab: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#2ecc71', alignItems: 'center', justifyContent: 'center', marginBottom: 8, shadowColor: '#2ecc71', shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 20 },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  settingLabel: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  settingDesc: { color: '#666', fontSize: 11, marginTop: 2 },
+  settingDivider: { height: 1, backgroundColor: '#1a1a1a' },
+  closeBtn: { marginTop: 24, backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, alignItems: 'center' },
+  closeBtnText: { color: '#888', fontWeight: '600', fontSize: 14 },
 });
