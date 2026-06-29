@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   // Clips
   clipsWrapper: { flex: 1, position: 'relative' },
   scrubberLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, backgroundColor: '#fff', zIndex: 10, opacity: 0.8 },
-  clipsScroll: { paddingHorizontal: 8, alignItems: 'center', paddingVertical: 6 },
+  clipsScroll: { paddingLeft: '50%', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
   clipFrame: { width: 72, height: 56, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1, borderColor: '#333', position: 'relative' },
   clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
   clipFrameImg: { width: '100%', height: '100%' },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   addClipBtn: { width: 40, height: 56, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', marginLeft: 2 },
 
   // Aux tracks
-  auxTrack: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 28, borderTopWidth: 1, borderTopColor: '#111' },
+  auxTrack: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: '50%', paddingRight: 12, height: 28, borderTopWidth: 1, borderTopColor: '#111' },
   auxLabel: { color: '#555', fontSize: 11 },
 
   // Upload overlay

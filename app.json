@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "updates": {
-      "url": "https://u.expo.dev/018af7f9-832e-4a3b-88e7-141fc911fb1e",
+      "url": "https://u.expo.dev/ba6875dd-5a8f-438f-91f4-58f4ac5b17c1",
       "checkAutomatically": "ON_LOAD",
       "channel": "preview"
     },
@@ -19,6 +19,9 @@
       },
       "package": "com.ahumuza21213.TonefyApp",
       "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.CAMERA"
