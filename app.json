@@ -11,7 +11,7 @@
       "checkAutomatically": "ON_LOAD",
       "channel": "preview"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.1.0",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
