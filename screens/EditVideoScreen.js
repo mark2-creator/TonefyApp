@@ -1502,81 +1502,19 @@ export default function EditVideoScreen({ navigation }) {
             </View>
 
             {/* Voiceover row */}
-            <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
-              ref={voiceoverScrollRef}
-              style={[styles.auxScrollRow, { paddingLeft: 0 }]}
-              contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
-              <View style={{ width: audioTracks.some(t => t.isVoiceover) ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
-                {audioTracks.filter(t => t.isVoiceover).map(track => {
-                  const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
-                  const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
-                  const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
-                  return (
-                    <DraggableAudioTrack key={track.key} trackKey={track.key}
-                      initialLeft={trackX} width={trackW} height={26}
-                      minX={0} maxX={Math.max(0, timelineContentWidth - trackW)}
-                      onDragEnd={(key, newX) => {
-                        const newOffset = newX / PIXELS_PER_SECOND;
-                        setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
-                      }}
-                      onTrimEnd={applyAudioTrimEdit}
-                      isSelected={selectedAudioTrackKey === track.key}>
-                      <TouchableOpacity
-                        onPress={() => setSelectedAudioTrackKey(selectedAudioTrackKey === track.key ? null : track.key)}
-                        onLongPress={() => Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== track.key)) }])}
-                        style={{ backgroundColor:'#3b82f6', borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
-                        <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
-                        <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
-                      </TouchableOpacity>
-                    </DraggableAudioTrack>
-                  );
-                })}
-              </View>
-              <TouchableOpacity
-                style={audioTracks.some(t => t.isVoiceover) ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
-                onPress={() => { setShowVoiceoverModal(true); setVoiceoverTab('generate'); }}>
-                <MaterialIcons name={audioTracks.some(t => t.isVoiceover) ? 'add' : 'record-voice-over'} size={audioTracks.some(t => t.isVoiceover) ? 16 : 12} color={audioTracks.some(t => t.isVoiceover) ? '#666' : '#555'} />
-                {!audioTracks.some(t => t.isVoiceover) && <Text style={styles.auxLabel}>Add voiceover</Text>}
-              </TouchableOpacity>
-            </ReanimatedAnimated.ScrollView>
+            <AudioTrackRow scrollRef={voiceoverScrollRef} timelineContentWidth={timelineContentWidth}
+              tracksComputed={voiceoverTracksComputed} waveformCache={waveformCache}
+              selectedAudioTrackKey={selectedAudioTrackKey}
+              accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover"
+              onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
+              onLongPressTrack={onLongPressVoiceoverTrack} onPressAdd={onPressAddVoiceover} />
             {/* Music row */}
-            <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
-              ref={musicScrollRef}
-              style={[styles.auxScrollRow, { paddingLeft: 0 }]}
-              contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
-              <View style={{ width: audioTracks.some(t => t.isMusic) ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
-                {audioTracks.filter(t => t.isMusic).map(track => {
-                  const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
-                  const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
-                  const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
-                  return (
-                    <DraggableAudioTrack key={track.key} trackKey={track.key}
-                      initialLeft={trackX} width={trackW} height={26}
-                      minX={0} maxX={Math.max(0, timelineContentWidth - trackW)}
-                      onDragEnd={(key, newX) => {
-                        const newOffset = newX / PIXELS_PER_SECOND;
-                        setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
-                      }}
-                      onTrimEnd={applyAudioTrimEdit}
-                      isSelected={selectedAudioTrackKey === track.key}>
-                      <TouchableOpacity
-                        onPress={() => setSelectedAudioTrackKey(selectedAudioTrackKey === track.key ? null : track.key)}
-                        onLongPress={() => Alert.alert('Delete music?', 'This will remove this music track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== track.key)) }])}
-                        style={{ backgroundColor:'#22c55e', borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
-                        <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
-                        <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
-                      </TouchableOpacity>
-                    </DraggableAudioTrack>
-                  );
-                })}
-              </View>
-              <TouchableOpacity
-                style={audioTracks.some(t => t.isMusic) ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
-                onPress={() => { setShowMusicModal(true); setMusicTab('library'); loadMusicLibrary(); }}>
-                <MaterialIcons name={audioTracks.some(t => t.isMusic) ? 'add' : 'music-note'} size={audioTracks.some(t => t.isMusic) ? 16 : 12} color={audioTracks.some(t => t.isMusic) ? '#666' : '#555'} />
-                {!audioTracks.some(t => t.isMusic) && <Text style={styles.auxLabel}>Add music</Text>}
-              </TouchableOpacity>
-            </ReanimatedAnimated.ScrollView>
+            <AudioTrackRow scrollRef={musicScrollRef} timelineContentWidth={timelineContentWidth}
+              tracksComputed={musicTracksComputed} waveformCache={waveformCache}
+              selectedAudioTrackKey={selectedAudioTrackKey}
+              accentColor="#22c55e" iconName="music-note" addLabel="Add music"
+              onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
+              onLongPressTrack={onLongPressMusicTrack} onPressAdd={onPressAddMusic} />
             {/* Text row */}
             <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
             {/* Captions row - grouped preview chips, see comment on
