@@ -4,3 +4,4 @@ dist/
 *.log
 .pm2/
 *.sock
+EditVideoScreen.js.bak_*
