@@ -112,41 +112,33 @@ preview, grouped caption summary chips (`captionPreviewGroups`) in brand green.
 
 ### Phase 4: Performance/memoization reapply — ✅ COMPLETE
 
-All four aux rows extracted as `React.memo` components and wired up
-(all in `screens/EditVideoScreen.js`):
+Extracted as `React.memo` components: `ClipsRow`, `TextRow`, `CaptionsRow`, and
+`AudioTrackRow` (shared by both voiceover and music rows — two call sites, wired in
+commit `56d986ad`). Net -62 lines of duplication. Build check clean before and after
+the JSX swap.
 
-| Component | Defined at | Wired up? |
-|---|---|---|
-| `AudioTrackRow` | line 370 | ✅ two call sites (voiceover + music) |
-| `CaptionsRow` | line 408 | ✅ |
-| `TextRow` | line 432 | ✅ |
-| `ClipsRow` | line 454 | ✅ |
+## Repo hygiene (as of Aug 5 2026)
 
-`AudioTrackRow` is shared by both the voiceover and music rows, parameterised by
-`accentColor` / `iconName` / `addLabel` / `tracksComputed` + the shared handlers
-`onDragEndAudioTrack`, `applyAudioTrimEdit`, `onPressAudioTrack`. Replacing the two
-inline blocks removed 62 net lines of duplication. Build check clean.
+- `rebuild/phase-4` pushed to `origin`, confirmed at `80911885`.
+- `node_modules/` removed from git tracking (was previously committed, which is
+  unusual/wrong) — now gitignored, relies on `package-lock.json` for reproducible
+  installs.
+- `EditVideoScreen.js.bak_*` recovery snapshots gitignored (left on disk, not deleted).
+- Work now lives in `~/tonefy-build` (persistent), not `/tmp` — the `/tmp` copy was
+  the source of the original data-loss incident and should be treated as a stale
+  backup only, safe to remove once confidence is established.
 
 ## IMMEDIATE NEXT STEPS
 
-1. **Push to `mark2-creator/TonefyApp`.** Work is committed locally on branch
-   `rebuild/phase-4` (`3fb978c9` = Phases 1–3 + partial 4, plus a follow-up commit wiring
-   `AudioTrackRow`), but **nothing has been pushed yet** — the only copy is still on this
-   VPS. Pushing is the actual root-cause fix for the original data-loss incident.
-   Merge to `main` when ready.
-   Note: `node_modules/` is tracked in git and floods `git status`. Filter with:
-   `git status --short -- . ':(exclude)node_modules' ':(exclude)dist'`
-   Still untracked, needs a decision: four `EditVideoScreen.js.bak_*` recovery snapshots
-   (probably gitignore rather than commit).
-
-2. **Set up safe on-device testing** without touching live `preview` — separate
-   `eas update --branch recovery-test-style` channel + a build pointed at it. Reassess
-   whether Claude Code changes what's possible here vs. pure Termux+SSH.
-
-3. **Next feature work**: pick from the known-gaps list below (pinch-to-zoom and
-   frame-accurate scrub-seeking are the biggest parity gaps).
-
-4. Rotate the exposed GitHub PAT in `xauusd_scalper` (low priority).
+1. Set up safe on-device testing without touching the live `preview` branch — a
+   separate `eas update --branch recovery-test`-style channel + a build pointed at
+   it. Reassess whether Claude Code changes what's possible here vs. pure Termux+SSH.
+2. Once `rebuild/phase-4` is tested and confirmed at parity with live `preview`,
+   open a PR into `main` and merge.
+3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
+   copy is the sole working source (git history is now the real safety net).
+4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
+   item, low priority, not urgent).
 
 ## Known gaps vs. the original lost version (lower priority, not yet rebuilt)
 
