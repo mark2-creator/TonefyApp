@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, Image, ScrollView,
   StyleSheet, ActivityIndicator, Alert, StatusBar,
-  Dimensions, Modal, TextInput, PanResponder, Animated
+  Dimensions, Modal, TextInput, PanResponder, Animated, FlatList
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, Audio } from 'expo-av';
@@ -11,6 +11,8 @@ import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth } from '../firebase';
+import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -198,6 +200,72 @@ function WaveformBars({ peaks, color = '#00d4d4', height = 28 }) {
   );
 }
 
+// Draggable/trimmable wrapper for an absolute-positioned audio timeline
+// block. Position is driven externally (via initialLeft, recomputed from
+// startOffset/PIXELS_PER_SECOND by the caller) but tracked internally
+// during an active drag/trim gesture so movement feels immediate rather
+// than waiting on a full re-render round-trip.
+function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX, onDragEnd, onTrimEnd, isSelected, children }) {
+  const leftAnim = useRef(new Animated.Value(initialLeft)).current;
+  const currentLeftRef = useRef(initialLeft);
+  const dragStartRef = useRef(initialLeft);
+
+  useEffect(() => {
+    currentLeftRef.current = initialLeft;
+    leftAnim.setValue(initialLeft);
+  }, [initialLeft]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (e, g) => Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderGrant: () => {
+        dragStartRef.current = currentLeftRef.current;
+      },
+      onPanResponderMove: (e, g) => {
+        const newX = Math.max(minX, Math.min(maxX, dragStartRef.current + g.dx));
+        currentLeftRef.current = newX;
+        leftAnim.setValue(newX);
+      },
+      onPanResponderRelease: () => {
+        onDragEnd(trackKey, currentLeftRef.current);
+      },
+    })
+  ).current;
+
+  const leftTrimResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (e, g) => Math.abs(g.dx) > 4,
+      onPanResponderRelease: (e, g) => { onTrimEnd(trackKey, 'left', g.dx); },
+    })
+  ).current;
+
+  const rightTrimResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (e, g) => Math.abs(g.dx) > 4,
+      onPanResponderRelease: (e, g) => { onTrimEnd(trackKey, 'right', g.dx); },
+    })
+  ).current;
+
+  return (
+    <Animated.View style={{ position: 'absolute', left: leftAnim, top: 0, width, height }} {...panResponder.panHandlers}>
+      {children}
+      {isSelected && (
+        <React.Fragment>
+          <View {...leftTrimResponder.panHandlers} style={{ position: 'absolute', left: -6, top: 0, width: 14, height, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 3, height: height * 0.6, backgroundColor: '#fff', borderRadius: 2 }} />
+          </View>
+          <View {...rightTrimResponder.panHandlers} style={{ position: 'absolute', right: -6, top: 0, width: 14, height, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: 3, height: height * 0.6, backgroundColor: '#fff', borderRadius: 2 }} />
+          </View>
+        </React.Fragment>
+      )}
+    </Animated.View>
+  );
+}
+
 function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }) {
   const pan = useRef(new Animated.ValueXY({
     x: (overlay.x / 100) * containerW,
@@ -229,21 +297,215 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
     })
   ).current;
 
+  const captionStyleId = overlay.captionStyleId;
+
   return (
     <Animated.View
       {...panResponder.panHandlers}
-      style={{ position: 'absolute', transform: pan.getTranslateTransform() }}>
+      style={{ position: 'absolute', transform: pan.getTranslateTransform(),
+        width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>
       <TouchableOpacity onPress={() => onTap(overlay)} activeOpacity={0.7}>
-        <Text style={{
-          color: overlay.color, fontSize: overlay.size,
-          fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
-          fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
-          textShadowColor: '#000', textShadowRadius: 4, textShadowOffset: { width: 1, height: 1 },
-        }}>{overlay.text}</Text>
+        {captionStyleId === 'sticker' ? (
+          <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
+            <Text style={{ color: '#000', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
+          </View>
+        ) : captionStyleId === 'outline' ? (
+          <View style={{ alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
+            {[[-1,-1],[1,-1],[-1,1],[1,1]].map(([dx, dy], i) => (
+              <Text key={i} style={{ position: 'absolute', left: dx, top: dy, color: '#000', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
+            ))}
+            <Text style={{ color: '#fff', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
+          </View>
+        ) : (
+          <Text style={{
+            color: overlay.color, fontSize: overlay.size,
+            fontWeight: (overlay.captionBold || overlay.font === 'Bold') ? 'bold' : 'normal',
+            fontStyle: (captionStyleId === 'cinematic' || overlay.font === 'Italic') ? 'italic' : 'normal',
+            textAlign: overlay.isAutoCaption ? 'center' : 'left',
+            backgroundColor: overlay.captionBg ? '#fff' : 'transparent',
+            paddingHorizontal: overlay.captionBg ? 6 : 0,
+            borderRadius: overlay.captionBg ? 4 : 0,
+            textShadowColor: captionStyleId === 'neon' ? overlay.color : (overlay.captionShadow === false ? 'transparent' : '#000'),
+            textShadowRadius: captionStyleId === 'neon' ? 8 : 4,
+            textShadowOffset: captionStyleId === 'shadow3d' ? { width: 3, height: 3 } : { width: 1, height: 1 },
+          }}>{overlay.text}</Text>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
 }
+
+const CAPTION_STYLES = [
+  { id: 'classic',   label: 'Classic',    color: '#fff',    bold: false, shadow: true,  bg: false },
+  { id: 'tiktok',    label: 'TikTok',     color: '#fff',    bold: true,  shadow: true,  bg: false },
+  { id: 'bold',      label: 'Bold',       color: '#fff',    bold: true,  shadow: true,  bg: false },
+  { id: 'neon',      label: 'Neon',       color: '#39ff14', bold: true,  shadow: true,  bg: false },
+  { id: 'fire',      label: 'Fire',       color: '#ff6b00', bold: true,  shadow: true,  bg: false },
+  { id: 'sticker',   label: 'Sticker',    color: '#000',    bold: true,  shadow: false, bg: true  },
+  { id: 'shadow3d',  label: '3D Shadow',  color: '#fff',    bold: true,  shadow: true,  bg: false },
+  { id: 'highlight', label: 'Highlight',  color: '#fff',    bold: true,  shadow: false, bg: false },
+  { id: 'outline',   label: 'Outline',    color: '#fff',    bold: true,  shadow: false, bg: false },
+  { id: 'cinematic', label: 'Cinematic',  color: '#f5deb3', bold: false, shadow: true,  bg: false },
+  { id: 'minimal',   label: 'Minimal',    color: '#fff',    bold: false, shadow: false, bg: false },
+  { id: 'purple',    label: 'Purple',     color: '#a855f7', bold: true,  shadow: true,  bg: false },
+];
+
+function CaptionPreview({ style, isSelected, onPress }) {
+  return (
+    <TouchableOpacity onPress={onPress}
+      style={{ width: '48%', marginBottom: 10, borderRadius: 10, padding: 14, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: isSelected ? '#2ECC71' : '#1a1a1a', borderWidth: 1, borderColor: isSelected ? '#2ECC71' : '#2a2a2a' }}>
+      <Text style={{
+        color: style.color, fontWeight: style.bold ? 'bold' : 'normal', fontSize: 15,
+        textShadowColor: style.shadow ? 'rgba(0,0,0,0.8)' : 'transparent',
+        textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2,
+        backgroundColor: style.bg ? '#fff' : 'transparent',
+        paddingHorizontal: style.bg ? 6 : 0, borderRadius: style.bg ? 4 : 0,
+      }}>Sample</Text>
+      <Text style={{ color: isSelected ? '#000' : '#888', fontSize: 11, marginTop: 6 }}>{style.label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const AudioTrackRow = React.memo(function AudioTrackRow({
+  scrollRef, timelineContentWidth, tracksComputed, waveformCache, selectedAudioTrackKey,
+  accentColor, iconName, addLabel, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
+}) {
+  const hasTracks = tracksComputed.length > 0;
+  return (
+    <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
+      ref={scrollRef}
+      style={[styles.auxScrollRow, { paddingLeft: 0 }]}
+      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      <View style={{ width: hasTracks ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
+        {tracksComputed.map(({ track, trackW, trackX }) => (
+          <DraggableAudioTrack key={track.key} trackKey={track.key}
+            initialLeft={trackX} width={trackW} height={26}
+            minX={0} maxX={Math.max(0, timelineContentWidth - trackW)}
+            onDragEnd={onDragEnd}
+            onTrimEnd={onTrimEnd}
+            isSelected={selectedAudioTrackKey === track.key}>
+            <TouchableOpacity
+              onPress={() => onPressTrack(track.key)}
+              onLongPress={() => onLongPressTrack(track.key)}
+              style={{ backgroundColor: accentColor, borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
+              <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
+              <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
+            </TouchableOpacity>
+          </DraggableAudioTrack>
+        ))}
+      </View>
+      <TouchableOpacity
+        style={hasTracks ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
+        onPress={onPressAdd}>
+        <MaterialIcons name={hasTracks ? 'add' : iconName} size={hasTracks ? 16 : 12} color={hasTracks ? '#666' : '#555'} />
+        {!hasTracks && <Text style={styles.auxLabel}>{addLabel}</Text>}
+      </TouchableOpacity>
+    </ReanimatedAnimated.ScrollView>
+  );
+});
+
+const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewGroups, onPress }) {
+  return (
+    <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
+      ref={scrollRef}
+      style={styles.auxScrollRow}
+      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      {captionPreviewGroups.length > 0 ? (
+        captionPreviewGroups.map(g => (
+          <TouchableOpacity key={g.key} style={styles.captionChip}
+            onPress={onPress}>
+            <Text style={styles.captionChipText} numberOfLines={1}>{g.text}</Text>
+          </TouchableOpacity>
+        ))
+      ) : (
+        <TouchableOpacity style={styles.auxTrackBtn}
+          onPress={onPress}>
+          <MaterialIcons name="closed-caption" size={12} color="#555" />
+          <Text style={styles.auxLabel}>Auto captions</Text>
+        </TouchableOpacity>
+      )}
+    </ReanimatedAnimated.ScrollView>
+  );
+});
+
+const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, onLongPressChip, onPressChip, onPressAdd }) {
+  return (
+    <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
+      ref={scrollRef}
+      style={styles.auxScrollRow}
+      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      {manualTextOverlays.map(t => (
+        <TouchableOpacity key={t.key} style={styles.textChip}
+          onLongPress={() => onLongPressChip(t.key)}
+          onPress={() => onPressChip(t)}>
+          <Text style={[styles.textChipText, { color: t.color }]}>{t.text}</Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity style={styles.auxTrackBtn}
+        onPress={onPressAdd}>
+        <MaterialIcons name="title" size={12} color="#555" />
+        <Text style={styles.auxLabel}>Add text</Text>
+      </TouchableOpacity>
+    </ReanimatedAnimated.ScrollView>
+  );
+});
+
+const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd }) {
+  return (
+    <React.Fragment>
+      {clipsComputed.map(({ item, idx, isLast }) => (
+        <View key={item.key} style={{ flexDirection:'row', alignItems:'center' }}>
+          <TouchableOpacity
+            onPress={() => onPressClip(item.key)}
+            onLongPress={() => onLongPressClip(item)}
+            activeOpacity={0.85}>
+            <View style={[styles.clipFrame, item.key === selectedKey && styles.clipFrameSelected]}>
+              <Image source={{ uri: item.uri }} style={styles.clipFrameImg} resizeMode="cover" />
+              {idx === 0 && (
+                <View style={styles.coverBadge}>
+                  <MaterialIcons name="edit" size={9} color="#fff" />
+                  <Text style={styles.coverText}>Cover</Text>
+                </View>
+              )}
+              {item.muted && (
+                <View style={styles.mutedBadge}>
+                  <MaterialIcons name="volume-off" size={10} color="#fff" />
+                </View>
+              )}
+              {item.speed && item.speed !== 1 && (
+                <View style={styles.speedBadge}>
+                  <Text style={styles.speedBadgeText}>{item.speed}x</Text>
+                </View>
+              )}
+              <View style={styles.clipBottom}>
+                <Text style={styles.clipDuration}>
+                  {item.type === 'image' ? item.duration + 's' : (item.trimEnd ? item.trimEnd.toFixed(1) + 's' : 'Full')}
+                </Text>
+              </View>
+              {item.key === selectedKey && (
+                <TouchableOpacity style={styles.clipRemove} onPress={() => onPressRemove(item.key)}>
+                  <MaterialIcons name="close" size={11} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+          {!isLast && (
+            <TouchableOpacity
+              onPress={() => onPressTransition(item.key)}
+              style={{ width:24, alignSelf:'center', alignItems:'center', justifyContent:'center',
+                backgroundColor:'#1a1a1a', borderRadius:12, height:24, borderWidth:1, borderColor:'#333', marginHorizontal:2 }}>
+              <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+      <TouchableOpacity style={styles.addClipBtn} onPress={onPressAdd}>
+        <MaterialIcons name="add" size={22} color="#888" />
+      </TouchableOpacity>
+    </React.Fragment>
+  );
+});
 
 export default function EditVideoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -252,14 +514,33 @@ export default function EditVideoScreen({ navigation }) {
   // Media items
   const [items, setItems] = useState([]);
   const [selectedKey, setSelectedKey] = useState(null);
+  const [selectedAudioTrackKey, setSelectedAudioTrackKey] = useState(null);
 
   // Playback
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
   const playTimer = useRef(null);
-  const timelineScrollRef = useRef(null);
+  const timelineScrollRef = useAnimatedRef();
+  const voiceoverScrollRef = useAnimatedRef();
+  const musicScrollRef = useAnimatedRef();
+  const textScrollRef = useAnimatedRef();
+  const captionsScrollRef = useAnimatedRef();
   const isUserScrubbing = useRef(false);
+  const scrollXShared = useSharedValue(0);
+  const lastScrubUpdateRef = useRef(0);
+  const lastPlaybackPosUpdateRef = useRef(0);
+  useAnimatedReaction(
+    () => scrollXShared.value,
+    (x) => {
+      scrollTo(timelineScrollRef, x, 0, false);
+      scrollTo(voiceoverScrollRef, x, 0, false);
+      scrollTo(musicScrollRef, x, 0, false);
+      scrollTo(textScrollRef, x, 0, false);
+      scrollTo(captionsScrollRef, x, 0, false);
+    },
+    []
+  );
 
   // Upload/export
   const [uploading, setUploading] = useState(false);
@@ -337,6 +618,45 @@ export default function EditVideoScreen({ navigation }) {
   const [showResModal, setShowResModal] = useState(false);
 
   const selectedItem = items.find(i => i.key === selectedKey);
+  // Reasonable positioning bounds for audio track drag/trim - based on total
+  // clip duration, with a floor so short/empty timelines still give tracks
+  // room to be dragged around rather than being pinned to a near-zero width.
+  const timelineContentWidth = Math.max(duration * PIXELS_PER_SECOND, 300);
+  const clipsComputed = useMemo(() => {
+    return items.map((item, idx) => ({ item, idx, isLast: idx === items.length - 1 }));
+  }, [items]);
+  const onPressClip = useCallback((key) => {
+    setSelectedKey(prevKey => prevKey === key ? null : key);
+  }, []);
+  const onPressClipTransition = useCallback((key) => {
+    setTransitionTargetKey(key);
+    setShowTransitionModal(true);
+  }, []);
+  const manualTextOverlays = useMemo(() => textOverlays.filter(t => !t.isAutoCaption), [textOverlays]);
+  const onPressTextChip = useCallback((t) => {
+    setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setShowTextModal(true);
+  }, []);
+  const onPressAddText = useCallback(() => {
+    setEditingText(null); setTextInput(''); setShowTextModal(true);
+  }, []);
+  const openCaptionModal = useCallback(() => setShowCaptionModal(true), []);
+  const captionPreviewGroups = useMemo(() => {
+    const WORDS_PER_GROUP = 6;
+    const captions = textOverlays.filter(t => t.isAutoCaption).slice().sort((a, b) => a.startTime - b.startTime);
+    const groups = [];
+    let current = null;
+    captions.forEach(c => {
+      const wc = c.text.trim().split(/\s+/).length;
+      if (!current || current.wordCount + wc > WORDS_PER_GROUP) {
+        current = { key: 'capgroup_' + c.key, text: c.text, wordCount: wc };
+        groups.push(current);
+      } else {
+        current.text += ' ' + c.text;
+        current.wordCount += wc;
+      }
+    });
+    return groups;
+  }, [textOverlays]);
 
   // Compute total duration
   useEffect(() => {
@@ -345,27 +665,47 @@ export default function EditVideoScreen({ navigation }) {
     setDuration(total);
   }, [items]);
 
-  // Sync timeline scroll to playback position (CapCut-style fixed playhead)
+  // Sync timeline scroll to playback position (CapCut-style fixed playhead).
+  // Skipped during active playback and active scrubbing: the RAF tick loop
+  // below drives scrollXShared directly every frame in that case.
   useEffect(() => {
-    if (isUserScrubbing.current) return;
-    if (timelineScrollRef.current) {
-      timelineScrollRef.current.scrollTo({ x: position * PIXELS_PER_SECOND, animated: false });
-    }
+    if (isUserScrubbing.current || isPlaying) return;
+    scrollXShared.value = position * PIXELS_PER_SECOND;
   }, [position]);
 
-  // Playback timer
+  // Playback timer (requestAnimationFrame-driven, real elapsed time).
+  // Scroll is updated directly via scrollXShared every frame (UI thread,
+  // cheap) so it stays smooth at 60fps regardless of React render cost.
+  // setPosition (React state) is throttled separately since it triggers a
+  // full component re-render - the visible scroll motion doesn't depend on it.
   useEffect(() => {
     if (isPlaying) {
-      playTimer.current = setInterval(() => {
-        setPosition(p => {
-          if (p >= duration) { setIsPlaying(false); return 0; }
-          return p + 0.1;
-        });
-      }, 100);
+      let lastTs = null;
+      let localPos = position;
+      const tick = (ts) => {
+        if (lastTs === null) lastTs = ts;
+        const deltaSec = (ts - lastTs) / 1000;
+        lastTs = ts;
+        localPos += deltaSec;
+        if (localPos >= duration) {
+          setIsPlaying(false);
+          setPosition(0);
+          return;
+        }
+        if (!isUserScrubbing.current) {
+          scrollXShared.value = localPos * PIXELS_PER_SECOND;
+        }
+        if (ts - lastPlaybackPosUpdateRef.current >= 40) {
+          lastPlaybackPosUpdateRef.current = ts;
+          setPosition(localPos);
+        }
+        playTimer.current = requestAnimationFrame(tick);
+      };
+      playTimer.current = requestAnimationFrame(tick);
     } else {
-      clearInterval(playTimer.current);
+      cancelAnimationFrame(playTimer.current);
     }
-    return () => clearInterval(playTimer.current);
+    return () => cancelAnimationFrame(playTimer.current);
   }, [isPlaying, duration]);
 
   const fmtTime = (s) => {
@@ -374,7 +714,7 @@ export default function EditVideoScreen({ navigation }) {
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   };
 
-  async function pickMedia() {
+  const pickMedia = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -402,12 +742,12 @@ export default function EditVideoScreen({ navigation }) {
         return next;
       });
     }
-  }
+  }, []);
 
-  function removeItem(key) {
+  const removeItem = useCallback((key) => {
     setItems(prev => prev.filter(i => i.key !== key));
-    if (selectedKey === key) setSelectedKey(null);
-  }
+    setSelectedKey(prevKey => prevKey === key ? null : prevKey);
+  }, []);
 
   function splitAtScrubber() {
     if (!selectedItem) { Alert.alert('Select a clip first'); return; }
@@ -422,12 +762,12 @@ export default function EditVideoScreen({ navigation }) {
     setSelectedKey(null);
   }
 
-  function openTrim(item) {
+  const openTrim = useCallback((item) => {
     setTrimItem(item);
     setTrimStart(item.trimStart || 0);
     setTrimEnd(item.trimEnd || item.sourceDuration || item.duration || 3);
     setShowTrimModal(true);
-  }
+  }, []);
 
   function applyTrim() {
     setItems(prev => prev.map(i => i.key === trimItem.key ? { ...i, trimStart, trimEnd } : i));
@@ -480,9 +820,9 @@ export default function EditVideoScreen({ navigation }) {
     setTextOverlays(prev => prev.map(t => t.key === key ? { ...t, x, y } : t));
   }
 
-  function removeTextOverlay(key) {
+  const removeTextOverlay = useCallback((key) => {
     setTextOverlays(prev => prev.filter(t => t.key !== key));
-  }
+  }, []);
 
   async function pickAudio() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -570,7 +910,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mediaItems, userId: user.uid, resolution,
-          textOverlays: textOverlays.map(t => ({ text: t.text, color: t.color, font: t.font, size: t.size, x: t.x, y: t.y })),
+          textOverlays: textOverlays.map(t => ({ text: t.text, color: t.color, font: t.font, size: t.size, x: t.x, y: t.y, isAutoCaption: t.isAutoCaption || false, captionStyleId: t.captionStyleId, captionBold: t.captionBold, captionShadow: t.captionShadow, captionBg: t.captionBg, startTime: t.startTime, endTime: t.endTime })),
           overlays: uploadedOverlays,
           audioTracks: uploadedAudio,
         }),
@@ -640,11 +980,12 @@ export default function EditVideoScreen({ navigation }) {
   }
 
   function addVoiceoverTrack(track) {
-    const tagged = { ...track, isVoiceover: true };
+    const tagged = { ...track, isVoiceover: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
     setAudioTracks(prev => [...prev, tagged]);
     setVoiceoverTracks(prev => prev.filter(t => t.key !== track.key));
     setShowVoiceoverModal(false);
     fetchWaveform(tagged);
+    fetchAudioDuration(tagged);
   }
 
   async function loadMusicLibrary() {
@@ -675,20 +1016,22 @@ export default function EditVideoScreen({ navigation }) {
   }
 
   function addMusicTrackFromLibrary(track) {
-    const newTrack = { key: String(Date.now()), uri: BACKEND + track.previewUrl, name: track.name, volume: 1, isMusic: true };
+    const newTrack = { key: String(Date.now()), uri: BACKEND + track.previewUrl, name: track.name, volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
     setAudioTracks(prev => [...prev, newTrack]);
     setShowMusicModal(false);
     fetchWaveform(newTrack);
+    fetchAudioDuration(newTrack);
   }
 
   async function pickMusicFile() {
     const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
-      const newTrack = { key: String(Date.now()), uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true };
+      const newTrack = { key: String(Date.now()), uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
       setAudioTracks(prev => [...prev, newTrack]);
       setShowMusicModal(false);
       fetchWaveform(newTrack);
+      fetchAudioDuration(newTrack);
     }
   }
 
@@ -698,7 +1041,7 @@ export default function EditVideoScreen({ navigation }) {
       const res = await fetch(BACKEND + '/api/audio-waveform', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: track.uri, samples: 40 }),
+        body: JSON.stringify({ url: track.uri, samples: 400 }),
       });
       const data = await res.json();
       if (data.peaks) {
@@ -706,6 +1049,78 @@ export default function EditVideoScreen({ navigation }) {
       }
     } catch (e) {}
   }
+
+  // Loads the audio just long enough to read its duration, then unloads it.
+  // Needed because none of the add-audio flows (generate, upload, library)
+  // know the clip's length up front - the timeline block width and trim
+  // range both depend on this. Falls back to a default so a failed lookup
+  // still produces a usable (if under/over-sized) block instead of width 0.
+  async function fetchAudioDuration(track) {
+    try {
+      const { sound, status } = await Audio.Sound.createAsync({ uri: track.uri }, {}, null, false);
+      const durationSec = (status.durationMillis || 5000) / 1000;
+      await sound.unloadAsync();
+      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, sourceDuration: durationSec, trimEnd: durationSec } : t));
+    } catch (e) {
+      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, sourceDuration: t.sourceDuration || 5, trimEnd: t.trimEnd || 5 } : t));
+    }
+  }
+
+  const applyAudioTrimEdit = useCallback((trackKey, side, dx) => {
+    const deltaSec = dx / PIXELS_PER_SECOND;
+    const MIN_DUR = 0.3;
+    setAudioTracks(prev => prev.map(t => {
+      if (t.key !== trackKey) return t;
+      const srcDur = t.sourceDuration ?? 0;
+      const curStart = t.trimStart ?? 0;
+      const curEnd = t.trimEnd ?? srcDur;
+      const curOffset = t.startOffset ?? 0;
+      if (side === 'left') {
+        const newTrimStart = Math.max(0, Math.min(curStart + deltaSec, curEnd - MIN_DUR));
+        const actualDelta = newTrimStart - curStart;
+        const newOffset = Math.max(0, curOffset + actualDelta);
+        return { ...t, trimStart: newTrimStart, startOffset: newOffset };
+      } else {
+        const newTrimEnd = Math.min(srcDur, Math.max(curEnd + deltaSec, curStart + MIN_DUR));
+        return { ...t, trimEnd: newTrimEnd };
+      }
+    }));
+  }, []);
+  const onDragEndAudioTrack = useCallback((key, newX) => {
+    const newOffset = newX / PIXELS_PER_SECOND;
+    setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
+  }, []);
+  const onPressAudioTrack = useCallback((key) => {
+    setSelectedAudioTrackKey(prevKey => prevKey === key ? null : key);
+  }, []);
+  const onLongPressVoiceoverTrack = useCallback((key) => {
+    Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
+  }, []);
+  const onLongPressMusicTrack = useCallback((key) => {
+    Alert.alert('Delete music?', 'This will remove this music track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
+  }, []);
+  const onPressAddVoiceover = useCallback(() => {
+    setShowVoiceoverModal(true); setVoiceoverTab('generate');
+  }, []);
+  const onPressAddMusic = useCallback(() => {
+    setShowMusicModal(true); setMusicTab('library'); loadMusicLibrary();
+  }, []);
+  const voiceoverTracksComputed = useMemo(() => {
+    return audioTracks.filter(t => t.isVoiceover).map(track => {
+      const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
+      const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
+      const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
+      return { track, trackW, trackX };
+    });
+  }, [audioTracks]);
+  const musicTracksComputed = useMemo(() => {
+    return audioTracks.filter(t => t.isMusic).map(track => {
+      const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
+      const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
+      const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
+      return { track, trackW, trackX };
+    });
+  }, [audioTracks]);
 
   function setClipTransition(key, transitionId) {
     setItems(prev => prev.map(i => i.key === key ? { ...i, transition: transitionId } : i));
@@ -752,7 +1167,58 @@ export default function EditVideoScreen({ navigation }) {
     }
   }
 
+  async function generateCaptionsFromVoiceover(voiceoverTrack) {
+    setShowCaptionModal(false);
+    setUploading(true); setMessage('Transcribing voice...'); setProgress(0);
+    const progressInterval = setInterval(() => {
+      setProgress(p => (p >= 90 ? 90 : p + 3));
+    }, 1500);
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      const token = await user.getIdToken();
+      const res = await fetch(BACKEND + '/api/transcribe-voiceover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ url: voiceoverTrack.uri }),
+      });
+      const data = await res.json();
+      if (!data.words || data.words.length === 0) throw new Error(data.error || 'No speech detected');
+
+      const style = CAPTION_STYLES.find(s => s.id === captionStyle) || CAPTION_STYLES[0];
+      const ANIMATED_STYLES = ['highlight','sticker','shadow3d','tiktok','neon','fire','bold','purple'];
+      const chunkSize = ANIMATED_STYLES.includes(style.id) ? 1 : 3;
+      const chunks = [];
+      for (let i = 0; i < data.words.length; i += chunkSize) {
+        chunks.push(data.words.slice(i, i + chunkSize));
+      }
+      const startOffset = voiceoverTrack.startOffset || 0;
+      const newOverlays = chunks.map((group, idx) => ({
+        key: 'autocap_' + Date.now() + '_' + idx,
+        text: group.map(w => w.word).join(' '),
+        color: style.color,
+        font: 'System',
+        size: 18,
+        x: 10, y: 80,
+        startTime: startOffset + group[0].start,
+        endTime: startOffset + group[group.length - 1].end,
+        isAutoCaption: true,
+        captionStyleId: style.id,
+        captionBold: style.bold,
+        captionShadow: style.shadow,
+        captionBg: style.bg,
+      }));
+
+      setTextOverlays(prev => [...prev.filter(t => !t.isAutoCaption), ...newOverlays]);
+      clearInterval(progressInterval); setProgress(100);
+      setUploading(false);
+      Alert.alert('Done', 'Captions generated from your voiceover!');
+    } catch (e) { clearInterval(progressInterval); Alert.alert('Error', e.message); setUploading(false); }
+  }
+
   async function handleAutoCaption() {
+    const voiceoverTrack = audioTracks.find(t => t.isVoiceover);
+    if (voiceoverTrack) { generateCaptionsFromVoiceover(voiceoverTrack); return; }
     if (items.length === 0) { Alert.alert('No media', 'Add a video clip first.'); return; }
     const videoItem = items.find(i => i.type === 'video');
     if (!videoItem) { Alert.alert('No video', 'Auto Captions requires at least one video clip.'); return; }
@@ -828,6 +1294,7 @@ export default function EditVideoScreen({ navigation }) {
   };
 
   const previewItem = items.length > 0 ? (selectedItem || getPreviewItem()) : null;
+  const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
 
   const bottomTabs = [
     { name: 'Edit', icon: 'content-cut' },
@@ -915,7 +1382,7 @@ export default function EditVideoScreen({ navigation }) {
         <View style={styles.previewFrame}>
           {previewItem ? (
             previewItem.type === 'video' ? (
-              <Video ref={videoRef} source={{ uri: previewItem.uri }}
+              <Video ref={videoRef} source={previewVideoSource}
                 style={styles.previewImage} resizeMode="cover"
                 shouldPlay={isPlaying} isLooping={false}
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
@@ -929,8 +1396,9 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.previewEmptyText}>Add media to get started</Text>
             </View>
           )}
-          {/* Text overlays on preview - draggable */}
-          {textOverlays.map(t => (
+          {/* Text overlays on preview - draggable. Auto-captions are time-gated
+              to the playhead position; manual overlays always show. */}
+          {textOverlays.filter(t => !t.isAutoCaption || (position >= t.startTime && position <= t.endTime)).map(t => (
             <DraggableTextOverlay
               key={t.key}
               overlay={t}
@@ -1001,129 +1469,121 @@ export default function EditVideoScreen({ navigation }) {
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}>
             <View style={styles.scrubberLine} pointerEvents="none" />
-            <ScrollView
+            <ReanimatedAnimated.ScrollView
               ref={timelineScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
-              scrollEventThrottle={16}
+              scrollEventThrottle={32}
               onScrollBeginDrag={() => { isUserScrubbing.current = true; setIsPlaying(false); }}
               onScroll={(e) => {
+                if (!isUserScrubbing.current) return;
+                const now = Date.now();
+                if (now - lastScrubUpdateRef.current < 35) return;
+                lastScrubUpdateRef.current = now;
                 const x = e.nativeEvent.contentOffset.x;
                 const newPos = Math.max(0, Math.min(duration, x / PIXELS_PER_SECOND));
                 setPosition(newPos);
               }}
-              onScrollEndDrag={() => { isUserScrubbing.current = false; }}
-              onMomentumScrollEnd={() => { isUserScrubbing.current = false; }}>
+              onScrollEndDrag={(e) => {
+                isUserScrubbing.current = false;
+                const x = e.nativeEvent.contentOffset.x;
+                const newPos = Math.max(0, Math.min(duration, x / PIXELS_PER_SECOND));
+                setPosition(newPos);
+              }}
+              onMomentumScrollEnd={(e) => {
+                isUserScrubbing.current = false;
+                const x = e.nativeEvent.contentOffset.x;
+                const newPos = Math.max(0, Math.min(duration, x / PIXELS_PER_SECOND));
+                setPosition(newPos);
+              }}>
             <View>
             <View style={styles.clipsScroll}>
-              {items.map((item, idx) => (
-                <View key={item.key} style={{ flexDirection:'row', alignItems:'center' }}>
-                <TouchableOpacity
-                  onPress={() => setSelectedKey(item.key === selectedKey ? null : item.key)}
-                  onLongPress={() => openTrim(item)}
-                  activeOpacity={0.85}>
-                  <View style={[styles.clipFrame, item.key === selectedKey && styles.clipFrameSelected]}>
-                    <Image source={{ uri: item.uri }} style={styles.clipFrameImg} resizeMode="cover" />
-                    {idx === 0 && (
-                      <View style={styles.coverBadge}>
-                        <MaterialIcons name="edit" size={9} color="#fff" />
-                        <Text style={styles.coverText}>Cover</Text>
-                      </View>
-                    )}
-                    {item.muted && (
-                      <View style={styles.mutedBadge}>
-                        <MaterialIcons name="volume-off" size={10} color="#fff" />
-                      </View>
-                    )}
-                    {item.speed && item.speed !== 1 && (
-                      <View style={styles.speedBadge}>
-                        <Text style={styles.speedBadgeText}>{item.speed}x</Text>
-                      </View>
-                    )}
-                    <View style={styles.clipBottom}>
-                      <Text style={styles.clipDuration}>
-                        {item.type === 'image' ? item.duration + 's' : (item.trimEnd ? item.trimEnd.toFixed(1) + 's' : 'Full')}
-                      </Text>
-                    </View>
-                    {item.key === selectedKey && (
-                      <TouchableOpacity style={styles.clipRemove} onPress={() => removeItem(item.key)}>
-                        <MaterialIcons name="close" size={11} color="#fff" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </TouchableOpacity>
-                {idx < items.length - 1 && (
-                  <TouchableOpacity
-                    onPress={() => { setTransitionTargetKey(item.key); setShowTransitionModal(true); }}
-                    style={{ width:24, alignSelf:'center', alignItems:'center', justifyContent:'center',
-                      backgroundColor:'#1a1a1a', borderRadius:12, height:24, borderWidth:1, borderColor:'#333', marginHorizontal:2 }}>
-                    <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
- <TouchableOpacity style={styles.addClipBtn} onPress={pickMedia}>
-                <MaterialIcons name="add" size={22} color="#888" />
-              </TouchableOpacity>
+              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} />
             </View>
 
             {/* Voiceover row */}
-            <View style={[styles.auxScrollRow, { paddingLeft: 8 }]}>
-              {audioTracks.filter(t => t.isVoiceover).map(track => (
-                <TouchableOpacity key={track.key}
-                  onLongPress={() => setAudioTracks(prev => prev.filter(t => t.key !== track.key))}
-                  style={{ backgroundColor:'#1a1a1a', borderRadius:8, paddingHorizontal:8, paddingVertical:4, marginRight:6, borderWidth:1, borderColor:'#2a2a2a' }}>
-                  <Text style={{ color:'#888', fontSize:9, marginBottom:2 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
-                  <WaveformBars peaks={waveformCache[track.key]} color="#60a5fa" height={20} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.auxTrackBtn}
+            <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
+              ref={voiceoverScrollRef}
+              style={[styles.auxScrollRow, { paddingLeft: 0 }]}
+              contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+              <View style={{ width: audioTracks.some(t => t.isVoiceover) ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
+                {audioTracks.filter(t => t.isVoiceover).map(track => {
+                  const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
+                  const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
+                  const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
+                  return (
+                    <DraggableAudioTrack key={track.key} trackKey={track.key}
+                      initialLeft={trackX} width={trackW} height={26}
+                      minX={0} maxX={Math.max(0, timelineContentWidth - trackW)}
+                      onDragEnd={(key, newX) => {
+                        const newOffset = newX / PIXELS_PER_SECOND;
+                        setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
+                      }}
+                      onTrimEnd={applyAudioTrimEdit}
+                      isSelected={selectedAudioTrackKey === track.key}>
+                      <TouchableOpacity
+                        onPress={() => setSelectedAudioTrackKey(selectedAudioTrackKey === track.key ? null : track.key)}
+                        onLongPress={() => Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== track.key)) }])}
+                        style={{ backgroundColor:'#3b82f6', borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
+                        <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
+                        <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
+                      </TouchableOpacity>
+                    </DraggableAudioTrack>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                style={audioTracks.some(t => t.isVoiceover) ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
                 onPress={() => { setShowVoiceoverModal(true); setVoiceoverTab('generate'); }}>
-                <MaterialIcons name="record-voice-over" size={12} color="#555" />
-                <Text style={styles.auxLabel}>{audioTracks.some(t => t.isVoiceover) ? 'Add more' : 'Add voiceover'}</Text>
+                <MaterialIcons name={audioTracks.some(t => t.isVoiceover) ? 'add' : 'record-voice-over'} size={audioTracks.some(t => t.isVoiceover) ? 16 : 12} color={audioTracks.some(t => t.isVoiceover) ? '#666' : '#555'} />
+                {!audioTracks.some(t => t.isVoiceover) && <Text style={styles.auxLabel}>Add voiceover</Text>}
               </TouchableOpacity>
-            </View>
+            </ReanimatedAnimated.ScrollView>
             {/* Music row */}
-            <View style={[styles.auxScrollRow, { paddingLeft: 8 }]}>
-              {audioTracks.filter(t => t.isMusic).map(track => (
-                <TouchableOpacity key={track.key}
-                  onLongPress={() => setAudioTracks(prev => prev.filter(t => t.key !== track.key))}
-                  style={{ backgroundColor:'#1a1a1a', borderRadius:8, paddingHorizontal:8, paddingVertical:4, marginRight:6, borderWidth:1, borderColor:'#2a2a2a' }}>
-                  <Text style={{ color:'#888', fontSize:9, marginBottom:2 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
-                  <WaveformBars peaks={waveformCache[track.key]} color="#00d4d4" height={20} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.auxTrackBtn}
+            <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
+              ref={musicScrollRef}
+              style={[styles.auxScrollRow, { paddingLeft: 0 }]}
+              contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+              <View style={{ width: audioTracks.some(t => t.isMusic) ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
+                {audioTracks.filter(t => t.isMusic).map(track => {
+                  const trackDur = (track.trimEnd ?? track.sourceDuration ?? 0) - (track.trimStart ?? 0);
+                  const trackW = Math.max(30, trackDur * PIXELS_PER_SECOND);
+                  const trackX = (track.startOffset ?? 0) * PIXELS_PER_SECOND;
+                  return (
+                    <DraggableAudioTrack key={track.key} trackKey={track.key}
+                      initialLeft={trackX} width={trackW} height={26}
+                      minX={0} maxX={Math.max(0, timelineContentWidth - trackW)}
+                      onDragEnd={(key, newX) => {
+                        const newOffset = newX / PIXELS_PER_SECOND;
+                        setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
+                      }}
+                      onTrimEnd={applyAudioTrimEdit}
+                      isSelected={selectedAudioTrackKey === track.key}>
+                      <TouchableOpacity
+                        onPress={() => setSelectedAudioTrackKey(selectedAudioTrackKey === track.key ? null : track.key)}
+                        onLongPress={() => Alert.alert('Delete music?', 'This will remove this music track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== track.key)) }])}
+                        style={{ backgroundColor:'#22c55e', borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
+                        <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
+                        <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
+                      </TouchableOpacity>
+                    </DraggableAudioTrack>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                style={audioTracks.some(t => t.isMusic) ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
                 onPress={() => { setShowMusicModal(true); setMusicTab('library'); loadMusicLibrary(); }}>
-                <MaterialIcons name="music-note" size={12} color="#555" />
-                <Text style={styles.auxLabel}>{audioTracks.some(t => t.isMusic) ? 'Add more' : 'Add music'}</Text>
+                <MaterialIcons name={audioTracks.some(t => t.isMusic) ? 'add' : 'music-note'} size={audioTracks.some(t => t.isMusic) ? 16 : 12} color={audioTracks.some(t => t.isMusic) ? '#666' : '#555'} />
+                {!audioTracks.some(t => t.isMusic) && <Text style={styles.auxLabel}>Add music</Text>}
               </TouchableOpacity>
-            </View>
+            </ReanimatedAnimated.ScrollView>
             {/* Text row */}
-            <View style={styles.auxScrollRow}>
-              {textOverlays.map(t => (
-                <TouchableOpacity key={t.key} style={styles.textChip}
-                  onLongPress={() => removeTextOverlay(t.key)}
-                  onPress={() => { setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setShowTextModal(true); }}>
-                  <Text style={[styles.textChipText, { color: t.color }]}>{t.text}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.auxTrackBtn}
-                onPress={() => { setEditingText(null); setTextInput(''); setShowTextModal(true); }}>
-                <MaterialIcons name="title" size={12} color="#555" />
-                <Text style={styles.auxLabel}>Add text</Text>
-              </TouchableOpacity>
+            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
+            {/* Captions row - grouped preview chips, see comment on
+                captionPreviewGroups for why. */}
+            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} onPress={openCaptionModal} />
             </View>
-            {/* Captions row */}
-            <View style={styles.auxScrollRow}>
-              <TouchableOpacity style={styles.auxTrackBtn}
-                onPress={() => setShowCaptionModal(true)}>
-                <MaterialIcons name="closed-caption" size={12} color="#555" />
-                <Text style={styles.auxLabel}>Auto captions</Text>
-              </TouchableOpacity>
-            </View>
-            </View>
-            </ScrollView>
+            </ReanimatedAnimated.ScrollView>
           </View>
         </View>
       </View>
@@ -1508,8 +1968,9 @@ export default function EditVideoScreen({ navigation }) {
       {/* AUTO CAPTIONS MODAL */}
       <Modal visible={showCaptionModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20 }}>
+          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight: '80%' }}>
             <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:12 }}>Auto Captions</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
 
             <Text style={{ color:'#aaa', fontSize:12, marginBottom:6 }}>Caption Script (optional)</Text>
             <TextInput
@@ -1522,16 +1983,12 @@ export default function EditVideoScreen({ navigation }) {
             />
 
             <Text style={{ color:'#aaa', fontSize:12, marginBottom:8 }}>Caption Style</Text>
-            <View style={{ flexDirection:'row', gap:8, marginBottom:20 }}>
-              {['classic','word','animated'].map(s => (
-                <TouchableOpacity key={s}
-                  onPress={() => setCaptionStyle(s)}
-                  style={{ flex:1, padding:10, borderRadius:8, alignItems:'center',
-                    backgroundColor: captionStyle === s ? '#00d4d4' : '#2a2a2a' }}>
-                  <Text style={{ color: captionStyle === s ? '#000' : '#fff', textTransform:'capitalize', fontSize:13 }}>{s}</Text>
-                </TouchableOpacity>
+            <View style={{ flexDirection:'row', flexWrap:'wrap', justifyContent:'space-between', marginBottom:20, maxHeight: 320 }}>
+              {CAPTION_STYLES.map(s => (
+                <CaptionPreview key={s.id} style={s} isSelected={captionStyle === s.id} onPress={() => setCaptionStyle(s.id)} />
               ))}
             </View>
+            </ScrollView>
 
             <TouchableOpacity onPress={handleAutoCaption}
               style={{ backgroundColor:'#00d4d4', borderRadius:8, padding:14, alignItems:'center', marginBottom:10 }}>
@@ -1599,6 +2056,7 @@ const styles = StyleSheet.create({
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   auxTrackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
+  auxAddMoreBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' },
   auxLabel: { color: '#555', fontSize: 11 },
 
 
@@ -1615,6 +2073,10 @@ const styles = StyleSheet.create({
   audioTrackName: { flex: 1, color: '#fff', fontSize: 12 },
   textChip: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2a2a2a' },
   textChipText: { fontSize: 13 },
+  captionChip: { backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2ECC71' },
+  captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
+  captionChip: { backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2ECC71' },
+  captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
   fontRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   fontChip: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#2a2a2a' },
   fontChipActive: { backgroundColor: '#00d4d4', borderColor: '#00d4d4' },
