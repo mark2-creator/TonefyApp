@@ -5,3 +5,4 @@ dist/
 .pm2/
 *.sock
 EditVideoScreen.js.bak_*
+node_modules/
