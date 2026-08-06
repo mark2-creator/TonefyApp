@@ -17,6 +17,10 @@ import Svg, { Path } from 'react-native-svg';
 const BACKEND = 'https://api.fitlifesolutions.site';
 const { width: SW, height: SH } = Dimensions.get('window');
 const PIXELS_PER_SECOND = 40;
+// Where the playhead sits across the timeline viewport. Left of it is elapsed
+// footage only, right of it holds the clips, aux rows and add buttons, so it
+// sits well left of centre to give that side the room.
+const SCRUBBER_POS = 0.3;
 const PREVIEW_W = SW * 0.5;
 const PREVIEW_H = PREVIEW_W * (16/9);
 const CLIP_W = 72;
@@ -520,7 +524,7 @@ export default function EditVideoScreen({ navigation }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
-  const [timelineHalfW, setTimelineHalfW] = useState(0);
+  const [timelineLeadW, setTimelineLeadW] = useState(0);
   const playTimer = useRef(null);
   const timelineScrollRef = useAnimatedRef();
   const voiceoverScrollRef = useAnimatedRef();
@@ -1469,8 +1473,8 @@ export default function EditVideoScreen({ navigation }) {
 
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}
-            onLayout={(e) => setTimelineHalfW(e.nativeEvent.layout.width / 2)}>
-            <View style={styles.scrubberLine} pointerEvents="none" />
+            onLayout={(e) => setTimelineLeadW(e.nativeEvent.layout.width * SCRUBBER_POS)}>
+            <View style={[styles.scrubberLine, { left: timelineLeadW }]} pointerEvents="none" />
             <ReanimatedAnimated.ScrollView
               ref={timelineScrollRef}
               horizontal
@@ -1499,7 +1503,7 @@ export default function EditVideoScreen({ navigation }) {
                 setPosition(newPos);
               }}>
             <View>
-            <View style={[styles.clipsScroll, { paddingLeft: timelineHalfW }]}>
+            <View style={[styles.clipsScroll, { paddingLeft: timelineLeadW }]}>
               <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} />
             </View>
 
@@ -1507,21 +1511,21 @@ export default function EditVideoScreen({ navigation }) {
             <AudioTrackRow scrollRef={voiceoverScrollRef} timelineContentWidth={timelineContentWidth}
               tracksComputed={voiceoverTracksComputed} waveformCache={waveformCache}
               selectedAudioTrackKey={selectedAudioTrackKey}
-              accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover" leadOffset={timelineHalfW}
+              accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover" leadOffset={timelineLeadW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
               onLongPressTrack={onLongPressVoiceoverTrack} onPressAdd={onPressAddVoiceover} />
             {/* Music row */}
             <AudioTrackRow scrollRef={musicScrollRef} timelineContentWidth={timelineContentWidth}
               tracksComputed={musicTracksComputed} waveformCache={waveformCache}
               selectedAudioTrackKey={selectedAudioTrackKey}
-              accentColor="#22c55e" iconName="music-note" addLabel="Add music" leadOffset={timelineHalfW}
+              accentColor="#22c55e" iconName="music-note" addLabel="Add music" leadOffset={timelineLeadW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
               onLongPressTrack={onLongPressMusicTrack} onPressAdd={onPressAddMusic} />
             {/* Text row */}
-            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} leadOffset={timelineHalfW} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
+            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} leadOffset={timelineLeadW} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
             {/* Captions row - grouped preview chips, see comment on
                 captionPreviewGroups for why. */}
-            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} leadOffset={timelineHalfW} onPress={openCaptionModal} />
+            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} leadOffset={timelineLeadW} onPress={openCaptionModal} />
             </View>
             </ReanimatedAnimated.ScrollView>
           </View>
@@ -1979,7 +1983,7 @@ const styles = StyleSheet.create({
   coverThumbEmpty: { width: 40, height: 48, borderRadius: 4, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333' },
   coverEditIcon: { position: 'absolute', top: 2, right: -2 },
   clipsWrapper: { flex: 1, position: 'relative' },
-  scrubberLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, backgroundColor: '#fff', zIndex: 10, opacity: 0.9 },
+  scrubberLine: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: '#fff', zIndex: 10, opacity: 0.9 },
   clipsScroll: { flexDirection: 'row', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
   clipFrame: { width: CLIP_W, height: CLIP_H, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1, borderColor: '#333', position: 'relative' },
   clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
