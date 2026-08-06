@@ -1188,9 +1188,14 @@ export default function EditVideoScreen({ navigation }) {
   async function fetchWaveform(trackKey, url) {
     if (!url || waveformCache[trackKey]) return;
     try {
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : null;
       const res = await fetch(BACKEND + '/api/audio-waveform', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        },
         body: JSON.stringify({ url, samples: 400 }),
       });
       const data = await res.json();
@@ -1382,7 +1387,7 @@ export default function EditVideoScreen({ navigation }) {
       const res = await fetch(BACKEND + '/api/transcribe-voiceover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ url: voiceoverTrack.uri }),
+        body: JSON.stringify({ url: voiceoverTrack.remoteUrl || voiceoverTrack.uri }),
       });
       const data = await res.json();
       if (!data.words || data.words.length === 0) throw new Error(data.error || 'No speech detected');
