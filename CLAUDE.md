@@ -144,9 +144,9 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `c8f65993-bd70-4040-b057-cbd1b34c4fc9` (commit `f56257a7`, runtime
-   1.1.0) on Aug 6 2026, superseding `41a0ee28-6f5c-4b2a-b168-da51df1785ff`
-   (commit `712adbda`). Awaiting confirmation:
+   update group `4dcfca28-f901-4187-9e49-bbe10627d79f` (commit `bf87b82e`, runtime
+   1.1.0) on Aug 6 2026, superseding `c8f65993-bd70-4040-b057-cbd1b34c4fc9`
+   (commit `f56257a7`). Awaiting confirmation:
    - **Colour picker (`f56257a7`)** — Add Text / Add Caption now carries a full
      picker (saturation-value plane, hue slider, hex field) behind the tune button
      at the end of the swatch row, drawn with `react-native-svg` gradients. Colours
@@ -155,6 +155,13 @@ the JSX swap.
      scroll under the finger), type a hex, then reopen the sheet on an existing
      overlay and confirm the plane adopts that overlay's colour. Solid colours only
      — a gradient tab needs the ImageMagick overlay render to support one first.
+
+     As first published (`f56257a7`) the plane and hue slider took no touches at
+     all: `useDragTracker` returned the `PanResponder.create` wrapper instead of
+     the `panHandlers` inside it, so spreading it onto a View set one ignored prop
+     and attached no responder callbacks. Fixed in `bf87b82e`. Worth remembering as
+     a class of bug — it bundles clean, renders correctly, and fails only on touch,
+     so nothing short of a device catches it.
    - **Preview/scroll sync (`712adbda`)** — the timeline now follows the video
      decoder's reported position instead of seeking the decoder to match a wall
      clock. The old correction could not converge on Android, where a seek lands on
