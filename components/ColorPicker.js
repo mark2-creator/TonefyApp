@@ -105,6 +105,9 @@ function useDragTracker(handler) {
   const origin = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
 
+  // PanResponder.create returns { panHandlers }, and it is the handlers that get
+  // spread onto the view - spreading the wrapper sets one ignored prop and leaves
+  // the view with no touch callbacks at all.
   return useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
@@ -128,7 +131,7 @@ function useDragTracker(handler) {
     // the release commits the last position seen rather than recomputing one.
     onPanResponderRelease: () => cb.current(last.current.x, last.current.y, 'end'),
     onPanResponderTerminate: () => cb.current(last.current.x, last.current.y, 'end'),
-  }), []);
+  }).panHandlers, []);
 }
 
 // ---------------------------------------------------------------------------
