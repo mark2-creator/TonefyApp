@@ -330,14 +330,14 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
       <TouchableOpacity onPress={() => onTap(overlay)} activeOpacity={0.7}>
         {captionStyleId === 'sticker' ? (
           <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
-            <Text style={{ color: '#000', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
+            <Text style={{ color: overlay.color, fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
           </View>
         ) : captionStyleId === 'outline' ? (
           <View style={{ alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
             {[[-1,-1],[1,-1],[-1,1],[1,1]].map(([dx, dy], i) => (
               <Text key={i} style={{ position: 'absolute', left: dx, top: dy, color: '#000', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
             ))}
-            <Text style={{ color: '#fff', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
+            <Text style={{ color: overlay.color, fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
           </View>
         ) : (
           <Text style={{
@@ -670,6 +670,10 @@ export default function EditVideoScreen({ navigation }) {
   const [showCaptionModal, setShowCaptionModal] = useState(false);
   const [captionScript, setCaptionScript] = useState('');
   const [captionStyle, setCaptionStyle] = useState('classic');
+  // null means "whatever the chosen style says". A style carries its own colour,
+  // so an override has to stay distinguishable from a colour that merely happens
+  // to equal one - otherwise switching style could never move the colour again.
+  const [captionColor, setCaptionColor] = useState(null);
 
   // Split/trim
   const [showTrimModal, setShowTrimModal] = useState(false);
@@ -1592,7 +1596,7 @@ export default function EditVideoScreen({ navigation }) {
       const newOverlays = chunks.map((group, idx) => ({
         key: 'autocap_' + Date.now() + '_' + idx,
         text: group.map(w => w.word).join(' '),
-        color: style.color,
+        color: captionColor || style.color,
         font: 'System',
         size: 18,
         x: 10, y: 80,
@@ -1843,6 +1847,15 @@ export default function EditVideoScreen({ navigation }) {
       default: return [];
     }
   };
+
+  const captionStyleDef = CAPTION_STYLES.find(s => s.id === captionStyle) || CAPTION_STYLES[0];
+  const effectiveCaptionColor = captionColor || captionStyleDef.color;
+  // Generate Captions has two paths. With a voiceover the words are timed here and
+  // laid down as text overlays, which carry their own colour all the way to the
+  // export. Without one the server burns the captions into the clip from its own
+  // style table, where a colour picked here has nothing to travel in - so the
+  // control is only offered on the path that can honour it.
+  const captionColorApplies = audioTracks.some(t => t.isVoiceover);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -2485,7 +2498,7 @@ export default function EditVideoScreen({ navigation }) {
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
           <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight: '80%' }, sheetInset]}>
             <SheetHeader title="Auto Captions" onClose={() => setShowCaptionModal(false)} />
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} scrollEnabled={!colorDragging}>
 
             <Text style={{ color:'#aaa', fontSize:12, marginBottom:6 }}>Caption Script (optional)</Text>
             <TextInput
@@ -2503,6 +2516,32 @@ export default function EditVideoScreen({ navigation }) {
                 <CaptionPreview key={s.id} style={s} isSelected={captionStyle === s.id} onPress={() => setCaptionStyle(s.id)} />
               ))}
             </View>
+
+            {captionColorApplies ? (
+              <>
+                <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
+                  <Text style={{ color:'#aaa', fontSize:12, flex:1 }}>Caption Colour</Text>
+                  {captionColor && (
+                    <TouchableOpacity onPress={() => setCaptionColor(null)} accessibilityRole="button">
+                      <Text style={{ color:'#2ECC71', fontSize:12, fontWeight:'600' }}>Match style</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <ColorPicker
+                  color={effectiveCaptionColor}
+                  onChange={setCaptionColor}
+                  onCommit={rememberColor}
+                  presets={TEXT_COLORS}
+                  recents={recentColors}
+                  onDragStateChange={setColorDragging}
+                />
+              </>
+            ) : (
+              <Text style={{ color:'#666', fontSize:11, marginBottom:6 }}>
+                Captions for a clip with no voiceover are burned in on the server and take
+                the style's own colour. Add a voiceover to pick the colour yourself.
+              </Text>
+            )}
             </ScrollView>
 
             <TouchableOpacity onPress={handleAutoCaption}
