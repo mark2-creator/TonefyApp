@@ -1023,11 +1023,21 @@ export default function EditVideoScreen({ navigation }) {
 
       // Upload audio tracks (voiceover + music) if any
       let uploadedAudio = [];
+      // Placement travels with the track: without startOffset/trim the export
+      // starts every track at 0:00 and runs it full length, which is not what
+      // the timeline preview plays back.
+      const audioPlacement = (track) => ({
+        volume: (track.volume ?? 1) * masterVolume,
+        isVoiceover: !!track.isVoiceover,
+        startOffset: track.startOffset ?? 0,
+        trimStart: track.trimStart ?? 0,
+        trimEnd: track.trimEnd ?? track.sourceDuration ?? null,
+      });
       if (audioTracks.length > 0) {
         setMessage('Uploading audio...');
         for (const track of audioTracks) {
           if (track.uri.startsWith('http')) {
-            uploadedAudio.push({ url: track.uri, volume: (track.volume ?? 1) * masterVolume, isVoiceover: !!track.isVoiceover });
+            uploadedAudio.push({ url: track.uri, ...audioPlacement(track) });
           } else {
             const audioForm = new FormData();
             audioForm.append('files', { uri: track.uri, name: track.name || 'audio.mp3', type: 'audio/mpeg' });
@@ -1036,7 +1046,7 @@ export default function EditVideoScreen({ navigation }) {
             });
             const audioData = await audioRes.json();
             if (audioData.items?.[0]) {
-              uploadedAudio.push({ url: audioData.items[0].url, volume: (track.volume ?? 1) * masterVolume, isVoiceover: !!track.isVoiceover });
+              uploadedAudio.push({ url: audioData.items[0].url, ...audioPlacement(track) });
             }
           }
         }
