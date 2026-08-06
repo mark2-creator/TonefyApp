@@ -144,9 +144,17 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `9f403a24-2afb-4454-a741-505825af5584` (commit `f8b0d7ec`, runtime
-   1.1.0) on Aug 6 2026, superseding `915cb3ee-cc98-4454-ade7-1973d6474e2d`
-   (commit `8869e8b5`). Awaiting confirmation:
+   update group `42422470-8b9d-4381-b2ae-f831fff19ff8` (commit `734d746e`, runtime
+   1.1.0) on Aug 6 2026, superseding `9f403a24-2afb-4454-a741-505825af5584`
+   (commit `f8b0d7ec`). Awaiting confirmation:
+   - **Font grid (`734d746e`)** — the font sheet lays the families out as a
+     three-column grid of specimen tiles ("Ag" set in the family, name beneath in
+     the system face) instead of one full-width row each. Group headers keep a
+     full-width row of their own, so the grid is built by chunking each group into
+     rows of three and making each row one FlatList item — `numColumns` cannot do
+     this, as it lays every item into a cell, headers included. Test: the last row
+     of a group should keep its tiles at column width rather than stretching them,
+     and search should still return a flat grid with no headers.
    - **Fonts (`f8b0d7ec`)** — the text sheet now offers 130 families instead of
      `['Default','Bold','Italic','Mono']`, which were never families at all and
      mapped to nothing in the export. TTFs ship in `assets/fonts` (6.2MB, Google's
