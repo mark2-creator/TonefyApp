@@ -369,14 +369,14 @@ function CaptionPreview({ style, isSelected, onPress }) {
 
 const AudioTrackRow = React.memo(function AudioTrackRow({
   scrollRef, timelineContentWidth, tracksComputed, waveformCache, selectedAudioTrackKey,
-  accentColor, iconName, addLabel, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
+  accentColor, iconName, addLabel, leadOffset, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
 }) {
   const hasTracks = tracksComputed.length > 0;
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
       style={[styles.auxScrollRow, { paddingLeft: 0 }]}
-      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       <View style={{ width: hasTracks ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
         {tracksComputed.map(({ track, trackW, trackX }) => (
           <DraggableAudioTrack key={track.key} trackKey={track.key}
@@ -405,12 +405,12 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
   );
 });
 
-const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewGroups, onPress }) {
+const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewGroups, leadOffset, onPress }) {
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
       style={styles.auxScrollRow}
-      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       {captionPreviewGroups.length > 0 ? (
         captionPreviewGroups.map(g => (
           <TouchableOpacity key={g.key} style={styles.captionChip}
@@ -429,12 +429,12 @@ const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewG
   );
 });
 
-const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, onLongPressChip, onPressChip, onPressAdd }) {
+const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, leadOffset, onLongPressChip, onPressChip, onPressAdd }) {
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
       style={styles.auxScrollRow}
-      contentContainerStyle={{ paddingLeft: 8, alignItems: 'center' }}>
+      contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       {manualTextOverlays.map(t => (
         <TouchableOpacity key={t.key} style={styles.textChip}
           onLongPress={() => onLongPressChip(t.key)}
@@ -520,6 +520,7 @@ export default function EditVideoScreen({ navigation }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
+  const [timelineHalfW, setTimelineHalfW] = useState(0);
   const playTimer = useRef(null);
   const timelineScrollRef = useAnimatedRef();
   const voiceoverScrollRef = useAnimatedRef();
@@ -1467,7 +1468,8 @@ export default function EditVideoScreen({ navigation }) {
           </View>
 
           {/* Clips + scrubber */}
-          <View style={styles.clipsWrapper}>
+          <View style={styles.clipsWrapper}
+            onLayout={(e) => setTimelineHalfW(e.nativeEvent.layout.width / 2)}>
             <View style={styles.scrubberLine} pointerEvents="none" />
             <ReanimatedAnimated.ScrollView
               ref={timelineScrollRef}
@@ -1497,7 +1499,7 @@ export default function EditVideoScreen({ navigation }) {
                 setPosition(newPos);
               }}>
             <View>
-            <View style={styles.clipsScroll}>
+            <View style={[styles.clipsScroll, { paddingLeft: timelineHalfW }]}>
               <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} />
             </View>
 
@@ -1505,21 +1507,21 @@ export default function EditVideoScreen({ navigation }) {
             <AudioTrackRow scrollRef={voiceoverScrollRef} timelineContentWidth={timelineContentWidth}
               tracksComputed={voiceoverTracksComputed} waveformCache={waveformCache}
               selectedAudioTrackKey={selectedAudioTrackKey}
-              accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover"
+              accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover" leadOffset={timelineHalfW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
               onLongPressTrack={onLongPressVoiceoverTrack} onPressAdd={onPressAddVoiceover} />
             {/* Music row */}
             <AudioTrackRow scrollRef={musicScrollRef} timelineContentWidth={timelineContentWidth}
               tracksComputed={musicTracksComputed} waveformCache={waveformCache}
               selectedAudioTrackKey={selectedAudioTrackKey}
-              accentColor="#22c55e" iconName="music-note" addLabel="Add music"
+              accentColor="#22c55e" iconName="music-note" addLabel="Add music" leadOffset={timelineHalfW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
               onLongPressTrack={onLongPressMusicTrack} onPressAdd={onPressAddMusic} />
             {/* Text row */}
-            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
+            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} leadOffset={timelineHalfW} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
             {/* Captions row - grouped preview chips, see comment on
                 captionPreviewGroups for why. */}
-            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} onPress={openCaptionModal} />
+            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} leadOffset={timelineHalfW} onPress={openCaptionModal} />
             </View>
             </ReanimatedAnimated.ScrollView>
           </View>
@@ -1978,7 +1980,7 @@ const styles = StyleSheet.create({
   coverEditIcon: { position: 'absolute', top: 2, right: -2 },
   clipsWrapper: { flex: 1, position: 'relative' },
   scrubberLine: { position: 'absolute', top: 0, bottom: 0, left: '50%', width: 2, backgroundColor: '#fff', zIndex: 10, opacity: 0.9 },
-  clipsScroll: { paddingLeft: '50%', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
+  clipsScroll: { flexDirection: 'row', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
   clipFrame: { width: CLIP_W, height: CLIP_H, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1, borderColor: '#333', position: 'relative' },
   clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
   clipFrameImg: { width: '100%', height: '100%' },
