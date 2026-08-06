@@ -60,7 +60,8 @@
           "organization": "fitlifesolutions",
           "project": "react-native"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "tonefyai",
     "owner": "mumberemike4",

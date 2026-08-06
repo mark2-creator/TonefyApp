@@ -1,0 +1,130 @@
+Montserrat|sans|700
+Poppins|sans|700
+Bebas Neue|display|400
+Anton|display|400
+Playfair Display|serif|700
+Oswald|sans|700
+Caveat|script|700
+Pacifico|script|400
+Lobster|script|400
+Roboto Mono|mono|700
+Raleway|sans|700
+Inter|sans|700
+Merriweather|serif|700
+Lora|serif|700
+Dancing Script|script|700
+Great Vibes|script|400
+Space Mono|mono|700
+Archivo Black|display|400
+Alfa Slab One|display|400
+Fredoka|sans|700
+Bungee Inline|display|400
+Roboto|sans|700
+Open Sans|sans|700
+Lato|sans|700
+Nunito|sans|700
+Nunito Sans|sans|700
+Work Sans|sans|700
+Rubik|sans|700
+Manrope|sans|700
+Barlow|sans|700
+Karla|sans|700
+Mulish|sans|700
+Quicksand|sans|700
+Josefin Sans|sans|700
+Cabin|sans|700
+Exo 2|sans|700
+Outfit|sans|700
+DM Sans|sans|700
+Public Sans|sans|700
+Figtree|sans|700
+Sora|sans|700
+Urbanist|sans|700
+Plus Jakarta Sans|sans|700
+Kanit|sans|700
+Titillium Web|sans|700
+Heebo|sans|700
+Assistant|sans|700
+Chivo|sans|700
+Overpass|sans|700
+Bungee|display|400
+Bungee Shade|display|400
+Titan One|display|400
+Ultra|display|400
+Righteous|display|400
+Passion One|display|700
+Staatliches|display|400
+Teko|display|700
+Russo One|display|400
+Black Ops One|display|400
+Bangers|display|400
+Luckiest Guy|display|400
+Fugaz One|display|400
+Shrikhand|display|400
+Rampart One|display|400
+Monoton|display|400
+Faster One|display|400
+Bevan|display|400
+Chewy|display|400
+Baloo 2|display|700
+Carter One|display|400
+Squada One|display|400
+Secular One|display|400
+Days One|display|400
+Sigmar One|display|400
+Frijole|display|400
+Lilita One|display|400
+Gravitas One|display|400
+Bitter|serif|700
+Arvo|serif|700
+Rokkitt|serif|700
+Zilla Slab|serif|700
+Crimson Text|serif|700
+Cormorant Garamond|serif|700
+EB Garamond|serif|700
+Libre Baskerville|serif|700
+Abril Fatface|serif|400
+Yeseva One|serif|400
+Prata|serif|400
+Spectral|serif|700
+Vollkorn|serif|700
+Domine|serif|700
+Cardo|serif|700
+Neuton|serif|700
+Satisfy|script|400
+Sacramento|script|400
+Kaushan Script|script|400
+Courgette|script|400
+Cookie|script|400
+Parisienne|script|400
+Allura|script|400
+Yellowtail|script|400
+Permanent Marker|script|400
+Rock Salt|script|400
+Indie Flower|script|400
+Shadows Into Light|script|400
+Amatic SC|script|700
+Architects Daughter|script|400
+Gloria Hallelujah|script|400
+Patrick Hand|script|400
+Marck Script|script|400
+Berkshire Swash|script|400
+Bad Script|script|400
+JetBrains Mono|mono|700
+IBM Plex Mono|mono|700
+Fira Code|mono|700
+Source Code Pro|mono|700
+Inconsolata|mono|700
+Cousine|mono|700
+Share Tech Mono|mono|400
+VT323|mono|400
+Creepster|display|400
+Nosifer|display|400
+Special Elite|display|400
+Silkscreen|display|400
+Press Start 2P|display|400
+Orbitron|display|700
+Audiowide|display|400
+Michroma|display|400
+Syncopate|display|700
+Wallpoet|display|400

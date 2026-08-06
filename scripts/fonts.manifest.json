@@ -1,0 +1,912 @@
+[
+  {
+    "name": "Abril Fatface",
+    "file": "AbrilFatface-Regular.ttf",
+    "category": "serif",
+    "weight": 400,
+    "bytes": 32188
+  },
+  {
+    "name": "Alfa Slab One",
+    "file": "AlfaSlabOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 46748
+  },
+  {
+    "name": "Allura",
+    "file": "Allura-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 55856
+  },
+  {
+    "name": "Amatic SC",
+    "file": "AmaticSC-Bold.ttf",
+    "category": "script",
+    "weight": 700,
+    "bytes": 54916
+  },
+  {
+    "name": "Anton",
+    "file": "Anton-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 43604
+  },
+  {
+    "name": "Architects Daughter",
+    "file": "ArchitectsDaughter-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 22412
+  },
+  {
+    "name": "Archivo Black",
+    "file": "ArchivoBlack-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 46892
+  },
+  {
+    "name": "Arvo",
+    "file": "Arvo-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 36704
+  },
+  {
+    "name": "Assistant",
+    "file": "Assistant-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 27088
+  },
+  {
+    "name": "Audiowide",
+    "file": "Audiowide-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 33280
+  },
+  {
+    "name": "Bad Script",
+    "file": "BadScript-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 65736
+  },
+  {
+    "name": "Baloo 2",
+    "file": "Baloo2-Bold.ttf",
+    "category": "display",
+    "weight": 700,
+    "bytes": 44800
+  },
+  {
+    "name": "Bangers",
+    "file": "Bangers-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 53312
+  },
+  {
+    "name": "Barlow",
+    "file": "Barlow-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 52876
+  },
+  {
+    "name": "Bebas Neue",
+    "file": "BebasNeue-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 34860
+  },
+  {
+    "name": "Berkshire Swash",
+    "file": "BerkshireSwash-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 38252
+  },
+  {
+    "name": "Bevan",
+    "file": "Bevan-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 54396
+  },
+  {
+    "name": "Bitter",
+    "file": "Bitter-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 44856
+  },
+  {
+    "name": "Black Ops One",
+    "file": "BlackOpsOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 79552
+  },
+  {
+    "name": "Bungee",
+    "file": "Bungee-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 39616
+  },
+  {
+    "name": "Bungee Inline",
+    "file": "BungeeInline-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 53292
+  },
+  {
+    "name": "Bungee Shade",
+    "file": "BungeeShade-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 88512
+  },
+  {
+    "name": "Cabin",
+    "file": "Cabin-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 38692
+  },
+  {
+    "name": "Cardo",
+    "file": "Cardo-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 36080
+  },
+  {
+    "name": "Carter One",
+    "file": "CarterOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 57560
+  },
+  {
+    "name": "Caveat",
+    "file": "Caveat-Bold.ttf",
+    "category": "script",
+    "weight": 700,
+    "bytes": 112788
+  },
+  {
+    "name": "Chewy",
+    "file": "Chewy-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 37904
+  },
+  {
+    "name": "Chivo",
+    "file": "Chivo-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 35380
+  },
+  {
+    "name": "Cookie",
+    "file": "Cookie-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 34220
+  },
+  {
+    "name": "Cormorant Garamond",
+    "file": "CormorantGaramond-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 76604
+  },
+  {
+    "name": "Courgette",
+    "file": "Courgette-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 58968
+  },
+  {
+    "name": "Cousine",
+    "file": "Cousine-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 32076
+  },
+  {
+    "name": "Creepster",
+    "file": "Creepster-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 57492
+  },
+  {
+    "name": "Crimson Text",
+    "file": "CrimsonText-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 55940
+  },
+  {
+    "name": "Dancing Script",
+    "file": "DancingScript-Bold.ttf",
+    "category": "script",
+    "weight": 700,
+    "bytes": 52220
+  },
+  {
+    "name": "Days One",
+    "file": "DaysOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 43564
+  },
+  {
+    "name": "DM Sans",
+    "file": "DMSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 33016
+  },
+  {
+    "name": "Domine",
+    "file": "Domine-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 40444
+  },
+  {
+    "name": "EB Garamond",
+    "file": "EBGaramond-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 54544
+  },
+  {
+    "name": "Exo 2",
+    "file": "Exo2-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 43496
+  },
+  {
+    "name": "Faster One",
+    "file": "FasterOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 67680
+  },
+  {
+    "name": "Figtree",
+    "file": "Figtree-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 24352
+  },
+  {
+    "name": "Fira Code",
+    "file": "FiraCode-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 56816
+  },
+  {
+    "name": "Fredoka",
+    "file": "Fredoka-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 35564
+  },
+  {
+    "name": "Frijole",
+    "file": "Frijole-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 220044
+  },
+  {
+    "name": "Fugaz One",
+    "file": "FugazOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 23748
+  },
+  {
+    "name": "Gloria Hallelujah",
+    "file": "GloriaHallelujah-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 33272
+  },
+  {
+    "name": "Gravitas One",
+    "file": "GravitasOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 33876
+  },
+  {
+    "name": "Great Vibes",
+    "file": "GreatVibes-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 91032
+  },
+  {
+    "name": "Heebo",
+    "file": "Heebo-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 22876
+  },
+  {
+    "name": "IBM Plex Mono",
+    "file": "IBMPlexMono-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 41468
+  },
+  {
+    "name": "Inconsolata",
+    "file": "Inconsolata-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 35924
+  },
+  {
+    "name": "Indie Flower",
+    "file": "IndieFlower-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 34844
+  },
+  {
+    "name": "Inter",
+    "file": "Inter-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 66788
+  },
+  {
+    "name": "JetBrains Mono",
+    "file": "JetBrainsMono-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 57320
+  },
+  {
+    "name": "Josefin Sans",
+    "file": "JosefinSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 27492
+  },
+  {
+    "name": "Kanit",
+    "file": "Kanit-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 50184
+  },
+  {
+    "name": "Karla",
+    "file": "Karla-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 26856
+  },
+  {
+    "name": "Kaushan Script",
+    "file": "KaushanScript-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 103088
+  },
+  {
+    "name": "Lato",
+    "file": "Lato-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 59048
+  },
+  {
+    "name": "Libre Baskerville",
+    "file": "LibreBaskerville-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 45708
+  },
+  {
+    "name": "Lilita One",
+    "file": "LilitaOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 24368
+  },
+  {
+    "name": "Lobster",
+    "file": "Lobster-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 102644
+  },
+  {
+    "name": "Lora",
+    "file": "Lora-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 47112
+  },
+  {
+    "name": "Luckiest Guy",
+    "file": "LuckiestGuy-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 40740
+  },
+  {
+    "name": "Manrope",
+    "file": "Manrope-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 35636
+  },
+  {
+    "name": "Marck Script",
+    "file": "MarckScript-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 31608
+  },
+  {
+    "name": "Merriweather",
+    "file": "Merriweather-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 130104
+  },
+  {
+    "name": "Michroma",
+    "file": "Michroma-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 38000
+  },
+  {
+    "name": "Monoton",
+    "file": "Monoton-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 39540
+  },
+  {
+    "name": "Montserrat",
+    "file": "Montserrat-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 48520
+  },
+  {
+    "name": "Mulish",
+    "file": "Mulish-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 31108
+  },
+  {
+    "name": "Neuton",
+    "file": "Neuton-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 35656
+  },
+  {
+    "name": "Nosifer",
+    "file": "Nosifer-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 34084
+  },
+  {
+    "name": "Nunito",
+    "file": "Nunito-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 39040
+  },
+  {
+    "name": "Nunito Sans",
+    "file": "NunitoSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 33116
+  },
+  {
+    "name": "Open Sans",
+    "file": "OpenSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 35292
+  },
+  {
+    "name": "Orbitron",
+    "file": "Orbitron-Bold.ttf",
+    "category": "display",
+    "weight": 700,
+    "bytes": 16144
+  },
+  {
+    "name": "Oswald",
+    "file": "Oswald-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 26740
+  },
+  {
+    "name": "Outfit",
+    "file": "Outfit-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 33252
+  },
+  {
+    "name": "Overpass",
+    "file": "Overpass-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 43004
+  },
+  {
+    "name": "Pacifico",
+    "file": "Pacifico-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 77560
+  },
+  {
+    "name": "Parisienne",
+    "file": "Parisienne-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 43120
+  },
+  {
+    "name": "Passion One",
+    "file": "PassionOne-Bold.ttf",
+    "category": "display",
+    "weight": 700,
+    "bytes": 17688
+  },
+  {
+    "name": "Patrick Hand",
+    "file": "PatrickHand-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 57156
+  },
+  {
+    "name": "Permanent Marker",
+    "file": "PermanentMarker-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 70600
+  },
+  {
+    "name": "Playfair Display",
+    "file": "PlayfairDisplay-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 53700
+  },
+  {
+    "name": "Plus Jakarta Sans",
+    "file": "PlusJakartaSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 29500
+  },
+  {
+    "name": "Poppins",
+    "file": "Poppins-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 15816
+  },
+  {
+    "name": "Prata",
+    "file": "Prata-Regular.ttf",
+    "category": "serif",
+    "weight": 400,
+    "bytes": 44312
+  },
+  {
+    "name": "Press Start 2P",
+    "file": "PressStart2P-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 41660
+  },
+  {
+    "name": "Public Sans",
+    "file": "PublicSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 30852
+  },
+  {
+    "name": "Quicksand",
+    "file": "Quicksand-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 34008
+  },
+  {
+    "name": "Raleway",
+    "file": "Raleway-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 49512
+  },
+  {
+    "name": "Rampart One",
+    "file": "RampartOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 87328
+  },
+  {
+    "name": "Righteous",
+    "file": "Righteous-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 31632
+  },
+  {
+    "name": "Roboto",
+    "file": "Roboto-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 44864
+  },
+  {
+    "name": "Roboto Mono",
+    "file": "RobotoMono-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 22952
+  },
+  {
+    "name": "Rock Salt",
+    "file": "RockSalt-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 115160
+  },
+  {
+    "name": "Rokkitt",
+    "file": "Rokkitt-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 32248
+  },
+  {
+    "name": "Rubik",
+    "file": "Rubik-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 47900
+  },
+  {
+    "name": "Russo One",
+    "file": "RussoOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 18412
+  },
+  {
+    "name": "Sacramento",
+    "file": "Sacramento-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 46396
+  },
+  {
+    "name": "Satisfy",
+    "file": "Satisfy-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 44416
+  },
+  {
+    "name": "Secular One",
+    "file": "SecularOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 45484
+  },
+  {
+    "name": "Shadows Into Light",
+    "file": "ShadowsIntoLight-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 29260
+  },
+  {
+    "name": "Share Tech Mono",
+    "file": "ShareTechMono-Regular.ttf",
+    "category": "mono",
+    "weight": 400,
+    "bytes": 35720
+  },
+  {
+    "name": "Shrikhand",
+    "file": "Shrikhand-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 37964
+  },
+  {
+    "name": "Sigmar One",
+    "file": "SigmarOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 93116
+  },
+  {
+    "name": "Silkscreen",
+    "file": "Silkscreen-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 29348
+  },
+  {
+    "name": "Sora",
+    "file": "Sora-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 32036
+  },
+  {
+    "name": "Source Code Pro",
+    "file": "SourceCodePro-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 23880
+  },
+  {
+    "name": "Space Mono",
+    "file": "SpaceMono-Bold.ttf",
+    "category": "mono",
+    "weight": 700,
+    "bytes": 40936
+  },
+  {
+    "name": "Special Elite",
+    "file": "SpecialElite-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 116880
+  },
+  {
+    "name": "Spectral",
+    "file": "Spectral-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 57020
+  },
+  {
+    "name": "Squada One",
+    "file": "SquadaOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 17136
+  },
+  {
+    "name": "Staatliches",
+    "file": "Staatliches-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 39168
+  },
+  {
+    "name": "Syncopate",
+    "file": "Syncopate-Bold.ttf",
+    "category": "display",
+    "weight": 700,
+    "bytes": 43828
+  },
+  {
+    "name": "Teko",
+    "file": "Teko-Bold.ttf",
+    "category": "display",
+    "weight": 700,
+    "bytes": 18132
+  },
+  {
+    "name": "Titan One",
+    "file": "TitanOne-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 25736
+  },
+  {
+    "name": "Titillium Web",
+    "file": "TitilliumWeb-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 28696
+  },
+  {
+    "name": "Ultra",
+    "file": "Ultra-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 41600
+  },
+  {
+    "name": "Urbanist",
+    "file": "Urbanist-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 25812
+  },
+  {
+    "name": "Vollkorn",
+    "file": "Vollkorn-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 59268
+  },
+  {
+    "name": "VT323",
+    "file": "VT323-Regular.ttf",
+    "category": "mono",
+    "weight": 400,
+    "bytes": 76476
+  },
+  {
+    "name": "Wallpoet",
+    "file": "Wallpoet-Regular.ttf",
+    "category": "display",
+    "weight": 400,
+    "bytes": 34680
+  },
+  {
+    "name": "Work Sans",
+    "file": "WorkSans-Bold.ttf",
+    "category": "sans",
+    "weight": 700,
+    "bytes": 48324
+  },
+  {
+    "name": "Yellowtail",
+    "file": "Yellowtail-Regular.ttf",
+    "category": "script",
+    "weight": 400,
+    "bytes": 34964
+  },
+  {
+    "name": "Yeseva One",
+    "file": "YesevaOne-Regular.ttf",
+    "category": "serif",
+    "weight": 400,
+    "bytes": 42428
+  },
+  {
+    "name": "Zilla Slab",
+    "file": "ZillaSlab-Bold.ttf",
+    "category": "serif",
+    "weight": 700,
+    "bytes": 82696
+  }
+]

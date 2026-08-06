@@ -13,6 +13,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import ColorPicker, { normalizeHex } from '../components/ColorPicker';
+import FontPicker from '../components/FontPicker';
+import { fontFamilyFor } from '../constants/fonts';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -34,7 +36,6 @@ const CLIP_H = 56;
 
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
-const FONTS = ['Default','Bold','Italic','Mono'];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 // A colour mixed on the picker is worth keeping - the next overlay almost always
 // wants the same one, and re-finding it by eye on the plane is not possible.
@@ -321,6 +322,9 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
   ).current;
 
   const captionStyleId = overlay.captionStyleId;
+  // undefined for 'Default' and for the legacy Bold/Italic/Mono values, which are
+  // weight and slant on the system face rather than families of their own.
+  const overlayFamily = fontFamilyFor(overlay.font);
 
   return (
     <Animated.View
@@ -330,20 +334,27 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
       <TouchableOpacity onPress={() => onTap(overlay)} activeOpacity={0.7}>
         {captionStyleId === 'sticker' ? (
           <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
-            <Text style={{ color: overlay.color, fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
+            <Text style={{ color: overlay.color, fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
           </View>
         ) : captionStyleId === 'outline' ? (
           <View style={{ alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
             {[[-1,-1],[1,-1],[-1,1],[1,1]].map(([dx, dy], i) => (
-              <Text key={i} style={{ position: 'absolute', left: dx, top: dy, color: '#000', fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
+              <Text key={i} style={{ position: 'absolute', left: dx, top: dy, color: '#000', fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
             ))}
-            <Text style={{ color: overlay.color, fontSize: overlay.size, fontWeight: 'bold', textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
+            <Text style={{ color: overlay.color, fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
           </View>
         ) : (
           <Text style={{
             color: overlay.color, fontSize: overlay.size,
-            fontWeight: (overlay.captionBold || overlay.font === 'Bold') ? 'bold' : 'normal',
-            fontStyle: (captionStyleId === 'cinematic' || overlay.font === 'Italic') ? 'italic' : 'normal',
+            ...(overlayFamily
+              // A loaded family already carries the weight it was downloaded at, and
+              // asking Android to synthesise more on top of a single registered face
+              // is what makes a custom font silently fall back to the system one.
+              ? { fontFamily: overlayFamily }
+              : {
+                fontWeight: (overlay.captionBold || overlay.font === 'Bold') ? 'bold' : 'normal',
+                fontStyle: (captionStyleId === 'cinematic' || overlay.font === 'Italic') ? 'italic' : 'normal',
+              }),
             textAlign: overlay.isAutoCaption ? 'center' : 'left',
             backgroundColor: overlay.captionBg ? '#fff' : 'transparent',
             paddingHorizontal: overlay.captionBg ? 6 : 0,
@@ -2135,14 +2146,7 @@ export default function EditVideoScreen({ navigation }) {
               onDragStateChange={setColorDragging}
             />
             <Text style={styles.modalLabel}>Font</Text>
-            <View style={styles.fontRow}>
-              {FONTS.map(f => (
-                <TouchableOpacity key={f} style={[styles.fontChip, textFont === f && styles.fontChipActive]}
-                  onPress={() => setTextFont(f)}>
-                  <Text style={[styles.fontChipText, textFont === f && { color: '#000' }]}>{f}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <FontPicker value={textFont} onChange={setTextFont} />
             <Text style={styles.modalLabel}>Size: {textSize}</Text>
             <Slider style={styles.modalSlider} minimumValue={10} maximumValue={48} step={2}
               value={textSize} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
@@ -2631,10 +2635,6 @@ const styles = StyleSheet.create({
   captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
   captionChip: { backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2ECC71' },
   captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
-  fontRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  fontChip: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#2a2a2a' },
-  fontChipActive: { backgroundColor: '#00d4d4', borderColor: '#00d4d4' },
-  fontChipText: { color: '#fff', fontSize: 12 },
 
   bottomToolbar: { flexDirection: 'column', borderTopWidth: 1, borderTopColor: '#1a1a1a', backgroundColor: '#000' },
   tabIconsRow: { paddingVertical: 4 },

@@ -27,6 +27,7 @@ import RecordingScreen from './screens/RecordingScreen';
 import PostRecordingScreen from './screens/PostRecordingScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
+import { loadAppFonts } from './constants/fontLoader';
 
 Sentry.init({
   dsn: 'https://5e8c412f592386efb8324e760011c7c9@o4511619343122432.ingest.de.sentry.io/4511619368091728',
@@ -40,6 +41,10 @@ const Stack = createNativeStackNavigator();
 
 function App() {
   const [user, setUser] = React.useState(undefined);
+
+  // Kicked off here rather than in the editor so the families are usually
+  // registered by the time anyone opens the text sheet. Deliberately not awaited.
+  useEffect(() => { loadAppFonts(); }, []);
 
   useEffect(() => {
     async function checkUpdates() {
