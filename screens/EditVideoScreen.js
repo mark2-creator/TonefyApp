@@ -612,6 +612,9 @@ export default function EditVideoScreen({ navigation }) {
   const [musicLibraryTracks, setMusicLibraryTracks] = useState([]);
   const [musicLoading, setMusicLoading] = useState(false);
   const musicPreviewSoundRef = useRef(null);
+  // Bumped by every stop. An audition load that finishes after its token went
+  // stale is unloaded instead of adopted - see previewMusicTrack.
+  const musicPreviewTokenRef = useRef(0);
   const [musicPreviewPlayingId, setMusicPreviewPlayingId] = useState(null);
 
   // Transition picker
@@ -810,6 +813,7 @@ export default function EditVideoScreen({ navigation }) {
     const map = audioSoundsRef.current;
     map.forEach(entry => entry.sound?.unloadAsync().catch(() => {}));
     map.clear();
+    musicPreviewTokenRef.current += 1;
     musicPreviewSoundRef.current?.unloadAsync().catch(() => {});
     musicPreviewSoundRef.current = null;
   }, []);
@@ -1194,10 +1198,10 @@ export default function EditVideoScreen({ navigation }) {
   // exactly like music that ignores the play/pause button and then cuts out
   // when the 30s preview file ends.
   async function stopMusicPreview() {
+    musicPreviewTokenRef.current += 1;
     const sound = musicPreviewSoundRef.current;
     musicPreviewSoundRef.current = null;
     setMusicPreviewPlayingId(null);
-
     if (sound) {
       try { await sound.stopAsync(); } catch (e) {}
       try { await sound.unloadAsync(); } catch (e) {}
@@ -1213,8 +1217,19 @@ export default function EditVideoScreen({ navigation }) {
     const wasPlayingThis = musicPreviewPlayingId === track.id;
     await stopMusicPreview();
     if (wasPlayingThis) return;
+    const token = musicPreviewTokenRef.current;
     try {
       const { sound } = await Audio.Sound.createAsync({ uri: BACKEND + track.previewUrl }, { shouldPlay: true });
+      // The remote preview takes a moment to load, and closing the sheet or
+      // hitting Add stops the audition during that gap. Without this check the
+      // sound lands after the stop, nothing owns it, and it plays on over the
+      // timeline - deaf to play/pause, and not seeking when you scrub, because
+      // it was never a mixer track at all.
+      if (musicPreviewTokenRef.current !== token) {
+        try { await sound.stopAsync(); } catch (e) {}
+        sound.unloadAsync().catch(() => {});
+        return;
+      }
       musicPreviewSoundRef.current = sound;
       setMusicPreviewPlayingId(track.id);
       sound.setOnPlaybackStatusUpdate(status => {
