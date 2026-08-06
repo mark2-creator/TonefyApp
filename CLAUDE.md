@@ -143,9 +143,21 @@ the JSX swap.
 
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
-2. On-device test of `rebuild/phase-4` is in progress. Published to `preview` as update
-   group `451d5908-16e9-4d7b-afbc-0f1706329d71` (commit `9853004b`, runtime 1.1.0) on
-   Aug 6 2026. Once confirmed working on device, open a PR into `main` and merge.
+2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
+   update group `d63dd127-3842-45a5-87d4-c2adba5cc99d` (commit `0286a94c`, runtime
+   1.1.0) on Aug 6 2026, which supersedes the earlier `451d5908-16e9-4d7b-afbc-0f1706329d71`
+   (commit `9853004b`). It carries two audio fixes awaiting confirmation:
+   - Audio track durations are now measured rather than falling back to a hardcoded
+     5s, which had been truncating each track's mixer window (`609b06e1`).
+   - The music library audition sound could be adopted *after* the stop that was
+     meant to cancel it, leaving an orphaned sound outside the mixer — audible over
+     the timeline, deaf to play/pause, never seeking. This is what made Add Music
+     ignore playback control while voiceover, which has no audition path, stayed in
+     sync (`0286a94c`).
+
+   The discriminating test is to hit Add **while the preview is still buffering**;
+   waiting for the audition to start playing first exercises a path that was never
+   broken. Once confirmed on device, open a PR into `main` and merge.
 3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
    copy is the sole working source (git history is now the real safety net).
 4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
