@@ -144,20 +144,31 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `d63dd127-3842-45a5-87d4-c2adba5cc99d` (commit `0286a94c`, runtime
-   1.1.0) on Aug 6 2026, which supersedes the earlier `451d5908-16e9-4d7b-afbc-0f1706329d71`
-   (commit `9853004b`). It carries two audio fixes awaiting confirmation:
+   update group `41a0ee28-6f5c-4b2a-b168-da51df1785ff` (commit `712adbda`, runtime
+   1.1.0) on Aug 6 2026, superseding `d63dd127-3842-45a5-87d4-c2adba5cc99d`
+   (commit `0286a94c`). Awaiting confirmation:
+   - **Preview/scroll sync (`712adbda`)** — the timeline now follows the video
+     decoder's reported position instead of seeking the decoder to match a wall
+     clock. The old correction could not converge on Android, where a seek lands on
+     the nearest preceding keyframe, so it re-fired every 200ms pass. Play-start and
+     paused scrubbing also now seek the canvas, which they never did.
+     Test: scrub somewhere mid-timeline while paused (canvas should follow the
+     scrubber, not hold a stale frame), then hit play — the first frame should be the
+     one under the scrubber, and clip boundaries should not jump. Multi-clip and
+     trimmed clips are the discriminating cases; a single untrimmed clip starting at 0
+     exercises a path that was never broken.
    - Audio track durations are now measured rather than falling back to a hardcoded
-     5s, which had been truncating each track's mixer window (`609b06e1`).
+     5s, which had been truncating each track's mixer window (`609b06e1`), and the
+     throwaway duration probe that stole audio focus mid-playback is gone (`e1937cfe`).
    - The music library audition sound could be adopted *after* the stop that was
      meant to cancel it, leaving an orphaned sound outside the mixer — audible over
      the timeline, deaf to play/pause, never seeking. This is what made Add Music
      ignore playback control while voiceover, which has no audition path, stayed in
-     sync (`0286a94c`).
+     sync (`0286a94c`). The discriminating test is to hit Add **while the preview is
+     still buffering**; waiting for the audition to start playing first exercises a
+     path that was never broken.
 
-   The discriminating test is to hit Add **while the preview is still buffering**;
-   waiting for the audition to start playing first exercises a path that was never
-   broken. Once confirmed on device, open a PR into `main` and merge.
+   Once confirmed on device, open a PR into `main` and merge.
 3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
    copy is the sole working source (git history is now the real safety net).
 4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
@@ -166,7 +177,9 @@ the JSX swap.
 ## Known gaps vs. the original lost version (lower priority, not yet rebuilt)
 
 - No pinch-to-zoom on timeline.
-- No frame-accurate video scrub-seeking while paused.
+- No frame-accurate video scrub-seeking while paused — partly closed by `712adbda`,
+  which seeks the canvas on scrub; still keyframe-accurate rather than frame-accurate,
+  since expo-av does not expose ExoPlayer's exact seek parameters.
 - Sticker/Outline caption styles not rendered on the backend export side (ImageMagick) —
   was already an open item even before the data loss.
 - "Highlight" caption style alternating-color bug — pre-existing, unfixed.
