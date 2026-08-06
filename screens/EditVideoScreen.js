@@ -524,6 +524,17 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
   );
 });
 
+// A clip's length on the timeline. trimStart/trimEnd are absolute offsets into
+// the source file, so a trimmed or split clip occupies trimEnd - trimStart on
+// the timeline. Counting trimEnd alone stretches every later clip boundary past
+// where it is actually drawn, and the canvas then shows the wrong clip for the
+// scroll position.
+function clipLength(item) {
+  if (item.type === 'image') return item.duration || 3;
+  const end = item.trimEnd ?? item.sourceDuration ?? 0;
+  return Math.max(0, end - (item.trimStart ?? 0));
+}
+
 export default function EditVideoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const videoRef = useRef(null);
@@ -694,8 +705,7 @@ export default function EditVideoScreen({ navigation }) {
 
   // Compute total duration
   useEffect(() => {
-    const total = items.reduce((acc, i) =>
-      acc + (i.type === 'image' ? (i.duration || 3) : (i.trimEnd || i.sourceDuration || 0)), 0);
+    const total = items.reduce((acc, i) => acc + clipLength(i), 0);
     setDuration(total);
   }, [items]);
 
@@ -892,11 +902,27 @@ export default function EditVideoScreen({ navigation }) {
       // recover on the next pass because the loop above restarts anything
       // in-window that stopped; this gives the video the same treatment.
       if (audioShouldPlayRef.current && videoRef.current) {
+        const clip = previewClipRef.current;
         try {
           const vs = await videoRef.current.getStatusAsync();
-          const atEnd = vs.durationMillis != null && vs.positionMillis >= vs.durationMillis - 100;
-          if (vs.isLoaded && vs.shouldPlay === false && !vs.didJustFinish && !atEnd) {
-            await videoRef.current.playAsync();
+          if (vs.isLoaded) {
+            // The <Video> runs on its own clock from wherever its source
+            // happened to load, while the timeline is scrolled by the RAF loop's
+            // wall-clock playhead. Nothing ties the two together, so the canvas
+            // drifts out of sync with the clips under the scrubber - and starts
+            // every newly swapped clip at 0 even when that clip is trimmed.
+            // Same 250ms threshold as the sounds above, for the same reason:
+            // correcting tighter than the tick interval just seeks constantly.
+            if (clip && clip.clipStart != null) {
+              const targetMs = (clip.trimStart + (positionRef.current - clip.clipStart)) * 1000;
+              if (targetMs >= 0 && Math.abs(vs.positionMillis - targetMs) > 250) {
+                await videoRef.current.setPositionAsync(targetMs);
+              }
+            }
+            const atEnd = vs.durationMillis != null && vs.positionMillis >= vs.durationMillis - 100;
+            if (vs.shouldPlay === false && !vs.didJustFinish && !atEnd) {
+              await videoRef.current.playAsync();
+            }
           }
         } catch (e) { /* no video loaded, or it was swapped mid-flight */ }
       }
@@ -976,8 +1002,10 @@ export default function EditVideoScreen({ navigation }) {
 
   function splitAtScrubber() {
     if (!selectedItem) { Alert.alert('Select a clip first'); return; }
-    const clipDur = selectedItem.type === 'image' ? selectedItem.duration : (selectedItem.trimEnd || selectedItem.sourceDuration || 3);
-    const splitPoint = clipDur / 2; // split in half for now
+    const clipDur = clipLength(selectedItem) || 3;
+    // trimStart/trimEnd are source offsets, so the halfway point of what is on
+    // the timeline sits at trimStart + half, not at half.
+    const splitPoint = (selectedItem.trimStart ?? 0) + clipDur / 2;
     const idx = items.findIndex(i => i.key === selectedKey);
     const part1 = { ...selectedItem, key: selectedItem.key + '_a', trimEnd: splitPoint };
     const part2 = { ...selectedItem, key: selectedItem.key + '_b', trimStart: splitPoint };
@@ -1591,18 +1619,52 @@ export default function EditVideoScreen({ navigation }) {
   }
 
   // Current preview item based on playback position
+  // Returns the clip under the playhead together with the timeline second it
+  // starts at. The start is what lets the canvas be seeked to the right frame
+  // within the clip instead of always playing it from its beginning.
   const getPreviewItem = () => {
     let t = 0;
     for (const item of items) {
-      const d = item.type === 'image' ? (item.duration || 3) : (item.trimEnd || item.sourceDuration || 0);
-      if (position <= t + d) return item;
+      const d = clipLength(item);
+      if (position <= t + d) return { item, start: t };
       t += d;
     }
-    return items[0];
+    return { item: items[items.length - 1], start: Math.max(0, t - clipLength(items[items.length - 1])) };
   };
 
-  const previewItem = items.length > 0 ? (selectedItem || getPreviewItem()) : null;
+  // Selecting a clip pins the canvas to it so it can be trimmed and inspected,
+  // but only while paused. During playback the playhead wins: otherwise the
+  // timeline auto-scrolls through every clip while the canvas sits frozen on
+  // whichever one happens to be selected, and tapping a clip is how nearly
+  // every edit starts.
+  const playheadClip = items.length > 0 ? getPreviewItem() : null;
+  const previewItem = items.length > 0
+    ? ((isPlaying ? null : selectedItem) || playheadClip.item)
+    : null;
+  const previewClipStart =
+    playheadClip && previewItem && previewItem.key === playheadClip.item.key
+      ? playheadClip.start
+      : null;
+  // Read by the mixer pass, which is created once and must not close over
+  // render-scoped values.
+  const previewClipRef = useRef(null);
+  previewClipRef.current = previewItem && previewItem.type === 'video'
+    ? { key: previewItem.key, trimStart: previewItem.trimStart ?? 0, clipStart: previewClipStart }
+    : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
+
+  // Seek the moment the playhead crosses into a new clip rather than waiting up
+  // to 200ms for the next mixer pass to notice. A freshly swapped source loads
+  // at 0, which is the wrong frame for any clip carrying a trimStart.
+  const previewKey = previewItem?.key;
+  useEffect(() => {
+    const clip = previewClipRef.current;
+    if (!clip || !videoRef.current) return;
+    const targetSec = clip.clipStart != null
+      ? clip.trimStart + Math.max(0, positionRef.current - clip.clipStart)
+      : clip.trimStart;
+    videoRef.current.setPositionAsync(targetSec * 1000).catch(() => {});
+  }, [previewKey]);
   const audioSheetTrack = useMemo(
     () => audioTracks.find(t => t.key === audioSheetKey) || null, [audioTracks, audioSheetKey]);
 
