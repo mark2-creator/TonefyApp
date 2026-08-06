@@ -144,9 +144,9 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `4dcfca28-f901-4187-9e49-bbe10627d79f` (commit `bf87b82e`, runtime
-   1.1.0) on Aug 6 2026, superseding `c8f65993-bd70-4040-b057-cbd1b34c4fc9`
-   (commit `f56257a7`). Awaiting confirmation:
+   update group `915cb3ee-cc98-4454-ade7-1973d6474e2d` (commit `8869e8b5`, runtime
+   1.1.0) on Aug 6 2026, superseding `4dcfca28-f901-4187-9e49-bbe10627d79f`
+   (commit `bf87b82e`). Awaiting confirmation:
    - **Colour picker (`f56257a7`)** — Add Text / Add Caption now carries a full
      picker (saturation-value plane, hue slider, hex field) behind the tune button
      at the end of the swatch row, drawn with `react-native-svg` gradients. Colours
@@ -154,7 +154,9 @@ the JSX swap.
      8 entries, presets excluded). Test: drag on the plane (the sheet must not
      scroll under the finger), type a hex, then reopen the sheet on an existing
      overlay and confirm the plane adopts that overlay's colour. Solid colours only
-     — a gradient tab needs the ImageMagick overlay render to support one first.
+     — but note the export path already renders gradients: `server.js:1983` fills
+     from `t.gradient` when an overlay carries a two-stop array, so a Gradient tab
+     is frontend-only work, not blocked on the backend as previously recorded.
 
      As first published (`f56257a7`) the plane and hue slider took no touches at
      all: `useDragTracker` returned the `PanResponder.create` wrapper instead of
@@ -162,6 +164,19 @@ the JSX swap.
      and attached no responder callbacks. Fixed in `bf87b82e`. Worth remembering as
      a class of bug — it bundles clean, renders correctly, and fails only on touch,
      so nothing short of a device catches it.
+
+     The Auto Captions sheet carries the same picker as of `8869e8b5`, seeded from
+     the selected style with a "Match style" revert. It appears only when a
+     voiceover track exists: that path times words on device and emits text
+     overlays, whose `color` survives to `/api/render`. With no voiceover,
+     `/api/edit-video` burns captions in via `buildAssFile` from the server's own
+     `STYLES` table, so the sheet explains that instead of offering a dead control.
+     Closing that gap — a `captionColor` param through `buildAssFile` — would also
+     give the Idea/Script/Url→Video screens caption colour, which they likewise
+     lack. Not done; would be backend work in `~/Tonefy-react/backend/server.js`.
+
+     Note the app has no other colour-choosing surface. The `boxColors` arrays in
+     the generation screens are a loading animation, not a picker.
    - **Preview/scroll sync (`712adbda`)** — the timeline now follows the video
      decoder's reported position instead of seeking the decoder to match a wall
      clock. The old correction could not converge on Android, where a seek lands on
