@@ -144,9 +144,17 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `41a0ee28-6f5c-4b2a-b168-da51df1785ff` (commit `712adbda`, runtime
-   1.1.0) on Aug 6 2026, superseding `d63dd127-3842-45a5-87d4-c2adba5cc99d`
-   (commit `0286a94c`). Awaiting confirmation:
+   update group `c8f65993-bd70-4040-b057-cbd1b34c4fc9` (commit `f56257a7`, runtime
+   1.1.0) on Aug 6 2026, superseding `41a0ee28-6f5c-4b2a-b168-da51df1785ff`
+   (commit `712adbda`). Awaiting confirmation:
+   - **Colour picker (`f56257a7`)** — Add Text / Add Caption now carries a full
+     picker (saturation-value plane, hue slider, hex field) behind the tune button
+     at the end of the swatch row, drawn with `react-native-svg` gradients. Colours
+     mixed on the plane persist to recents via AsyncStorage (`tonefy.recentTextColors`,
+     8 entries, presets excluded). Test: drag on the plane (the sheet must not
+     scroll under the finger), type a hex, then reopen the sheet on an existing
+     overlay and confirm the plane adopts that overlay's colour. Solid colours only
+     — a gradient tab needs the ImageMagick overlay render to support one first.
    - **Preview/scroll sync (`712adbda`)** — the timeline now follows the video
      decoder's reported position instead of seeking the decoder to match a wall
      clock. The old correction could not converge on Android, where a seek lands on
