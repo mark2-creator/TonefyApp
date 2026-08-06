@@ -218,6 +218,13 @@ function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX,
   const leftAnim = useRef(new Animated.Value(initialLeft)).current;
   const currentLeftRef = useRef(initialLeft);
   const dragStartRef = useRef(initialLeft);
+  // The PanResponder below is built once and never rebuilt, so it would clamp
+  // against whatever minX/maxX were on the first render. A track's width is not
+  // known then - it starts as the 30px minimum and only reaches its real size
+  // once the duration lands - so the mount-time maxX is always wrong. Read the
+  // live values through a ref instead.
+  const boundsRef = useRef({ minX, maxX });
+  boundsRef.current = { minX, maxX };
 
   useEffect(() => {
     currentLeftRef.current = initialLeft;
@@ -232,7 +239,8 @@ function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX,
         dragStartRef.current = currentLeftRef.current;
       },
       onPanResponderMove: (e, g) => {
-        const newX = Math.max(minX, Math.min(maxX, dragStartRef.current + g.dx));
+        const { minX: lo, maxX: hi } = boundsRef.current;
+        const newX = Math.max(lo, Math.min(hi, dragStartRef.current + g.dx));
         currentLeftRef.current = newX;
         leftAnim.setValue(newX);
       },
@@ -790,15 +798,32 @@ export default function EditVideoScreen({ navigation }) {
       setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'loading' }));
       try {
         const initialVolume = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolumeRef.current));
-        const { sound, status } = await Audio.Sound.createAsync({ uri: t.uri }, { shouldPlay: false, volume: initialVolume });
+        // downloadFirst: true - a remote library track reports no duration, or a
+        // streaming estimate, until it has actually been fetched. This Sound is
+        // now the only thing that measures duration, so it has to wait for a
+        // real answer rather than a partial one.
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri: t.uri }, { shouldPlay: false, volume: initialVolume }, null, true);
         if (cancelled || map.get(t.key)?.uri !== t.uri) { sound.unloadAsync().catch(() => {}); return; }
         map.set(t.key, { sound, uri: t.uri });
         setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'ready' }));
-        // This sound is fully loaded, so its duration is authoritative - use it
-        // to correct anything the separate duration probe got wrong.
-        if (status?.isLoaded && status.durationMillis > 0) {
-          applyTrackDuration(t.key, status.durationMillis / 1000);
+        // The mixer's own Sound is the single source of truth for duration.
+        // A separate probe Sound used to measure the same file in parallel; the
+        // two raced to write sourceDuration/trimEnd (resizing the block under
+        // the user), and unloading the probe mid-playback made expo-av drop
+        // audio focus for the entire app - see the comment on syncPreviewAudio.
+        let durationSec = status?.isLoaded && status.durationMillis > 0
+          ? status.durationMillis / 1000 : null;
+        for (let attempt = 0; durationSec === null && attempt < 10; attempt++) {
+          await new Promise(r => setTimeout(r, 200));
+          if (cancelled || map.get(t.key)?.sound !== sound) return;
+          const s = await sound.getStatusAsync();
+          if (s.isLoaded && s.durationMillis > 0) durationSec = s.durationMillis / 1000;
         }
+        if (durationSec === null) {
+          console.warn('Audio duration unavailable for', t.name, '- will play to natural end');
+        }
+        applyTrackDuration(t.key, durationSec);
       } catch (e) {
         map.delete(t.key);
         setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'failed' }));
@@ -821,7 +846,6 @@ export default function EditVideoScreen({ navigation }) {
   const syncPreviewAudio = useCallback(async () => {
     if (audioSyncBusy.current) return;
     audioSyncBusy.current = true;
-    const pos = positionRef.current;
     try {
       for (const track of audioTracksRef.current) {
         // A sync pass awaits several native calls, so the user can hit pause
@@ -830,6 +854,12 @@ export default function EditVideoScreen({ navigation }) {
         if (!audioShouldPlayRef.current) break;
         const entry = audioSoundsRef.current.get(track.key);
         if (!entry?.sound) continue;
+        // Read the playhead per track rather than once at the top of the pass:
+        // each track costs a native round-trip, so a snapshot is already stale
+        // by the time targetMs is derived from it further down. Against a 250ms
+        // drift threshold on a 200ms tick that stale value reads as drift, and
+        // the correction seeks the sound backwards over and over.
+        const pos = positionRef.current;
         const trimStart = track.trimStart ?? 0;
         const known = track.trimEnd ?? track.sourceDuration;
         // Duration is fetched asynchronously; until it lands, let the track run
@@ -852,6 +882,23 @@ export default function EditVideoScreen({ navigation }) {
             await entry.sound.setPositionAsync(targetMs);   // drift correction
           }
         } catch (e) { /* sound can be unloaded mid-flight by an edit */ }
+      }
+      // expo-av pauses every player in the app whenever it lets go of audio
+      // focus - another app taking it, a notification, or its own
+      // abandonAudioFocusIfUnused(), which fires at the end of every setStatus
+      // call and drops focus the moment no player happens to want it. The
+      // <Video>'s shouldPlay prop is untouched by that, so React never resends
+      // it and the preview stays silent while the timeline scrolls on. Sounds
+      // recover on the next pass because the loop above restarts anything
+      // in-window that stopped; this gives the video the same treatment.
+      if (audioShouldPlayRef.current && videoRef.current) {
+        try {
+          const vs = await videoRef.current.getStatusAsync();
+          const atEnd = vs.durationMillis != null && vs.positionMillis >= vs.durationMillis - 100;
+          if (vs.isLoaded && vs.shouldPlay === false && !vs.didJustFinish && !atEnd) {
+            await videoRef.current.playAsync();
+          }
+        } catch (e) { /* no video loaded, or it was swapped mid-flight */ }
       }
     } finally {
       audioSyncBusy.current = false;
@@ -1175,7 +1222,6 @@ export default function EditVideoScreen({ navigation }) {
     setVoiceoverTracks(prev => prev.filter(t => t.key !== track.key));
     setShowVoiceoverModal(false);
     attachAudioSource(tagged);
-    fetchAudioDuration(tagged);
   }
 
   async function loadMusicLibrary() {
@@ -1243,7 +1289,6 @@ export default function EditVideoScreen({ navigation }) {
     setAudioTracks(prev => [...prev, newTrack]);
     closeMusicModal();
     attachAudioSource(newTrack);
-    fetchAudioDuration(newTrack);
   }
 
   async function pickMusicFile() {
@@ -1254,7 +1299,6 @@ export default function EditVideoScreen({ navigation }) {
       setAudioTracks(prev => [...prev, newTrack]);
       closeMusicModal();
       attachAudioSource(newTrack);
-      fetchAudioDuration(newTrack);
     }
   }
 
@@ -1318,39 +1362,6 @@ export default function EditVideoScreen({ navigation }) {
       fetchWaveform(track.key, track.uri);
     } else {
       uploadAudioTrackFile(track);
-    }
-  }
-
-  // Loads the audio just long enough to read its duration, then unloads it.
-  // Needed because none of the add-audio flows (generate, upload, library)
-  // know the clip's length up front - the timeline block width and trim
-  // range both depend on this. Falls back to a default so a failed lookup
-  // still produces a usable (if under/over-sized) block instead of width 0.
-  async function fetchAudioDuration(track) {
-    let sound = null;
-    try {
-      // downloadFirst: true - a remote library track reports no duration until
-      // it has actually been fetched, and the old code turned that gap into a
-      // hardcoded 5s.
-      const created = await Audio.Sound.createAsync({ uri: track.uri }, { shouldPlay: false }, null, true);
-      sound = created.sound;
-      let durationSec = null;
-      for (let attempt = 0; attempt < 10 && durationSec === null; attempt++) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded && status.durationMillis > 0) {
-          durationSec = status.durationMillis / 1000;
-          break;
-        }
-        await new Promise(r => setTimeout(r, 200));
-      }
-      if (durationSec === null) {
-        console.warn('Audio duration unavailable for', track.name, '- will play to natural end');
-      }
-      applyTrackDuration(track.key, durationSec);
-    } catch (e) {
-      console.warn('Audio duration fetch failed:', e?.message || e);
-    } finally {
-      if (sound) { try { await sound.unloadAsync(); } catch (e) {} }
     }
   }
 
