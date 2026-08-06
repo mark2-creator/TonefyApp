@@ -550,6 +550,7 @@ export default function EditVideoScreen({ navigation }) {
   const audioTracksRef = useRef([]);
   const masterVolumeRef = useRef(1);
   const audioSyncBusy = useRef(false);
+  const audioShouldPlayRef = useRef(false);
   useAnimatedReaction(
     () => scrollXShared.value,
     (x) => {
@@ -610,7 +611,7 @@ export default function EditVideoScreen({ navigation }) {
   const [musicTab, setMusicTab] = useState('library'); // 'library' | 'device'
   const [musicLibraryTracks, setMusicLibraryTracks] = useState([]);
   const [musicLoading, setMusicLoading] = useState(false);
-  const [musicPreviewSound, setMusicPreviewSound] = useState(null);
+  const musicPreviewSoundRef = useRef(null);
   const [musicPreviewPlayingId, setMusicPreviewPlayingId] = useState(null);
 
   // Transition picker
@@ -786,6 +787,8 @@ export default function EditVideoScreen({ navigation }) {
     const map = audioSoundsRef.current;
     map.forEach(entry => entry.sound?.unloadAsync().catch(() => {}));
     map.clear();
+    musicPreviewSoundRef.current?.unloadAsync().catch(() => {});
+    musicPreviewSoundRef.current = null;
   }, []);
 
   const syncPreviewAudio = useCallback(async () => {
@@ -794,6 +797,10 @@ export default function EditVideoScreen({ navigation }) {
     const pos = positionRef.current;
     try {
       for (const track of audioTracksRef.current) {
+        // A sync pass awaits several native calls, so the user can hit pause
+        // half way through it. Without this check the pass would go on to start
+        // a sound the pause had already stopped, leaving it playing untracked.
+        if (!audioShouldPlayRef.current) break;
         const entry = audioSoundsRef.current.get(track.key);
         if (!entry?.sound) continue;
         const trimStart = track.trimStart ?? 0;
@@ -812,6 +819,7 @@ export default function EditVideoScreen({ navigation }) {
           }
           const targetMs = (trimStart + (pos - start)) * 1000;
           if (!status.isPlaying) {
+            if (!audioShouldPlayRef.current) continue;
             await entry.sound.playFromPositionAsync(targetMs);
           } else if (Math.abs(status.positionMillis - targetMs) > 250) {
             await entry.sound.setPositionAsync(targetMs);   // drift correction
@@ -820,6 +828,8 @@ export default function EditVideoScreen({ navigation }) {
       }
     } finally {
       audioSyncBusy.current = false;
+      // Anything this pass started after a pause slipped in gets stopped here.
+      if (!audioShouldPlayRef.current) pausePreviewAudioRef.current?.();
     }
   }, []);
 
@@ -828,8 +838,11 @@ export default function EditVideoScreen({ navigation }) {
       entry.sound?.pauseAsync().catch(() => {});
     });
   }, []);
+  const pausePreviewAudioRef = useRef(null);
+  pausePreviewAudioRef.current = pausePreviewAudio;
 
   useEffect(() => {
+    audioShouldPlayRef.current = isPlaying;
     if (!isPlaying) { pausePreviewAudio(); return; }
     syncPreviewAudio();
     const id = setInterval(syncPreviewAudio, 200);
@@ -1152,12 +1165,33 @@ export default function EditVideoScreen({ navigation }) {
     }
   }
 
+  // The library audition sound is separate from the timeline mixer. It used to
+  // be stopped only when auditioning a different track, so closing the sheet -
+  // or adding the track - left it playing over the timeline, which sounded
+  // exactly like music that ignores the play/pause button and then cuts out
+  // when the 30s preview file ends.
+  async function stopMusicPreview() {
+    const sound = musicPreviewSoundRef.current;
+    musicPreviewSoundRef.current = null;
+    setMusicPreviewPlayingId(null);
+    if (sound) {
+      try { await sound.stopAsync(); } catch (e) {}
+      try { await sound.unloadAsync(); } catch (e) {}
+    }
+  }
+
+  function closeMusicModal() {
+    stopMusicPreview();
+    setShowMusicModal(false);
+  }
+
   async function previewMusicTrack(track) {
+    const wasPlayingThis = musicPreviewPlayingId === track.id;
+    await stopMusicPreview();
+    if (wasPlayingThis) return;
     try {
-      if (musicPreviewSound) { await musicPreviewSound.stopAsync(); await musicPreviewSound.unloadAsync(); }
-      if (musicPreviewPlayingId === track.id) { setMusicPreviewPlayingId(null); setMusicPreviewSound(null); return; }
       const { sound } = await Audio.Sound.createAsync({ uri: BACKEND + track.previewUrl }, { shouldPlay: true });
-      setMusicPreviewSound(sound);
+      musicPreviewSoundRef.current = sound;
       setMusicPreviewPlayingId(track.id);
       sound.setOnPlaybackStatusUpdate(status => {
         if (status.didJustFinish) setMusicPreviewPlayingId(null);
@@ -1168,7 +1202,7 @@ export default function EditVideoScreen({ navigation }) {
   function addMusicTrackFromLibrary(track) {
     const newTrack = { key: String(Date.now()), uri: BACKEND + track.previewUrl, name: track.name, volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
     setAudioTracks(prev => [...prev, newTrack]);
-    setShowMusicModal(false);
+    closeMusicModal();
     attachAudioSource(newTrack);
     fetchAudioDuration(newTrack);
   }
@@ -1179,7 +1213,7 @@ export default function EditVideoScreen({ navigation }) {
       const a = result.assets[0];
       const newTrack = { key: String(Date.now()), uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
       setAudioTracks(prev => [...prev, newTrack]);
-      setShowMusicModal(false);
+      closeMusicModal();
       attachAudioSource(newTrack);
       fetchAudioDuration(newTrack);
     }
@@ -2133,7 +2167,7 @@ export default function EditVideoScreen({ navigation }) {
       <Modal visible={showMusicModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
           <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }, sheetInset]}>
-            <SheetHeader title="Add Music" onClose={() => setShowMusicModal(false)} />
+            <SheetHeader title="Add Music" onClose={closeMusicModal} />
 
             <View style={{ flexDirection:'row', gap:8, marginBottom:14 }}>
               <TouchableOpacity onPress={() => { setMusicTab('library'); loadMusicLibrary(); }}
@@ -2174,7 +2208,7 @@ export default function EditVideoScreen({ navigation }) {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity onPress={() => setShowMusicModal(false)} style={{ alignItems:'center', padding:10, marginTop:6 }}>
+            <TouchableOpacity onPress={closeMusicModal} style={{ alignItems:'center', padding:10, marginTop:6 }}>
               <Text style={{ color:'#888' }}>Close</Text>
             </TouchableOpacity>
           </View>
