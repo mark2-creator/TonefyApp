@@ -584,6 +584,7 @@ export default function EditVideoScreen({ navigation }) {
   const [masterVolume, setMasterVolume] = useState(1);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
   const [audioSheetKey, setAudioSheetKey] = useState(null);
+  const [audioLoadStatus, setAudioLoadStatus] = useState({});   // key -> loading | ready | failed
 
   // Effects
   const [selectedFilter, setSelectedFilter] = useState('None');
@@ -764,13 +765,16 @@ export default function EditVideoScreen({ navigation }) {
     audioTracks.forEach(async (t) => {
       if (map.has(t.key)) return;
       map.set(t.key, { sound: null, uri: t.uri });   // claim the slot so we load once
+      setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'loading' }));
       try {
         const initialVolume = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolumeRef.current));
         const { sound } = await Audio.Sound.createAsync({ uri: t.uri }, { shouldPlay: false, volume: initialVolume });
         if (cancelled || map.get(t.key)?.uri !== t.uri) { sound.unloadAsync().catch(() => {}); return; }
         map.set(t.key, { sound, uri: t.uri });
+        setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'ready' }));
       } catch (e) {
         map.delete(t.key);
+        setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'failed' }));
         console.warn('Preview audio load failed:', e?.message || e);
       }
     });
@@ -808,8 +812,7 @@ export default function EditVideoScreen({ navigation }) {
           }
           const targetMs = (trimStart + (pos - start)) * 1000;
           if (!status.isPlaying) {
-            await entry.sound.setPositionAsync(targetMs);
-            await entry.sound.playAsync();
+            await entry.sound.playFromPositionAsync(targetMs);
           } else if (Math.abs(status.positionMillis - targetMs) > 250) {
             await entry.sound.setPositionAsync(targetMs);   // drift correction
           }
@@ -1851,7 +1854,15 @@ export default function EditVideoScreen({ navigation }) {
                     <Text style={{ color:'#ff6b6b', fontSize:13, fontWeight:'600' }}>Delete</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={{ color:'#666', fontSize:11, marginTop:14 }}>
+                <Text style={{
+                  color: audioLoadStatus[audioSheetTrack.key] === 'failed' ? '#ff6b6b' : '#666',
+                  fontSize: 11, marginTop: 14,
+                }}>
+                  Preview audio: {audioLoadStatus[audioSheetTrack.key] === 'ready' ? 'ready'
+                    : audioLoadStatus[audioSheetTrack.key] === 'failed' ? "couldn't load this file"
+                    : 'loading...'}
+                </Text>
+                <Text style={{ color:'#666', fontSize:11, marginTop:6 }}>
                   Starts at {fmtTime(audioSheetTrack.startOffset ?? 0)}
                   {audioSheetTrack.sourceDuration
                     ? ' \u00b7 ' + Math.round((audioSheetTrack.trimEnd ?? audioSheetTrack.sourceDuration) - (audioSheetTrack.trimStart ?? 0)) + 's long'
