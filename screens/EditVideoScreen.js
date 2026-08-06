@@ -741,6 +741,24 @@ export default function EditVideoScreen({ navigation }) {
   // the playhead enters the track's window. Without this the timeline scrolls
   // and the canvas plays but the aux rows are silent until export.
   // ---------------------------------------------------------------------------
+  // Applies a real measured duration to a track. Never invents one: the track's
+  // duration decides the window the mixer will play it in, so a wrong value
+  // silences the track for the rest of the timeline. Unknown (null) means "play
+  // to the file's natural end", which is always better than a guess.
+  const applyTrackDuration = useCallback((trackKey, durationSec) => {
+    if (!(durationSec > 0)) return;
+    setAudioTracks(prev => prev.map(t => {
+      if (t.key !== trackKey || t.sourceDuration === durationSec) return t;
+      // Only move trimEnd if the user has not trimmed this track themselves.
+      const untrimmed = t.trimEnd == null || t.trimEnd === t.sourceDuration;
+      return {
+        ...t,
+        sourceDuration: durationSec,
+        trimEnd: untrimmed ? durationSec : Math.min(t.trimEnd, durationSec),
+      };
+    }));
+  }, []);
+
   useEffect(() => { audioTracksRef.current = audioTracks; }, [audioTracks]);
   useEffect(() => { masterVolumeRef.current = masterVolume; }, [masterVolume]);
   useEffect(() => { positionRef.current = position; }, [position]);
@@ -769,10 +787,15 @@ export default function EditVideoScreen({ navigation }) {
       setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'loading' }));
       try {
         const initialVolume = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolumeRef.current));
-        const { sound } = await Audio.Sound.createAsync({ uri: t.uri }, { shouldPlay: false, volume: initialVolume });
+        const { sound, status } = await Audio.Sound.createAsync({ uri: t.uri }, { shouldPlay: false, volume: initialVolume });
         if (cancelled || map.get(t.key)?.uri !== t.uri) { sound.unloadAsync().catch(() => {}); return; }
         map.set(t.key, { sound, uri: t.uri });
         setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'ready' }));
+        // This sound is fully loaded, so its duration is authoritative - use it
+        // to correct anything the separate duration probe got wrong.
+        if (status?.isLoaded && status.durationMillis > 0) {
+          applyTrackDuration(t.key, status.durationMillis / 1000);
+        }
       } catch (e) {
         map.delete(t.key);
         setAudioLoadStatus(prev => ({ ...prev, [t.key]: 'failed' }));
@@ -780,7 +803,7 @@ export default function EditVideoScreen({ navigation }) {
       }
     });
     return () => { cancelled = true; };
-  }, [audioSourceKey]);
+  }, [audioSourceKey, applyTrackDuration]);
 
   // Unload everything on unmount so sounds don't outlive the screen.
   useEffect(() => () => {
@@ -1174,6 +1197,7 @@ export default function EditVideoScreen({ navigation }) {
     const sound = musicPreviewSoundRef.current;
     musicPreviewSoundRef.current = null;
     setMusicPreviewPlayingId(null);
+
     if (sound) {
       try { await sound.stopAsync(); } catch (e) {}
       try { await sound.unloadAsync(); } catch (e) {}
@@ -1288,13 +1312,30 @@ export default function EditVideoScreen({ navigation }) {
   // range both depend on this. Falls back to a default so a failed lookup
   // still produces a usable (if under/over-sized) block instead of width 0.
   async function fetchAudioDuration(track) {
+    let sound = null;
     try {
-      const { sound, status } = await Audio.Sound.createAsync({ uri: track.uri }, {}, null, false);
-      const durationSec = (status.durationMillis || 5000) / 1000;
-      await sound.unloadAsync();
-      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, sourceDuration: durationSec, trimEnd: durationSec } : t));
+      // downloadFirst: true - a remote library track reports no duration until
+      // it has actually been fetched, and the old code turned that gap into a
+      // hardcoded 5s.
+      const created = await Audio.Sound.createAsync({ uri: track.uri }, { shouldPlay: false }, null, true);
+      sound = created.sound;
+      let durationSec = null;
+      for (let attempt = 0; attempt < 10 && durationSec === null; attempt++) {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded && status.durationMillis > 0) {
+          durationSec = status.durationMillis / 1000;
+          break;
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      if (durationSec === null) {
+        console.warn('Audio duration unavailable for', track.name, '- will play to natural end');
+      }
+      applyTrackDuration(track.key, durationSec);
     } catch (e) {
-      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, sourceDuration: t.sourceDuration || 5, trimEnd: t.trimEnd || 5 } : t));
+      console.warn('Audio duration fetch failed:', e?.message || e);
+    } finally {
+      if (sound) { try { await sound.unloadAsync(); } catch (e) {} }
     }
   }
 
