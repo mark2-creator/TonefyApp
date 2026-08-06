@@ -61,14 +61,25 @@ re-export of `react-native-worklets/plugin` (v4 restructuring) — either import
 Note: `babel.config.js` is currently **untracked** in git. It must be committed or the
 next clean checkout silently loses worklet compilation.
 
-## SAFETY RULE — do not break this
+## `preview` channel policy (updated Aug 6 2026 — rule relaxed)
 
-Do **not** `eas update --branch preview` until the rebuild reaches full feature parity with
-what's currently live. Every past `eas update` to `preview` is already live on Expo's CDN
-and serving real users, completely independent of VPS disk state — so nothing is at risk
-from local work. But publishing an incomplete rebuild to `preview` would downgrade
-production. Set up a separate branch/dev-client for testing before ever touching `preview`
-again.
+**`eas update --branch preview` is now the normal, approved way to test on device.**
+
+The previous rule forbade publishing to `preview` until the rebuild reached full feature
+parity, on the grounds that it would downgrade production for real users. That premise no
+longer holds: **Ahumuza is the only user of the app.** There is no third-party user base on
+the `preview` channel to protect, so an incomplete rebuild landing there costs nothing more
+than a reinstall. Publish freely.
+
+What remains true and still worth knowing:
+
+- Updates published to `preview` are live on Expo's CDN, independent of VPS disk state.
+  Local disk loss cannot un-publish them — the CDN copy is its own backup.
+- An update is only served to builds with a **matching `runtimeVersion`**. Builds at
+  runtime `1.0.0` (the four from Jun 28–30 2026) will silently ignore a `1.1.0` update
+  rather than crash. Before treating an on-device test as meaningful, confirm the
+  installed build is runtime `1.1.0`.
+- A separate `recovery-test` channel is no longer required. Don't build that plumbing.
 
 ## Known security hygiene item (low priority, not urgent)
 
@@ -130,11 +141,11 @@ the JSX swap.
 
 ## IMMEDIATE NEXT STEPS
 
-1. Set up safe on-device testing without touching the live `preview` branch — a
-   separate `eas update --branch recovery-test`-style channel + a build pointed at
-   it. Reassess whether Claude Code changes what's possible here vs. pure Termux+SSH.
-2. Once `rebuild/phase-4` is tested and confirmed at parity with live `preview`,
-   open a PR into `main` and merge.
+1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
+   straight to `preview` is approved (single user, nothing to protect). Test there.
+2. On-device test of `rebuild/phase-4` is in progress. Published to `preview` as update
+   group `451d5908-16e9-4d7b-afbc-0f1706329d71` (commit `9853004b`, runtime 1.1.0) on
+   Aug 6 2026. Once confirmed working on device, open a PR into `main` and merge.
 3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
    copy is the sole working source (git history is now the real safety net).
 4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
