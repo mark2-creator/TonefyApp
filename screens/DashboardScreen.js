@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
+import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
@@ -54,6 +55,7 @@ export default function DashboardScreen({ navigation }) {
 
   const [showSettings, setShowSettings] = useState(false);
   const { theme, isDark, toggleTheme } = useTheme();
+  const sheetInset = useSheetInset();
   const darkMode = isDark;
 
   const handleCardPress = (title) => {
@@ -94,9 +96,10 @@ export default function DashboardScreen({ navigation }) {
       {/* Settings Modal */}
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
-          <View style={[styles.modalSheet, { backgroundColor: theme.settingBg }]}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.settingBg }, sheetInset]}>
             <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
+            <SheetHeader title="Settings" onClose={() => setShowSettings(false)}
+              titleColor={theme.text} titleStyle={styles.sheetTitle} style={styles.sheetHeaderPad} />
 
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
@@ -256,9 +259,10 @@ const styles = StyleSheet.create({
   navLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   navFab: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#2ecc71', alignItems: 'center', justifyContent: 'center', marginBottom: 8, shadowColor: '#2ecc71', shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
   modalHandle: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 20 },
+  sheetTitle: { fontSize: 18, fontWeight: '700' },
+  sheetHeaderPad: { marginBottom: 20 },
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
   settingLabel: { color: '#fff', fontSize: 14, fontWeight: '600' },

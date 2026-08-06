@@ -10,6 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -150,11 +151,11 @@ function TransitionPreview({ item }) {
 
 function TransitionModal({ visible, targetKey, onSelect, onClose }) {
   const groups = ['Basic', 'Trendy', 'Cinematic'];
-  const insets = useSafeAreaInsets();
+  const sheetInset = useSheetInset(16);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={{ flex:1, backgroundColor:'rgba(0,0,0,0.6)', justifyContent:'flex-end' }} activeOpacity={1} onPress={onClose}>
-        <View style={{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, paddingBottom: 16 + (insets.bottom || 16), maxHeight:'85%' }}>
+        <View style={[{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, maxHeight:'85%' }, sheetInset]}>
           <View style={{ width:36, height:4, backgroundColor:'#333', borderRadius:2, alignSelf:'center', marginBottom:12 }} />
           <SheetHeader title="🎬 Transition Style" onClose={onClose} />
           <ScrollView>
@@ -375,20 +376,6 @@ function CaptionPreview({ style, isSelected, onPress }) {
   );
 }
 
-// Every bottom sheet gets the same title + dismiss affordance, so a sheet can
-// always be backed out of without hunting for its footer button.
-function SheetHeader({ title, onClose }) {
-  return (
-    <View style={styles.sheetHeader}>
-      <Text style={styles.sheetHeaderTitle}>{title}</Text>
-      <TouchableOpacity onPress={onClose} style={styles.sheetHeaderClose}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <MaterialIcons name="close" size={20} color="#888" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 const AudioTrackRow = React.memo(function AudioTrackRow({
   scrollRef, timelineContentWidth, tracksComputed, waveformCache, selectedAudioTrackKey,
   accentColor, iconName, addLabel, leadOffset, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
@@ -543,9 +530,7 @@ export default function EditVideoScreen({ navigation }) {
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
   const [timelineLeadW, setTimelineLeadW] = useState(0);
-  // Sheets sit flush to the screen bottom, so their footer buttons land under
-  // the system nav bar without this.
-  const sheetInset = { paddingBottom: 20 + (insets.bottom || 16) };
+  const sheetInset = useSheetInset();
   const rowLeadW = timelineLeadW + SCRUBBER_LINE_W + SCRUBBER_GAP;
   const playTimer = useRef(null);
   const timelineScrollRef = useAnimatedRef();
@@ -2062,10 +2047,7 @@ const styles = StyleSheet.create({
   progressText: { color: '#00d4d4', fontSize: 13, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
-  sheetHeaderTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', flex: 1 },
-  sheetHeaderClose: { padding: 4, marginLeft: 12, marginTop: -2 },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalLabel: { color: '#888', fontSize: 12, marginBottom: 4, marginTop: 8 },
   modalSlider: { width: '100%', height: 32 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },

@@ -10,6 +10,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
+import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -431,12 +432,13 @@ function TransitionPreview({ item }) {
 
 function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
   const groups = ['Basic', 'Trendy', 'Cinematic'];
+  const sheetInset = useSheetInset();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+        <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>🎬 Transition Style</Text>
+          <SheetHeader title="🎬 Transition Style" onClose={onClose} style={styles.sheetHeaderPad} />
           <FlatList
             data={groups}
             keyExtractor={g => g}
@@ -507,6 +509,7 @@ function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onToggl
 }
 
 function MusicModal({ visible, selectedId, onSelect, onClose }) {
+  const sheetInset = useSheetInset();
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [playingId, setPlayingId] = useState(null);
@@ -566,9 +569,9 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+        <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>🎵 Background Music</Text>
+          <SheetHeader title="🎵 Background Music" onClose={onClose} style={styles.sheetHeaderPad} />
           <TouchableOpacity
             onPress={() => { onSelect({ id: 'none', name: 'No Music' }); onClose(); }}
             style={{
@@ -601,14 +604,15 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 }
 
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
+  const sheetInset = useSheetInset();
   const isCaption = options.length > 0 && options[0].color !== undefined && options[0].icon === undefined;
   if (isCaption) {
     return (
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
+          <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{title}</Text>
+            <SheetHeader title={title} onClose={onClose} style={styles.sheetHeaderPad} />
             <FlatList
               data={options}
               keyExtractor={item => item.id}
@@ -639,9 +643,9 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={styles.modalSheet}>
+        <View style={[styles.modalSheet, sheetInset]}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>{title}</Text>
+          <SheetHeader title={title} onClose={onClose} style={styles.sheetHeaderPad} />
           <FlatList
             data={options}
             keyExtractor={item => item.id}
@@ -1024,9 +1028,9 @@ const styles = StyleSheet.create({
   progressText: { color: '#2ecc71', fontSize: 12, textAlign: 'center' },
   videoPlayer: { width: '100%', height: 220, borderRadius: 10, marginBottom: 16, backgroundColor: '#000' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, maxHeight: '70%' },
+  modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' },
   modalHandle: { width: 40, height: 4, backgroundColor: '#333', borderRadius: 2, alignSelf: 'center', marginVertical: 12 },
-  modalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', paddingHorizontal: 20, marginBottom: 12 },
+  sheetHeaderPad: { paddingHorizontal: 20, marginBottom: 12 },
   optionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, marginHorizontal: 12, borderRadius: 10, marginBottom: 4 },
   optionRowActive: { backgroundColor: '#0d2b1a' },
   optionIcon: { fontSize: 22, marginRight: 14 },
