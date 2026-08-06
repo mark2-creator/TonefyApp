@@ -150,12 +150,13 @@ function TransitionPreview({ item }) {
 
 function TransitionModal({ visible, targetKey, onSelect, onClose }) {
   const groups = ['Basic', 'Trendy', 'Cinematic'];
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={{ flex:1, backgroundColor:'rgba(0,0,0,0.6)', justifyContent:'flex-end' }} activeOpacity={1} onPress={onClose}>
-        <View style={{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, maxHeight:'85%' }}>
+        <View style={{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, paddingBottom: 16 + (insets.bottom || 16), maxHeight:'85%' }}>
           <View style={{ width:36, height:4, backgroundColor:'#333', borderRadius:2, alignSelf:'center', marginBottom:12 }} />
-          <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:12 }}>🎬 Transition Style</Text>
+          <SheetHeader title="🎬 Transition Style" onClose={onClose} />
           <ScrollView>
             {groups.map(group => {
               const items = TRANSITION_STYLES.filter(o => o.group === group);
@@ -374,6 +375,20 @@ function CaptionPreview({ style, isSelected, onPress }) {
   );
 }
 
+// Every bottom sheet gets the same title + dismiss affordance, so a sheet can
+// always be backed out of without hunting for its footer button.
+function SheetHeader({ title, onClose }) {
+  return (
+    <View style={styles.sheetHeader}>
+      <Text style={styles.sheetHeaderTitle}>{title}</Text>
+      <TouchableOpacity onPress={onClose} style={styles.sheetHeaderClose}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <MaterialIcons name="close" size={20} color="#888" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const AudioTrackRow = React.memo(function AudioTrackRow({
   scrollRef, timelineContentWidth, tracksComputed, waveformCache, selectedAudioTrackKey,
   accentColor, iconName, addLabel, leadOffset, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
@@ -528,6 +543,9 @@ export default function EditVideoScreen({ navigation }) {
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
   const [timelineLeadW, setTimelineLeadW] = useState(0);
+  // Sheets sit flush to the screen bottom, so their footer buttons land under
+  // the system nav bar without this.
+  const sheetInset = { paddingBottom: 20 + (insets.bottom || 16) };
   const rowLeadW = timelineLeadW + SCRUBBER_LINE_W + SCRUBBER_GAP;
   const playTimer = useRef(null);
   const timelineScrollRef = useAnimatedRef();
@@ -1579,8 +1597,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* TRIM MODAL */}
       <Modal visible={showTrimModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Trim Clip</Text>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Trim Clip" onClose={() => setShowTrimModal(false)} />
             {trimItem && (
               <>
                 <Text style={styles.modalLabel}>Start: {trimStart.toFixed(1)}s</Text>
@@ -1618,8 +1636,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* TEXT MODAL */}
       <Modal visible={showTextModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>{editingText ? 'Edit Text' : 'Add Text'}</Text>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title={editingText ? 'Edit Text' : 'Add Text'} onClose={() => setShowTextModal(false)} />
             <TextInput style={styles.textModalInput} value={textInput}
               onChangeText={setTextInput} placeholder="Enter text..."
               placeholderTextColor="#555" multiline />
@@ -1659,8 +1677,8 @@ export default function EditVideoScreen({ navigation }) {
       </Modal>   {/* VOLUME MODAL */}
       <Modal visible={showVolumeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Master Volume</Text>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Master Volume" onClose={() => setShowVolumeModal(false)} />
             <Text style={styles.modalLabel}>{Math.round(masterVolume * 100)}%</Text>
             <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1}
               value={masterVolume} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
@@ -1675,8 +1693,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* RESOLUTION MODAL */}
       <Modal visible={showResModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Export Resolution</Text>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Export Resolution" onClose={() => setShowResModal(false)} />
             {['720p','1080p','4K'].map(r => (
               <TouchableOpacity key={r} style={[styles.resRow, resolution === r && styles.resRowActive]}
                 onPress={() => { setResolution(r); setShowResModal(false); }}>
@@ -1691,8 +1709,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* IMAGE DURATION MODAL */}
       <Modal visible={showImageDurationModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20 }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:16 }}>Photo Duration</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20 }, sheetInset]}>
+            <SheetHeader title="Photo Duration" onClose={() => setShowImageDurationModal(false)} />
             {selectedItem && (
               <>
                 <Text style={{ color:'#aaa', fontSize:13, marginBottom:8 }}>Duration: {selectedItem.duration}s</Text>
@@ -1718,8 +1736,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* AUDIO LIST MODAL */}
       <Modal visible={showAudioListModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'70%' }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:16 }}>Audio Tracks</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'70%' }, sheetInset]}>
+            <SheetHeader title="Audio Tracks" onClose={() => setShowAudioListModal(false)} />
             <ScrollView>
               {audioTracks.map(track => (
                 <View key={track.key} style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
@@ -1742,8 +1760,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* TEXT LIST MODAL */}
       <Modal visible={showTextListModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'70%' }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:16 }}>Text Overlays</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'70%' }, sheetInset]}>
+            <SheetHeader title="Text Overlays" onClose={() => setShowTextListModal(false)} />
             <ScrollView>
               {textOverlays.map(t => (
                 <TouchableOpacity key={t.key}
@@ -1767,8 +1785,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* VOICEOVER MODAL */}
       <Modal visible={showVoiceoverModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:12 }}>Add Voiceover</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }, sheetInset]}>
+            <SheetHeader title="Add Voiceover" onClose={() => setShowVoiceoverModal(false)} />
 
             <View style={{ flexDirection:'row', gap:8, marginBottom:14 }}>
               <TouchableOpacity onPress={() => setVoiceoverTab('generate')}
@@ -1856,8 +1874,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* MUSIC MODAL */}
       <Modal visible={showMusicModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:12 }}>Add Music</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }, sheetInset]}>
+            <SheetHeader title="Add Music" onClose={() => setShowMusicModal(false)} />
 
             <View style={{ flexDirection:'row', gap:8, marginBottom:14 }}>
               <TouchableOpacity onPress={() => { setMusicTab('library'); loadMusicLibrary(); }}
@@ -1916,8 +1934,8 @@ export default function EditVideoScreen({ navigation }) {
       {/* AUTO CAPTIONS MODAL */}
       <Modal visible={showCaptionModal} transparent animationType="slide">
         <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight: '80%' }}>
-            <Text style={{ color:'#fff', fontSize:16, fontWeight:'bold', marginBottom:12 }}>Auto Captions</Text>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight: '80%' }, sheetInset]}>
+            <SheetHeader title="Auto Captions" onClose={() => setShowCaptionModal(false)} />
             <ScrollView showsVerticalScrollIndicator={false}>
 
             <Text style={{ color:'#aaa', fontSize:12, marginBottom:6 }}>Caption Script (optional)</Text>
@@ -2045,7 +2063,9 @@ const styles = StyleSheet.create({
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
+  sheetHeaderTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', flex: 1 },
+  sheetHeaderClose: { padding: 4, marginLeft: 12, marginTop: -2 },
   modalLabel: { color: '#888', fontSize: 12, marginBottom: 4, marginTop: 8 },
   modalSlider: { width: '100%', height: 32 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
