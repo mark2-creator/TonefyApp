@@ -1036,7 +1036,9 @@ export default function EditVideoScreen({ navigation }) {
       if (audioTracks.length > 0) {
         setMessage('Uploading audio...');
         for (const track of audioTracks) {
-          if (track.uri.startsWith('http')) {
+          if (track.remoteUrl) {
+            uploadedAudio.push({ url: track.remoteUrl, ...audioPlacement(track) });
+          } else if (track.uri.startsWith('http')) {
             uploadedAudio.push({ url: track.uri, ...audioPlacement(track) });
           } else {
             const audioForm = new FormData();
@@ -1132,7 +1134,7 @@ export default function EditVideoScreen({ navigation }) {
     setAudioTracks(prev => [...prev, tagged]);
     setVoiceoverTracks(prev => prev.filter(t => t.key !== track.key));
     setShowVoiceoverModal(false);
-    fetchWaveform(tagged);
+    attachAudioSource(tagged);
     fetchAudioDuration(tagged);
   }
 
@@ -1167,7 +1169,7 @@ export default function EditVideoScreen({ navigation }) {
     const newTrack = { key: String(Date.now()), uri: BACKEND + track.previewUrl, name: track.name, volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
     setAudioTracks(prev => [...prev, newTrack]);
     setShowMusicModal(false);
-    fetchWaveform(newTrack);
+    attachAudioSource(newTrack);
     fetchAudioDuration(newTrack);
   }
 
@@ -1178,24 +1180,67 @@ export default function EditVideoScreen({ navigation }) {
       const newTrack = { key: String(Date.now()), uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
       setAudioTracks(prev => [...prev, newTrack]);
       setShowMusicModal(false);
-      fetchWaveform(newTrack);
+      attachAudioSource(newTrack);
       fetchAudioDuration(newTrack);
     }
   }
 
-  async function fetchWaveform(track) {
-    if (waveformCache[track.key]) return;
+  async function fetchWaveform(trackKey, url) {
+    if (!url || waveformCache[trackKey]) return;
     try {
       const res = await fetch(BACKEND + '/api/audio-waveform', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: track.uri, samples: 400 }),
+        body: JSON.stringify({ url, samples: 400 }),
       });
       const data = await res.json();
       if (data.peaks) {
-        setWaveformCache(prev => ({ ...prev, [track.key]: data.peaks }));
+        setWaveformCache(prev => ({ ...prev, [trackKey]: data.peaks }));
       }
     } catch (e) {}
+  }
+
+  // A picked file lives only on the device, so the backend cannot read it for a
+  // waveform and the export would have to upload it at the worst possible
+  // moment - after the user hits Export. Upload once at add-time instead: the
+  // block gets a real waveform, and Export reuses the same URL. Preview audio
+  // keeps playing from the local file, so it stays instant and works offline.
+  async function uploadAudioTrackFile(track) {
+    setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, uploadState: 'uploading' } : t));
+    try {
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : null;
+      const form = new FormData();
+      form.append('files', {
+        uri: track.uri,
+        name: track.name || 'audio.mp3',
+        type: 'audio/mpeg',
+      });
+      const res = await fetch(BACKEND + '/api/upload-media', {
+        method: 'POST',
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
+        body: form,
+      });
+      const data = await res.json();
+      const remoteUrl = data.items?.[0]?.url;
+      if (!remoteUrl) throw new Error(data.error || 'Upload failed');
+      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, remoteUrl, uploadState: 'ready' } : t));
+      fetchWaveform(track.key, remoteUrl);
+    } catch (e) {
+      // Not fatal: the track still plays locally, and Export retries the upload.
+      setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, uploadState: 'failed' } : t));
+      console.warn('Audio track upload failed:', e?.message || e);
+    }
+  }
+
+  // Backend-hosted sources (generated voiceovers, library music) are already
+  // readable server-side; device files have to be uploaded first.
+  function attachAudioSource(track) {
+    if (/^https?:/i.test(track.uri)) {
+      fetchWaveform(track.key, track.uri);
+    } else {
+      uploadAudioTrackFile(track);
+    }
   }
 
   // Loads the audio just long enough to read its duration, then unloads it.
@@ -1872,6 +1917,16 @@ export default function EditVideoScreen({ navigation }) {
                     : audioLoadStatus[audioSheetTrack.key] === 'failed' ? "couldn't load this file"
                     : 'loading...'}
                 </Text>
+                {audioSheetTrack.uploadState && audioSheetTrack.uploadState !== 'ready' && (
+                  <Text style={{
+                    color: audioSheetTrack.uploadState === 'failed' ? '#ff6b6b' : '#666',
+                    fontSize: 11, marginTop: 6,
+                  }}>
+                    {audioSheetTrack.uploadState === 'uploading'
+                      ? 'Uploading for waveform and export...'
+                      : "Upload failed - plays here, will be retried when you export"}
+                  </Text>
+                )}
                 <Text style={{ color:'#666', fontSize:11, marginTop:6 }}>
                   Starts at {fmtTime(audioSheetTrack.startOffset ?? 0)}
                   {audioSheetTrack.sourceDuration
