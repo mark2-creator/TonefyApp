@@ -570,6 +570,16 @@ export default function EditVideoScreen({ navigation }) {
   const masterVolumeRef = useRef(1);
   const audioSyncBusy = useRef(false);
   const audioShouldPlayRef = useRef(false);
+  // Where the video decoder actually is, expressed as a timeline second, plus
+  // the wall-clock instant that reading was taken. Null whenever there is no
+  // trustworthy reading - paused, mid-seek, or no video clip under the
+  // playhead - and the timeline falls back to its own wall clock.
+  const videoClockRef = useRef(null);
+  // A seek we issued and are still waiting to see land. Status updates that
+  // arrive in the meantime still describe the pre-seek position, so they are
+  // dropped rather than adopted as the clock.
+  const videoSeekTargetRef = useRef(null);
+  const seekVideoToRef = useRef(null);
   useAnimatedReaction(
     () => scrollXShared.value,
     (x) => {
@@ -731,6 +741,23 @@ export default function EditVideoScreen({ navigation }) {
         const deltaSec = (ts - lastTs) / 1000;
         lastTs = ts;
         localPos += deltaSec;
+        // Follow the decoder's own clock while a video clip is under the
+        // playhead. The frame on screen is wherever the decoder actually got
+        // to - after a keyframe-snapped seek, a buffering stall, or a source
+        // slower to decode than real time, that is not where a wall clock says
+        // it should be. Dragging the video to the wall clock (what the mixer
+        // used to do) fights the decoder and re-seeks forever; moving the
+        // timeline to the video instead makes the scroll show what the canvas
+        // is showing, by construction.
+        const vc = videoClockRef.current;
+        if (vc) {
+          const videoPos = vc.timelineSec + (Date.now() - vc.at) / 1000;
+          const err = videoPos - localPos;
+          // A large gap is a seek or a stall, so snap. A small one is ordinary
+          // decoder jitter - ease it out so the scroll never visibly jerks.
+          if (Math.abs(err) > 0.35) localPos = videoPos;
+          else localPos += err * 0.1;
+        }
         positionRef.current = localPos;
         if (localPos >= duration) {
           setIsPlaying(false);
@@ -906,17 +933,19 @@ export default function EditVideoScreen({ navigation }) {
         try {
           const vs = await videoRef.current.getStatusAsync();
           if (vs.isLoaded) {
-            // The <Video> runs on its own clock from wherever its source
-            // happened to load, while the timeline is scrolled by the RAF loop's
-            // wall-clock playhead. Nothing ties the two together, so the canvas
-            // drifts out of sync with the clips under the scrubber - and starts
-            // every newly swapped clip at 0 even when that clip is trimmed.
-            // Same 250ms threshold as the sounds above, for the same reason:
-            // correcting tighter than the tick interval just seeks constantly.
+            // Ordinary drift is no longer corrected here. The timeline now
+            // follows the decoder (see the RAF loop), so seeking the canvas to
+            // match a wall clock would fight it - and on Android a seek lands
+            // on the nearest keyframe, which is itself off target, so the
+            // correction re-fires every pass and never converges. That is what
+            // left the canvas jumping while the scroll ran on regardless.
+            // What still needs a seek is a position outside the clip's own
+            // window: a source that loaded at 0 for a trimmed clip, or one
+            // that ran past trimEnd into footage this clip does not cover.
             if (clip && clip.clipStart != null) {
-              const targetMs = (clip.trimStart + (positionRef.current - clip.clipStart)) * 1000;
-              if (targetMs >= 0 && Math.abs(vs.positionMillis - targetMs) > 250) {
-                await videoRef.current.setPositionAsync(targetMs);
+              const inClip = vs.positionMillis / 1000 - clip.trimStart;
+              if (inClip < -0.5 || inClip > clip.clipLen + 0.5) {
+                seekVideoToRef.current?.(positionRef.current);
               }
             }
             const atEnd = vs.durationMillis != null && vs.positionMillis >= vs.durationMillis - 100;
@@ -1649,22 +1678,84 @@ export default function EditVideoScreen({ navigation }) {
   // render-scoped values.
   const previewClipRef = useRef(null);
   previewClipRef.current = previewItem && previewItem.type === 'video'
-    ? { key: previewItem.key, trimStart: previewItem.trimStart ?? 0, clipStart: previewClipStart }
+    ? {
+        key: previewItem.key,
+        trimStart: previewItem.trimStart ?? 0,
+        clipStart: previewClipStart,
+        clipLen: clipLength(previewItem),
+      }
     : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
+
+  // Put the canvas on the frame a given timeline second points at. Every path
+  // that moves the playhead somewhere the decoder is not already heading goes
+  // through here, so the clock is invalidated in one place too.
+  const seekVideoTo = useCallback((timelineSec) => {
+    const clip = previewClipRef.current;
+    if (!clip || !videoRef.current) return;
+    const targetSec = clip.clipStart != null
+      ? clip.trimStart + Math.max(0, timelineSec - clip.clipStart)
+      : clip.trimStart;
+    videoClockRef.current = null;
+    videoSeekTargetRef.current = clip.clipStart != null
+      ? { sec: timelineSec, at: Date.now() }
+      : null;
+    videoRef.current.setPositionAsync(targetSec * 1000).catch(() => {});
+  }, []);
+  seekVideoToRef.current = seekVideoTo;
+
+  // The canvas reporting where the decoder really is. Translated into a
+  // timeline second for the RAF loop to follow.
+  const onVideoStatus = useCallback((status) => {
+    const clip = previewClipRef.current;
+    if (!status?.isLoaded || !status.isPlaying || !clip || clip.clipStart == null) {
+      videoClockRef.current = null;
+      return;
+    }
+    // Right after a source swap expo-av still reports the outgoing clip's
+    // position. Adopting that would yank the timeline to an unrelated second,
+    // so only readings that fall inside the current clip's window count.
+    const inClip = status.positionMillis / 1000 - clip.trimStart;
+    if (inClip < -0.5 || inClip > clip.clipLen + 0.5) {
+      videoClockRef.current = null;
+      return;
+    }
+    const timelineSec = clip.clipStart + inClip;
+    const pending = videoSeekTargetRef.current;
+    if (pending) {
+      // Still the pre-seek position. Give the seek a second to land - a
+      // keyframe-snapped one may never land close, and waiting forever would
+      // leave the timeline on its wall clock permanently.
+      if (Math.abs(timelineSec - pending.sec) > 0.6 && Date.now() - pending.at < 1000) return;
+      videoSeekTargetRef.current = null;
+    }
+    videoClockRef.current = { timelineSec, at: Date.now() };
+  }, []);
 
   // Seek the moment the playhead crosses into a new clip rather than waiting up
   // to 200ms for the next mixer pass to notice. A freshly swapped source loads
   // at 0, which is the wrong frame for any clip carrying a trimStart.
   const previewKey = previewItem?.key;
+  useEffect(() => { seekVideoTo(positionRef.current); }, [previewKey, seekVideoTo]);
+
+  // Pressing play left the canvas wherever the decoder happened to be - the end
+  // of the previous run, or 0 - while the timeline started scrolling from the
+  // playhead, and nothing reconciled the two until the mixer's next pass. Seek
+  // up front so the first frame of playback is the frame under the scrubber.
   useEffect(() => {
-    const clip = previewClipRef.current;
-    if (!clip || !videoRef.current) return;
-    const targetSec = clip.clipStart != null
-      ? clip.trimStart + Math.max(0, positionRef.current - clip.clipStart)
-      : clip.trimStart;
-    videoRef.current.setPositionAsync(targetSec * 1000).catch(() => {});
-  }, [previewKey]);
+    if (!isPlaying) { videoClockRef.current = null; return; }
+    seekVideoTo(positionRef.current);
+  }, [isPlaying, seekVideoTo]);
+
+  // Keep the canvas on the scrubbed frame while paused. Without this the
+  // preview holds a stale frame for the whole scrub, so it is already out of
+  // sync with the timeline before play is ever pressed. Debounced: a scrub
+  // emits positions far faster than the decoder can serve seeks.
+  useEffect(() => {
+    if (isPlaying) return;
+    const t = setTimeout(() => seekVideoTo(position), 90);
+    return () => clearTimeout(t);
+  }, [position, isPlaying, previewKey, seekVideoTo]);
   const audioSheetTrack = useMemo(
     () => audioTracks.find(t => t.key === audioSheetKey) || null, [audioTracks, audioSheetKey]);
 
@@ -1757,6 +1848,8 @@ export default function EditVideoScreen({ navigation }) {
               <Video ref={videoRef} source={previewVideoSource}
                 style={styles.previewImage} resizeMode="cover"
                 shouldPlay={isPlaying} isLooping={false}
+                progressUpdateIntervalMillis={50}
+                onPlaybackStatusUpdate={onVideoStatus}
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
             ) : (
               <Image source={{ uri: previewItem.uri }}
