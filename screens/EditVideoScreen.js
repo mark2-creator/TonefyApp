@@ -542,6 +542,14 @@ export default function EditVideoScreen({ navigation }) {
   const scrollXShared = useSharedValue(0);
   const lastScrubUpdateRef = useRef(0);
   const lastPlaybackPosUpdateRef = useRef(0);
+  // Preview audio mixer state. Sounds are keyed by track key; positionRef is the
+  // playhead at frame resolution (the `position` state is throttled to ~25/sec,
+  // which is too coarse to seek audio against).
+  const audioSoundsRef = useRef(new Map());
+  const positionRef = useRef(0);
+  const audioTracksRef = useRef([]);
+  const masterVolumeRef = useRef(1);
+  const audioSyncBusy = useRef(false);
   useAnimatedReaction(
     () => scrollXShared.value,
     (x) => {
@@ -575,6 +583,7 @@ export default function EditVideoScreen({ navigation }) {
   const [audioTracks, setAudioTracks] = useState([]);
   const [masterVolume, setMasterVolume] = useState(1);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
+  const [audioSheetKey, setAudioSheetKey] = useState(null);
 
   // Effects
   const [selectedFilter, setSelectedFilter] = useState('None');
@@ -699,6 +708,7 @@ export default function EditVideoScreen({ navigation }) {
         const deltaSec = (ts - lastTs) / 1000;
         lastTs = ts;
         localPos += deltaSec;
+        positionRef.current = localPos;
         if (localPos >= duration) {
           setIsPlaying(false);
           setPosition(0);
@@ -719,6 +729,119 @@ export default function EditVideoScreen({ navigation }) {
     }
     return () => cancelAnimationFrame(playTimer.current);
   }, [isPlaying, duration]);
+
+  // ---------------------------------------------------------------------------
+  // Preview audio mixer
+  //
+  // The <Video> element only ever plays the clip under the playhead, so
+  // voiceover and music tracks have to be driven separately: one expo-av Sound
+  // per track, seeked to (trimStart + playhead - startOffset) and started when
+  // the playhead enters the track's window. Without this the timeline scrolls
+  // and the canvas plays but the aux rows are silent until export.
+  // ---------------------------------------------------------------------------
+  useEffect(() => { audioTracksRef.current = audioTracks; }, [audioTracks]);
+  useEffect(() => { masterVolumeRef.current = masterVolume; }, [masterVolume]);
+  useEffect(() => { positionRef.current = position; }, [position]);
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false, shouldDuckAndroid: false })
+      .catch(() => {});
+  }, []);
+
+  // Load a Sound per track, and drop any whose source changed or went away.
+  const audioSourceKey = useMemo(
+    () => audioTracks.map(t => t.key + '|' + t.uri).join(','), [audioTracks]);
+  useEffect(() => {
+    const map = audioSoundsRef.current;
+    const wanted = new Map(audioTracks.map(t => [t.key, t.uri]));
+    for (const [key, entry] of Array.from(map.entries())) {
+      if (wanted.get(key) !== entry.uri) {
+        map.delete(key);
+        entry.sound?.unloadAsync().catch(() => {});
+      }
+    }
+    let cancelled = false;
+    audioTracks.forEach(async (t) => {
+      if (map.has(t.key)) return;
+      map.set(t.key, { sound: null, uri: t.uri });   // claim the slot so we load once
+      try {
+        const initialVolume = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolumeRef.current));
+        const { sound } = await Audio.Sound.createAsync({ uri: t.uri }, { shouldPlay: false, volume: initialVolume });
+        if (cancelled || map.get(t.key)?.uri !== t.uri) { sound.unloadAsync().catch(() => {}); return; }
+        map.set(t.key, { sound, uri: t.uri });
+      } catch (e) {
+        map.delete(t.key);
+        console.warn('Preview audio load failed:', e?.message || e);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [audioSourceKey]);
+
+  // Unload everything on unmount so sounds don't outlive the screen.
+  useEffect(() => () => {
+    const map = audioSoundsRef.current;
+    map.forEach(entry => entry.sound?.unloadAsync().catch(() => {}));
+    map.clear();
+  }, []);
+
+  const syncPreviewAudio = useCallback(async () => {
+    if (audioSyncBusy.current) return;
+    audioSyncBusy.current = true;
+    const pos = positionRef.current;
+    try {
+      for (const track of audioTracksRef.current) {
+        const entry = audioSoundsRef.current.get(track.key);
+        if (!entry?.sound) continue;
+        const trimStart = track.trimStart ?? 0;
+        const known = track.trimEnd ?? track.sourceDuration;
+        // Duration is fetched asynchronously; until it lands, let the track run
+        // to its natural end rather than treating it as zero-length (silent).
+        const dur = known != null ? known - trimStart : Infinity;
+        const start = track.startOffset ?? 0;
+        const inWindow = dur > 0 && pos >= start && pos < start + dur;
+        try {
+          const status = await entry.sound.getStatusAsync();
+          if (!status.isLoaded) continue;
+          if (!inWindow) {
+            if (status.isPlaying) await entry.sound.pauseAsync();
+            continue;
+          }
+          const targetMs = (trimStart + (pos - start)) * 1000;
+          if (!status.isPlaying) {
+            await entry.sound.setPositionAsync(targetMs);
+            await entry.sound.playAsync();
+          } else if (Math.abs(status.positionMillis - targetMs) > 250) {
+            await entry.sound.setPositionAsync(targetMs);   // drift correction
+          }
+        } catch (e) { /* sound can be unloaded mid-flight by an edit */ }
+      }
+    } finally {
+      audioSyncBusy.current = false;
+    }
+  }, []);
+
+  const pausePreviewAudio = useCallback(() => {
+    audioSoundsRef.current.forEach(entry => {
+      entry.sound?.pauseAsync().catch(() => {});
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying) { pausePreviewAudio(); return; }
+    syncPreviewAudio();
+    const id = setInterval(syncPreviewAudio, 200);
+    return () => clearInterval(id);
+  }, [isPlaying, syncPreviewAudio, pausePreviewAudio]);
+
+  // Live volume: master scales every track, so the slider is audible while the
+  // preview is running instead of only mattering at export.
+  useEffect(() => {
+    audioTracks.forEach(t => {
+      const entry = audioSoundsRef.current.get(t.key);
+      const vol = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolume));
+      entry?.sound?.setVolumeAsync(vol).catch(() => {});
+    });
+  }, [audioTracks, masterVolume]);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
@@ -901,7 +1024,7 @@ export default function EditVideoScreen({ navigation }) {
         setMessage('Uploading audio...');
         for (const track of audioTracks) {
           if (track.uri.startsWith('http')) {
-            uploadedAudio.push({ url: track.uri, volume: track.volume || 1, isVoiceover: !!track.isVoiceover });
+            uploadedAudio.push({ url: track.uri, volume: (track.volume ?? 1) * masterVolume, isVoiceover: !!track.isVoiceover });
           } else {
             const audioForm = new FormData();
             audioForm.append('files', { uri: track.uri, name: track.name || 'audio.mp3', type: 'audio/mpeg' });
@@ -910,7 +1033,7 @@ export default function EditVideoScreen({ navigation }) {
             });
             const audioData = await audioRes.json();
             if (audioData.items?.[0]) {
-              uploadedAudio.push({ url: audioData.items[0].url, volume: track.volume || 1, isVoiceover: !!track.isVoiceover });
+              uploadedAudio.push({ url: audioData.items[0].url, volume: (track.volume ?? 1) * masterVolume, isVoiceover: !!track.isVoiceover });
             }
           }
         }
@@ -1103,7 +1226,16 @@ export default function EditVideoScreen({ navigation }) {
     setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
   }, []);
   const onPressAudioTrack = useCallback((key) => {
-    setSelectedAudioTrackKey(prevKey => prevKey === key ? null : key);
+    setSelectedAudioTrackKey(key);
+    setAudioSheetKey(key);
+  }, []);
+  const setAudioTrackVolume = useCallback((key, volume) => {
+    setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, volume } : t));
+  }, []);
+  const removeAudioTrack = useCallback((key) => {
+    setAudioTracks(prev => prev.filter(t => t.key !== key));
+    setAudioSheetKey(prev => prev === key ? null : prev);
+    setSelectedAudioTrackKey(prev => prev === key ? null : prev);
   }, []);
   const onLongPressVoiceoverTrack = useCallback((key) => {
     Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
@@ -1307,6 +1439,8 @@ export default function EditVideoScreen({ navigation }) {
 
   const previewItem = items.length > 0 ? (selectedItem || getPreviewItem()) : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
+  const audioSheetTrack = useMemo(
+    () => audioTracks.find(t => t.key === audioSheetKey) || null, [audioTracks, audioSheetKey]);
 
   const bottomTabs = [
     { name: 'Edit', icon: 'content-cut' },
@@ -1668,9 +1802,64 @@ export default function EditVideoScreen({ navigation }) {
             <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1}
               value={masterVolume} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
               thumbTintColor="#00d4d4" onValueChange={setMasterVolume} />
+            <Text style={{ color:'#666', fontSize:11, textAlign:'center', marginBottom:10 }}>
+              Scales every voiceover and music track. Tap a track on the timeline to set its own level.
+            </Text>
             <TouchableOpacity style={styles.modalBtnApply} onPress={() => setShowVolumeModal(false)}>
               <Text style={styles.modalBtnApplyText}>Done</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AUDIO TRACK MODAL - per-track level, opened by tapping a timeline track */}
+      <Modal visible={!!audioSheetTrack} transparent animationType="slide"
+        onRequestClose={() => setAudioSheetKey(null)}>
+        <View style={{ flex:1, justifyContent:'flex-end', backgroundColor:'rgba(0,0,0,0.6)' }}>
+          <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20 }, sheetInset]}>
+            <SheetHeader title={audioSheetTrack?.isVoiceover ? 'Voiceover Track' : 'Music Track'}
+              onClose={() => setAudioSheetKey(null)} />
+            {audioSheetTrack && (
+              <>
+                <Text numberOfLines={1} style={{ color:'#aaa', fontSize:12, marginBottom:16 }}>
+                  {audioSheetTrack.name}
+                </Text>
+                <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+                  <Text style={{ color:'#fff', fontSize:13, fontWeight:'600' }}>Volume</Text>
+                  <Text style={{ color:'#00d4d4', fontSize:13 }}>
+                    {Math.round((audioSheetTrack.volume ?? 1) * 100)}%
+                  </Text>
+                </View>
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1}
+                  value={audioSheetTrack.volume ?? 1}
+                  minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333" thumbTintColor="#00d4d4"
+                  onValueChange={(v) => setAudioTrackVolume(audioSheetTrack.key, v)} />
+                <View style={{ flexDirection:'row', gap:10, marginTop:4 }}>
+                  <TouchableOpacity
+                    onPress={() => setAudioTrackVolume(audioSheetTrack.key, (audioSheetTrack.volume ?? 1) > 0 ? 0 : 1)}
+                    style={{ flex:1, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:6,
+                      backgroundColor:'#2a2a2a', borderRadius:8, paddingVertical:12 }}>
+                    <MaterialIcons name={(audioSheetTrack.volume ?? 1) > 0 ? 'volume-up' : 'volume-off'} size={16} color="#fff" />
+                    <Text style={{ color:'#fff', fontSize:13, fontWeight:'600' }}>
+                      {(audioSheetTrack.volume ?? 1) > 0 ? 'Mute' : 'Unmute'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => removeAudioTrack(audioSheetTrack.key)}
+                    style={{ flex:1, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:6,
+                      backgroundColor:'#2a1a1a', borderRadius:8, paddingVertical:12 }}>
+                    <MaterialIcons name="delete-outline" size={16} color="#ff6b6b" />
+                    <Text style={{ color:'#ff6b6b', fontSize:13, fontWeight:'600' }}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={{ color:'#666', fontSize:11, marginTop:14 }}>
+                  Starts at {fmtTime(audioSheetTrack.startOffset ?? 0)}
+                  {audioSheetTrack.sourceDuration
+                    ? ' \u00b7 ' + Math.round((audioSheetTrack.trimEnd ?? audioSheetTrack.sourceDuration) - (audioSheetTrack.trimStart ?? 0)) + 's long'
+                    : ''}
+                  {' \u00b7 drag the block to move it, long-press to delete'}
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -1725,13 +1914,16 @@ export default function EditVideoScreen({ navigation }) {
             <SheetHeader title="Audio Tracks" onClose={() => setShowAudioListModal(false)} />
             <ScrollView>
               {audioTracks.map(track => (
-                <View key={track.key} style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
+                <TouchableOpacity key={track.key}
+                  onPress={() => { setShowAudioListModal(false); setSelectedAudioTrackKey(track.key); setAudioSheetKey(track.key); }}
+                  style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
                   <MaterialIcons name={track.isVoiceover ? 'record-voice-over' : 'music-note'} size={16} color="#00d4d4" />
                   <Text style={{ color:'#fff', flex:1, marginLeft:8, fontSize:13 }} numberOfLines={1}>{track.name}</Text>
-                  <TouchableOpacity onPress={() => setAudioTracks(prev => prev.filter(t => t.key !== track.key))}>
+                  <Text style={{ color:'#666', fontSize:11, marginRight:8 }}>{Math.round((track.volume ?? 1) * 100)}%</Text>
+                  <TouchableOpacity onPress={() => removeAudioTrack(track.key)}>
                     <MaterialIcons name="close" size={18} color="#888" />
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
             <TouchableOpacity onPress={() => setShowAudioListModal(false)}
