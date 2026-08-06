@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, StatusBar,
   Dimensions, Modal, TextInput, PanResponder, Animated, FlatList
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
@@ -11,6 +12,7 @@ import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
+import ColorPicker, { normalizeHex } from '../components/ColorPicker';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -34,6 +36,10 @@ const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
 const FONTS = ['Default','Bold','Italic','Mono'];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
+// A colour mixed on the picker is worth keeping - the next overlay almost always
+// wants the same one, and re-finding it by eye on the plane is not possible.
+const RECENT_COLORS_KEY = 'tonefy.recentTextColors';
+const MAX_RECENT_COLORS = 8;
 const TRANSITION_STYLES = [
   { id: 'none',        label: 'Cut',          icon: '✂️',  group: 'Basic' },
   { id: 'fade',        label: 'Fade',         icon: '🌅', group: 'Basic' },
@@ -606,6 +612,9 @@ export default function EditVideoScreen({ navigation }) {
   const [editingText, setEditingText] = useState(null);
   const [textInput, setTextInput] = useState('');
   const [textColor, setTextColor] = useState('#fff');
+  const [recentColors, setRecentColors] = useState([]);
+  // A drag on the colour plane must not double as a scroll of the sheet holding it.
+  const [colorDragging, setColorDragging] = useState(false);
   const [textFont, setTextFont] = useState('Default');
   const [textSize, setTextSize] = useState(18);
 
@@ -693,6 +702,28 @@ export default function EditVideoScreen({ navigation }) {
   }, []);
   const onPressAddText = useCallback(() => {
     setEditingText(null); setTextInput(''); setShowTextModal(true);
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(RECENT_COLORS_KEY)
+      .then(raw => {
+        if (!alive || !raw) return;
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) setRecentColors(list.map(normalizeHex).filter(Boolean).slice(0, MAX_RECENT_COLORS));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  // Only colours the picker settled on are recorded, not every frame of a drag,
+  // and never a preset - those already have a permanent slot in the row.
+  const rememberColor = useCallback((c) => {
+    const norm = normalizeHex(c);
+    if (!norm || TEXT_COLORS.some(p => normalizeHex(p) === norm)) return;
+    setRecentColors(prev => {
+      const next = [norm, ...prev.filter(x => x !== norm)].slice(0, MAX_RECENT_COLORS);
+      AsyncStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
   }, []);
   const openCaptionModal = useCallback(() => setShowCaptionModal(true), []);
   const captionPreviewGroups = useMemo(() => {
@@ -2074,19 +2105,22 @@ export default function EditVideoScreen({ navigation }) {
       {/* TEXT MODAL */}
       <Modal visible={showTextModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, sheetInset]}>
+          <View style={[styles.modalSheet, styles.textModalSheet, sheetInset]}>
             <SheetHeader title={editingText ? 'Edit Text' : 'Add Text'} onClose={() => setShowTextModal(false)} />
+            <ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!colorDragging}
+              showsVerticalScrollIndicator={false}>
             <TextInput style={styles.textModalInput} value={textInput}
               onChangeText={setTextInput} placeholder="Enter text..."
               placeholderTextColor="#555" multiline />
             <Text style={styles.modalLabel}>Color</Text>
-            <View style={styles.colorRow}>
-              {TEXT_COLORS.map(c => (
-                <TouchableOpacity key={c} style={[styles.colorDot, { backgroundColor: c },
-                  textColor === c && styles.colorDotSelected]}
-                  onPress={() => setTextColor(c)} />
-              ))}
-            </View>
+            <ColorPicker
+              color={textColor}
+              onChange={setTextColor}
+              onCommit={rememberColor}
+              presets={TEXT_COLORS}
+              recents={recentColors}
+              onDragStateChange={setColorDragging}
+            />
             <Text style={styles.modalLabel}>Font</Text>
             <View style={styles.fontRow}>
               {FONTS.map(f => (
@@ -2110,6 +2144,7 @@ export default function EditVideoScreen({ navigation }) {
                 </Text>
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>   {/* VOLUME MODAL */}
@@ -2584,10 +2619,8 @@ const styles = StyleSheet.create({
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#00d4d4', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
+  textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
-  colorRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  colorDot: { width: 28, height: 28, borderRadius: 14 },
-  colorDotSelected: { borderWidth: 3, borderColor: '#00d4d4' },
   resRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   resRowActive: { },
   resText: { color: '#fff', fontSize: 15 },
