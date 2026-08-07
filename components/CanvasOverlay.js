@@ -102,6 +102,12 @@ export default function CanvasOverlay({
     // activates the pan before the tap can finish - so tapping to select would
     // work only sometimes, which is worse than not working at all.
     .minDistance(2)
+    // Android measures a pan from the last finger placed rather than from the
+    // point between them, so a two-finger turn reads as a large drag: each
+    // finger sweeps an arc while the centre stays put. Left alone, the overlay
+    // bolts across the frame the moment you try to rotate it. iOS already
+    // averages, and ignores this.
+    .averageTouches(true)
     .onStart(() => {
       startX.value = x.value;
       startY.value = y.value;
@@ -163,6 +169,16 @@ export default function CanvasOverlay({
   // handle is known at the moment the drag starts, and the finger's translation is
   // added to it, so length gives the scale and angle gives the rotation.
   const handleGesture = Gesture.Pan()
+    // The handle is drawn inside the element, so its drag and the element's own
+    // one-finger gestures are separate handlers reaching for the same finger,
+    // and a nested detector buys no priority. The element's pan won every time:
+    // it activates at 2dp where a pan left unconfigured waits for the platform
+    // touch slop (~8dp), and the first handler to activate cancels every other
+    // one it does not run simultaneously with. So dragging the corner handle
+    // moved the caption instead of turning it - the only way to rotate with one
+    // finger, which is the only way to rotate while holding the phone. Blocking
+    // makes those three wait for the handle to fail before they may activate.
+    .blocksExternalGesture(panGesture, tapGesture, longPressGesture)
     .onStart(() => {
       startScale.value = scale.value;
       startRotation.value = rotation.value;

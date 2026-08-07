@@ -223,6 +223,19 @@ finger. Replaces the drag-only PanResponder.
 - The corner handle never needs the canvas's position on screen: the vector from centre to
   handle is known when the drag starts, the finger's translation is added to it, and length
   gives scale while angle gives rotation.
+- **The handle has to block the element's own one-finger gestures.** Being drawn inside the
+  element, its `GestureDetector` is nested in the element's — which buys it no priority.
+  Both reach for the same finger, and the first handler to activate cancels every other one
+  it is not simultaneous with. The element's pan activates at `minDistance(2)` where a pan
+  left unconfigured waits for the platform touch slop (~8dp on Android), so the element's
+  pan won every time and the handle only ever dragged the caption. `blocksExternalGesture`
+  makes pan, tap and long press wait for the handle to fail. Rotation is a leaf on
+  `BaseGesture`, so this is not the composition trap — the composition was verified correct
+  (`Race` adds no relation at all; pan/pinch/rotation are cross-linked `simultaneousWith`).
+- **Pan needs `averageTouches(true)`.** Android measures a pan from the last finger placed
+  rather than the point between them, so a two-finger turn reads as a large drag: each
+  finger sweeps an arc while the centre stays put. RNGH's own source calls this out for
+  exactly the case of attaching a rotation handler. iOS already averages and ignores it.
 - Rotation snaps within 4° of a right angle. Turning by hand never lands on exactly 0, and
   a caption a degree and a half off level reads as a mistake.
 - Pan carries `minDistance(2)`. A finger never lands perfectly still, and without it that
