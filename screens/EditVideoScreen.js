@@ -18,6 +18,7 @@ import CaptionStylePicker from '../components/CaptionStylePicker';
 import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
+import TrimStrip from '../components/TrimStrip';
 import { measureVideoDuration } from '../utils/videoDuration';
 import { fontFamilyFor } from '../constants/fonts';
 import {
@@ -1577,10 +1578,6 @@ export default function EditVideoScreen({ navigation }) {
     setShowTrimModal(false);
   }
 
-  // How far the out point may reach. Falls back the same way openTrim does, so the
-  // slider and the value it opens on cannot disagree about where the end of the
-  // footage is.
-  const trimSourceLen = trimItem ? (trimItem.sourceDuration || trimItem.duration || 10) : 10;
 
   function applySpeed(speed) {
     setSelectedSpeed(speed);
@@ -2943,28 +2940,22 @@ export default function EditVideoScreen({ navigation }) {
             <SheetHeader title="Trim Clip" onClose={() => setShowTrimModal(false)} />
             {trimItem && (
               <>
-                <Text style={styles.modalLabel}>Start: {trimStart.toFixed(1)}s</Text>
-                <Slider style={styles.modalSlider}
-                  minimumValue={0}
-                  maximumValue={Math.max(0, trimEnd - MIN_CLIP_DUR)}
-                  value={trimStart}
-                  minimumTrackTintColor="#00d4d4"
-                  maximumTrackTintColor="#333"
-                  thumbTintColor="#00d4d4"
-                  onValueChange={setTrimStart} />
-                <Text style={styles.modalLabel}>End: {trimEnd.toFixed(1)}s</Text>
-                <Slider style={styles.modalSlider}
-                  minimumValue={Math.min(trimStart + MIN_CLIP_DUR, trimSourceLen)}
-                  maximumValue={trimSourceLen}
-                  value={trimEnd}
-                  minimumTrackTintColor="#00d4d4"
-                  maximumTrackTintColor="#333"
-                  thumbTintColor="#00d4d4"
-                  onValueChange={setTrimEnd} />
-                <Text style={styles.trimLengthNote}>
-                  Clip length {Math.max(0, trimEnd - trimStart).toFixed(1)}s
-                  {trimItem.sourceDuration ? ` of ${trimItem.sourceDuration.toFixed(1)}s` : ''}
-                </Text>
+                <Text style={styles.trimHint}>Drag either end to choose what to keep</Text>
+                <TrimStrip
+                  uri={trimItem.uri}
+                  type={trimItem.type}
+                  // The strip lays out the whole source file across the sheet, so this
+                  // has to be the file's length and not the clip's current window -
+                  // otherwise the footage a trim would give back is not on screen to
+                  // aim at, which is the entire reason for showing frames.
+                  sourceDuration={trimItem.sourceDuration || trimItem.duration || 0}
+                  trimStart={trimStart}
+                  trimEnd={trimEnd}
+                  width={SW - 48}
+                  height={64}
+                  minDur={MIN_CLIP_DUR}
+                  onChange={(start, end) => { setTrimStart(start); setTrimEnd(end); }}
+                />
               </>
             )}
             <View style={styles.modalBtns}>
@@ -3610,7 +3601,7 @@ const styles = StyleSheet.create({
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
-  trimLengthNote: { color: '#888', fontSize: 12, marginTop: 4 },
+  trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
