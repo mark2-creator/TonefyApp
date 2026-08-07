@@ -1,46 +1,242 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, Modal, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import SheetHeader from './SheetHeader';
+import CaptionText from './CaptionText';
+import { useAppFonts } from '../constants/fontLoader';
+import {
+  CAPTION_STYLES, CAPTION_CATEGORIES, resolveCaptionStyle, captionChunkSize,
+} from '../constants/captionStyles';
 
-export const CAPTION_STYLES = [
-  { id: 'classic', label: 'Classic',  preview: 'Aa', textColor: '#fff',    bg: 'transparent', border: '#555',    desc: 'White + outline' },
-  { id: 'tiktok',  label: 'TikTok',   preview: 'Aa', textColor: '#FFD700', bg: 'transparent', border: '#FFD700', desc: 'Bold yellow' },
-  { id: 'bold',    label: 'Bold',     preview: 'Aa', textColor: '#fff',    bg: 'transparent', border: '#fff',    desc: 'Large & thick' },
-  { id: 'neon',    label: 'Neon',     preview: 'Aa', textColor: '#00FF7F', bg: 'transparent', border: '#00FF7F', desc: 'Green glow' },
-  { id: 'fire',    label: 'Fire',     preview: 'Aa', textColor: '#FF6600', bg: 'transparent', border: '#FF6600', desc: 'Orange fire' },
-  { id: 'minimal', label: 'Minimal',  preview: 'Aa', textColor: '#ddd',    bg: 'transparent', border: '#444',    desc: 'Clean & simple' },
-];
+// A hundred and thirty styles will not fit in a grid inside the Auto Captions
+// sheet - and a vertical list nested in that sheet's ScrollView is the one
+// arrangement React Native handles worst, since neither scroller can virtualise.
+// So the sheet keeps a single row showing the current style, drawn in itself, and
+// the catalogue opens over it: searchable, filtered by category, two columns of
+// live previews.
 
-export default function CaptionStylePicker({ selectedId, onSelect }) {
+const COLUMNS = 2;
+
+// Long enough to show a face's rhythm and its ascenders and descenders, short
+// enough that the widest display families still fit a half-width tile. Sentence
+// case on purpose - a style with `upper` capitalises it and one without does not,
+// so the tile shows which of the two you are picking.
+const SAMPLE = 'Say this';
+
+const ALL = 'All';
+
+function StyleTile({ style, selected, ready, onPress }) {
   return (
-    <View>
-      <Text style={styles.label}>💬 Caption Style</Text>
-      <View style={styles.grid}>
-        {CAPTION_STYLES.map((s) => (
-          <TouchableOpacity
-            key={s.id}
-            style={[styles.btn, selectedId === s.id && styles.btnActive, { borderColor: selectedId === s.id ? '#2ecc71' : '#333' }]}
-            onPress={() => onSelect(s.id)}
-          >
-            <View style={[styles.previewBox, { backgroundColor: '#000' }]}>
-              <Text style={[styles.previewText, { color: s.textColor, textShadowColor: '#000', textShadowRadius: 4 }]}>{s.preview}</Text>
-            </View>
-            <Text style={[styles.name, selectedId === s.id && styles.nameActive]}>{s.label}</Text>
-            <Text style={styles.desc}>{s.desc}</Text>
-          </TouchableOpacity>
-        ))}
+    <TouchableOpacity
+      style={[styles.tile, selected && styles.tileSelected]}
+      onPress={() => onPress(style.id)}
+      accessibilityRole="button"
+      accessibilityLabel={style.label + ' caption style'}
+      accessibilityState={{ selected }}
+    >
+      <View style={styles.stage}>
+        {/* The families register a frame or two after mount; until then every
+            tile would preview in the system face and they would all look alike,
+            so the sample is held back rather than shown wrong. */}
+        {ready ? (
+          <CaptionText style={style} text={SAMPLE} size={15} numberOfLines={1} />
+        ) : null}
       </View>
-    </View>
+      <Text numberOfLines={1} style={[styles.tileName, selected && styles.tileNameSelected]}>
+        {style.label}
+      </Text>
+      {selected && (
+        <View style={styles.tileCheck}>
+          <MaterialIcons name="check" size={12} color="#0b0b0b" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const MemoTile = React.memo(StyleTile);
+
+export default function CaptionStylePicker({ value, onChange, label = 'Caption Style' }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState(ALL);
+  const ready = useAppFonts();
+  const listRef = useRef(null);
+
+  const selected = resolveCaptionStyle(value);
+
+  const data = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return CAPTION_STYLES.filter(s => {
+      if (category !== ALL && s.category !== category) return false;
+      if (!q) return true;
+      return s.label.toLowerCase().includes(q)
+        || s.category.toLowerCase().includes(q)
+        || (s.font || '').toLowerCase().includes(q);
+    });
+  }, [query, category]);
+
+  // Switching category leaves the list scrolled where the last one ended, which
+  // looks like an empty category until you scroll back up.
+  useEffect(() => {
+    if (listRef.current && data.length > 0) {
+      listRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [category, query, data.length]);
+
+  const pick = useCallback((id) => {
+    onChange(id);
+    setOpen(false);
+  }, [onChange]);
+
+  const renderItem = useCallback(({ item }) => (
+    <MemoTile style={item} selected={item.id === selected.id} ready={ready} onPress={pick} />
+  ), [selected.id, ready, pick]);
+
+  const chunk = captionChunkSize(selected);
+
+  return (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity
+        style={styles.trigger}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Caption style: ${selected.label}. Tap to change.`}
+      >
+        <View style={styles.triggerStage}>
+          {ready ? <CaptionText style={selected} text={SAMPLE} size={16} numberOfLines={1} /> : null}
+        </View>
+        <View style={styles.triggerMeta}>
+          <Text style={styles.triggerName} numberOfLines={1}>{selected.label}</Text>
+          <Text style={styles.triggerSub} numberOfLines={1}>
+            {selected.category} · {chunk === 1 ? 'word by word' : `${chunk} words`}
+          </Text>
+        </View>
+        <MaterialIcons name="grid-view" size={18} color="#666" />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.sheet}>
+            <SheetHeader title={`Caption Style · ${CAPTION_STYLES.length}`} onClose={() => setOpen(false)} />
+
+            <View style={styles.searchWrap}>
+              <MaterialIcons name="search" size={18} color="#666" />
+              <TextInput
+                style={styles.search}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search styles, categories, fonts"
+                placeholderTextColor="#555"
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {query.length > 0 && (
+                <TouchableOpacity onPress={() => setQuery('')} accessibilityLabel="Clear search">
+                  <MaterialIcons name="close" size={18} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.chipRowWrap}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+                keyboardShouldPersistTaps="handled"
+              >
+                {[ALL, ...CAPTION_CATEGORIES].map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setCategory(c)}
+                    style={[styles.chip, category === c && styles.chipActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: category === c }}
+                  >
+                    <Text style={[styles.chipText, category === c && styles.chipTextActive]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <FlatList
+              ref={listRef}
+              data={data}
+              renderItem={renderItem}
+              keyExtractor={(item) => item.id}
+              numColumns={COLUMNS}
+              columnWrapperStyle={styles.gridRow}
+              keyboardShouldPersistTaps="handled"
+              initialNumToRender={8}
+              windowSize={7}
+              removeClippedSubviews
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={<Text style={styles.empty}>No style matches “{query}”.</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { color: '#2ecc71', fontWeight: 'bold', fontSize: 13, marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  btn: { width: '30%', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 8, alignItems: 'center', borderWidth: 1 },
-  btnActive: { backgroundColor: '#0d2b1a' },
-  previewBox: { width: '100%', height: 36, borderRadius: 6, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-  previewText: { fontSize: 18, fontWeight: 'bold' },
-  name: { color: '#888', fontWeight: 'bold', fontSize: 11 },
-  nameActive: { color: '#2ecc71' },
-  desc: { color: '#555', fontSize: 9, textAlign: 'center', marginTop: 2 },
+  label: { color: '#aaa', fontSize: 12, marginBottom: 8 },
+
+  trigger: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#111',
+    borderRadius: 12, borderWidth: 1, borderColor: '#2a2a2a',
+    paddingHorizontal: 10, paddingVertical: 10, marginBottom: 18,
+  },
+  triggerStage: {
+    width: 120, height: 40, borderRadius: 8, backgroundColor: '#000',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  triggerMeta: { flex: 1 },
+  triggerName: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  triggerSub: { color: '#666', fontSize: 11, marginTop: 2 },
+
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: {
+    backgroundColor: '#1a1a1a', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    paddingHorizontal: 20, paddingTop: 20, height: '88%',
+  },
+
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#111',
+    borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a',
+    paddingHorizontal: 12, height: 42,
+  },
+  search: { flex: 1, color: '#fff', fontSize: 14, padding: 0 },
+
+  chipRowWrap: { marginTop: 10, marginBottom: 4 },
+  chipRow: { gap: 8, paddingRight: 20 },
+  chip: {
+    paddingHorizontal: 12, height: 30, borderRadius: 15, justifyContent: 'center',
+    backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a',
+  },
+  chipActive: { backgroundColor: 'rgba(46,204,113,0.14)', borderColor: '#2ECC71' },
+  chipText: { color: '#888', fontSize: 12 },
+  chipTextActive: { color: '#2ECC71', fontWeight: '600' },
+
+  gridRow: { gap: 10, marginBottom: 10 },
+  tile: {
+    flex: 1, borderRadius: 12, backgroundColor: '#111',
+    borderWidth: 1, borderColor: '#2a2a2a', paddingBottom: 6, overflow: 'hidden',
+  },
+  tileSelected: { borderColor: '#2ECC71', backgroundColor: 'rgba(46,204,113,0.08)' },
+  // A near-black stage rather than the tile's own grey: a caption is judged
+  // against video, and most of these styles are light text meant to survive it.
+  stage: {
+    height: 62, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 6, overflow: 'hidden',
+  },
+  tileName: { color: '#999', fontSize: 11, textAlign: 'center', marginTop: 6 },
+  tileNameSelected: { color: '#2ECC71', fontWeight: '600' },
+  tileCheck: {
+    position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center',
+  },
+  empty: { color: '#666', fontSize: 13, textAlign: 'center', marginTop: 24 },
 });

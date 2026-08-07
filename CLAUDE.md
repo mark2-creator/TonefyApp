@@ -117,9 +117,44 @@ absolute-positioned draggable/trimmable voiceover & music blocks.
 
 ### Phase 3: Auto-captions — ✅ COMPLETE
 
-`CAPTION_STYLES` (12 styles), `CaptionPreview`, `generateCaptionsFromVoiceover` (calls
-`/api/transcribe-voiceover`), style-aware rendering in `DraggableTextOverlay`, time-gated
-preview, grouped caption summary chips (`captionPreviewGroups`) in brand green.
+`generateCaptionsFromVoiceover` (calls `/api/transcribe-voiceover`), time-gated preview,
+grouped caption summary chips (`captionPreviewGroups`) in brand green.
+
+**Caption catalogue (Aug 7 2026)** — 130 styles in `constants/captionStyles.js`, up from
+12. That file is hand-written and safe to edit; it is not generated like `constants/fonts.js`.
+
+A style is a spec of typographic parts — face, fill or two-stop gradient, stroke, glow,
+drop shadow, box, tracking, case, scale, word cadence — not a set of flags. The old model
+was four booleans plus a branch per special case inside `DraggableTextOverlay`, which is
+why it stopped at a dozen: every new look needed renderer code, and the combinations all
+read as "white text". One renderer, `components/CaptionText.js`, interprets the spec, and
+the picker's swatch and the video canvas are that same component at two sizes — so a
+preview cannot drift from what the canvas draws.
+
+The twelve original ids are still in the catalogue, restyled but not renamed, so projects
+saved before it existed still resolve. `resolveCaptionStyle` falls back to the default for
+anything else.
+
+Things worth not rediscovering:
+
+- **Stroke width is calibrated, not guessed.** The ring is `width * (size / 18)` on both
+  sides. As a fraction of font size the legible range is about 0.04 to 0.14 — past ~0.15
+  the rings of adjacent letters touch and a word closes into one black slug. Catalogue
+  widths (0.75–2.5) sit inside that. Checked against real glyphs, not by eye.
+- **RN gives text one shadow and no stroke**, so both are stacked copies of the string,
+  each stretched to the wrapper box (`left/right/top/bottom: 0`) and displaced with
+  `transform`. An absolutely positioned Text with no width shrink-wraps and re-wraps its
+  own lines, which would put the outline's line breaks somewhere the fill's are not.
+- **Gradients are per-character**, interpolated in JS with nested `Text`. A real gradient
+  needs a mask or an SVG text node, and neither dependency is installed — adding one means
+  a new native build for a fill colour. The export draws the same two stops as a true
+  continuous ramp in ImageMagick.
+- **`italic` is deliberately absent.** Every style names a family, each family registers a
+  single cut, and asking Android to slant it risks losing the family to the system face.
+- The picker is its own sheet (`components/CaptionStylePicker.js` — formerly dead code
+  exporting a second, conflicting `CAPTION_STYLES`), searchable and filtered by category.
+  130 tiles will not fit in the Auto Captions sheet, and a vertical list nested in that
+  sheet's ScrollView is the one arrangement RN handles worst: neither scroller virtualises.
 
 ### Phase 4: Performance/memoization reapply — ✅ COMPLETE
 
@@ -244,9 +279,9 @@ the JSX swap.
 - No frame-accurate video scrub-seeking while paused — partly closed by `712adbda`,
   which seeks the canvas on scrub; still keyframe-accurate rather than frame-accurate,
   since expo-av does not expose ExoPlayer's exact seek parameters.
-- Sticker/Outline caption styles not rendered on the backend export side (ImageMagick) —
-  was already an open item even before the data loss.
-- "Highlight" caption style alternating-color bug — pre-existing, unfixed.
+- ~~Sticker/Outline caption styles not rendered on the backend export side (ImageMagick)~~
+  — closed Aug 7 2026; the export is spec-driven now (see the backend note below).
+- ~~"Highlight" caption style alternating-color bug~~ — gone with the old style table.
 - Full teal→green rebrand — incomplete.
 - Split/Fade audio actions — stubbed "Coming soon" in the original, not present here.
 - Backend ffmpeg `adelay`/`afade` support — separate open item, unaffected by this rebuild.

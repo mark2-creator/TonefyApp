@@ -14,7 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import ColorPicker, { normalizeHex } from '../components/ColorPicker';
 import FontPicker from '../components/FontPicker';
+import CaptionStylePicker from '../components/CaptionStylePicker';
+import CaptionText from '../components/CaptionText';
 import { fontFamilyFor } from '../constants/fonts';
+import {
+  DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
+  captionFontSize, captionFill, captionExportSpec,
+} from '../constants/captionStyles';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -321,7 +327,15 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
     })
   ).current;
 
-  const captionStyleId = overlay.captionStyleId;
+  // An auto-caption is drawn by the shared caption renderer from its style spec;
+  // a manual text overlay has no style and keeps the plain path. The overlay's own
+  // font, size and colour win over the style's, so editing a caption in the text
+  // sheet does what it appears to.
+  const captionStyle = overlay.captionStyleId ? resolveCaptionStyle(overlay.captionStyleId) : null;
+  const renderStyle = useMemo(
+    () => (captionStyle && overlay.font ? { ...captionStyle, font: overlay.font } : captionStyle),
+    [captionStyle, overlay.font]
+  );
   // undefined for 'Default' and for the legacy Bold/Italic/Mono values, which are
   // weight and slant on the system face rather than families of their own.
   const overlayFamily = fontFamilyFor(overlay.font);
@@ -332,17 +346,15 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
       style={{ position: 'absolute', transform: pan.getTranslateTransform(),
         width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>
       <TouchableOpacity onPress={() => onTap(overlay)} activeOpacity={0.7}>
-        {captionStyleId === 'sticker' ? (
-          <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
-            <Text style={{ color: overlay.color, fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left' }}>{overlay.text}</Text>
-          </View>
-        ) : captionStyleId === 'outline' ? (
-          <View style={{ alignSelf: overlay.isAutoCaption ? 'center' : 'flex-start' }}>
-            {[[-1,-1],[1,-1],[-1,1],[1,1]].map(([dx, dy], i) => (
-              <Text key={i} style={{ position: 'absolute', left: dx, top: dy, color: '#000', fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
-            ))}
-            <Text style={{ color: overlay.color, fontSize: overlay.size, ...(overlayFamily ? { fontFamily: overlayFamily } : { fontWeight: 'bold' }), textAlign: overlay.isAutoCaption ? 'center' : 'left', width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>{overlay.text}</Text>
-          </View>
+        {renderStyle ? (
+          <CaptionText
+            style={renderStyle}
+            text={overlay.text}
+            size={overlay.size}
+            color={overlay.captionColorOverride}
+            align={overlay.isAutoCaption ? 'center' : 'left'}
+            maxWidth={overlay.isAutoCaption ? containerW * 0.8 : undefined}
+          />
         ) : (
           <Text style={{
             color: overlay.color, fontSize: overlay.size,
@@ -352,52 +364,17 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
               // is what makes a custom font silently fall back to the system one.
               ? { fontFamily: overlayFamily }
               : {
-                fontWeight: (overlay.captionBold || overlay.font === 'Bold') ? 'bold' : 'normal',
-                fontStyle: (captionStyleId === 'cinematic' || overlay.font === 'Italic') ? 'italic' : 'normal',
+                fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
+                fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
               }),
-            textAlign: overlay.isAutoCaption ? 'center' : 'left',
-            backgroundColor: overlay.captionBg ? '#fff' : 'transparent',
-            paddingHorizontal: overlay.captionBg ? 6 : 0,
-            borderRadius: overlay.captionBg ? 4 : 0,
-            textShadowColor: captionStyleId === 'neon' ? overlay.color : (overlay.captionShadow === false ? 'transparent' : '#000'),
-            textShadowRadius: captionStyleId === 'neon' ? 8 : 4,
-            textShadowOffset: captionStyleId === 'shadow3d' ? { width: 3, height: 3 } : { width: 1, height: 1 },
+            textAlign: 'left',
+            textShadowColor: '#000',
+            textShadowRadius: 4,
+            textShadowOffset: { width: 1, height: 1 },
           }}>{overlay.text}</Text>
         )}
       </TouchableOpacity>
     </Animated.View>
-  );
-}
-
-const CAPTION_STYLES = [
-  { id: 'classic',   label: 'Classic',    color: '#fff',    bold: false, shadow: true,  bg: false },
-  { id: 'tiktok',    label: 'TikTok',     color: '#fff',    bold: true,  shadow: true,  bg: false },
-  { id: 'bold',      label: 'Bold',       color: '#fff',    bold: true,  shadow: true,  bg: false },
-  { id: 'neon',      label: 'Neon',       color: '#39ff14', bold: true,  shadow: true,  bg: false },
-  { id: 'fire',      label: 'Fire',       color: '#ff6b00', bold: true,  shadow: true,  bg: false },
-  { id: 'sticker',   label: 'Sticker',    color: '#000',    bold: true,  shadow: false, bg: true  },
-  { id: 'shadow3d',  label: '3D Shadow',  color: '#fff',    bold: true,  shadow: true,  bg: false },
-  { id: 'highlight', label: 'Highlight',  color: '#fff',    bold: true,  shadow: false, bg: false },
-  { id: 'outline',   label: 'Outline',    color: '#fff',    bold: true,  shadow: false, bg: false },
-  { id: 'cinematic', label: 'Cinematic',  color: '#f5deb3', bold: false, shadow: true,  bg: false },
-  { id: 'minimal',   label: 'Minimal',    color: '#fff',    bold: false, shadow: false, bg: false },
-  { id: 'purple',    label: 'Purple',     color: '#a855f7', bold: true,  shadow: true,  bg: false },
-];
-
-function CaptionPreview({ style, isSelected, onPress }) {
-  return (
-    <TouchableOpacity onPress={onPress}
-      style={{ width: '48%', marginBottom: 10, borderRadius: 10, padding: 14, alignItems: 'center', justifyContent: 'center',
-        backgroundColor: isSelected ? '#2ECC71' : '#1a1a1a', borderWidth: 1, borderColor: isSelected ? '#2ECC71' : '#2a2a2a' }}>
-      <Text style={{
-        color: style.color, fontWeight: style.bold ? 'bold' : 'normal', fontSize: 15,
-        textShadowColor: style.shadow ? 'rgba(0,0,0,0.8)' : 'transparent',
-        textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2,
-        backgroundColor: style.bg ? '#fff' : 'transparent',
-        paddingHorizontal: style.bg ? 6 : 0, borderRadius: style.bg ? 4 : 0,
-      }}>Sample</Text>
-      <Text style={{ color: isSelected ? '#000' : '#888', fontSize: 11, marginTop: 6 }}>{style.label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -680,7 +657,7 @@ export default function EditVideoScreen({ navigation }) {
   // Captions
   const [showCaptionModal, setShowCaptionModal] = useState(false);
   const [captionScript, setCaptionScript] = useState('');
-  const [captionStyle, setCaptionStyle] = useState('classic');
+  const [captionStyle, setCaptionStyle] = useState(DEFAULT_CAPTION_STYLE_ID);
   // null means "whatever the chosen style says". A style carries its own colour,
   // so an override has to stay distinguishable from a colour that merely happens
   // to equal one - otherwise switching style could never move the colour again.
@@ -1127,7 +1104,8 @@ export default function EditVideoScreen({ navigation }) {
     if (!textInput.trim()) return;
     if (editingText) {
       setTextOverlays(prev => prev.map(t => t.key === editingText.key
-        ? { ...t, text: textInput, color: textColor, font: textFont, size: textSize }
+        ? { ...t, text: textInput, color: textColor, font: textFont, size: textSize,
+            ...(t.captionStyleId ? { captionColorOverride: textColor, captionSpec: { ...t.captionSpec, gradient: undefined } } : null) }
         : t));
     } else {
       setTextOverlays(prev => [...prev, {
@@ -1250,7 +1228,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mediaItems, userId: user.uid, resolution,
-          textOverlays: textOverlays.map(t => ({ text: t.text, color: t.color, font: t.font, size: t.size, x: t.x, y: t.y, isAutoCaption: t.isAutoCaption || false, captionStyleId: t.captionStyleId, captionBold: t.captionBold, captionShadow: t.captionShadow, captionBg: t.captionBg, startTime: t.startTime, endTime: t.endTime })),
+          textOverlays: textOverlays.map(t => ({ text: t.text, color: t.color, font: t.font, size: t.size, x: t.x, y: t.y, isAutoCaption: t.isAutoCaption || false, captionStyleId: t.captionStyleId, captionSpec: t.captionSpec, startTime: t.startTime, endTime: t.endTime })),
           overlays: uploadedOverlays,
           audioTracks: uploadedAudio,
         }),
@@ -1596,29 +1574,44 @@ export default function EditVideoScreen({ navigation }) {
       const data = await res.json();
       if (!data.words || data.words.length === 0) throw new Error(data.error || 'No speech detected');
 
-      const style = CAPTION_STYLES.find(s => s.id === captionStyle) || CAPTION_STYLES[0];
-      const ANIMATED_STYLES = ['highlight','sticker','shadow3d','tiktok','neon','fire','bold','purple'];
-      const chunkSize = ANIMATED_STYLES.includes(style.id) ? 1 : 3;
+      const style = resolveCaptionStyle(captionStyle);
+      // Cadence is part of the style now rather than a list of ids kept beside it,
+      // which is what let the two drift: a style added to the catalogue and not to
+      // the list silently fell back to three-word chunks.
+      const chunkSize = captionChunkSize(style);
       const chunks = [];
       for (let i = 0; i < data.words.length; i += chunkSize) {
         chunks.push(data.words.slice(i, i + chunkSize));
       }
       const startOffset = voiceoverTrack.startOffset || 0;
-      const newOverlays = chunks.map((group, idx) => ({
-        key: 'autocap_' + Date.now() + '_' + idx,
-        text: group.map(w => w.word).join(' '),
-        color: captionColor || style.color,
-        font: 'System',
-        size: 18,
-        x: 10, y: 80,
-        startTime: startOffset + group[0].start,
-        endTime: startOffset + group[group.length - 1].end,
-        isAutoCaption: true,
-        captionStyleId: style.id,
-        captionBold: style.bold,
-        captionShadow: style.shadow,
-        captionBg: style.bg,
-      }));
+      const fill = captionFill(style, captionColor);
+      const exportSpec = captionExportSpec(style, captionColor);
+      const size = captionFontSize(style);
+      const newOverlays = chunks.map((group, idx) => {
+        const words = group.map(w => w.word).join(' ');
+        return {
+          key: 'autocap_' + Date.now() + '_' + idx,
+          // Capitalised here rather than only at render: the export renders the
+          // string it is handed, so a style that reads as capitals on the canvas
+          // and sentence case in the finished file is the one bug worth ruling out
+          // up front. The renderer applies the same transform, which is idempotent.
+          text: style.upper ? words.toUpperCase() : words,
+          // The flat colour is what a renderer with no gradient support falls back
+          // to; the gradient itself travels in captionSpec.
+          color: fill.color,
+          captionColorOverride: captionColor || undefined,
+          // The style's family, so the export's font map resolves it like any
+          // other overlay. It stays editable in the text sheet afterwards.
+          font: style.font || 'Default',
+          size,
+          x: 10, y: 80,
+          startTime: startOffset + group[0].start,
+          endTime: startOffset + group[group.length - 1].end,
+          isAutoCaption: true,
+          captionStyleId: style.id,
+          captionSpec: exportSpec,
+        };
+      });
 
       setTextOverlays(prev => [...prev.filter(t => !t.isAutoCaption), ...newOverlays]);
       clearInterval(progressInterval); setProgress(100);
@@ -1635,6 +1628,7 @@ export default function EditVideoScreen({ navigation }) {
     if (!videoItem) { Alert.alert('No video', 'Auto Captions requires at least one video clip.'); return; }
     setShowCaptionModal(false);
     setUploading(true); setMessage('Generating captions...');
+    const style = resolveCaptionStyle(captionStyle);
     try {
       const user = auth.currentUser;
       if (!user) throw new Error('Not logged in');
@@ -1646,6 +1640,16 @@ export default function EditVideoScreen({ navigation }) {
           videoUrl: videoItem.uri,
           script: captionScript,
           captionStyle: captionStyle,
+          // The server burns these in itself, so it needs the style rather than
+          // just its name - it has no copy of the catalogue to look the name up in.
+          captionMeta: {
+            spec: captionExportSpec(style, captionColor),
+            font: style.font || null,
+            size: captionFontSize(style),
+            color: captionFill(style, captionColor).color,
+            upper: !!style.upper,
+            words: captionChunkSize(style),
+          },
           userId: user.uid,
         }),
       });
@@ -1859,14 +1863,12 @@ export default function EditVideoScreen({ navigation }) {
     }
   };
 
-  const captionStyleDef = CAPTION_STYLES.find(s => s.id === captionStyle) || CAPTION_STYLES[0];
-  const effectiveCaptionColor = captionColor || captionStyleDef.color;
-  // Generate Captions has two paths. With a voiceover the words are timed here and
-  // laid down as text overlays, which carry their own colour all the way to the
-  // export. Without one the server burns the captions into the clip from its own
-  // style table, where a colour picked here has nothing to travel in - so the
-  // control is only offered on the path that can honour it.
-  const captionColorApplies = audioTracks.some(t => t.isVoiceover);
+  const captionStyleDef = resolveCaptionStyle(captionStyle);
+  const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
+  // Generate Captions still has two paths - with a voiceover the words are timed
+  // here and laid down as text overlays, without one the server burns them in -
+  // but both now carry the same style spec, so a colour picked here is honoured
+  // either way. It used to apply only to the first, and the sheet said so.
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -2514,36 +2516,27 @@ export default function EditVideoScreen({ navigation }) {
               onChangeText={setCaptionScript}
             />
 
-            <Text style={{ color:'#aaa', fontSize:12, marginBottom:8 }}>Caption Style</Text>
-            <View style={{ flexDirection:'row', flexWrap:'wrap', justifyContent:'space-between', marginBottom:20, maxHeight: 320 }}>
-              {CAPTION_STYLES.map(s => (
-                <CaptionPreview key={s.id} style={s} isSelected={captionStyle === s.id} onPress={() => setCaptionStyle(s.id)} />
-              ))}
-            </View>
+            <CaptionStylePicker value={captionStyle} onChange={setCaptionStyle} />
 
-            {captionColorApplies ? (
-              <>
-                <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
-                  <Text style={{ color:'#aaa', fontSize:12, flex:1 }}>Caption Colour</Text>
-                  {captionColor && (
-                    <TouchableOpacity onPress={() => setCaptionColor(null)} accessibilityRole="button">
-                      <Text style={{ color:'#2ECC71', fontSize:12, fontWeight:'600' }}>Match style</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <ColorPicker
-                  color={effectiveCaptionColor}
-                  onChange={setCaptionColor}
-                  onCommit={rememberColor}
-                  presets={TEXT_COLORS}
-                  recents={recentColors}
-                  onDragStateChange={setColorDragging}
-                />
-              </>
-            ) : (
-              <Text style={{ color:'#666', fontSize:11, marginBottom:6 }}>
-                Captions for a clip with no voiceover are burned in on the server and take
-                the style's own colour. Add a voiceover to pick the colour yourself.
+            <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
+              <Text style={{ color:'#aaa', fontSize:12, flex:1 }}>Caption Colour</Text>
+              {captionColor && (
+                <TouchableOpacity onPress={() => setCaptionColor(null)} accessibilityRole="button">
+                  <Text style={{ color:'#2ECC71', fontSize:12, fontWeight:'600' }}>Match style</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <ColorPicker
+              color={effectiveCaptionColor}
+              onChange={setCaptionColor}
+              onCommit={rememberColor}
+              presets={TEXT_COLORS}
+              recents={recentColors}
+              onDragStateChange={setColorDragging}
+            />
+            {captionColor && (
+              <Text style={{ color:'#666', fontSize:11, marginTop:6 }}>
+                Overrides the style's own fill, including a gradient one.
               </Text>
             )}
             </ScrollView>
