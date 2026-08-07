@@ -1021,6 +1021,7 @@ export default function EditVideoScreen({ navigation }) {
   const [audioTracks, setAudioTracks] = useState([]);
   const [masterVolume, setMasterVolume] = useState(1);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
+  const [showClipVolumeModal, setShowClipVolumeModal] = useState(false);
   const [audioSheetKey, setAudioSheetKey] = useState(null);
   const [audioLoadStatus, setAudioLoadStatus] = useState({});   // key -> loading | ready | failed
 
@@ -1806,6 +1807,11 @@ export default function EditVideoScreen({ navigation }) {
         filter: items[i].filter || 'None',
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
+        // The clip's own audio. Neither of these was sent, and the server discarded
+        // clip sound entirely, so muting a clip on the timeline changed nothing about
+        // the file that came back.
+        volume: items[i].volume ?? 1,
+        muted: !!items[i].muted,
         transition: items[i].transition || (items[i].transition || 'none'),
       }));
 
@@ -2706,7 +2712,7 @@ export default function EditVideoScreen({ navigation }) {
     trim: () => selectedItem && openTrim(selectedItem),
     split: splitAtPlayhead,
     overlay: pickOverlay,
-    volume: () => setShowVolumeModal(true),
+    volume: () => setShowClipVolumeModal(true),
     audio: () => setShowAudioListModal(true),
     captions: openCaptionModal,
     speed: () => setChipPicker('speed'),
@@ -3238,6 +3244,53 @@ export default function EditVideoScreen({ navigation }) {
           </View>
         </View>
       </Modal>   {/* VOLUME MODAL */}
+      {/* CLIP VOLUME - the selected clip's own sound, not the master level. Reachable
+          from the clip toolbar, where Volume used to open the master sheet and quietly
+          change the voiceover and music instead of the clip in front of you. */}
+      <Modal visible={showClipVolumeModal} transparent animationType="slide"
+        onRequestClose={() => setShowClipVolumeModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Clip Volume" onClose={() => setShowClipVolumeModal(false)} />
+            {selectedItem && (
+              <>
+                <View style={styles.clipVolRow}>
+                  <Text style={styles.clipVolLabel}>Level</Text>
+                  <Text style={styles.clipVolValue}>
+                    {selectedItem.muted ? 'Muted' : Math.round((selectedItem.volume ?? 1) * 100) + '%'}
+                  </Text>
+                </View>
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={2}
+                  value={selectedItem.volume ?? 1}
+                  minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
+                  thumbTintColor="#00d4d4"
+                  // Touching the slider is a clear statement that you want to hear it,
+                  // so it lifts the mute rather than moving a level nothing will play.
+                  onValueChange={v => setItems(prev => prev.map(i => (
+                    i.key === selectedKey ? { ...i, volume: v, muted: v > 0 ? false : i.muted } : i
+                  )))} />
+                <TouchableOpacity
+                  style={styles.clipMuteBtn}
+                  onPress={() => setItems(prev => prev.map(i => (
+                    i.key === selectedKey ? { ...i, muted: !i.muted } : i
+                  )))}>
+                  <MaterialIcons
+                    name={selectedItem.muted ? 'volume-off' : 'volume-up'}
+                    size={20} color={selectedItem.muted ? '#ff6b6b' : '#e6e6e6'} />
+                  <Text style={styles.clipMuteText}>{selectedItem.muted ? 'Muted' : 'Mute this clip'}</Text>
+                </TouchableOpacity>
+                <Text style={styles.clipVolNote}>
+                  Applies to this clip only. Voiceover and music levels are under Audio tools.
+                </Text>
+              </>
+            )}
+            <TouchableOpacity style={styles.modalBtnApply} onPress={() => setShowClipVolumeModal(false)}>
+              <Text style={styles.modalBtnApplyText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={showVolumeModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, sheetInset]}>
@@ -3768,6 +3821,12 @@ const styles = StyleSheet.create({
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  clipVolValue: { color: '#00d4d4', fontSize: 13 },
+  clipMuteBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
+  clipMuteText: { color: '#e6e6e6', fontSize: 13 },
+  clipVolNote: { color: '#888', fontSize: 11, marginBottom: 12 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
