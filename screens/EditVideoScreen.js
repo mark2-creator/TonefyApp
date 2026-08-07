@@ -56,11 +56,16 @@ const IMAGE_MAX_DUR = 30;
 // The floating add button on each timeline row. Small enough to sit inside a 26px
 // aux row without touching its edges.
 const RAIL_BTN = 24;
-// In row order, which is the order they are drawn down the timeline. Each carries its
-// own row's icon rather than a bare plus: five identical buttons in a column say
-// nothing about which row each one adds to.
+// In row order, which is the order they are drawn down the timeline.
+//
+// Add clip keeps the shape it has always had - a clip-height square with a dashed
+// border and a plus in it, reading as the empty slot the next clip goes into. The
+// aux rows get small round buttons carrying their own row's icon rather than a bare
+// plus, since four identical circles in a column say nothing about which row each
+// one adds to. `big` rather than a style object here: `styles` is declared at the
+// bottom of the file and this array is built at module load, which is before it.
 const ADD_RAIL = [
-  { key: 'clips', icon: 'movie', label: 'Add clip' },
+  { key: 'clips', icon: 'add', label: 'Add clip', big: true },
   { key: 'voiceover', icon: 'record-voice-over', label: 'Add voiceover' },
   { key: 'music', icon: 'music-note', label: 'Add music' },
   { key: 'text', icon: 'title', label: 'Add text' },
@@ -2487,13 +2492,14 @@ export default function EditVideoScreen({ navigation }) {
                 const frame = rowFrames[r.key];
                 // Nothing to centre on until that row has been laid out once.
                 if (!frame) return null;
+                const h = r.big ? CLIP_H : RAIL_BTN;
                 return (
                   <TouchableOpacity
                     key={r.key}
-                    style={[styles.railBtn, { top: frame.y + (frame.height - RAIL_BTN) / 2 }]}
+                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top: frame.y + (frame.height - h) / 2 }]}
                     onPress={railActions[r.key]}
                     accessibilityLabel={r.label}>
-                    <MaterialIcons name={r.icon} size={14} color="#c0c0c0" />
+                    <MaterialIcons name={r.icon} size={r.big ? 22 : 14} color={r.big ? '#888' : '#c0c0c0'} />
                   </TouchableOpacity>
                 );
               })}
@@ -3104,6 +3110,10 @@ const styles = StyleSheet.create({
   // as whatever chip happens to be on it.
   addRail: { position: 'absolute', right: 6, top: 0, bottom: 0, zIndex: 20 },
   railBtn: { position: 'absolute', right: 0, width: RAIL_BTN, height: RAIL_BTN, borderRadius: RAIL_BTN / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,18,0.9)', borderWidth: 1, borderColor: '#3a3a3a' },
+  // The add-clip slot as it always looked, now pinned instead of trailing the clips.
+  // Opaque rather than the rail's translucent fill: a dashed border over moving
+  // footage reads as a broken edge on the clip behind it rather than as an empty slot.
+  railBtnClip: { position: 'absolute', right: 0, width: 40, height: CLIP_H, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' },
   trackArea: { flex: 1, flexDirection: 'row' },
   sidebar: { width: 72, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
   sideBtn: { alignItems: 'center', gap: 2 },
