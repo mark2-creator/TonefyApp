@@ -837,6 +837,14 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
   );
 });
 
+// Mirroring is one of the few looks the canvas can reproduce exactly rather than
+// approximate: a negative scale on an axis is what hflip and vflip do in the export,
+// so what is previewed is what is rendered.
+function flipTransform(item) {
+  if (!item || (!item.flipH && !item.flipV)) return null;
+  return { transform: [{ scaleX: item.flipH ? -1 : 1 }, { scaleY: item.flipV ? -1 : 1 }] };
+}
+
 // A clip's length on the timeline. trimStart/trimEnd are absolute offsets into
 // the source file, so a trimmed or split clip occupies trimEnd - trimStart on
 // the timeline. Counting trimEnd alone stretches every later clip boundary past
@@ -1620,6 +1628,8 @@ export default function EditVideoScreen({ navigation }) {
         trimEnd: items[i].type === 'video' ? items[i].trimEnd : undefined,
         speed: items[i].speed || 1,
         filter: items[i].filter || 'None',
+        flipH: !!items[i].flipH,
+        flipV: !!items[i].flipV,
         transition: items[i].transition || (items[i].transition || 'none'),
       }));
 
@@ -2402,13 +2412,23 @@ export default function EditVideoScreen({ navigation }) {
     speed: () => setChipPicker('speed'),
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setChipPicker('filter'),
+    flip: () => setChipPicker('flip'),
   };
+
+  const toggleFlip = (axis) => setItems(prev => prev.map(i => (
+    i.key === selectedKey ? { ...i, [axis]: !i[axis] } : i
+  )));
 
   const chipPickerOptions = chipPicker === 'speed'
     ? SPEEDS.map(v => ({ key: 's-' + v, label: v + 'x', active: selectedSpeed === v, onPick: () => applySpeed(v) }))
     : chipPicker === 'filter'
       ? FILTERS.map(v => ({ key: 'f-' + v, label: v, active: selectedFilter === v, onPick: () => applyFilter(v) }))
-      : [];
+      : chipPicker === 'flip'
+        ? [
+          { key: 'flipH', label: 'Horizontal', active: !!selectedItem?.flipH, onPick: () => toggleFlip('flipH') },
+          { key: 'flipV', label: 'Vertical', active: !!selectedItem?.flipV, onPick: () => toggleFlip('flipV') },
+        ]
+        : [];
 
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
@@ -2450,14 +2470,14 @@ export default function EditVideoScreen({ navigation }) {
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
-                style={styles.previewImage} resizeMode="cover"
+                style={[styles.previewImage, flipTransform(previewItem)]} resizeMode="cover"
                 shouldPlay={isPlaying} isLooping={false}
                 progressUpdateIntervalMillis={50}
                 onPlaybackStatusUpdate={onVideoStatus}
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
             ) : (
               <Image source={{ uri: previewItem.uri }}
-                style={styles.previewImage} resizeMode="cover" />
+                style={[styles.previewImage, flipTransform(previewItem)]} resizeMode="cover" />
             )
           ) : (
             <View style={styles.previewEmpty}>
@@ -2701,11 +2721,11 @@ export default function EditVideoScreen({ navigation }) {
       <Modal visible={!!chipPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, sheetInset]}>
-            <SheetHeader title={chipPicker === 'speed' ? 'Speed' : 'Filters'} onClose={() => setChipPicker(null)} />
+            <SheetHeader title={chipPicker === 'speed' ? 'Speed' : chipPicker === 'flip' ? 'Flip' : 'Filters'} onClose={() => setChipPicker(null)} />
             <View style={styles.chipPickerWrap}>
               {chipPickerOptions.map(o => (
                 <TouchableOpacity key={o.key} style={[styles.toolChip, o.active && styles.toolChipActive]}
-                  onPress={() => { o.onPick(); setChipPicker(null); }}>
+                  onPress={() => { o.onPick(); if (chipPicker !== 'flip') setChipPicker(null); }}>
                   <Text style={[styles.toolChipText, o.active && { color: '#000' }]}>{o.label}</Text>
                 </TouchableOpacity>
               ))}
