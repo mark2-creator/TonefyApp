@@ -150,8 +150,9 @@ the JSX swap.
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
    - **Font grid (`734d746e`, specimen word `ef882e58`, group order `b289df85`)** —
-     the font sheet lays the families out as a three-column grid of specimen tiles (the word "Quick" set in the family, name
-     beneath in the system face) instead of one full-width row each. The specimen
+     the font sheet lays the families out as a three-column grid of specimen tiles
+     (the word "Quick" set in the family, name beneath in the system face) instead
+     of one full-width row each. The specimen
      is a whole word rather than a letter pair because a typeface's character is in
      its rhythm; it shrinks to fit (`adjustsFontSizeToFit`, floor 0.6) since the
      families are nowhere near equal in width at a given size, and carries no fixed
@@ -164,8 +165,8 @@ the JSX swap.
      order set there would be lost on regeneration; groups it does not name keep
      their upstream position behind the ones it does. System/Default stays pinned
      above all of them, being the current-value fallback rather than a category.
-     Test: the last row
-     of a group should keep its tiles at column width rather than stretching them,
+     Test: the last row of a group should keep its tiles at column width rather
+     than stretching them,
      and search should still return a flat grid with no headers.
    - **Fonts (`f8b0d7ec`)** — the text sheet now offers 130 families instead of
      `['Default','Bold','Italic','Mono']`, which were never families at all and
