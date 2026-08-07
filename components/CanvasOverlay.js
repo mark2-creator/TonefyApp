@@ -97,6 +97,7 @@ export default function CanvasOverlay({
   const longPress = useCallback(() => { if (onLongPress) onLongPress(overlay); }, [overlay, onLongPress]);
 
   const panGesture = Gesture.Pan()
+    .enabled(!editing)
     // A finger never lands perfectly still, and without a threshold that jitter
     // activates the pan before the tap can finish - so tapping to select would
     // work only sometimes, which is worse than not working at all.
@@ -115,6 +116,7 @@ export default function CanvasOverlay({
     });
 
   const pinchGesture = Gesture.Pinch()
+    .enabled(!editing)
     .onStart(() => {
       startScale.value = scale.value;
       runOnJS(select)();
@@ -127,6 +129,7 @@ export default function CanvasOverlay({
     });
 
   const rotationGesture = Gesture.Rotation()
+    .enabled(!editing)
     .onStart(() => {
       startRotation.value = rotation.value;
       runOnJS(select)();
@@ -140,6 +143,7 @@ export default function CanvasOverlay({
     });
 
   const tapGesture = Gesture.Tap()
+    .enabled(!editing)
     .maxDuration(250)
     .onEnd((_e, ok) => {
       if (ok) { runOnJS(select)(); runOnJS(tap)(); }
@@ -149,6 +153,7 @@ export default function CanvasOverlay({
   // without this there would be no gesture left for "change the font" and the
   // sheet would only be reachable from the text list.
   const longPressGesture = Gesture.LongPress()
+    .enabled(!editing)
     .minDuration(400)
     .onStart(() => { runOnJS(select)(); runOnJS(longPress)(); });
 
@@ -188,11 +193,17 @@ export default function CanvasOverlay({
   // them enabled means taps land on the overlay instead of in the text - no
   // placing the caret, no selecting a word, no dragging the handles the keyboard
   // puts there.
+  // `.enabled()` goes on each leaf, never on the composition. `Gesture.Race` and
+  // `Gesture.Simultaneous` return a ComposedGesture, whose prototype chain is
+  // ComposedGesture -> Gesture -> Object - and `enabled` is defined on
+  // BaseGesture, which is not on that chain. Calling it on the composed gesture
+  // throws "enabled is not a function" while rendering, which takes the whole
+  // screen grey rather than merely leaving the gesture on.
   const composed = Gesture.Race(
     longPressGesture,
     tapGesture,
     Gesture.Simultaneous(panGesture, pinchGesture, rotationGesture)
-  ).enabled(!editing);
+  );
 
   const elementStyle = useAnimatedStyle(() => ({
     transform: [
