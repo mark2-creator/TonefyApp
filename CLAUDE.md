@@ -123,11 +123,36 @@ upgrade).
 style sheet on text overlays were unreachable before this fix (crashed on mount).
 Confirmed working on-device as of this fix.
 
+## Skills (`.claude/skills/`)
+
+- **`tonefy-design`** — this app's visual conventions: the green/teal rule below, the
+  context-toolbar pattern, the 12/20/24 icon scale, sheet anatomy, timeline geometry.
+  Read it before writing any UI. Its colour rule has only been probe-tested by hand, not
+  yet by a fresh session picking the skill up on its own.
+- **`frontend-design`** — Anthropic's general design skill, unmodified. Aesthetic
+  direction for new surfaces; `tonefy-design` wins wherever the two disagree, since this
+  app already has an identity to match.
+
 ## Design/brand note
 
-Project is mid-rebrand from teal `#00d4d4` to green `#2ECC71`. Incomplete — only new
-caption-chip styling currently uses the green. Don't treat teal instances as bugs;
-they're pre-rebrand and out of scope unless explicitly asked.
+Both `#2ECC71` and `#00d4d4` are intentional brand colours, and which one a control
+takes is decided by what it does, not by when it was written (`63a2bc7e`):
+
+- **Green `#2ECC71` — the action commits.** Export, modal Apply, ADD, Confirm, and the
+  states that choose a value: selected voice, selected resolution, an active tool chip.
+- **Teal `#00d4d4` — you are handling media.** Waveforms, trim handles, the selected
+  clip's border, every slider, the scrubber, progress, and view-switching controls like
+  the tab strip.
+- **Decoration is neither** and takes a neutral (`#fff`, `#888`, a surface border).
+
+An audit on Aug 7 2026 found the split had been purely chronological: of nineteen slider
+declarations in `EditVideoScreen.js`, eleven were teal and eight green purely because
+the eight were newest. Teal is no longer a legacy marker, so do not "finish the rebrand"
+by converting it. Full rules in the `tonefy-design` skill.
+
+Screens outside the editor are still entirely green and predate this rule, so some of
+their green is decorative and should be neutral — `PostRecordingScreen.js` is the known
+example. Not yet migrated.
 
 ## Rebuild status
 
@@ -157,8 +182,10 @@ absolute-positioned draggable/trimmable voiceover & music blocks.
 `generateCaptionsFromVoiceover` (calls `/api/transcribe-voiceover`), time-gated preview,
 grouped caption summary chips (`captionPreviewGroups`) in brand green.
 
-**Caption catalogue (Aug 7 2026)** — 130 styles in `constants/captionStyles.js`, up from
-12. That file is hand-written and safe to edit; it is not generated like `constants/fonts.js`.
+**Caption catalogue (Aug 7 2026)** — 138 styles across 13 categories in
+`constants/captionStyles.js`, up from 12. It landed at 130 in `5ff8992d` and grew to 138
+in `33b4ef33`. That file is hand-written and safe to edit; it is not generated like
+`constants/fonts.js` (which is a separate 130 — font families, not caption styles).
 
 A style is a spec of typographic parts — face, fill or two-stop gradient, stroke, glow,
 drop shadow, box, tracking, case, scale, word cadence — not a set of flags. The old model
@@ -190,7 +217,7 @@ Things worth not rediscovering:
   single cut, and asking Android to slant it risks losing the family to the system face.
 - The picker is its own sheet (`components/CaptionStylePicker.js` — formerly dead code
   exporting a second, conflicting `CAPTION_STYLES`), searchable and filtered by category.
-  130 tiles will not fit in the Auto Captions sheet, and a vertical list nested in that
+  138 tiles will not fit in the Auto Captions sheet, and a vertical list nested in that
   sheet's ScrollView is the one arrangement RN handles worst: neither scroller virtualises.
   It exports `CaptionStyleSheet` (sheet alone, for a screen that already has a row to open
   it from) and a default `CaptionStylePicker` (trigger row + sheet).
@@ -544,7 +571,7 @@ nothing to aim at.
      path that was never broken.
 
    - **Caption styles (`5ff8992d`)** — the Auto Captions sheet's style row opens a
-     searchable sheet of 130 styles across 12 categories, each tile previewing the
+     searchable sheet of 138 styles across 13 categories, each tile previewing the
      real style rather than a coloured word. Test: pick a stroke-heavy style
      (Punch, Impact) and a boxed one (Newsroom, Sticker) and check the canvas
      overlay matches its tile; pick a gradient style (Sunset) and confirm the fill
@@ -614,7 +641,11 @@ Overlays and requests without a spec keep the old id-keyed behaviour.
 Verified before commit: all 130 specs render through the ImageMagick chain with the
 reported geometry matching the files on disk, and all 130 produce valid ASS with correct
 field counts, colours, border styles and cadence. Samples burned into video frames to
-confirm the fonts and boxes actually land. What is **not** verified is the app-side
+confirm the fonts and boxes actually land.
+
+**That pass covered 130 — the catalogue is 138 now.** The eight added in `33b4ef33` came
+after it and have never been through it, so re-run it over the full catalogue before
+trusting the export on those eight. What is also **not** verified is the app-side
 rendering — that needs a device.
 
 ## Known gaps vs. the original lost version (lower priority, not yet rebuilt)
