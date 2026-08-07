@@ -56,6 +56,9 @@ const IMAGE_MAX_DUR = 30;
 // The floating add button on each timeline row. Small enough to sit inside a 26px
 // aux row without touching its edges.
 const RAIL_BTN = 24;
+// How far the rail sits in from the timeline's right edge. Named because the widened
+// add-clip slot has to subtract exactly this to end where the round buttons end.
+const RAIL_INSET = 6;
 // In row order, which is the order they are drawn down the timeline.
 //
 // Add clip keeps the shape it has always had - a clip-height square with a dashed
@@ -782,6 +785,10 @@ export default function EditVideoScreen({ navigation }) {
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
   const [timelineLeadW, setTimelineLeadW] = useState(0);
+  // The timeline's own width, kept so the empty add-clip slot can be stretched from
+  // the playhead to the right edge. The rail positions from the right, so reaching
+  // leftward to a point measured from the left needs both numbers.
+  const [timelineWrapW, setTimelineWrapW] = useState(0);
   const sheetInset = useSheetInset();
   const rowLeadW = timelineLeadW + SCRUBBER_LINE_W + SCRUBBER_GAP;
   const playTimer = useRef(null);
@@ -2424,7 +2431,10 @@ export default function EditVideoScreen({ navigation }) {
 
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}
-            onLayout={(e) => setTimelineLeadW(e.nativeEvent.layout.width * SCRUBBER_POS)}>
+            onLayout={(e) => {
+              setTimelineLeadW(e.nativeEvent.layout.width * SCRUBBER_POS);
+              setTimelineWrapW(e.nativeEvent.layout.width);
+            }}>
             <View style={[styles.scrubberLine, { left: timelineLeadW }]} pointerEvents="none" />
             <ReanimatedAnimated.ScrollView
               ref={timelineScrollRef}
@@ -2497,10 +2507,18 @@ export default function EditVideoScreen({ navigation }) {
                 // row's height turns out to be. Centring on a row shorter than the
                 // button gives a negative top, which puts it over the timecode strip.
                 const top = Math.max(0, frame.y + (frame.height - h) / 2);
+                // With no clips on it, the add-clip slot reaches back to the playhead
+                // so the row starts where the aux rows start, instead of leaving the
+                // one empty track with nothing at its head and a small square adrift
+                // at the far end. It goes back to that square as soon as there is a
+                // clip, which is footage the slot would otherwise be sitting on.
+                const wide = r.big && clipsComputed.length === 0 && timelineWrapW > 0
+                  ? { width: Math.max(40, timelineWrapW - rowLeadW - RAIL_INSET) }
+                  : null;
                 return (
                   <TouchableOpacity
                     key={r.key}
-                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top }]}
+                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top }, wide]}
                     onPress={railActions[r.key]}
                     accessibilityLabel={r.label}>
                     <MaterialIcons name={r.icon} size={r.big ? 22 : 14} color={r.big ? '#888' : '#c0c0c0'} />
@@ -3112,7 +3130,7 @@ const styles = StyleSheet.create({
   // put however far the footage under it is scrolled. Laid out from each row's
   // measured frame rather than from a table of heights, because a row is only as tall
   // as whatever chip happens to be on it.
-  addRail: { position: 'absolute', right: 6, top: 0, bottom: 0, zIndex: 20 },
+  addRail: { position: 'absolute', right: RAIL_INSET, top: 0, bottom: 0, zIndex: 20 },
   railBtn: { position: 'absolute', right: 0, width: RAIL_BTN, height: RAIL_BTN, borderRadius: RAIL_BTN / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,18,0.9)', borderWidth: 1, borderColor: '#3a3a3a' },
   // The add-clip slot as it always looked, now pinned instead of trailing the clips.
   // Opaque rather than the rail's translucent fill: a dashed border over moving
