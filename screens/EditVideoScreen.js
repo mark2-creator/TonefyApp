@@ -444,7 +444,7 @@ function MediaOverlayVideo({ uri, width, height, isPlaying }) {
 
 // A media overlay on the canvas: a second video or photo sitting on top of the main
 // one, at whatever size and angle it has been put.
-function MediaOverlayContent({ overlay, isPlaying }) {
+const MediaOverlayContent = React.memo(function MediaOverlayContent({ overlay, isPlaying }) {
   const w = PREVIEW_W * OVERLAY_BASE_FRAC;
   // Its own proportions, not a guessed square. An asset that reported no size falls
   // back to square, which is wrong for the picture but right for the layout.
@@ -457,7 +457,7 @@ function MediaOverlayContent({ overlay, isPlaying }) {
     <ExpoImage source={{ uri: overlay.uri }} style={{ width: w, height: h }}
       contentFit="contain" transition={0} />
   );
-}
+});
 
 // Typing happens on the canvas, over the overlay as it is actually drawn, rather
 // than in a sheet with a plain input in it. The text being edited is the text you
@@ -2524,6 +2524,32 @@ export default function EditVideoScreen({ navigation }) {
     : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
 
+  // Held across renders on purpose. `position` is React state written ~25 times a
+  // second during playback, so this screen re-renders at that rate - and building
+  // this list inline meant reconciling a native VideoView, and rebuilding every
+  // handler closure, 25 times a second for overlays that do not depend on the
+  // playhead at all. That work lands on the JS thread, which is the same thread the
+  // timeline's scroll and the RAF playback clock run on, so it showed up as the
+  // timeline stuttering while a picture-in-picture clip played.
+  //
+  // Text overlays legitimately rebuild per tick: a caption's chip follows the spoken
+  // word, so `playhead` really is one of their inputs. These have no such input.
+  const mediaOverlayViews = useMemo(() => overlays.map(o => (
+    <CanvasOverlay
+      key={o.key}
+      overlay={o}
+      containerW={PREVIEW_W}
+      containerH={PREVIEW_H}
+      selected={selectedOverlayKey === o.key}
+      onSelect={setSelectedOverlayKey}
+      onTransform={applyMediaOverlayTransform}
+      onTap={() => setSelectedOverlayKey(o.key)}
+      onLongPress={() => confirmRemoveOverlay(o)}
+    >
+      <MediaOverlayContent overlay={o} isPlaying={isPlaying} />
+    </CanvasOverlay>
+  )), [overlays, selectedOverlayKey, isPlaying, applyMediaOverlayTransform, confirmRemoveOverlay]);
+
   // Put the canvas on the frame a given timeline second points at. Every path
   // that moves the playhead somewhere the decoder is not already heading goes
   // through here, so the clock is invalidated in one place too.
@@ -2785,21 +2811,7 @@ export default function EditVideoScreen({ navigation }) {
           {/* Media overlays - drag, pinch and turn, same as text. Drawn before the
               text overlays so a caption is never buried under a sticker; within the
               list, later additions sit on top of earlier ones. */}
-          {overlays.map(o => (
-            <CanvasOverlay
-              key={o.key}
-              overlay={o}
-              containerW={PREVIEW_W}
-              containerH={PREVIEW_H}
-              selected={selectedOverlayKey === o.key}
-              onSelect={setSelectedOverlayKey}
-              onTransform={applyMediaOverlayTransform}
-              onTap={() => setSelectedOverlayKey(o.key)}
-              onLongPress={() => confirmRemoveOverlay(o)}
-            >
-              <MediaOverlayContent overlay={o} isPlaying={isPlaying} />
-            </CanvasOverlay>
-          ))}
+          {mediaOverlayViews}
 
           {/* Text overlays on preview - drag, pinch and turn. Auto-captions are
               time-gated to the playhead position; manual overlays always show. */}
