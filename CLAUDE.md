@@ -144,10 +144,11 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `42422470-8b9d-4381-b2ae-f831fff19ff8` (commit `734d746e`, runtime
-   1.1.0) on Aug 6 2026, superseding `9f403a24-2afb-4454-a741-505825af5584`
-   (commit `f8b0d7ec`). Awaiting confirmation:
-   - **Font grid (`734d746e`)** — the font sheet lays the families out as a
+   update group `24fa85fa-d9e5-4449-9d40-34a9a8b6af57` (commit `ef882e58`, runtime
+   1.1.0) on Aug 7 2026, superseding `42422470-8b9d-4381-b2ae-f831fff19ff8`
+   (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
+   `f8b0d7ec`). Awaiting confirmation:
+   - **Font grid (`734d746e`, specimen word `ef882e58`)** — the font sheet lays the families out as a
      three-column grid of specimen tiles (the word "Quick" set in the family, name
      beneath in the system face) instead of one full-width row each. The specimen
      is a whole word rather than a letter pair because a typeface's character is in
