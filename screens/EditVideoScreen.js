@@ -18,6 +18,7 @@ import CaptionStylePicker from '../components/CaptionStylePicker';
 import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
+import { measureVideoDuration } from '../utils/videoDuration';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
@@ -1450,24 +1451,63 @@ export default function EditVideoScreen({ navigation }) {
     if (!selectedKey) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8,
-    });
+    let result;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8,
+      });
+    } catch (err) {
+      // A picker that throws used to reject into nothing, so the tool looked inert.
+      Alert.alert('Could not open your library', String(err?.message || err));
+      return;
+    }
     if (result.canceled || !result.assets?.length) return;
     const a = result.assets[0];
-    setItems(prev => prev.map(i => (i.key !== selectedKey ? i : {
+    const isVideo = a.type === 'video';
+    const reported = a.duration ? a.duration / 1000 : null;
+
+    const next = items.map(i => (i.key !== selectedKey ? i : {
       ...i,
       uri: a.uri,
-      type: a.type === 'video' ? 'video' : 'image',
-      fileName: a.fileName || ('media_' + Date.now() + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),
-      sourceDuration: a.duration ? a.duration / 1000 : null,
+      type: isVideo ? 'video' : 'image',
+      fileName: a.fileName || ('media_' + Date.now() + '.' + (isVideo ? 'mp4' : 'jpg')),
+      sourceDuration: reported,
+      // An image is held for a set time rather than trimmed, and that time is a
+      // property of the slot on the timeline, not of the file in it - so unlike the
+      // in/out points below it survives the swap. It still has to be defined, or a
+      // video replaced by an image lands on clipLength's bare 3s fallback.
+      duration: i.duration || 3,
       // In and out points are offsets into a file, so they mean nothing once the file
       // underneath them changes. Carrying them over would open the new clip on a
       // window into footage that may be shorter than where the old one ended.
       trimStart: 0,
-      trimEnd: a.duration ? a.duration / 1000 : 3,
-    })));
-  }, [selectedKey]);
+      trimEnd: reported ?? 3,
+    }));
+    // Replacing a clip destroys the outgoing footage's place in the project, and
+    // nothing else on screen holds it. Going through history rather than straight to
+    // setItems is what makes the undo button in the header apply to this.
+    pushHistory(next);
+
+    // ImagePicker reports no duration for a lot of phone-camera footage, and the 3s
+    // fallback above would hold a long take at three seconds with no way to recover
+    // it - the trim handle refuses to extend past a length nothing has measured.
+    // Measuring costs a load, so the swap has already landed and this patches the
+    // length in behind it rather than leaving the user on a frozen picker.
+    if (isVideo && !reported) {
+      const measured = await measureVideoDuration(a.uri);
+      if (measured) {
+        setItems(prev => prev.map(i => (
+          // Only the clip this call replaced, and only while it still carries the
+          // placeholder length: the measurement is in flight for long enough to trim,
+          // replace again, or undo, and none of those should be quietly overwritten.
+          i.key === selectedKey && i.uri === a.uri
+            && i.sourceDuration == null && i.trimStart === 0 && i.trimEnd === 3
+            ? { ...i, sourceDuration: measured, trimEnd: measured }
+            : i
+        )));
+      }
+    }
+  }, [selectedKey, items]);
 
   const removeItem = useCallback((key) => {
     setItems(prev => prev.filter(i => i.key !== key));
