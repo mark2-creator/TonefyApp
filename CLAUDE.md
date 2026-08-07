@@ -227,6 +227,20 @@ Highlight is the one deliberate exception: the app pads the spoken word with thi
 (`\u2009`) where the export draws a real chip with `hlPadX`/`hlPadY` geometry, because
 React Native ignores padding on a nested `Text`. Close approximation, not the same maths.
 
+**`.enabled()` goes on a leaf gesture, never on a composition.** `Gesture.Race`,
+`Gesture.Simultaneous` and `Gesture.Exclusive` return a `ComposedGesture`, whose
+prototype chain is `ComposedGesture -> Gesture -> Object`. The configuration methods —
+`enabled`, `minDistance`, `maxDuration`, 25 of them — are defined on `BaseGesture`,
+which is **not** on that chain. Calling one on a composition throws
+`enabled is not a function` while rendering, which takes the screen grey.
+
+This shipped in `dd1c0a81` and grey-screened Add Text (`75198f47`). Every overlay
+rendered through that line, so the Add button was only the first thing to mount one.
+`scripts/check-gesture-composition.py` reads the two class bodies out of the installed
+library and flags a banned method chained onto a composition, so it tracks a
+gesture-handler upgrade rather than going stale. Verified by running it against the
+broken file, not only the fixed one.
+
 **`npx expo export` is necessary but not sufficient.** Metro bundles a reference to a
 function that no longer exists and only fails when that branch renders. Deleting a
 component and leaving one of its two call sites behind is exactly how that happens — it

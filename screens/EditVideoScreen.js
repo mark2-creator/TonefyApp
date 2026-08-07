@@ -1226,13 +1226,13 @@ export default function EditVideoScreen({ navigation }) {
   // without a keyboard covering the canvas; tapping the selected one puts a caret
   // in it. The style sheet moved to a long press - typing is the common act and
   // deserves the shorter gesture.
+  // Read the selection rather than deciding inside a state updater. An updater has
+  // to be pure and may be run more than once for a single update; setting other
+  // state from inside one is a side effect in a function React is free to replay.
   const openOverlayEditor = useCallback((ov) => {
-    setSelectedOverlayKey(prev => {
-      if (prev !== ov.key) return ov.key;
-      setInlineEditKey(ov.key);
-      return prev;
-    });
-  }, []);
+    if (selectedOverlayKey === ov.key) setInlineEditKey(ov.key);
+    else setSelectedOverlayKey(ov.key);
+  }, [selectedOverlayKey]);
 
   const openOverlayStyleSheet = useCallback((ov) => {
     setInlineEditKey(null);
