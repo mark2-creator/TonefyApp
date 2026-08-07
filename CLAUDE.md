@@ -600,9 +600,25 @@ nothing to aim at.
      means the deployed backend exists on exactly one disk.
 
    Once confirmed on device, open a PR into `main` and merge.
-3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
+3. **Eight caption styles have never been verified against the export.** The pass
+   described under "Backend caption rendering" below rendered all **130** specs through
+   the ImageMagick chain and checked all 130 produced valid ASS. The catalogue grew to
+   **138** in `33b4ef33`, after that pass, and those eight have never been through it.
+
+   This is an untested export path, not a documentation gap: a spec that the app draws
+   correctly can still fail server-side, and both of the traps already found there were
+   invisible until something was actually rendered — `roundrectangle` with radius 0
+   draws *nothing*, and dilating an alpha cropped to the glyphs squares the stroke into
+   a slab behind the word. Either would ship silently.
+
+   To close it: re-run the verification over the full 138 rather than only the new
+   eight, so the check stays one command instead of a list of exceptions, and burn
+   samples into frames — the geometry numbers alone did not catch either trap above.
+   Until then, treat any of the eight as unproven in the burned-in export.
+
+4. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
    copy is the sole working source (git history is now the real safety net).
-4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
+5. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
    item, low priority, not urgent).
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
