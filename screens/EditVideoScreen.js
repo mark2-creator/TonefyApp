@@ -1515,18 +1515,44 @@ export default function EditVideoScreen({ navigation }) {
     setSelectedKey(prevKey => prevKey === key ? null : prevKey);
   }, []);
 
-  function splitAtScrubber() {
-    if (!selectedItem) { Alert.alert('Select a clip first'); return; }
-    const clipDur = clipLength(selectedItem) || 3;
-    // trimStart/trimEnd are source offsets, so the halfway point of what is on
-    // the timeline sits at trimStart + half, not at half.
-    const splitPoint = (selectedItem.trimStart ?? 0) + clipDur / 2;
+  function splitAtPlayhead() {
+    if (!selectedItem) { Alert.alert('Split', 'Select a clip first.'); return; }
     const idx = items.findIndex(i => i.key === selectedKey);
-    const part1 = { ...selectedItem, key: selectedItem.key + '_a', trimEnd: splitPoint };
-    const part2 = { ...selectedItem, key: selectedItem.key + '_b', trimStart: splitPoint };
-    const newItems = [...items];
-    newItems.splice(idx, 1, part1, part2);
-    setItems(newItems);
+    if (idx < 0) return;
+    // Where this clip starts on the timeline. That is what turns the playhead's
+    // timeline second into a distance into the clip - the two are only the same
+    // number for the first clip in the project, which is why splitting appeared to
+    // work at all.
+    let clipStart = 0;
+    for (let i = 0; i < idx; i += 1) clipStart += clipLength(items[i]);
+    const len = clipLength(selectedItem);
+    const into = positionRef.current - clipStart;
+    if (!(into > MIN_CLIP_DUR && into < len - MIN_CLIP_DUR)) {
+      Alert.alert('Split', 'Move the playhead inside this clip first.');
+      return;
+    }
+
+    let part1, part2;
+    if (selectedItem.type === 'image') {
+      // A still has no footage to cut into: both halves are the same picture, each
+      // held for less time. clipLength reads duration for an image and ignores the
+      // trim offsets, so cutting those would have produced two clips that each still
+      // ran the full length - a split that made the timeline longer.
+      part1 = { ...selectedItem, key: selectedItem.key + '_a', duration: into };
+      part2 = { ...selectedItem, key: selectedItem.key + '_b', duration: len - into };
+    } else {
+      const cut = (selectedItem.trimStart ?? 0) + into;
+      part1 = { ...selectedItem, key: selectedItem.key + '_a', trimEnd: cut };
+      part2 = { ...selectedItem, key: selectedItem.key + '_b', trimStart: cut };
+    }
+    // A transition belongs to a clip's right edge, so it stays with the half that
+    // still ends where the original did. The cut itself is a hard join: the user
+    // asked for a cut, and inheriting the transition would put a crossfade on it.
+    part1.transition = 'None';
+
+    const next = [...items];
+    next.splice(idx, 1, part1, part2);
+    pushHistory(next);
     setSelectedKey(null);
   }
 
@@ -2489,7 +2515,7 @@ export default function EditVideoScreen({ navigation }) {
     switch (activeTab) {
       case 'Edit':
         return [
-          { key: 'split', icon: 'content-cut', label: 'Split', onPress: splitAtScrubber },
+          { key: 'split', icon: 'content-cut', label: 'Split', onPress: splitAtPlayhead },
           { key: 'trim', icon: 'straighten', label: 'Trim', onPress: () => selectedItem && openTrim(selectedItem) },
           { key: 'delete', icon: 'delete', label: 'Delete', color: '#ff6b6b', onPress: () => selectedKey && removeItem(selectedKey) },
           { key: 'res', icon: 'hd', label: resolution, color: '#00d4d4', onPress: () => setShowResModal(true) },
@@ -2543,7 +2569,7 @@ export default function EditVideoScreen({ navigation }) {
   const clipToolActions = {
     replace: replaceSelectedClip,
     trim: () => selectedItem && openTrim(selectedItem),
-    split: splitAtScrubber,
+    split: splitAtPlayhead,
     overlay: pickOverlay,
     volume: () => setShowVolumeModal(true),
     audio: () => setShowAudioListModal(true),
