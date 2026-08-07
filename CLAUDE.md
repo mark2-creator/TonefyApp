@@ -381,14 +381,23 @@ the JSX swap.
      boxed style**, where the chip should hug the text rather than the caption's
      80%-width column.
 
-   **Blocked on you (I lack permission for both):**
-   - `pm2 restart tonefy-backend` — the backend commit `e2e2c670` is on disk but the
-     running process is still the old code. Until it restarts, captions preview
-     correctly in the app and export **without** stroke, glow or box: the old server
-     ignores `captionSpec`, so font, size, colour and gradient survive and the rest
-     does not. This is the one step that makes the new styles real in the export.
+   **Backend restarted Aug 7 2026, 09:12** — `pm2 restart tonefy-backend`, pid 3872,
+   restart #7, no unstable restarts, font manifest loaded without a `[fonts]` warning.
+   The spec-driven caption rendering is live, so stroke, glow, box and the word chip now
+   survive to the export instead of being dropped. Verified by process start time
+   (09:12:51) postdating the last `server.js` edit (08:55:32) — the check to repeat,
+   since "I restarted it" and "it is running that code" are not the same claim.
+
+   Note what was actually deployed: HEAD is `02a75a25`, not the `e2e2c670` this file used
+   to name, **plus uncommitted `server.js` changes** — the backend half of the word chip
+   (`labelWidth`/`labelPad`/`wordBoxInLabel`, the fill recolour, the chip layer). A
+   restart deploys the working tree, not the last commit, so read `git diff` before
+   restarting rather than trusting the commit id. Those changes are still uncommitted.
+
+   **Still blocked on you:**
    - `git -C ~/Tonefy-react push origin master` — denied 403, the stored credential
-     has no access to that repo. The commit is local-only until this lands.
+     has no access to that repo. The commits are local-only until this lands, which
+     means the deployed backend exists on exactly one disk.
 
    Once confirmed on device, open a PR into `main` and merge.
 3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
@@ -398,8 +407,9 @@ the JSX swap.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
-Changed Aug 7 2026 alongside the caption catalogue, **committed but NOT deployed** — the
-pm2 process `tonefy-backend` is still running the old code. Restart it to pick this up.
+Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
+the pm2 process `tonefy-backend` is running this code. Note the deployed state includes
+uncommitted `server.js` changes on top of `02a75a25`; a restart takes the working tree.
 
 Both caption paths are now driven by the style spec the app sends, so the server holds no
 copy of the catalogue and a style added in the app renders without a deploy on this side.
