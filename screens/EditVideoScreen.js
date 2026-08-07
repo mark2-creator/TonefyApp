@@ -491,12 +491,16 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
           </DraggableAudioTrack>
         ))}
       </View>
-      <TouchableOpacity
-        style={hasTracks ? [styles.auxAddMoreBtn, { marginLeft: 8 }] : styles.auxTrackBtn}
-        onPress={onPressAdd}>
-        <MaterialIcons name={hasTracks ? 'add' : iconName} size={hasTracks ? 16 : 12} color={hasTracks ? '#666' : '#555'} />
-        {!hasTracks && <Text style={styles.auxLabel}>{addLabel}</Text>}
-      </TouchableOpacity>
+      {/* Only the empty state. It sits at the head of the row, where it names what the
+          row is for and is reachable without scrolling; the button that used to follow
+          the tracks sat past the full width of the timeline, which is what the fixed
+          add bar in the header replaces. */}
+      {!hasTracks && (
+        <TouchableOpacity style={styles.auxTrackBtn} onPress={onPressAdd}>
+          <MaterialIcons name={iconName} size={12} color="#555" />
+          <Text style={styles.auxLabel}>{addLabel}</Text>
+        </TouchableOpacity>
+      )}
     </ReanimatedAnimated.ScrollView>
   );
 });
@@ -538,11 +542,14 @@ const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, lea
           <Text style={[styles.textChipText, { color: t.color }]}>{t.text}</Text>
         </TouchableOpacity>
       ))}
-      <TouchableOpacity style={styles.auxTrackBtn}
-        onPress={onPressAdd}>
-        <MaterialIcons name="title" size={12} color="#555" />
-        <Text style={styles.auxLabel}>Add text</Text>
-      </TouchableOpacity>
+      {/* Empty state only, as on the audio rows - with chips present this trailed all
+          of them, and the header's add bar is always in reach. */}
+      {manualTextOverlays.length === 0 && (
+        <TouchableOpacity style={styles.auxTrackBtn} onPress={onPressAdd}>
+          <MaterialIcons name="title" size={12} color="#555" />
+          <Text style={styles.auxLabel}>Add text</Text>
+        </TouchableOpacity>
+      )}
     </ReanimatedAnimated.ScrollView>
   );
 });
@@ -706,7 +713,7 @@ function TimelineClip({
   );
 }
 
-const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd, onTrimEnd }) {
+const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onTrimEnd }) {
   return (
     <React.Fragment>
       {clipsComputed.map(({ item, idx, isLast, width, length }) => (
@@ -725,9 +732,6 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
           onTrimEnd={onTrimEnd}
         />
       ))}
-      <TouchableOpacity style={styles.addClipBtn} onPress={onPressAdd}>
-        <MaterialIcons name="add" size={22} color="#888" />
-      </TouchableOpacity>
     </React.Fragment>
   );
 });
@@ -2331,9 +2335,23 @@ export default function EditVideoScreen({ navigation }) {
       <View style={styles.timeline}>
         <View style={styles.timecodeRow}>
           <Text style={styles.timecode}>{fmtTime(position)} / {fmtTime(duration)}</Text>
-          <View style={styles.timeMarkers}>
-            {[0,1,2,3,4].map(t => (
-              <Text key={t} style={styles.timeMarker}>{fmtTime(t)}</Text>
+          {/* Fixed, because everything these add used to be added from a button at the
+              end of its own row - and a row is now as long as the footage on it, so
+              adding a second clip meant scrolling the whole length of the first. They
+              sit in the timeline's header rather than floating over the tracks, so
+              they cover no footage. This replaces a ruler that read [0,1,2,3,4] no
+              matter where the timeline was scrolled or how long it was. */}
+          <View style={styles.addBar}>
+            {[
+              { key: 'clip', icon: 'movie', label: 'Clip', onPress: pickMedia },
+              { key: 'voice', icon: 'mic', label: 'Voice', onPress: onPressAddVoiceover },
+              { key: 'music', icon: 'music-note', label: 'Music', onPress: onPressAddMusic },
+              { key: 'text', icon: 'title', label: 'Text', onPress: onPressAddText },
+            ].map(b => (
+              <TouchableOpacity key={b.key} style={styles.addBarBtn} onPress={b.onPress}>
+                <MaterialIcons name={b.icon} size={13} color="#9a9a9a" />
+                <Text style={styles.addBarLabel}>{b.label}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -2395,7 +2413,7 @@ export default function EditVideoScreen({ navigation }) {
               }}>
             <View>
             <View style={[styles.clipsScroll, { paddingLeft: rowLeadW }]}>
-              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} onTrimEnd={applyClipTrimEdit} />
+              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onTrimEnd={applyClipTrimEdit} />
             </View>
 
             {/* Voiceover row */}
@@ -3016,8 +3034,9 @@ const styles = StyleSheet.create({
   timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
   timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
   timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
-  timeMarkers: { flexDirection: 'row', gap: 20 },
-  timeMarker: { color: '#333', fontSize: 9 },
+  addBar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 22, paddingHorizontal: 8, borderRadius: 11, borderWidth: 1, borderColor: '#2a2a2a', backgroundColor: '#161616' },
+  addBarLabel: { color: '#9a9a9a', fontSize: 10, fontWeight: '600' },
   trackArea: { flex: 1, flexDirection: 'row' },
   sidebar: { width: 72, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
   sideBtn: { alignItems: 'center', gap: 2 },
@@ -3047,11 +3066,9 @@ const styles = StyleSheet.create({
   // Inside the clip's own right edge rather than straddling the boundary: a marker
   // centred on the join would be overdrawn by the next clip, which is painted after it.
   transitionBtn: { position: 'absolute', right: 3, top: (CLIP_H - 22) / 2, width: 22, height: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1ae6', borderRadius: 11, borderWidth: 1, borderColor: '#333' },
-  addClipBtn: { width: 40, height: CLIP_H, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', marginLeft: 2 },
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   auxTrackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
-  auxAddMoreBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' },
   auxLabel: { color: '#555', fontSize: 11 },
 
 
