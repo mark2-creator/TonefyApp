@@ -2960,22 +2960,22 @@ export default function EditVideoScreen({ navigation }) {
                   Opacity: {Math.round(textBackground.opacity * 100)}%
                 </Text>
                 <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1} step={0.05}
-                  value={textBackground.opacity} minimumTrackTintColor="#2ECC71"
-                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  value={textBackground.opacity} minimumTrackTintColor="#00d4d4"
+                  maximumTrackTintColor="#333" thumbTintColor="#00d4d4"
                   onValueChange={v => setBackgroundField('opacity', v)} />
                 <Text style={styles.modalLabel}>Corner radius: {textBackground.radius}</Text>
                 <Slider style={styles.modalSlider} minimumValue={0} maximumValue={28} step={1}
-                  value={textBackground.radius} minimumTrackTintColor="#2ECC71"
-                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  value={textBackground.radius} minimumTrackTintColor="#00d4d4"
+                  maximumTrackTintColor="#333" thumbTintColor="#00d4d4"
                   onValueChange={v => setBackgroundField('radius', v)} />
                 <Text style={styles.modalLabel}>Padding: {textBackground.padX} × {textBackground.padY}</Text>
                 <Slider style={styles.modalSlider} minimumValue={0} maximumValue={32} step={1}
-                  value={textBackground.padX} minimumTrackTintColor="#2ECC71"
-                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  value={textBackground.padX} minimumTrackTintColor="#00d4d4"
+                  maximumTrackTintColor="#333" thumbTintColor="#00d4d4"
                   onValueChange={v => setBackgroundField('padX', v)} />
                 <Slider style={styles.modalSlider} minimumValue={0} maximumValue={24} step={1}
-                  value={textBackground.padY} minimumTrackTintColor="#2ECC71"
-                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  value={textBackground.padY} minimumTrackTintColor="#00d4d4"
+                  maximumTrackTintColor="#333" thumbTintColor="#00d4d4"
                   onValueChange={v => setBackgroundField('padY', v)} />
               </>
             )}
@@ -3089,8 +3089,8 @@ export default function EditVideoScreen({ navigation }) {
             {['720p','1080p','4K'].map(r => (
               <TouchableOpacity key={r} style={[styles.resRow, resolution === r && styles.resRowActive]}
                 onPress={() => { setResolution(r); setShowResModal(false); }}>
-                <Text style={[styles.resText, resolution === r && { color: '#00d4d4' }]}>{r}</Text>
-                {resolution === r && <MaterialIcons name="check" size={18} color="#00d4d4" />}
+                <Text style={[styles.resText, resolution === r && { color: '#2ECC71' }]}>{r}</Text>
+                {resolution === r && <MaterialIcons name="check" size={18} color="#2ECC71" />}
               </TouchableOpacity>
             ))}
           </View>
@@ -3117,7 +3117,7 @@ export default function EditVideoScreen({ navigation }) {
               </>
             )}
             <TouchableOpacity onPress={() => setShowImageDurationModal(false)}
-              style={{ backgroundColor:'#00d4d4', borderRadius:8, padding:14, alignItems:'center', marginTop:16 }}>
+              style={{ backgroundColor:'#2ECC71', borderRadius:8, padding:14, alignItems:'center', marginTop:16 }}>
               <Text style={{ color:'#000', fontWeight:'bold' }}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -3211,7 +3211,7 @@ export default function EditVideoScreen({ navigation }) {
                   {VOICES.map(v => (
                     <TouchableOpacity key={v.id} onPress={() => setVoiceId(v.id)}
                       style={{ marginRight:8, padding:10, borderRadius:10, alignItems:'center', minWidth:78,
-                        backgroundColor: voiceId === v.id ? '#00d4d4' : '#2a2a2a' }}>
+                        backgroundColor: voiceId === v.id ? '#2ECC71' : '#2a2a2a' }}>
                       <MaterialIcons name={v.icon} size={20} color={voiceId === v.id ? '#000' : '#fff'} />
                       <Text style={{ color: voiceId === v.id ? '#000' : '#fff', fontWeight:'700', fontSize:12, marginTop:4 }}>{v.label}</Text>
                       <Text style={{ color: voiceId === v.id ? '#003' : '#888', fontSize:9 }}>{v.accent}</Text>
@@ -3223,7 +3223,7 @@ export default function EditVideoScreen({ navigation }) {
                 </ScrollView>
 
                 <TouchableOpacity onPress={generateVoiceover} disabled={generatingVoiceover}
-                  style={{ backgroundColor:'#00d4d4', borderRadius:8, padding:14, alignItems:'center', marginBottom:10, opacity: generatingVoiceover ? 0.6 : 1 }}>
+                  style={{ backgroundColor:'#2ECC71', borderRadius:8, padding:14, alignItems:'center', marginBottom:10, opacity: generatingVoiceover ? 0.6 : 1 }}>
                   {generatingVoiceover
                     ? <ActivityIndicator color="#000" />
                     : <Text style={{ color:'#000', fontWeight:'bold', fontSize:15 }}>Generate Voiceover</Text>}
@@ -3234,7 +3234,7 @@ export default function EditVideoScreen({ navigation }) {
                     <MaterialIcons name="graphic-eq" size={16} color="#00d4d4" />
                     <Text style={{ color:'#fff', flex:1, marginLeft:8, fontSize:12 }} numberOfLines={1}>{t.name}</Text>
                     <TouchableOpacity onPress={() => addVoiceoverTrack(t)} style={{ marginLeft:8 }}>
-                      <Text style={{ color:'#00d4d4', fontWeight:'700', fontSize:12 }}>ADD</Text>
+                      <Text style={{ color:'#2ECC71', fontWeight:'700', fontSize:12 }}>ADD</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -3251,7 +3251,7 @@ export default function EditVideoScreen({ navigation }) {
                     <MaterialIcons name="graphic-eq" size={16} color="#00d4d4" />
                     <Text style={{ color:'#fff', flex:1, marginLeft:8, fontSize:12 }} numberOfLines={1}>{t.name}</Text>
                     <TouchableOpacity onPress={() => addVoiceoverTrack(t)} style={{ marginLeft:8 }}>
-                      <Text style={{ color:'#00d4d4', fontWeight:'700', fontSize:12 }}>ADD</Text>
+                      <Text style={{ color:'#2ECC71', fontWeight:'700', fontSize:12 }}>ADD</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -3297,7 +3297,7 @@ export default function EditVideoScreen({ navigation }) {
                         <MaterialIcons name={musicPreviewPlayingId === track.id ? 'pause' : 'play-arrow'} size={18} color={musicPreviewPlayingId === track.id ? '#000' : '#fff'} />
                       </TouchableOpacity>
                       <Text style={{ color:'#fff', flex:1, fontSize:13 }} numberOfLines={1}>{track.name}</Text>
-                      <Text style={{ color:'#00d4d4', fontWeight:'700', fontSize:12 }}>ADD</Text>
+                      <Text style={{ color:'#2ECC71', fontWeight:'700', fontSize:12 }}>ADD</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -3368,7 +3368,7 @@ export default function EditVideoScreen({ navigation }) {
             </ScrollView>
 
             <TouchableOpacity onPress={handleAutoCaption}
-              style={{ backgroundColor:'#00d4d4', borderRadius:8, padding:14, alignItems:'center', marginBottom:10 }}>
+              style={{ backgroundColor:'#2ECC71', borderRadius:8, padding:14, alignItems:'center', marginBottom:10 }}>
               <Text style={{ color:'#000', fontWeight:'bold', fontSize:15 }}>Generate Captions</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowCaptionModal(false)}
@@ -3389,7 +3389,7 @@ const styles = StyleSheet.create({
   qualityBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8, gap: 4, borderWidth: 1, borderColor: '#333' },
   qualityText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   exportBtn: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 },
-  exportBtnActive: { backgroundColor: '#00d4d4' },
+  exportBtnActive: { backgroundColor: '#2ECC71' },
   exportBtnText: { color: '#888', fontWeight: '700', fontSize: 14 },
 
   previewContainer: { alignItems: 'center', paddingVertical: 6, backgroundColor: '#000' },
@@ -3463,7 +3463,7 @@ const styles = StyleSheet.create({
   tabContent: { flexDirection: 'row', alignItems: 'center' },
   tabSectionLabel: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
   toolChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1a1a1a', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: '#2a2a2a' },
-  toolChipActive: { backgroundColor: '#00d4d4', borderColor: '#00d4d4' },
+  toolChipActive: { backgroundColor: '#2ECC71', borderColor: '#2ECC71' },
   toolChipText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   clipInfo: { marginTop: 8 },
   clipInfoText: { color: '#888', fontSize: 11, marginBottom: 4 },
@@ -3521,7 +3521,7 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
-  modalBtnApply: { flex: 1, backgroundColor: '#00d4d4', borderRadius: 12, padding: 14, alignItems: 'center' },
+  modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
