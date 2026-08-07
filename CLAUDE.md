@@ -297,6 +297,56 @@ Extracted as `React.memo` components: `ClipsRow`, `TextRow`, `CaptionsRow`, and
 commit `56d986ad`). Net -62 lines of duplication. Build check clean before and after
 the JSX swap.
 
+### Timeline filmstrip and clip trimming (Aug 7 2026)
+
+`components/FilmStrip.js` + `TimelineClip` in `EditVideoScreen.js`. The clips row was
+a strip of fixed 72px chips, each drawing `item.uri` in an `<Image>` — which for a
+video file is not a frame of it. So a clip was one tile with no picture in it and
+nothing to aim at.
+
+- **The width was the deeper half of that bug.** The row sits in the scroll view whose
+  offset is read back as `x / PIXELS_PER_SECOND`, and every other row — voiceover,
+  music, text, captions — is positioned at `startOffset * PIXELS_PER_SECOND`. The clips
+  alone were laid out at a fixed size, so a 30s clip drew 72px where the playhead
+  believed 1200px: clips did not line up with their own audio, and the frame under the
+  playhead was not the frame being played. **Nothing in that row may take horizontal
+  space that is not time** — a fixed chip, a margin, or the inline transition button
+  each pushed every later clip further out by its own width, and the error accumulates.
+  The transition marker is now drawn inside the clip's right edge, where the next clip
+  cannot overdraw it (siblings paint in order; it would need a stacking context to sit
+  on the join).
+- **Frames come from `expo-video`'s `generateThumbnailsAsync`**, which was already in
+  the runtime-1.1.0 binary — expo-video landed `0365cf33` (Jun 9), the build is Jul 13 —
+  so this shipped over the air. `expo-video-thumbnails` is *not* installed and adding it
+  would have meant a new native build for a filmstrip.
+- On Android it reads through **`MediaMetadataRetriever`, not the playback decoder**
+  (checked in the module's Kotlin, not assumed), so unlike the duration probe removed in
+  `e1937cfe` it cannot take audio focus mid-playback. Muted and set to `mixWithOthers`
+  anyway. `createVideoPlayer` instances never release themselves — release in a `finally`.
+- `toMetadataRetriever()` only needs the player's **source URI**, not a loaded asset, so
+  there is no readiness handshake to wait on.
+- **Sampling is on a fixed grid over the whole source file, never over the trimmed
+  window**, and the clip's box shows the part of that strip it covers. This is what makes
+  a trim handle cheap: dragging reveals frames that are already decoded, so the strip
+  slides instead of being rebuilt. Keyed by source file rather than by clip, so splitting
+  a clip does not decode the same file twice; the cache value is the in-flight promise, so
+  two clips mounting on one frame wait on one extraction.
+- A trim drag moves exactly two numbers — the window's width and the strip's offset — as
+  RN `Animated` values, and commits once on release. Writing to `items` per frame would
+  re-lay-out every later clip and every aux row at 60fps for a gesture with one outcome.
+- **The edge is clamped during the drag, not at the commit.** Letting a handle run past
+  the end of the footage and correcting on release reads as the app rejecting the gesture.
+- **Handles sit outside the clip's press target.** A `PanResponder` nested inside a
+  `TouchableOpacity` has to take the touch off it on every grab, and losing that race once
+  is a trim that selects the clip instead. They also carry
+  `onPanResponderTerminationRequest: () => false`, or the horizontal ScrollView they live
+  in asks for the touch back the moment the finger moves sideways — which is every trim.
+- Known gap this exposed, not fixed: **`ImagePicker` does not always report a video's
+  duration**, and nothing measures it afterwards. `pickMedia` falls back to `trimEnd: 3`,
+  so such a clip is 3s to the strip, the playhead and the export alike. Its right handle
+  refuses to extend, which is the safe reading of not knowing, but the real fix is to
+  measure the duration on add.
+
 ## Repo hygiene (as of Aug 5 2026)
 
 - `rebuild/phase-4` pushed to `origin`, confirmed at `f3a8e26d` (Aug 6 2026).
@@ -313,9 +363,11 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `6a6076f6-6c26-4632-94cc-e09a13cea57b` (commit `b67b08cb`, runtime
-   1.1.0, the corner handle winning its own finger + `averageTouches`) on Aug 7 2026,
-   superseding `a9d57a65-71d1-4c7a-9a8c-bb335cd2759b` (commit `05e26d3b`, the guard
+   update group `6ac0e67a-91f3-41fd-9d94-f45fa41ce3df` (commit `22cbb059`, runtime
+   1.1.0, the timeline filmstrip + time-proportional clips + clip trim handles) on
+   Aug 7 2026, superseding `6a6076f6-6c26-4632-94cc-e09a13cea57b` (commit `b67b08cb`,
+   the corner handle winning its own finger + `averageTouches`),
+   `a9d57a65-71d1-4c7a-9a8c-bb335cd2759b` (commit `05e26d3b`, the guard
    script and updater purity), `e7850ff7-a5d7-494f-bba3-9507196d21f0` (commit
    `75198f47`, the Add Text grey-screen fix — anything published before this one
    grey-screens on mount, so it is not worth testing),
@@ -328,6 +380,22 @@ the JSX swap.
    (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
+   - **Timeline filmstrip and clip trim handles (`48c35bec`, `22cbb059`)** — a video
+     clip now draws its own frames, at the width of the time it covers, and a selected
+     clip has a handle at each end. Test: add a clip and confirm the strip fills with
+     real frames rather than one poster or a grey box (extraction is async, so a beat
+     of `#181818` first is expected). Then the alignment claim, which is the point of
+     the change: add a voiceover, and a moment in the audio should sit under the frame
+     it belongs to — **two or more clips of different lengths** is the discriminating
+     case, since the old fixed-width chips were only ever right when every clip was
+     the same length as every other. Drag each handle and confirm the frames slide
+     under it live rather than the strip going blank and repainting on release, that
+     it stops dead at the end of the footage rather than running past and snapping
+     back, and that the clip cannot go below ~0.3s. Trim, then play, and confirm the
+     export starts where the handle was left. A **still image** clip is its own case:
+     both edges just change how long it is held, up to 30s. A clip whose duration the
+     picker did not report is stuck at 3s and will not extend — a known gap, recorded
+     under "Timeline filmstrip" above, not a regression.
    - **Corner handle and two-finger rotate (`b67b08cb`)** — dragging the corner
      handle used to move the overlay instead of turning it, and a two-finger turn
      threw it across the frame. Test: drag the handle on a selected overlay and
