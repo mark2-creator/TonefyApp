@@ -79,6 +79,43 @@ const ADD_RAIL = [
   { key: 'captions', icon: 'closed-caption', label: 'Auto captions' },
 ];
 
+// What the bottom bar becomes while a clip is selected. Grouped as written; the
+// groups are separated by a rule rather than run together, since the order is the
+// only thing that says these belong to each other.
+const CLIP_TOOLS = [
+  [
+    { key: 'replace', icon: 'swap-horiz', label: 'Replace' },
+    { key: 'trim', icon: 'straighten', label: 'Trim' },
+    { key: 'split', icon: 'content-cut', label: 'Split' },
+    { key: 'overlay', icon: 'picture-in-picture-alt', label: 'Overlay' },
+    { key: 'volume', icon: 'volume-up', label: 'Volume' },
+  ],
+  [
+    { key: 'audio', icon: 'graphic-eq', label: 'Audio tools' },
+    { key: 'captions', icon: 'closed-caption', label: 'Captions' },
+    { key: 'speed', icon: 'speed', label: 'Speed' },
+  ],
+  [
+    { key: 'transition', icon: 'compare-arrows', label: 'Transition' },
+    { key: 'transparency', icon: 'opacity', label: 'Transparency' },
+    { key: 'layers', icon: 'layers', label: 'Layers' },
+    { key: 'more', icon: 'more-horiz', label: 'More' },
+  ],
+  [
+    { key: 'crop', icon: 'crop', label: 'Crop' },
+    { key: 'flip', icon: 'flip', label: 'Flip' },
+    { key: 'colour', icon: 'palette', label: 'Colour' },
+    { key: 'animate', icon: 'animation', label: 'Animate' },
+    { key: 'transform', icon: 'transform', label: 'Transform' },
+  ],
+  [
+    { key: 'adjust', icon: 'tune', label: 'Adjust' },
+    { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover' },
+    { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio' },
+    { key: 'filters', icon: 'photo-filter', label: 'Filters' },
+  ],
+];
+
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
@@ -1384,6 +1421,30 @@ export default function EditVideoScreen({ navigation }) {
     }
   }, []);
 
+  // Swap the footage under the selected clip, keeping its place on the timeline.
+  const replaceSelectedClip = useCallback(async () => {
+    if (!selectedKey) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const a = result.assets[0];
+    setItems(prev => prev.map(i => (i.key !== selectedKey ? i : {
+      ...i,
+      uri: a.uri,
+      type: a.type === 'video' ? 'video' : 'image',
+      fileName: a.fileName || ('media_' + Date.now() + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),
+      sourceDuration: a.duration ? a.duration / 1000 : null,
+      // In and out points are offsets into a file, so they mean nothing once the file
+      // underneath them changes. Carrying them over would open the new clip on a
+      // window into footage that may be shorter than where the old one ended.
+      trimStart: 0,
+      trimEnd: a.duration ? a.duration / 1000 : 3,
+    })));
+  }, [selectedKey]);
+
   const removeItem = useCallback((key) => {
     setItems(prev => prev.filter(i => i.key !== key));
     setSelectedKey(prevKey => prevKey === key ? null : prevKey);
@@ -2270,6 +2331,9 @@ export default function EditVideoScreen({ navigation }) {
 
   const [showImageDurationModal, setShowImageDurationModal] = useState(false);
   const [showAudioListModal, setShowAudioListModal] = useState(false);
+  // 'speed' | 'filter' | null. Kept as which sheet rather than as its contents, so the
+  // options are rebuilt from live state each render and cannot show a stale selection.
+  const [chipPicker, setChipPicker] = useState(null);
   const [showTextListModal, setShowTextListModal] = useState(false);
 
   const getTabTools = () => {
@@ -2323,6 +2387,28 @@ export default function EditVideoScreen({ navigation }) {
     text: onPressAddText,
     captions: openCaptionModal,
   }), [pickMedia, onPressAddVoiceover, onPressAddMusic, onPressAddText, openCaptionModal]);
+
+  // What each clip tool does. Only the ones already built are here; anything absent
+  // falls through to a "coming soon" below rather than being silently inert, so the
+  // bar is honest about which of its buttons are wired.
+  const clipToolActions = {
+    replace: replaceSelectedClip,
+    trim: () => selectedItem && openTrim(selectedItem),
+    split: splitAtScrubber,
+    overlay: pickOverlay,
+    volume: () => setShowVolumeModal(true),
+    audio: () => setShowAudioListModal(true),
+    captions: openCaptionModal,
+    speed: () => setChipPicker('speed'),
+    transition: () => selectedKey && onPressClipTransition(selectedKey),
+    filters: () => setChipPicker('filter'),
+  };
+
+  const chipPickerOptions = chipPicker === 'speed'
+    ? SPEEDS.map(v => ({ key: 's-' + v, label: v + 'x', active: selectedSpeed === v, onPick: () => applySpeed(v) }))
+    : chipPicker === 'filter'
+      ? FILTERS.map(v => ({ key: 'f-' + v, label: v, active: selectedFilter === v, onPick: () => applyFilter(v) }))
+      : [];
 
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
@@ -2568,6 +2654,23 @@ export default function EditVideoScreen({ navigation }) {
       <View style={[styles.bottomToolbar, { paddingBottom: insets.bottom || 16 }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
+          {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
+              again deselects it and the tabs come back, so there is a way out that
+              does not need a button of its own. */}
+          {selectedItem ? CLIP_TOOLS.map((group, gi) => (
+            <React.Fragment key={'g' + gi}>
+              {gi > 0 && <View style={styles.toolGroupDivider} />}
+              {group.map(t => (
+                <TouchableOpacity
+                  key={t.key}
+                  style={styles.clipToolBtn}
+                  onPress={clipToolActions[t.key] || (() => Alert.alert(t.label, 'Coming soon.'))}>
+                  <MaterialIcons name={t.icon} size={20} color={clipToolActions[t.key] ? '#e6e6e6' : '#5a5a5a'} />
+                  <Text style={[styles.clipToolLabel, !clipToolActions[t.key] && { color: '#5a5a5a' }]}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </React.Fragment>
+          )) : (<>
           {bottomTabs.map(tab => (
             <TouchableOpacity key={tab.name} style={[styles.tabBtn, activeTab === tab.name && styles.tabBtnActive]}
               onPress={() => setActiveTab(tab.name)}>
@@ -2589,8 +2692,27 @@ export default function EditVideoScreen({ navigation }) {
               </TouchableOpacity>
             )
           ))}
+          </>)}
         </ScrollView>
       </View>
+
+      {/* SPEED / FILTERS PICKER - the two clip tools that were only ever a row of
+          chips under a tab, and have nowhere to sit once the tabs step aside. */}
+      <Modal visible={!!chipPicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title={chipPicker === 'speed' ? 'Speed' : 'Filters'} onClose={() => setChipPicker(null)} />
+            <View style={styles.chipPickerWrap}>
+              {chipPickerOptions.map(o => (
+                <TouchableOpacity key={o.key} style={[styles.toolChip, o.active && styles.toolChipActive]}
+                  onPress={() => { o.onPick(); setChipPicker(null); }}>
+                  <Text style={[styles.toolChipText, o.active && { color: '#000' }]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* UPLOAD OVERLAY */}
       {uploading && (
@@ -3236,6 +3358,10 @@ const styles = StyleSheet.create({
   tabBtn: { alignItems: 'center', gap: 3, paddingHorizontal: 14, paddingVertical: 4 },
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#00d4d4' },
   tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
+  clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
+  clipToolLabel: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center' },
+  toolGroupDivider: { width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 6 },
+  chipPickerWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
 
   uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', justifyContent: 'center', gap: 16, zIndex: 100 },
   uploadMsg: { color: '#aaa', fontSize: 13 },
