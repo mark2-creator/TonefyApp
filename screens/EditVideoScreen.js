@@ -1530,16 +1530,57 @@ export default function EditVideoScreen({ navigation }) {
   }
 
   const openTrim = useCallback((item) => {
+    // A still has no footage to seek into - clipLength reads its duration and ignores
+    // trimStart/trimEnd entirely - so in and out sliders would be a live-looking
+    // control that changes nothing. How long it is held is the same question asked a
+    // different way, and Photo Duration is where it is asked.
+    if (item.type === 'image') {
+      setSelectedKey(item.key);
+      setShowImageDurationModal(true);
+      return;
+    }
+    const fallbackEnd = item.trimEnd || item.sourceDuration || item.duration || 3;
     setTrimItem(item);
     setTrimStart(item.trimStart || 0);
-    setTrimEnd(item.trimEnd || item.sourceDuration || item.duration || 3);
+    setTrimEnd(fallbackEnd);
     setShowTrimModal(true);
+
+    // The sliders can only reach as far as the length we know about, so a clip whose
+    // duration ImagePicker never reported opens on a 3s window into footage that may
+    // run for minutes - there is no way to trim to a point past the fallback. Measure
+    // it behind the open sheet and widen the sliders when it lands.
+    if (!item.sourceDuration) {
+      measureVideoDuration(item.uri).then(measured => {
+        if (!measured) return;
+        setItems(prev => prev.map(i => (
+          i.key === item.key && i.sourceDuration == null ? { ...i, sourceDuration: measured } : i
+        )));
+        setTrimItem(prev => (prev && prev.key === item.key ? { ...prev, sourceDuration: measured } : prev));
+        // Only if the out point is still where it was opened. Once it has been dragged
+        // it is a choice, and a measurement arriving late must not overrule it.
+        setTrimEnd(prev => (prev === fallbackEnd ? measured : prev));
+      });
+    }
   }, []);
 
   function applyTrim() {
-    setItems(prev => prev.map(i => i.key === trimItem.key ? { ...i, trimStart, trimEnd } : i));
+    if (!trimItem) { setShowTrimModal(false); return; }
+    // The sliders are bounded against each other, but a bound is a UI affordance and
+    // this is the write. The handle path clamps on every frame of a drag; the modal
+    // wrote whatever the two sliders happened to hold, and a start dragged past an end
+    // gives clipLength a negative span that floors to a zero-length clip.
+    const srcDur = trimItem.sourceDuration || null;
+    const start = Math.max(0, trimStart);
+    const end = Math.max(srcDur ? Math.min(srcDur, trimEnd) : trimEnd, start + MIN_CLIP_DUR);
+    const next = items.map(i => (i.key === trimItem.key ? { ...i, trimStart: start, trimEnd: end } : i));
+    pushHistory(next);
     setShowTrimModal(false);
   }
+
+  // How far the out point may reach. Falls back the same way openTrim does, so the
+  // slider and the value it opens on cannot disagree about where the end of the
+  // footage is.
+  const trimSourceLen = trimItem ? (trimItem.sourceDuration || trimItem.duration || 10) : 10;
 
   function applySpeed(speed) {
     setSelectedSpeed(speed);
@@ -1988,7 +2029,7 @@ export default function EditVideoScreen({ navigation }) {
   // that the clip may have been trimmed from the modal in between.
   const applyClipTrimEdit = useCallback((key, side, dx) => {
     const deltaSec = dx / PIXELS_PER_SECOND;
-    setItems(prev => prev.map(i => {
+    const next = items.map(i => {
       if (i.key !== key) return i;
       // A still has no footage to seek into, so neither edge is a trim: both just
       // change how long it is on the timeline.
@@ -2004,8 +2045,11 @@ export default function EditVideoScreen({ navigation }) {
         return { ...i, trimStart: Math.max(0, Math.min(curStart + deltaSec, curEnd - MIN_CLIP_DUR)) };
       }
       return { ...i, trimEnd: Math.min(srcDur, Math.max(curEnd + deltaSec, curStart + MIN_CLIP_DUR)) };
-    }));
-  }, []);
+    });
+    // One drag is one entry: this runs on release, not per frame, so undo steps back
+    // over whole trims rather than over sixty intermediate positions.
+    pushHistory(next);
+  }, [items]);
 
   const applyAudioTrimEdit = useCallback((trackKey, side, dx) => {
     const deltaSec = dx / PIXELS_PER_SECOND;
@@ -2902,7 +2946,7 @@ export default function EditVideoScreen({ navigation }) {
                 <Text style={styles.modalLabel}>Start: {trimStart.toFixed(1)}s</Text>
                 <Slider style={styles.modalSlider}
                   minimumValue={0}
-                  maximumValue={trimItem.sourceDuration || trimItem.duration || 10}
+                  maximumValue={Math.max(0, trimEnd - MIN_CLIP_DUR)}
                   value={trimStart}
                   minimumTrackTintColor="#00d4d4"
                   maximumTrackTintColor="#333"
@@ -2910,13 +2954,17 @@ export default function EditVideoScreen({ navigation }) {
                   onValueChange={setTrimStart} />
                 <Text style={styles.modalLabel}>End: {trimEnd.toFixed(1)}s</Text>
                 <Slider style={styles.modalSlider}
-                  minimumValue={0}
-                  maximumValue={trimItem.sourceDuration || trimItem.duration || 10}
+                  minimumValue={Math.min(trimStart + MIN_CLIP_DUR, trimSourceLen)}
+                  maximumValue={trimSourceLen}
                   value={trimEnd}
                   minimumTrackTintColor="#00d4d4"
                   maximumTrackTintColor="#333"
                   thumbTintColor="#00d4d4"
                   onValueChange={setTrimEnd} />
+                <Text style={styles.trimLengthNote}>
+                  Clip length {Math.max(0, trimEnd - trimStart).toFixed(1)}s
+                  {trimItem.sourceDuration ? ` of ${trimItem.sourceDuration.toFixed(1)}s` : ''}
+                </Text>
               </>
             )}
             <View style={styles.modalBtns}>
@@ -3146,7 +3194,7 @@ export default function EditVideoScreen({ navigation }) {
               <>
                 <Text style={{ color:'#aaa', fontSize:13, marginBottom:8 }}>Duration: {selectedItem.duration}s</Text>
                 <Slider style={{ width: '100%', height: 32 }}
-                  minimumValue={1} maximumValue={10} step={1}
+                  minimumValue={1} maximumValue={IMAGE_MAX_DUR} step={1}
                   value={selectedItem.duration}
                   minimumTrackTintColor="#00d4d4"
                   maximumTrackTintColor="#333"
@@ -3562,6 +3610,7 @@ const styles = StyleSheet.create({
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
+  trimLengthNote: { color: '#888', fontSize: 12, marginTop: 4 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
