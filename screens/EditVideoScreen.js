@@ -59,6 +59,10 @@ const RAIL_BTN = 24;
 // How far the rail sits in from the timeline's right edge. Named because the widened
 // add-clip slot has to subtract exactly this to end where the round buttons end.
 const RAIL_INSET = 6;
+// The visible gap drawn on a join between two clips, and the transition marker centred
+// on it. Both are painted over the clips, so neither is time the timeline has to carry.
+const CLIP_SEAM_W = 4;
+const TRANSITION_BTN = 22;
 // In row order, which is the order they are drawn down the timeline.
 //
 // Add clip keeps the shape it has always had - a clip-height square with a dashed
@@ -590,8 +594,8 @@ const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, lea
 // release. Writing to `items` on every frame instead would re-lay-out every later clip
 // and every aux row sixty times a second for a gesture that has one outcome.
 function TimelineClip({
-  item, idx, isLast, width, length, selected,
-  onPressClip, onLongPressClip, onPressRemove, onPressTransition, onTrimEnd,
+  item, idx, width, length, selected,
+  onPressClip, onLongPressClip, onPressRemove, onTrimEnd,
 }) {
   const trimStart = item.trimStart ?? 0;
   const baseOffset = -trimStart * PIXELS_PER_SECOND;
@@ -726,37 +730,73 @@ function TimelineClip({
           </View>
         </React.Fragment>
       )}
-      {/* The transition marker sits where the right handle goes, so it stands down
-          while the clip is selected. Deselect to reach it. */}
-      {!isLast && !selected && (
-        <TouchableOpacity onPress={() => onPressTransition(item.key)} style={styles.transitionBtn}>
-          <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
-const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onTrimEnd }) {
+const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd, onTrimEnd }) {
+  // With nothing on the row the slot sits at its head, in the flow, where it lines up
+  // under the playhead with the empty-state button on every aux row. Once there is a
+  // clip that place belongs to the footage, and the pinned one in the rail takes over -
+  // which is why the rail does not draw its own while this is showing.
+  if (clipsComputed.length === 0) {
+    return (
+      <TouchableOpacity style={styles.addClipBtn} onPress={onPressAdd} accessibilityLabel="Add clip">
+        <MaterialIcons name="add" size={22} color="#888" />
+      </TouchableOpacity>
+    );
+  }
   return (
-    <React.Fragment>
-      {clipsComputed.map(({ item, idx, isLast, width, length }) => (
+    <View style={styles.clipRowInner}>
+      {clipsComputed.map(({ item, idx, width, length }) => (
         <TimelineClip
           key={item.key}
           item={item}
           idx={idx}
-          isLast={isLast}
           width={width}
           length={length}
           selected={item.key === selectedKey}
           onPressClip={onPressClip}
           onLongPressClip={onLongPressClip}
           onPressRemove={onPressRemove}
-          onPressTransition={onPressTransition}
           onTrimEnd={onTrimEnd}
         />
       ))}
-    </React.Fragment>
+      {/* Seams and transition markers ride on a layer above the clips instead of
+          sitting between them. A real gap in the flow would be pixels that are not
+          time, and every clip after it would be drawn that much later than the moment
+          it plays at - the fault the fixed-width chips had, reintroduced once per
+          join. Drawn on top, a seam costs two pixels off the face of each neighbour
+          and nothing off its length.
+
+          It is one layer over the whole row rather than a marker parented to each
+          clip because siblings paint in the order they are written: a marker centred
+          on a join and owned by the clip on its left is drawn before, and therefore
+          under, the clip on its right. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {clipsComputed.map(({ item, idx, isLast, endX }) => {
+          if (isLast) return null;
+          const next = clipsComputed[idx + 1];
+          // The right trim handle of the clip on the left lands on this same join, so
+          // the marker stands down while either neighbour is selected rather than
+          // covering a handle it would also steal the touch from.
+          const busy = item.key === selectedKey || next.item.key === selectedKey;
+          return (
+            <React.Fragment key={item.key}>
+              <View style={[styles.clipSeam, { left: endX - CLIP_SEAM_W / 2 }]} pointerEvents="none" />
+              {!busy && (
+                <TouchableOpacity
+                  style={[styles.transitionBtn, { left: endX - TRANSITION_BTN / 2 }]}
+                  onPress={() => onPressTransition(item.key)}
+                  accessibilityLabel="Transition">
+                  <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#666', fontSize: 14, fontWeight: 'bold' }}>+</Text>
+                </TouchableOpacity>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </View>
+    </View>
   );
 });
 
@@ -961,14 +1001,20 @@ export default function EditVideoScreen({ navigation }) {
   }, []);
 
   const clipsComputed = useMemo(() => {
+    let x = 0;
     return items.map((item, idx) => {
       const length = clipLength(item);
+      const width = Math.max(CLIP_MIN_W, length * PIXELS_PER_SECOND);
+      x += width;
       return {
         item,
         idx,
         isLast: idx === items.length - 1,
         length,
-        width: Math.max(CLIP_MIN_W, length * PIXELS_PER_SECOND),
+        width,
+        // Where this clip's right edge falls, so a seam can be drawn on the join
+        // without asking the layout where anything ended up.
+        endX: x,
       };
     });
   }, [items]);
@@ -2458,7 +2504,7 @@ export default function EditVideoScreen({ navigation }) {
               }}>
             <View>
             <View style={[styles.clipsScroll, { paddingLeft: rowLeadW }]} onLayout={rowLayout.clips}>
-              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onTrimEnd={applyClipTrimEdit} />
+              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} onTrimEnd={applyClipTrimEdit} />
             </View>
 
             {/* Voiceover row */}
@@ -2495,6 +2541,9 @@ export default function EditVideoScreen({ navigation }) {
                 const frame = rowFrames[r.key];
                 // Nothing to centre on until that row has been laid out once.
                 if (!frame) return null;
+                // An empty clips row draws its own slot at the head, and two identical
+                // dashed squares on one row say nothing that one does not.
+                if (r.key === 'clips' && clipsComputed.length === 0) return null;
                 const h = r.big ? CLIP_H : RAIL_BTN;
                 // Clamped so a button can never be placed outside the rail, whatever a
                 // row's height turns out to be. Centring on a row shorter than the
@@ -3151,9 +3200,12 @@ const styles = StyleSheet.create({
   clipRemove: { position: 'absolute', top: 3, right: TRIM_HANDLE_W + 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   trimHandle: { position: 'absolute', top: 0, width: TRIM_HANDLE_W, height: CLIP_H, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00d4d4' },
   trimGrip: { width: 3, height: CLIP_H * 0.4, borderRadius: 2, backgroundColor: '#04211f' },
-  // Inside the clip's own right edge rather than straddling the boundary: a marker
-  // centred on the join would be overdrawn by the next clip, which is painted after it.
-  transitionBtn: { position: 'absolute', right: 3, top: (CLIP_H - 22) / 2, width: 22, height: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1ae6', borderRadius: 11, borderWidth: 1, borderColor: '#333' },
+  clipRowInner: { flexDirection: 'row', position: 'relative' },
+  addClipBtn: { width: 40, height: CLIP_H, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' },
+  // The timeline's own background, so the join reads as a gap between two clips
+  // rather than as a line drawn over them.
+  clipSeam: { position: 'absolute', top: 0, bottom: 0, width: CLIP_SEAM_W, backgroundColor: '#0a0a0a' },
+  transitionBtn: { position: 'absolute', top: (CLIP_H - TRANSITION_BTN) / 2, width: TRANSITION_BTN, height: TRANSITION_BTN, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1af2', borderRadius: TRANSITION_BTN / 2, borderWidth: 1, borderColor: '#3a3a3a' },
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   auxTrackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
