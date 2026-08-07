@@ -179,8 +179,10 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `f63025f2-1c0e-4262-871b-19fa019004bd` (commit `b289df85`, runtime
-   1.1.0) on Aug 7 2026, superseding `24fa85fa-d9e5-4449-9d40-34a9a8b6af57`
+   update group `e3705693-3ccd-49d9-ae60-de700a4e3af9` (commit `50570dc9`, runtime
+   1.1.0, the 130-style caption catalogue) on Aug 7 2026, superseding
+   `f63025f2-1c0e-4262-871b-19fa019004bd` (commit `b289df85`),
+   `24fa85fa-d9e5-4449-9d40-34a9a8b6af57`
    (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
@@ -266,6 +268,26 @@ the JSX swap.
      sync (`0286a94c`). The discriminating test is to hit Add **while the preview is
      still buffering**; waiting for the audition to start playing first exercises a
      path that was never broken.
+
+   - **Caption styles (`5ff8992d`)** — the Auto Captions sheet's style row opens a
+     searchable sheet of 130 styles across 12 categories, each tile previewing the
+     real style rather than a coloured word. Test: pick a stroke-heavy style
+     (Punch, Impact) and a boxed one (Newsroom, Sticker) and check the canvas
+     overlay matches its tile; pick a gradient style (Sunset) and confirm the fill
+     ramps across the characters; then override the colour and confirm the gradient
+     gives way to it. The discriminating cases are a **two-line caption** — the
+     outline's line breaks must land where the fill's do — and a **long word in a
+     boxed style**, where the chip should hug the text rather than the caption's
+     80%-width column.
+
+   **Blocked on you (I lack permission for both):**
+   - `pm2 restart tonefy-backend` — the backend commit `e2e2c670` is on disk but the
+     running process is still the old code. Until it restarts, captions preview
+     correctly in the app and export **without** stroke, glow or box: the old server
+     ignores `captionSpec`, so font, size, colour and gradient survive and the rest
+     does not. This is the one step that makes the new styles real in the export.
+   - `git -C ~/Tonefy-react push origin master` — denied 403, the stored credential
+     has no access to that repo. The commit is local-only until this lands.
 
    Once confirmed on device, open a PR into `main` and merge.
 3. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
