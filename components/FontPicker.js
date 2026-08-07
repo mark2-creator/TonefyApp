@@ -14,12 +14,21 @@ export const DEFAULT_FONT = 'Default';
 // The families are laid out as a grid of specimen tiles rather than one full-width
 // row each. Picking a typeface is a comparison, and a grid puts nine of them in
 // the space a list gives three - the eye can sweep them together instead of
-// scrolling one past another and holding the last one in memory. Each tile shows
-// "Ag" in the family, because a name set in itself is a poor specimen: it varies
-// in length, so no two tiles are comparable, and a display face like Press Start 2P
-// is chosen for its shape rather than its legibility. The name sits beneath in the
-// system face, where it stays readable.
+// scrolling one past another and holding the last one in memory. Each tile sets
+// the same specimen in the family, rather than the family's own name: a name set
+// in itself varies in length, so no two tiles are comparable, and a display face
+// like Press Start 2P is chosen for its shape rather than its legibility. The name
+// sits beneath in the system face, where it stays readable.
 const COLUMNS = 3;
+
+// A whole word, not a letter pair - the shape of a typeface is in its rhythm, and
+// two glyphs show none of it. "Quick" is short enough to sit in a 3-column tile
+// while still carrying an ascender (k), a descender (Q's tail), a dot (i), a round
+// (u, c) and both cases. The width across 130 families is not uniform, though -
+// Press Start 2P is near-monospaced and roughly twice the width of Inter at the
+// same size - so the specimen shrinks to fit rather than truncating, which would
+// hide the very letters that distinguish one face from another.
+const SPECIMEN = 'Quick';
 
 const FontTile = React.memo(function FontTile({ name, selected, ready, onPress }) {
   const family = ready ? fontFamilyFor(name) : undefined;
@@ -31,8 +40,13 @@ const FontTile = React.memo(function FontTile({ name, selected, ready, onPress }
       accessibilityLabel={name}
       accessibilityState={{ selected }}
     >
-      <Text numberOfLines={1} style={[styles.tileSample, family ? { fontFamily: family } : null]}>
-        Ag
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+        style={[styles.tileSample, family ? { fontFamily: family } : null]}
+      >
+        {SPECIMEN}
       </Text>
       <Text numberOfLines={2} style={[styles.tileName, selected && styles.tileNameSelected]}>
         {name}
@@ -193,7 +207,10 @@ const styles = StyleSheet.create({
   },
   tileSpacer: { flex: 1 },
   tileSelected: { borderColor: '#2ECC71', backgroundColor: 'rgba(46,204,113,0.10)' },
-  tileSample: { color: '#fff', fontSize: 28, lineHeight: 36 },
+  // No lineHeight here on purpose: a fixed one clips the tall ascenders and deep
+  // descenders that several display faces have, and adjustsFontSizeToFit shrinks
+  // the glyphs without shrinking it. The tile's own height does the spacing.
+  tileSample: { color: '#fff', fontSize: 22, textAlign: 'center', alignSelf: 'stretch' },
   tileName: { color: '#777', fontSize: 10, textAlign: 'center', marginTop: 2 },
   tileNameSelected: { color: '#2ECC71' },
   tileCheck: {

@@ -148,8 +148,12 @@ the JSX swap.
    1.1.0) on Aug 6 2026, superseding `9f403a24-2afb-4454-a741-505825af5584`
    (commit `f8b0d7ec`). Awaiting confirmation:
    - **Font grid (`734d746e`)** — the font sheet lays the families out as a
-     three-column grid of specimen tiles ("Ag" set in the family, name beneath in
-     the system face) instead of one full-width row each. Group headers keep a
+     three-column grid of specimen tiles (the word "Quick" set in the family, name
+     beneath in the system face) instead of one full-width row each. The specimen
+     is a whole word rather than a letter pair because a typeface's character is in
+     its rhythm; it shrinks to fit (`adjustsFontSizeToFit`, floor 0.6) since the
+     families are nowhere near equal in width at a given size, and carries no fixed
+     `lineHeight`, which would clip the taller display faces. Group headers keep a
      full-width row of their own, so the grid is built by chunking each group into
      rows of three and making each row one FlatList item — `numColumns` cannot do
      this, as it lays every item into a cell, headers included. Test: the last row
