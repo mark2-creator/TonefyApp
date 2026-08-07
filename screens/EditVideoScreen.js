@@ -116,6 +116,22 @@ const CLIP_TOOLS = [
   ],
 ];
 
+// What the bottom bar becomes while an audio track is selected. Confirm is not in
+// this list - it is pinned outside the scroller so it cannot be scrolled away from.
+const AUDIO_TOOLS = [
+  { key: 'replace', icon: 'swap-horiz', label: 'Replace' },
+  { key: 'duplicate', icon: 'content-copy', label: 'Duplicate' },
+  { key: 'delete', icon: 'delete', label: 'Delete' },
+  { key: 'split', icon: 'content-cut', label: 'Split' },
+  { key: 'slip', icon: 'swipe', label: 'Slip' },
+  { key: 'fade', icon: 'gradient', label: 'Fade' },
+  { key: 'volume', icon: 'volume-up', label: 'Volume' },
+  { key: 'more', icon: 'more-horiz', label: 'More' },
+  { key: 'beatsync', icon: 'av-timer', label: 'Beat Sync' },
+  { key: 'enhance', icon: 'auto-fix-high', label: 'Enhance voice', premium: true },
+  { key: 'captions', icon: 'closed-caption', label: 'Captions' },
+];
+
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
@@ -1976,8 +1992,7 @@ export default function EditVideoScreen({ navigation }) {
     setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, startOffset: newOffset } : t));
   }, []);
   const onPressAudioTrack = useCallback((key) => {
-    setSelectedAudioTrackKey(key);
-    setAudioSheetKey(key);
+    setSelectedAudioTrackKey(prev => (prev === key ? null : key));
   }, []);
   const setAudioTrackVolume = useCallback((key, volume) => {
     setAudioTracks(prev => prev.map(t => t.key === key ? { ...t, volume } : t));
@@ -1987,6 +2002,49 @@ export default function EditVideoScreen({ navigation }) {
     setAudioSheetKey(prev => prev === key ? null : prev);
     setSelectedAudioTrackKey(prev => prev === key ? null : prev);
   }, []);
+  // Swap the file under a track, keeping where it sits and how loud it is. Its in and
+  // out points go, being offsets into a file that is no longer there.
+  const replaceAudioTrackFile = useCallback(async () => {
+    if (!selectedAudioTrackKey) return;
+    const res = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.length) return;
+    const a = res.assets[0];
+    setAudioTracks(prev => prev.map(t => (t.key !== selectedAudioTrackKey ? t : {
+      ...t, uri: a.uri, name: a.name || t.name, sourceDuration: null, trimStart: 0, trimEnd: null,
+    })));
+  }, [selectedAudioTrackKey]);
+
+  // The copy lands immediately after the original rather than on top of it, which is
+  // the only placement that is visible and audible as a separate thing.
+  const duplicateAudioTrack = useCallback(() => {
+    setAudioTracks(prev => {
+      const t = prev.find(x => x.key === selectedAudioTrackKey);
+      if (!t) return prev;
+      const len = (t.trimEnd ?? t.sourceDuration ?? 0) - (t.trimStart ?? 0);
+      return [...prev, { ...t, key: String(Date.now()), startOffset: (t.startOffset ?? 0) + len }];
+    });
+  }, [selectedAudioTrackKey]);
+
+  const splitAudioAtPlayhead = useCallback(() => {
+    const t = audioTracks.find(x => x.key === selectedAudioTrackKey);
+    if (!t) return;
+    const start = t.startOffset ?? 0;
+    const ts = t.trimStart ?? 0;
+    const te = t.trimEnd ?? t.sourceDuration ?? 0;
+    // The playhead is a timeline second; the cut is an offset into the source, which
+    // is the trim's origin plus however far into the track the playhead has reached.
+    const cut = ts + (positionRef.current - start);
+    if (!(cut > ts + MIN_CLIP_DUR && cut < te - MIN_CLIP_DUR)) {
+      Alert.alert('Split', 'Move the playhead inside this track first.');
+      return;
+    }
+    setAudioTracks(prev => prev.flatMap(x => (x.key !== t.key ? [x] : [
+      { ...x, key: x.key + '_a', trimEnd: cut },
+      { ...x, key: x.key + '_b', trimStart: cut, startOffset: start + (cut - ts) },
+    ])));
+    setSelectedAudioTrackKey(null);
+  }, [audioTracks, selectedAudioTrackKey]);
+
   const onLongPressVoiceoverTrack = useCallback((key) => {
     Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
   }, []);
@@ -2430,6 +2488,20 @@ export default function EditVideoScreen({ navigation }) {
         ]
         : [];
 
+  const selectedAudioTrack = useMemo(
+    () => audioTracks.find(t => t.key === selectedAudioTrackKey) || null,
+    [audioTracks, selectedAudioTrackKey]
+  );
+
+  const audioToolActions = {
+    replace: replaceAudioTrackFile,
+    duplicate: duplicateAudioTrack,
+    delete: () => selectedAudioTrackKey && removeAudioTrack(selectedAudioTrackKey),
+    split: splitAudioAtPlayhead,
+    volume: () => setAudioSheetKey(selectedAudioTrackKey),
+    captions: openCaptionModal,
+  };
+
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
   // Generate Captions still has two paths - with a voiceover the words are timed
@@ -2672,6 +2744,39 @@ export default function EditVideoScreen({ navigation }) {
 
       {/* TRUE SINGLE-ROW BOTTOM TOOLBAR */}
       <View style={[styles.bottomToolbar, { paddingBottom: insets.bottom || 16 }]}>
+        {selectedAudioTrack && !selectedItem ? (
+          <View style={styles.barWithAction}>
+            {/* flex:1 so the scroller takes the room the pinned button does not; without
+                it a row lays the ScrollView out at its content width and pushes Confirm
+                off the end - which is the one thing it must never be. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
+              contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
+              {AUDIO_TOOLS.map(t => (
+                <TouchableOpacity
+                  key={t.key}
+                  style={styles.clipToolBtn}
+                  onPress={audioToolActions[t.key] || (() => Alert.alert(t.label, 'Coming soon.'))}>
+                  <View style={styles.toolIconWrap}>
+                    <MaterialIcons name={t.icon} size={20} color={audioToolActions[t.key] ? '#e6e6e6' : '#5a5a5a'} />
+                    {/* The premium mark is a badge on the icon rather than a word in
+                        the label, which would not fit the column and would read as
+                        part of the tool's name. */}
+                    {t.premium && (
+                      <MaterialIcons name="workspace-premium" size={11} color="#f5c451" style={styles.premiumBadge} />
+                    )}
+                  </View>
+                  <Text style={[styles.clipToolLabel, !audioToolActions[t.key] && { color: '#5a5a5a' }]}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {/* Outside the scroller: it is how you leave this bar, so it must never be
+                the thing that has been scrolled off the end. */}
+            <TouchableOpacity style={styles.confirmBtn} onPress={() => setSelectedAudioTrackKey(null)}
+              accessibilityLabel="Done">
+              <MaterialIcons name="check" size={24} color="#04211f" />
+            </TouchableOpacity>
+          </View>
+        ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
@@ -2714,6 +2819,7 @@ export default function EditVideoScreen({ navigation }) {
           ))}
           </>)}
         </ScrollView>
+        )}
       </View>
 
       {/* SPEED / FILTERS PICKER - the two clip tools that were only ever a row of
@@ -3379,6 +3485,10 @@ const styles = StyleSheet.create({
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#00d4d4' },
   tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
+  barWithAction: { flexDirection: 'row', alignItems: 'center' },
+  toolIconWrap: { position: 'relative' },
+  premiumBadge: { position: 'absolute', right: -7, top: -5 },
+  confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
   clipToolLabel: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center' },
   toolGroupDivider: { width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 6 },
   chipPickerWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
