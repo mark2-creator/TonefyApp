@@ -19,6 +19,8 @@ import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
+import { Image as ExpoImage } from 'expo-image';
+import { usePosterFrame } from '../utils/videoPoster';
 import { measureVideoDuration } from '../utils/videoDuration';
 import { fontFamilyFor } from '../constants/fonts';
 import {
@@ -41,6 +43,9 @@ const SCRUBBER_LINE_W = 2;
 // Visible breathing room between the playhead and the first clip / aux chip.
 const SCRUBBER_GAP = 4;
 const PREVIEW_W = SW * 0.5;
+// An overlay added at scale 1 covers this fraction of the frame's width. Read by
+// the canvas to draw it and by the export to reproduce it, so they cannot disagree.
+const OVERLAY_BASE_FRAC = 0.4;
 const PREVIEW_H = PREVIEW_W * (16/9);
 // A clip is as wide as the time it covers - see clipsComputed. CLIP_MIN_W only
 // keeps a very short clip selectable; below about 0.4s the strip stops being an
@@ -401,6 +406,29 @@ function overlayExportSpec(overlay) {
   const box = backgroundExportBox(overlay.background);
   if (!box) return overlay.captionSpec;
   return { ...(overlay.captionSpec || null), box };
+}
+
+// A media overlay's picture on the canvas. A video shows a poster frame rather than
+// running a second decoder inside the preview: the canvas already drives one player,
+// and a throwaway second one has broken this app's audio session before (e1937cfe).
+// Positioning is what this view is for, and a still frame positions just as well.
+function MediaOverlayContent({ overlay }) {
+  const isVideo = overlay.type === 'video';
+  const poster = usePosterFrame(overlay.uri, isVideo);
+  const w = PREVIEW_W * OVERLAY_BASE_FRAC;
+  // Its own proportions, not a guessed square. An asset that reported no size falls
+  // back to square, which is wrong for the picture but right for the layout.
+  const ratio = overlay.naturalW && overlay.naturalH ? overlay.naturalH / overlay.naturalW : 1;
+  const h = w * ratio;
+  const source = isVideo ? poster : { uri: overlay.uri };
+  if (!source) {
+    return (
+      <View style={[styles.overlayPending, { width: w, height: h }]}>
+        <ActivityIndicator size="small" color="#555" />
+      </View>
+    );
+  }
+  return <ExpoImage source={source} style={{ width: w, height: h }} contentFit="contain" transition={0} />;
 }
 
 // Typing happens on the canvas, over the overlay as it is actually drawn, rather
@@ -1766,7 +1794,20 @@ export default function EditVideoScreen({ navigation }) {
         });
         const overlayData = await overlayRes.json();
         if (overlayData.items) {
-          uploadedOverlays = overlayData.items.map((u, i) => ({ url: u.url, type: overlays[i].type }));
+          uploadedOverlays = overlayData.items.map((u, i) => {
+            const o = overlays[i];
+            return {
+              url: u.url,
+              type: o.type,
+              // Centre of the overlay as a percentage of the frame, the same anchor
+              // text overlays use. Width rather than a raw scale, because the server
+              // knows the output's dimensions and the canvas does not.
+              x: o.x ?? 50,
+              y: o.y ?? 50,
+              widthPercent: OVERLAY_BASE_FRAC * 100 * (o.scale ?? 1),
+              rotation: o.rotation ?? 0,
+            };
+          });
         }
       }
 
@@ -2218,13 +2259,45 @@ export default function EditVideoScreen({ navigation }) {
     if (!result.canceled) {
       const a = result.assets[0];
       setOverlays(prev => [...prev, {
-        key: String(Date.now()),
+        // Prefixed, because canvas selection is one slot shared with text overlays and
+        // both key generators are Date.now(). Two overlays added in the same
+        // millisecond is unlikely; two *kinds* colliding on one key is not worth
+        // leaving to chance when a prefix costs nothing.
+        key: 'ov_' + Date.now(),
         uri: a.uri,
         type: a.type === 'video' ? 'video' : 'image',
         fileName: a.fileName || ('overlay_' + Date.now() + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),
+        // Its own pixels, kept so the canvas can draw it at its real proportions
+        // rather than guessing a square.
+        naturalW: a.width || 0,
+        naturalH: a.height || 0,
+        // Centre of the frame, as a percentage - the same convention text overlays
+        // use, and the same one the export reads.
+        x: 50, y: 50, scale: 1, rotation: 0,
       }]);
     }
   }
+
+  // Media overlays and text overlays share the canvas and its one selection slot, but
+  // not their state, so the transform has to land in the right list.
+  const applyMediaOverlayTransform = useCallback((key, next) => {
+    setOverlays(prev => prev.map(o => (o.key === key ? { ...o, ...next } : o)));
+  }, []);
+
+  const confirmRemoveOverlay = useCallback((o) => {
+    Alert.alert('Remove overlay?', 'It will be taken off the video.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setOverlays(prev => prev.filter(x => x.key !== o.key));
+          // Or the canvas keeps a selection pointing at something that is gone.
+          setSelectedOverlayKey(prev => (prev === o.key ? null : prev));
+        },
+      },
+    ]);
+  }, []);
 
   async function generateCaptionsFromVoiceover(voiceoverTrack) {
     setShowCaptionModal(false);
@@ -2541,7 +2614,15 @@ export default function EditVideoScreen({ navigation }) {
       case 'Overlay':
         return [
           { key: 'addoverlay', icon: 'add-photo-alternate', label: 'Add Overlay', onPress: pickOverlay },
-          ...overlays.map(o => ({ key: 'ov-' + o.key, label: o.type, isOverlayThumb: true, overlay: o, onPress: () => {}, onLongPress: () => setOverlays(prev => prev.filter(x => x.key !== o.key)) })),
+          ...overlays.map(o => ({
+            key: 'ov-' + o.key,
+            label: o.type,
+            isOverlayThumb: true,
+            overlay: o,
+            // Was a no-op, so the thumbnail looked like a control and was not one.
+            onPress: () => setSelectedOverlayKey(o.key),
+            onLongPress: () => confirmRemoveOverlay(o),
+          })),
         ];
       case 'Captions':
         return [
@@ -2673,6 +2754,25 @@ export default function EditVideoScreen({ navigation }) {
               onPress={() => { endInlineEdit(); setSelectedOverlayKey(null); }}
             />
           )}
+          {/* Media overlays - drag, pinch and turn, same as text. Drawn before the
+              text overlays so a caption is never buried under a sticker; within the
+              list, later additions sit on top of earlier ones. */}
+          {overlays.map(o => (
+            <CanvasOverlay
+              key={o.key}
+              overlay={o}
+              containerW={PREVIEW_W}
+              containerH={PREVIEW_H}
+              selected={selectedOverlayKey === o.key}
+              onSelect={setSelectedOverlayKey}
+              onTransform={applyMediaOverlayTransform}
+              onTap={() => setSelectedOverlayKey(o.key)}
+              onLongPress={() => confirmRemoveOverlay(o)}
+            >
+              <MediaOverlayContent overlay={o} />
+            </CanvasOverlay>
+          ))}
+
           {/* Text overlays on preview - drag, pinch and turn. Auto-captions are
               time-gated to the playhead position; manual overlays always show. */}
           {textOverlays.filter(t => !t.isAutoCaption || (position >= t.startTime && position <= t.endTime)).map(t => (
@@ -3628,6 +3728,7 @@ const styles = StyleSheet.create({
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  overlayPending: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1a', borderRadius: 6 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
