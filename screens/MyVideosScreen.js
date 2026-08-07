@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   StatusBar, Modal, Linking, RefreshControl, ScrollView
@@ -39,7 +40,7 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
           nativeControls={false}
           pointerEvents="none"
         />
-        <Text style={styles.playIcon}>▶️</Text>
+        <MaterialIcons name="play-arrow" size={28} color="#fff" style={styles.playIcon} />
       </View>
       <View style={styles.info}>
         <Text style={styles.date}>{formatDate(video.createdAt)}</Text>
@@ -47,10 +48,10 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
       </View>
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)}>
-          <Text style={styles.btnUseText}>✂️ Use</Text>
+          <Text style={styles.btnUseText}>Use</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnDl} onPress={() => onDownload(video)}>
-          <Text style={styles.btnDlText}>⬇️</Text>
+          <MaterialIcons name="file-download" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -144,9 +145,10 @@ export default function MyVideosScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtn}>← Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#888" />
+            <Text style={styles.backBtn}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>🎬 My Videos</Text>
+        <Text style={styles.headerTitle}>My Videos</Text>
         <Text style={styles.totalCount}>{allVideos.length} videos</Text>
       </View>
 
@@ -172,11 +174,11 @@ export default function MyVideosScreen({ navigation }) {
         <Text style={styles.emptyText}>Loading your videos...</Text>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>🎬</Text>
+          <MaterialIcons name="movie" size={48} color="#333" style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No videos yet</Text>
           <Text style={styles.emptySub}>Generate your first AI video</Text>
           <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('IdeaToVideo')}>
-            <Text style={styles.createBtnText}>✨ Create Video</Text>
+            <Text style={styles.createBtnText}>Create Video</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -204,13 +206,13 @@ export default function MyVideosScreen({ navigation }) {
             </Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalBtnOutline} onPress={closeModal}>
-                <Text style={styles.modalBtnOutlineText}>✕ Close</Text>
+                <Text style={styles.modalBtnOutlineText}>Close</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalBtnGreen} onPress={() => selected && handleUse(selected)}>
-                <Text style={styles.modalBtnGreenText}>✂️ Use This</Text>
+                <Text style={styles.modalBtnGreenText}>Use This</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalBtnOutline} onPress={() => selected && handleDownload(selected)}>
-                <Text style={styles.modalBtnOutlineText}>⬇️ Download</Text>
+                <Text style={styles.modalBtnOutlineText}>Download</Text>
               </TouchableOpacity>
             </View>
           </View>

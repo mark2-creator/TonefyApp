@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, ActivityIndicator, Alert, Image, Modal
@@ -84,7 +85,7 @@ export default function AuthScreen({ navigation }) {
     if (newCount >= MAX_ATTEMPTS) {
       lockUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
       setLockedUntil(lockUntil);
-      Alert.alert('🔒 Account Locked', `Too many failed attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`);
+      Alert.alert('Account Locked', `Too many failed attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`);
     }
     if (email) {
       AsyncStorage.setItem(
@@ -118,7 +119,7 @@ export default function AuthScreen({ navigation }) {
 
   const handleGoogleSignIn = async () => {
     if (isLockedOut()) {
-      return Alert.alert('🔒 Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
+      return Alert.alert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
     }
     try {
       setLoading(true);
@@ -158,7 +159,7 @@ export default function AuthScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (isLockedOut()) {
-      return Alert.alert('🔒 Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
+      return Alert.alert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
     }
     if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
     setLoading(true);
@@ -167,7 +168,7 @@ export default function AuthScreen({ navigation }) {
         const userCred = await signInWithEmailAndPassword(auth, email, password);
         if (!userCred.user.emailVerified) {
           await auth.signOut();
-          Alert.alert('📧 Email Not Verified', 'Please verify your email before logging in.', [
+          Alert.alert('Email Not Verified', 'Please verify your email before logging in.', [
             { text: 'Resend Email', onPress: async () => { await sendEmailVerification(userCred.user); Alert.alert('Sent!', 'Verification email resent.'); }},
             { text: 'OK' },
           ]);
@@ -185,7 +186,7 @@ export default function AuthScreen({ navigation }) {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         await sendEmailVerification(userCred.user);
         await auth.signOut();
-        Alert.alert('✅ Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
+        Alert.alert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
         setIsLogin(true);
         setPassword('');
         setConfirmPassword('');
@@ -215,7 +216,7 @@ export default function AuthScreen({ navigation }) {
         const elapsed = (Date.now() - lastSent) / 1000;
         if (elapsed < RESET_COOLDOWN_SECONDS) {
           const remaining = Math.ceil(RESET_COOLDOWN_SECONDS - elapsed);
-          return Alert.alert('⏳ Please Wait', `You can request another reset email in ${remaining} second(s).`);
+          return Alert.alert('Please Wait', `You can request another reset email in ${remaining} second(s).`);
         }
       }
       await sendPasswordResetEmail(auth, email);
@@ -233,13 +234,13 @@ export default function AuthScreen({ navigation }) {
 
       {isLockedOut() && (
         <View style={styles.lockoutBanner}>
-          <Text style={styles.lockoutText}>🔒 Account locked. Try again in {getRemainingLockoutMinutes()} minute(s).</Text>
+          <Text style={styles.lockoutText}>Account locked. Try again in {getRemainingLockoutMinutes()} minute(s).</Text>
         </View>
       )}
 
       {failedAttempts > 0 && failedAttempts < MAX_ATTEMPTS && !isLockedOut() && (
         <View style={styles.warningBanner}>
-          <Text style={styles.warningText}>⚠️ {MAX_ATTEMPTS - failedAttempts} attempt(s) remaining before lockout</Text>
+          <Text style={styles.warningText}>{MAX_ATTEMPTS - failedAttempts} attempt(s) remaining before lockout</Text>
         </View>
       )}
 
@@ -248,7 +249,7 @@ export default function AuthScreen({ navigation }) {
       <View style={styles.passwordRow}>
         <TextInput style={[styles.input, { flex: 1 }]} placeholder="Password" placeholderTextColor="#666" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-          <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
+          <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color="#888" />
         </TouchableOpacity>
       </View>
 

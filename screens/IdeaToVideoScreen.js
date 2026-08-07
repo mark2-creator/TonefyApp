@@ -21,83 +21,83 @@ const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
 
 const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: '🇺🇸' },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: '🇬🇧' },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: '🇦🇺' },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: '🇺🇸' },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: '🇬🇧' },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: '🎙️' },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: '🇺🇸' },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: '🇬🇧' },
+  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: 'record-voice-over' },
+  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: 'record-voice-over' },
+  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: 'record-voice-over' },
+  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: 'record-voice-over' },
+  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: 'record-voice-over' },
+  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: 'graphic-eq' },
+  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: 'record-voice-over' },
+  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: 'record-voice-over' },
 ];
 
 const ASPECT_RATIOS = [
-  { id: '16:9', label: '16:9', icon: '🖥️', desc: 'YouTube' },
-  { id: '9:16', label: '9:16', icon: '📱', desc: 'TikTok/Reels' },
-  { id: '1:1',  label: '1:1',  icon: '⬛', desc: 'Instagram' },
+  { id: '16:9', label: '16:9', icon: 'desktop-windows', desc: 'YouTube' },
+  { id: '9:16', label: '9:16', icon: 'smartphone', desc: 'TikTok/Reels' },
+  { id: '1:1',  label: '1:1',  icon: 'crop-square', desc: 'Instagram' },
 ];
 
 
 const TRANSITION_STYLES = [
-  { id: 'none',        label: 'Cut',          desc: 'Hard cut, no transition',        icon: '✂️',  group: 'Basic' },
-  { id: 'fade',        label: 'Fade',         desc: 'Smooth fade',                    icon: '🌅', group: 'Basic' },
-  { id: 'fadewhite',   label: 'Flash White',  desc: 'Slam to white',                  icon: '⚡', group: 'Trendy' },
-  { id: 'fadeblack',   label: 'Fade Black',   desc: 'Dip to black',                   icon: '⬛', group: 'Basic' },
-  { id: 'fadegrays',   label: 'Film Burn',    desc: 'Cinematic gray burn',            icon: '🎞️', group: 'Cinematic' },
-  { id: 'fadefast',    label: 'Flash Cut',    desc: 'Ultra fast fade',                icon: '💥', group: 'Trendy' },
-  { id: 'fadeslow',    label: 'Slow Burn',    desc: 'Dreamy slow fade',               icon: '🌙', group: 'Cinematic' },
-  { id: 'zoomin',      label: 'Zoom In',      desc: 'Punch zoom into next scene',     icon: '🚀', group: 'Trendy' },
-  { id: 'hblur',       label: 'Blur Wipe',    desc: 'Horizontal blur transition',     icon: '💫', group: 'Trendy' },
-  { id: 'pixelize',    label: 'Pixelate',     desc: 'Pixel burst between scenes',     icon: '🟦', group: 'Trendy' },
-  { id: 'dissolve',    label: 'Dissolve',     desc: 'Soft dissolve blend',            icon: '💧', group: 'Basic' },
-  { id: 'radial',      label: 'Radial',       desc: 'Spinning radial wipe',           icon: '🌀', group: 'Cinematic' },
-  { id: 'circleopen',  label: 'Circle Open',  desc: 'Circle expands to reveal',       icon: '⭕', group: 'Cinematic' },
-  { id: 'circleclose', label: 'Circle Close', desc: 'Circle closes between scenes',   icon: '🔵', group: 'Cinematic' },
-  { id: 'circlecrop',  label: 'Circle Crop',  desc: 'Circle crop transition',         icon: '🔴', group: 'Cinematic' },
-  { id: 'coverleft',   label: 'Cover Left',   desc: 'Next scene covers from right',   icon: '⬅️', group: 'Trendy' },
-  { id: 'coverright',  label: 'Cover Right',  desc: 'Next scene covers from left',    icon: '➡️', group: 'Trendy' },
-  { id: 'coverup',     label: 'Cover Up',     desc: 'Next scene covers from bottom',  icon: '⬆️', group: 'Trendy' },
-  { id: 'coverdown',   label: 'Cover Down',   desc: 'Next scene covers from top',     icon: '⬇️', group: 'Trendy' },
-  { id: 'revealleft',  label: 'Reveal Left',  desc: 'Reveal next scene leftward',     icon: '👈', group: 'Cinematic' },
-  { id: 'revealright', label: 'Reveal Right', desc: 'Reveal next scene rightward',    icon: '👉', group: 'Cinematic' },
-  { id: 'revealup',    label: 'Reveal Up',    desc: 'Reveal next scene upward',       icon: '👆', group: 'Cinematic' },
-  { id: 'revealdown',  label: 'Reveal Down',  desc: 'Reveal next scene downward',     icon: '👇', group: 'Cinematic' },
-  { id: 'slideleft',   label: 'Slide Left',   desc: 'Slide to the left',              icon: '◀️', group: 'Basic' },
-  { id: 'slideright',  label: 'Slide Right',  desc: 'Slide to the right',             icon: '▶️', group: 'Basic' },
-  { id: 'slideup',     label: 'Slide Up',     desc: 'Slide upward',                   icon: '🔼', group: 'Basic' },
-  { id: 'slidedown',   label: 'Slide Down',   desc: 'Slide downward',                 icon: '🔽', group: 'Basic' },
-  { id: 'smoothleft',  label: 'Smooth Left',  desc: 'Smooth ease slide left',         icon: '🌊', group: 'Cinematic' },
-  { id: 'smoothright', label: 'Smooth Right', desc: 'Smooth ease slide right',        icon: '🌊', group: 'Cinematic' },
-  { id: 'smoothup',    label: 'Smooth Up',    desc: 'Smooth ease slide up',           icon: '🌊', group: 'Cinematic' },
-  { id: 'smoothdown',  label: 'Smooth Down',  desc: 'Smooth ease slide down',         icon: '🌊', group: 'Cinematic' },
-  { id: 'wipeleft',    label: 'Wipe Left',    desc: 'Hard wipe left',                 icon: '🧹', group: 'Basic' },
-  { id: 'wiperight',   label: 'Wipe Right',   desc: 'Hard wipe right',                icon: '🧹', group: 'Basic' },
-  { id: 'wipeup',      label: 'Wipe Up',      desc: 'Hard wipe up',                   icon: '🧹', group: 'Basic' },
-  { id: 'wipedown',    label: 'Wipe Down',    desc: 'Hard wipe down',                 icon: '🧹', group: 'Basic' },
-  { id: 'wipetl',      label: 'Wipe ↖',       desc: 'Diagonal wipe top-left',         icon: '↖️', group: 'Cinematic' },
-  { id: 'wipetr',      label: 'Wipe ↗',       desc: 'Diagonal wipe top-right',        icon: '↗️', group: 'Cinematic' },
-  { id: 'wipebl',      label: 'Wipe ↙',       desc: 'Diagonal wipe bottom-left',      icon: '↙️', group: 'Cinematic' },
-  { id: 'wipebr',      label: 'Wipe ↘',       desc: 'Diagonal wipe bottom-right',     icon: '↘️', group: 'Cinematic' },
-  { id: 'diagtl',      label: 'Diag ↖',       desc: 'Diagonal reveal top-left',       icon: '↖️', group: 'Cinematic' },
-  { id: 'diagtr',      label: 'Diag ↗',       desc: 'Diagonal reveal top-right',      icon: '↗️', group: 'Cinematic' },
-  { id: 'diagbl',      label: 'Diag ↙',       desc: 'Diagonal reveal bottom-left',    icon: '↙️', group: 'Cinematic' },
-  { id: 'diagbr',      label: 'Diag ↘',       desc: 'Diagonal reveal bottom-right',   icon: '↘️', group: 'Cinematic' },
-  { id: 'hlslice',     label: 'H Slices',     desc: 'Horizontal slice wipe',          icon: '🔪', group: 'Trendy' },
-  { id: 'hrslice',     label: 'HR Slices',    desc: 'Horizontal reverse slice',       icon: '🔪', group: 'Trendy' },
-  { id: 'vuslice',     label: 'V Slices',     desc: 'Vertical slice wipe',            icon: '🔪', group: 'Trendy' },
-  { id: 'vdslice',     label: 'VD Slices',    desc: 'Vertical down slice',            icon: '🔪', group: 'Trendy' },
-  { id: 'hlwind',      label: 'H Wind',       desc: 'Horizontal wind sweep',          icon: '💨', group: 'Trendy' },
-  { id: 'hrwind',      label: 'HR Wind',      desc: 'Horizontal reverse wind',        icon: '💨', group: 'Trendy' },
-  { id: 'vuwind',      label: 'V Wind',       desc: 'Vertical wind sweep',            icon: '💨', group: 'Trendy' },
-  { id: 'vdwind',      label: 'VD Wind',      desc: 'Vertical down wind',             icon: '💨', group: 'Trendy' },
-  { id: 'squeezeh',    label: 'Squeeze H',    desc: 'Horizontal squeeze',             icon: '↔️', group: 'Trendy' },
-  { id: 'squeezev',    label: 'Squeeze V',    desc: 'Vertical squeeze',               icon: '↕️', group: 'Trendy' },
-  { id: 'vertopen',    label: 'Vert Open',    desc: 'Vertical barn door open',        icon: '🚪', group: 'Cinematic' },
-  { id: 'vertclose',   label: 'Vert Close',   desc: 'Vertical barn door close',       icon: '🚪', group: 'Cinematic' },
-  { id: 'horzopen',    label: 'Horz Open',    desc: 'Horizontal barn door open',      icon: '🚪', group: 'Cinematic' },
-  { id: 'horzclose',   label: 'Horz Close',   desc: 'Horizontal barn door close',     icon: '🚪', group: 'Cinematic' },
-  { id: 'rectcrop',    label: 'Rect Crop',    desc: 'Rectangle crop reveal',          icon: '⬜', group: 'Cinematic' },
-  { id: 'distance',    label: 'Distance',     desc: 'Distance-based blend',           icon: '🎯', group: 'Cinematic' },
+  { id: 'none',        label: 'Cut',          desc: 'Hard cut, no transition',        group: 'Basic' },
+  { id: 'fade',        label: 'Fade',         desc: 'Smooth fade',                    group: 'Basic' },
+  { id: 'fadewhite',   label: 'Flash White',  desc: 'Slam to white',                  group: 'Trendy' },
+  { id: 'fadeblack',   label: 'Fade Black',   desc: 'Dip to black',                   group: 'Basic' },
+  { id: 'fadegrays',   label: 'Film Burn',    desc: 'Cinematic gray burn',            group: 'Cinematic' },
+  { id: 'fadefast',    label: 'Flash Cut',    desc: 'Ultra fast fade',                group: 'Trendy' },
+  { id: 'fadeslow',    label: 'Slow Burn',    desc: 'Dreamy slow fade',               group: 'Cinematic' },
+  { id: 'zoomin',      label: 'Zoom In',      desc: 'Punch zoom into next scene',     group: 'Trendy' },
+  { id: 'hblur',       label: 'Blur Wipe',    desc: 'Horizontal blur transition',     group: 'Trendy' },
+  { id: 'pixelize',    label: 'Pixelate',     desc: 'Pixel burst between scenes',     group: 'Trendy' },
+  { id: 'dissolve',    label: 'Dissolve',     desc: 'Soft dissolve blend',            group: 'Basic' },
+  { id: 'radial',      label: 'Radial',       desc: 'Spinning radial wipe',           group: 'Cinematic' },
+  { id: 'circleopen',  label: 'Circle Open',  desc: 'Circle expands to reveal',       group: 'Cinematic' },
+  { id: 'circleclose', label: 'Circle Close', desc: 'Circle closes between scenes',   group: 'Cinematic' },
+  { id: 'circlecrop',  label: 'Circle Crop',  desc: 'Circle crop transition',         group: 'Cinematic' },
+  { id: 'coverleft',   label: 'Cover Left',   desc: 'Next scene covers from right',   group: 'Trendy' },
+  { id: 'coverright',  label: 'Cover Right',  desc: 'Next scene covers from left',    group: 'Trendy' },
+  { id: 'coverup',     label: 'Cover Up',     desc: 'Next scene covers from bottom',  group: 'Trendy' },
+  { id: 'coverdown',   label: 'Cover Down',   desc: 'Next scene covers from top',     group: 'Trendy' },
+  { id: 'revealleft',  label: 'Reveal Left',  desc: 'Reveal next scene leftward',     group: 'Cinematic' },
+  { id: 'revealright', label: 'Reveal Right', desc: 'Reveal next scene rightward',    group: 'Cinematic' },
+  { id: 'revealup',    label: 'Reveal Up',    desc: 'Reveal next scene upward',       group: 'Cinematic' },
+  { id: 'revealdown',  label: 'Reveal Down',  desc: 'Reveal next scene downward',     group: 'Cinematic' },
+  { id: 'slideleft',   label: 'Slide Left',   desc: 'Slide to the left',              group: 'Basic' },
+  { id: 'slideright',  label: 'Slide Right',  desc: 'Slide to the right',             group: 'Basic' },
+  { id: 'slideup',     label: 'Slide Up',     desc: 'Slide upward',                   group: 'Basic' },
+  { id: 'slidedown',   label: 'Slide Down',   desc: 'Slide downward',                 group: 'Basic' },
+  { id: 'smoothleft',  label: 'Smooth Left',  desc: 'Smooth ease slide left',         group: 'Cinematic' },
+  { id: 'smoothright', label: 'Smooth Right', desc: 'Smooth ease slide right',        group: 'Cinematic' },
+  { id: 'smoothup',    label: 'Smooth Up',    desc: 'Smooth ease slide up',           group: 'Cinematic' },
+  { id: 'smoothdown',  label: 'Smooth Down',  desc: 'Smooth ease slide down',         group: 'Cinematic' },
+  { id: 'wipeleft',    label: 'Wipe Left',    desc: 'Hard wipe left',                 group: 'Basic' },
+  { id: 'wiperight',   label: 'Wipe Right',   desc: 'Hard wipe right',                group: 'Basic' },
+  { id: 'wipeup',      label: 'Wipe Up',      desc: 'Hard wipe up',                   group: 'Basic' },
+  { id: 'wipedown',    label: 'Wipe Down',    desc: 'Hard wipe down',                 group: 'Basic' },
+  { id: 'wipetl',      label: 'Wipe TL',       desc: 'Diagonal wipe top-left',         group: 'Cinematic' },
+  { id: 'wipetr',      label: 'Wipe TR',       desc: 'Diagonal wipe top-right',        group: 'Cinematic' },
+  { id: 'wipebl',      label: 'Wipe BL',       desc: 'Diagonal wipe bottom-left',      group: 'Cinematic' },
+  { id: 'wipebr',      label: 'Wipe BR',       desc: 'Diagonal wipe bottom-right',     group: 'Cinematic' },
+  { id: 'diagtl',      label: 'Diag TL',       desc: 'Diagonal reveal top-left',       group: 'Cinematic' },
+  { id: 'diagtr',      label: 'Diag TR',       desc: 'Diagonal reveal top-right',      group: 'Cinematic' },
+  { id: 'diagbl',      label: 'Diag BL',       desc: 'Diagonal reveal bottom-left',    group: 'Cinematic' },
+  { id: 'diagbr',      label: 'Diag BR',       desc: 'Diagonal reveal bottom-right',   group: 'Cinematic' },
+  { id: 'hlslice',     label: 'H Slices',     desc: 'Horizontal slice wipe',          group: 'Trendy' },
+  { id: 'hrslice',     label: 'HR Slices',    desc: 'Horizontal reverse slice',       group: 'Trendy' },
+  { id: 'vuslice',     label: 'V Slices',     desc: 'Vertical slice wipe',            group: 'Trendy' },
+  { id: 'vdslice',     label: 'VD Slices',    desc: 'Vertical down slice',            group: 'Trendy' },
+  { id: 'hlwind',      label: 'H Wind',       desc: 'Horizontal wind sweep',          group: 'Trendy' },
+  { id: 'hrwind',      label: 'HR Wind',      desc: 'Horizontal reverse wind',        group: 'Trendy' },
+  { id: 'vuwind',      label: 'V Wind',       desc: 'Vertical wind sweep',            group: 'Trendy' },
+  { id: 'vdwind',      label: 'VD Wind',      desc: 'Vertical down wind',             group: 'Trendy' },
+  { id: 'squeezeh',    label: 'Squeeze H',    desc: 'Horizontal squeeze',             group: 'Trendy' },
+  { id: 'squeezev',    label: 'Squeeze V',    desc: 'Vertical squeeze',               group: 'Trendy' },
+  { id: 'vertopen',    label: 'Vert Open',    desc: 'Vertical barn door open',        group: 'Cinematic' },
+  { id: 'vertclose',   label: 'Vert Close',   desc: 'Vertical barn door close',       group: 'Cinematic' },
+  { id: 'horzopen',    label: 'Horz Open',    desc: 'Horizontal barn door open',      group: 'Cinematic' },
+  { id: 'horzclose',   label: 'Horz Close',   desc: 'Horizontal barn door close',     group: 'Cinematic' },
+  { id: 'rectcrop',    label: 'Rect Crop',    desc: 'Rectangle crop reveal',          group: 'Cinematic' },
+  { id: 'distance',    label: 'Distance',     desc: 'Distance-based blend',           group: 'Cinematic' },
 ];
 
 
@@ -170,12 +170,14 @@ function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
       style={[styles.optionRow, selectedId === item.id && styles.optionRowActive]}
       onPress={() => { onSelect(item.id); onClose(); }}
     >
-      <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
+      {item.icon
+        ? <MaterialIcons name={item.icon} size={22} color="#cfcfcf" style={styles.optionIcon} />
+        : <Text style={styles.optionIcon}>{item.preview}</Text>}
       <View style={styles.optionText}>
         <Text style={[styles.optionLabel, selectedId === item.id && styles.optionLabelActive]}>{item.label}</Text>
         <Text style={styles.optionDesc}>{item.accent || item.desc}</Text>
       </View>
-      {selectedId === item.id && <Text style={styles.optionCheck}>✓</Text>}
+      {selectedId === item.id && <MaterialIcons name="check" size={20} color="#2ecc71" />}
     </TouchableOpacity>
   );
 }
@@ -369,7 +371,7 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
         <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
           <View style={styles.modalHandle} />
-          <SheetHeader title="🎬 Transition Style" onClose={onClose} style={styles.sheetHeaderPad} />
+          <SheetHeader title="Transition Style" onClose={onClose} style={styles.sheetHeaderPad} />
           <FlatList
             data={groups}
             keyExtractor={g => g}
@@ -431,10 +433,10 @@ function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onToggl
           justifyContent: 'center', alignItems: 'center', marginRight: 12,
         }}
       >
-        <Text style={{ fontSize: 14 }}>{isPlaying ? '⏸' : '▶️'}</Text>
+        <MaterialIcons name={isPlaying ? 'pause' : 'play-arrow'} size={16} color="#fff" />
       </TouchableOpacity>
       <Text style={{ color: isSelected ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>{item.name}</Text>
-      {isSelected && <Text style={{ color: '#2ecc71', fontSize: 16 }}>✓</Text>}
+      {isSelected && <MaterialIcons name="check" size={18} color="#2ecc71" />}
     </TouchableOpacity>
   );
 }
@@ -502,7 +504,7 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
         <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
           <View style={styles.modalHandle} />
-          <SheetHeader title="🎵 Background Music" onClose={onClose} style={styles.sheetHeaderPad} />
+          <SheetHeader title="Background Music" onClose={onClose} style={styles.sheetHeaderPad} />
           <TouchableOpacity
             onPress={() => { onSelect({ id: 'none', name: 'No Music' }); onClose(); }}
             style={{
@@ -513,9 +515,9 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
               borderRadius: 12, padding: 12, marginBottom: 8,
             }}
           >
-            <Text style={{ fontSize: 16, marginRight: 12 }}>🔇</Text>
+            <MaterialIcons name="volume-off" size={18} color="#888" style={{ marginRight: 12 }} />
             <Text style={{ color: selectedId === 'none' ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>No Music</Text>
-            {selectedId === 'none' && <Text style={{ color: '#2ecc71', fontSize: 16 }}>✓</Text>}
+            {selectedId === 'none' && <MaterialIcons name="check" size={18} color="#2ecc71" />}
           </TouchableOpacity>
           {loading ? (
             <ActivityIndicator color="#2ecc71" style={{ marginTop: 20 }} />
@@ -749,7 +751,8 @@ export default function IdeaToVideoScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#888" />
+            <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Idea to Video</Text>
         <Text style={styles.stepCount}>{step}/4</Text>
@@ -783,10 +786,10 @@ export default function IdeaToVideoScreen({ navigation }) {
               />
             </View>
             <Text style={{ color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 4 }}>PRODUCTION SETTINGS</Text>
-            <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.icon} ${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
-            <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.icon} ${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
+            <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
+            <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <SettingCard icon="subtitles" iconColor="#34d399" iconBg="#0a2a1a" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
-            <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
+            <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
             <SettingCard icon="speed" iconColor="#fb923c" iconBg="#2a1500" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
             <SettingCard icon="music-note" iconColor="#facc15" iconBg="#2a2000" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
             {loading && <ProgressBar progress={progress} label={loadingMsg} />}
@@ -822,13 +825,13 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 2 */}
       {step === 2 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>📄 Your Script</Text>
+          <Text style={styles.stepTitle}>Your Script</Text>
           <Text style={styles.stepSub}>Edit your AI-generated script below.</Text>
           <TextInput style={[styles.textArea, { flex: 1, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVoiceover} disabled={loading}>
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎙️ Generate Voiceover</Text>}
+            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Voiceover</Text>}
           </TouchableOpacity>
         </View>
       )}
@@ -836,19 +839,19 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 3 */}
       {step === 3 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>🎙️ Voiceover Ready!</Text>
+          <Text style={styles.stepTitle}>Voiceover Ready!</Text>
           <Text style={styles.stepSub}>Your AI voiceover has been generated successfully.</Text>
           <View style={styles.successBox}>
-            <Text style={styles.successText}>✅ Audio generated successfully</Text>
+            <Text style={styles.successText}>Audio generated successfully</Text>
             <Text style={styles.successSub}>Now we'll find matching video clips and merge everything together.</Text>
           </View>
           <TouchableOpacity style={[styles.btn, { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#2ecc71' }]} onPress={toggleVoiceoverPreview}>
-            <Text style={styles.btnText}>{voiceoverPlaying ? '⏸️ Pause Preview' : '▶️ Preview Voiceover'}</Text>
+            <Text style={styles.btnText}>{voiceoverPlaying ? 'Pause Preview' : 'Preview Voiceover'}</Text>
           </TouchableOpacity>
           {loading && <ProgressBar progress={progress} label={loadingMsg} />}
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>🎬 Generate Video</Text>}
+            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Video</Text>}
           </TouchableOpacity>
         </View>
       )}
@@ -856,28 +859,28 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 4 */}
       {step === 4 && fullVideoUrl && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>🎬 Your Video is Ready!</Text>
+          <Text style={styles.stepTitle}>Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
           <TouchableOpacity style={[styles.btn, { backgroundColor: '#2ecc71' }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
-            <Text style={styles.btnText}>🚀 Post / Schedule</Text>
+            <Text style={styles.btnText}>Post / Schedule</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btn} onPress={copyLink}>
-            <Text style={styles.btnText}>📋 Copy Link</Text>
+            <Text style={styles.btnText}>Copy Link</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnDownload, downloading && styles.btnDisabled]} onPress={downloadVideo} disabled={downloading}>
-            {downloading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnText, { color: '#fff' }]}>⬇️ Download MP4</Text>}
+            {downloading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnText, { color: '#fff' }]}>Download MP4</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
-            <Text style={[styles.btnText, { color: '#fff' }]}>🔄 Create Another Video</Text>
+            <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* MODALS */}
-      <OptionModal visible={modal === 'voice'} title="🎙️ Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
-      <OptionModal visible={modal === 'ratio'} title="📐 Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
+      <OptionModal visible={modal === 'voice'} title="Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
+      <OptionModal visible={modal === 'ratio'} title="Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <CaptionStyleSheet visible={modal === 'caption'} value={captionStyle} onChange={setCaptionStyle} onClose={() => setModal(null)} />
-      <OptionModal visible={modal === 'speed'} title="⚡ Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, icon: '⚡'}))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
+      <OptionModal visible={modal === 'speed'} title="Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, }))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
       <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
       <MusicModal visible={modal === 'music'} selectedId={musicTrack.id} onSelect={setMusicTrack} onClose={() => setModal(null)} />
     </View>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as Sentry from '@sentry/react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
@@ -191,7 +192,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
           <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileEmail}>{user?.email || ''}</Text>
-          <View style={styles.planBadge}><Text style={styles.planBadgeText}>⭐ Free Plan</Text></View>
+          <View style={styles.planBadge}><Text style={styles.planBadgeText}>Free Plan</Text></View>
         </View>
 
         <View style={styles.statsRow}>
@@ -203,7 +204,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Account</Text>
           <View style={styles.row}>
-            <Text style={styles.rowIcon}>👤</Text>
+            <MaterialIcons name="person" size={18} color="#888" style={styles.rowIcon} />
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>Display Name</Text>
               <Text style={styles.rowValue}>{displayName}</Text>
@@ -227,14 +228,14 @@ export default function ProfileScreen({ navigation }) {
             </View>
           )}
           <View style={styles.row}>
-            <Text style={styles.rowIcon}>✉️</Text>
+            <MaterialIcons name="email" size={18} color="#888" style={styles.rowIcon} />
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>Email</Text>
               <Text style={styles.rowValue}>{user?.email || '—'}</Text>
             </View>
           </View>
           <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <Text style={styles.rowIcon}>📅</Text>
+            <MaterialIcons name="calendar-today" size={18} color="#888" style={styles.rowIcon} />
             <View style={styles.rowContent}>
               <Text style={styles.rowLabel}>Member Since</Text>
               <Text style={styles.rowValue}>{joined}</Text>
@@ -246,7 +247,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionHeader}>Connected Accounts</Text>
           <View style={styles.connRow}>
             <View style={[styles.connLogo, { backgroundColor: '#000' }]}>
-              <Text style={{ fontSize: 18 }}>🎵</Text>
+              <MaterialIcons name="music-note" size={18} color="#fff" />
             </View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>TikTok</Text>
@@ -261,7 +262,7 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.connRow}>
-            <View style={styles.connLogo}><Text style={{ fontSize: 18 }}>📘</Text></View>
+            <View style={styles.connLogo}><MaterialIcons name="facebook" size={18} color="#fff" /></View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>Facebook</Text>
               <Text style={styles.connStatus}>Coming soon</Text>
@@ -269,7 +270,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.badgeSoon}><Text style={styles.badgeSoonText}>Soon</Text></View>
           </View>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.connLogo}><Text style={{ fontSize: 18 }}>📷</Text></View>
+            <View style={styles.connLogo}><MaterialIcons name="camera-alt" size={18} color="#fff" /></View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>Instagram</Text>
               <Text style={styles.connStatus}>Coming soon</Text>
@@ -282,7 +283,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionHeader}>Security</Text>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
             <View style={[styles.connLogo, { backgroundColor: '#1a2a1e' }]}>
-              <Text style={{ fontSize: 18 }}>🔐</Text>
+              <MaterialIcons name="lock" size={18} color="#fff" />
             </View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>Two-Factor Auth</Text>
@@ -334,10 +335,10 @@ export default function ProfileScreen({ navigation }) {
         </Modal>
 
         <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { Sentry.captureException(new Error('Test crash for Sentry verification')); alert('Sent to Sentry!'); }}>
-          <Text style={styles.btnLogoutText}>🧪 Test Crash (temporary)</Text>
+          <Text style={styles.btnLogoutText}>Test Crash (temporary)</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
-          <Text style={styles.btnLogoutText}>🚪 Log Out</Text>
+          <Text style={styles.btnLogoutText}>Log Out</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnDelete} onPress={handleDelete}>
           <Text style={styles.btnDeleteText}>Delete Account</Text>

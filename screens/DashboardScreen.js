@@ -166,7 +166,7 @@ export default function DashboardScreen({ navigation }) {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Greeting */}
         <View style={styles.greeting}>
-          <Text style={[styles.welcome, { color: theme.text }]}>Welcome, {firstName}! 👋</Text>
+          <Text style={[styles.welcome, { color: theme.text }]}>Welcome, {firstName}!</Text>
           <Text style={[styles.subtitle, { color: theme.subtext }]}>Choose a workflow to get started</Text>
         </View>
 

@@ -140,44 +140,44 @@ const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 const RECENT_COLORS_KEY = 'tonefy.recentTextColors';
 const MAX_RECENT_COLORS = 8;
 const TRANSITION_STYLES = [
-  { id: 'none',        label: 'Cut',          icon: '✂️',  group: 'Basic' },
-  { id: 'fade',        label: 'Fade',         icon: '🌅', group: 'Basic' },
-  { id: 'fadewhite',   label: 'Flash White',  icon: '⚡', group: 'Trendy' },
-  { id: 'fadeblack',   label: 'Fade Black',   icon: '⬛', group: 'Basic' },
-  { id: 'fadefast',    label: 'Flash Cut',    icon: '💥', group: 'Trendy' },
-  { id: 'fadeslow',    label: 'Slow Burn',    icon: '🌙', group: 'Cinematic' },
-  { id: 'zoomin',      label: 'Zoom In',      icon: '🚀', group: 'Trendy' },
-  { id: 'hblur',       label: 'Blur Wipe',    icon: '💫', group: 'Trendy' },
-  { id: 'pixelize',    label: 'Pixelate',     icon: '🟦', group: 'Trendy' },
-  { id: 'dissolve',    label: 'Dissolve',     icon: '💧', group: 'Basic' },
-  { id: 'radial',      label: 'Radial',       icon: '🌀', group: 'Cinematic' },
-  { id: 'circleopen',  label: 'Circle Open',  icon: '⭕', group: 'Cinematic' },
-  { id: 'circleclose', label: 'Circle Close', icon: '🔵', group: 'Cinematic' },
-  { id: 'coverleft',   label: 'Cover Left',   icon: '⬅️', group: 'Trendy' },
-  { id: 'coverright',  label: 'Cover Right',  icon: '➡️', group: 'Trendy' },
-  { id: 'coverup',     label: 'Cover Up',     icon: '⬆️', group: 'Trendy' },
-  { id: 'coverdown',   label: 'Cover Down',   icon: '⬇️', group: 'Trendy' },
-  { id: 'slideleft',   label: 'Slide Left',   icon: '◀️', group: 'Basic' },
-  { id: 'slideright',  label: 'Slide Right',  icon: '▶️', group: 'Basic' },
-  { id: 'slideup',     label: 'Slide Up',     icon: '🔼', group: 'Basic' },
-  { id: 'slidedown',   label: 'Slide Down',   icon: '🔽', group: 'Basic' },
-  { id: 'wipeleft',    label: 'Wipe Left',    icon: '🧹', group: 'Basic' },
-  { id: 'wiperight',   label: 'Wipe Right',   icon: '🧹', group: 'Basic' },
-  { id: 'hlslice',     label: 'H Slices',     icon: '🔪', group: 'Trendy' },
-  { id: 'vuslice',     label: 'V Slices',     icon: '🔪', group: 'Trendy' },
-  { id: 'hlwind',      label: 'H Wind',       icon: '💨', group: 'Trendy' },
-  { id: 'vuwind',      label: 'V Wind',       icon: '💨', group: 'Trendy' },
+  { id: 'none',        label: 'Cut',          group: 'Basic' },
+  { id: 'fade',        label: 'Fade',         group: 'Basic' },
+  { id: 'fadewhite',   label: 'Flash White',  group: 'Trendy' },
+  { id: 'fadeblack',   label: 'Fade Black',   group: 'Basic' },
+  { id: 'fadefast',    label: 'Flash Cut',    group: 'Trendy' },
+  { id: 'fadeslow',    label: 'Slow Burn',    group: 'Cinematic' },
+  { id: 'zoomin',      label: 'Zoom In',      group: 'Trendy' },
+  { id: 'hblur',       label: 'Blur Wipe',    group: 'Trendy' },
+  { id: 'pixelize',    label: 'Pixelate',     group: 'Trendy' },
+  { id: 'dissolve',    label: 'Dissolve',     group: 'Basic' },
+  { id: 'radial',      label: 'Radial',       group: 'Cinematic' },
+  { id: 'circleopen',  label: 'Circle Open',  group: 'Cinematic' },
+  { id: 'circleclose', label: 'Circle Close', group: 'Cinematic' },
+  { id: 'coverleft',   label: 'Cover Left',   group: 'Trendy' },
+  { id: 'coverright',  label: 'Cover Right',  group: 'Trendy' },
+  { id: 'coverup',     label: 'Cover Up',     group: 'Trendy' },
+  { id: 'coverdown',   label: 'Cover Down',   group: 'Trendy' },
+  { id: 'slideleft',   label: 'Slide Left',   group: 'Basic' },
+  { id: 'slideright',  label: 'Slide Right',  group: 'Basic' },
+  { id: 'slideup',     label: 'Slide Up',     group: 'Basic' },
+  { id: 'slidedown',   label: 'Slide Down',   group: 'Basic' },
+  { id: 'wipeleft',    label: 'Wipe Left',    group: 'Basic' },
+  { id: 'wiperight',   label: 'Wipe Right',   group: 'Basic' },
+  { id: 'hlslice',     label: 'H Slices',     group: 'Trendy' },
+  { id: 'vuslice',     label: 'V Slices',     group: 'Trendy' },
+  { id: 'hlwind',      label: 'H Wind',       group: 'Trendy' },
+  { id: 'vuwind',      label: 'V Wind',       group: 'Trendy' },
 ];
 
 const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: '🇺🇸' },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: '🇬🇧' },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: '🇦🇺' },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: '🇺🇸' },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: '🇬🇧' },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: '🎙️' },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: '🇺🇸' },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: '🇬🇧' },
+  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   },
+  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   },
+  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   },
+  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     },
+  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     },
+  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   },
+  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
+  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
 ];
 
 function TransitionPreview({ item }) {
@@ -262,7 +262,7 @@ function TransitionModal({ visible, targetKey, onSelect, onClose }) {
       <TouchableOpacity style={{ flex:1, backgroundColor:'rgba(0,0,0,0.6)', justifyContent:'flex-end' }} activeOpacity={1} onPress={onClose}>
         <View style={[{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, maxHeight:'85%' }, sheetInset]}>
           <View style={{ width:36, height:4, backgroundColor:'#333', borderRadius:2, alignSelf:'center', marginBottom:12 }} />
-          <SheetHeader title="🎬 Transition Style" onClose={onClose} />
+          <SheetHeader title="Transition Style" onClose={onClose} />
           <ScrollView>
             {groups.map(group => {
               const items = TRANSITION_STYLES.filter(o => o.group === group);
@@ -3212,7 +3212,7 @@ export default function EditVideoScreen({ navigation }) {
                     <TouchableOpacity key={v.id} onPress={() => setVoiceId(v.id)}
                       style={{ marginRight:8, padding:10, borderRadius:10, alignItems:'center', minWidth:78,
                         backgroundColor: voiceId === v.id ? '#00d4d4' : '#2a2a2a' }}>
-                      <Text style={{ fontSize:20 }}>{v.icon}</Text>
+                      <MaterialIcons name={v.icon} size={20} color={voiceId === v.id ? '#000' : '#fff'} />
                       <Text style={{ color: voiceId === v.id ? '#000' : '#fff', fontWeight:'700', fontSize:12, marginTop:4 }}>{v.label}</Text>
                       <Text style={{ color: voiceId === v.id ? '#003' : '#888', fontSize:9 }}>{v.accent}</Text>
                       <TouchableOpacity onPress={() => previewVoice(v)} style={{ marginTop:6 }}>

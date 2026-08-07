@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Alert, StatusBar
@@ -102,9 +103,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#888" />
+            <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>✂️ Edit & Post Video</Text>
+        <Text style={styles.title}>Edit & Post Video</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -114,10 +116,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
         <View style={styles.videoWrap}>
           {fullUrl ? <VideoPreview url={fullUrl} /> : (
             <View style={styles.noVideo}>
-              <Text style={styles.noVideoIcon}>🎬</Text>
+              <MaterialIcons name="movie" size={36} color="#333" style={styles.noVideoIcon} />
               <Text style={styles.noVideoText}>No video selected</Text>
               <TouchableOpacity onPress={() => navigation.navigate('IdeaToVideo')}>
-                <Text style={styles.noVideoLink}>→ Create a video</Text>
+                <Text style={styles.noVideoLink}>Create a video</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -139,21 +141,21 @@ export default function EditPostVideoScreen({ navigation, route }) {
         <Text style={styles.sectionLabel}>POST TO</Text>
         <View style={styles.platformsCard}>
           <View style={styles.platformRow}>
-            <Text style={styles.platformIcon}>📘</Text>
+            <MaterialIcons name="facebook" size={22} color="#fff" style={styles.platformIcon} />
             <Text style={styles.platformName}>Facebook</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
             <View style={styles.toggleOff} />
           </View>
           <View style={styles.divider} />
           <View style={styles.platformRow}>
-            <Text style={styles.platformIcon}>📷</Text>
+            <MaterialIcons name="camera-alt" size={22} color="#fff" style={styles.platformIcon} />
             <Text style={styles.platformName}>Instagram</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
             <View style={styles.toggleOff} />
           </View>
           <View style={styles.divider} />
           <View style={styles.platformRow}>
-            <Text style={styles.platformIcon}>🎵</Text>
+            <MaterialIcons name="music-note" size={22} color="#fff" style={styles.platformIcon} />
             <Text style={styles.platformName}>TikTok</Text>
             {tiktokConnected ? (
               <Text style={styles.connectedText}>Connected</Text>
@@ -171,7 +173,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           </View>
           <View style={styles.divider} />
           <View style={styles.platformRow}>
-            <Text style={styles.platformIcon}>✖️</Text>
+            <MaterialIcons name="close" size={22} color="#fff" style={styles.platformIcon} />
             <Text style={styles.platformName}>X (Twitter)</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
             <View style={styles.toggleOff} />
@@ -180,7 +182,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
         {/* AI Tip */}
         <View style={styles.aiTip}>
-          <Text style={styles.aiTipIcon}>🤖</Text>
+          <MaterialIcons name="smart-toy" size={22} color="#2ecc71" style={styles.aiTipIcon} />
           <View style={{ flex: 1 }}>
             <Text style={styles.aiTipTitle}>AI Tip</Text>
             <Text style={styles.aiTipText}>Best time to post on TikTok is between 7–9 PM for maximum reach.</Text>
@@ -190,10 +192,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.btnQueue} onPress={saveToQueue} disabled={saving}>
-            {saving ? <ActivityIndicator color="#2ecc71" size="small" /> : <Text style={styles.btnQueueText}>💾 Save to Queue</Text>}
+            {saving ? <ActivityIndicator color="#2ecc71" size="small" /> : <Text style={styles.btnQueueText}>Save to Queue</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnPost} onPress={postNow} disabled={posting}>
-            {posting ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.btnPostText}>▶ Post Now</Text>}
+            {posting ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.btnPostText}>Post Now</Text>}
           </TouchableOpacity>
         </View>
 
@@ -203,11 +205,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <Text style={styles.emptyQueue}>No queued posts yet</Text>
         ) : queue.map(p => (
           <View key={p.id} style={styles.queueItem}>
-            <Text style={styles.queueIcon}>🎬</Text>
+            <MaterialIcons name="movie" size={24} color="#888" style={styles.queueIcon} />
             <View style={{ flex: 1 }}>
               <Text style={styles.queueCaption} numberOfLines={1}>{p.caption || 'Untitled'}</Text>
               <Text style={styles.queueMeta}>{new Date(p.scheduledFor).toLocaleDateString()} · {p.status}</Text>
-              <Text style={styles.queuePlat}>→ {(p.platforms || []).join(', ') || 'No platform'}</Text>
+              <Text style={styles.queuePlat}>{(p.platforms || []).join(', ') || 'No platform'}</Text>
             </View>
           </View>
         ))}

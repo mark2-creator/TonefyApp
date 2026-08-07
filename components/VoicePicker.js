@@ -1,21 +1,22 @@
 import React from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 export const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: '🇺🇸' },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: '🇬🇧' },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: '🇦🇺' },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: '🇺🇸' },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: '🇬🇧' },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: '🎙️' },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: '🇺🇸' },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: '🇬🇧' },
+  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: 'record-voice-over' },
+  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: 'record-voice-over' },
+  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: 'record-voice-over' },
+  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: 'record-voice-over' },
+  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: 'record-voice-over' },
+  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: 'graphic-eq' },
+  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: 'record-voice-over' },
+  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: 'record-voice-over' },
 ];
 
 export default function VoicePicker({ selectedId, onSelect }) {
   return (
     <View>
-      <Text style={styles.label}>🎙️ Voice</Text>
+      <Text style={styles.label}>Voice</Text>
       <View style={styles.grid}>
         {VOICES.map((v) => (
           <TouchableOpacity
@@ -23,7 +24,7 @@ export default function VoicePicker({ selectedId, onSelect }) {
             style={[styles.btn, selectedId === v.id && styles.btnActive]}
             onPress={() => onSelect(v.id)}
           >
-            <Text style={styles.icon}>{v.icon}</Text>
+            <MaterialIcons name={v.icon} size={20} color={selectedId === v.id ? '#2ecc71' : '#fff'} />
             <Text style={[styles.name, selectedId === v.id && styles.nameActive]}>{v.label}</Text>
             <Text style={styles.accent}>{v.accent}</Text>
           </TouchableOpacity>

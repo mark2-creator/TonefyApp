@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Linking, ActivityIndicator, Alert, Image
@@ -61,20 +62,21 @@ export default function ConnectAccountsScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#888" />
+            <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Connect Accounts</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <View style={styles.main}>
-        <Text style={styles.pageTitle}>🔗 Connect Accounts</Text>
+        <Text style={styles.pageTitle}>Connect Accounts</Text>
         <Text style={styles.pageSub}>Link your social platforms to post directly</Text>
 
         {/* TikTok */}
         <View style={styles.card}>
           <View style={styles.cardLogo}>
-            <Text style={{ fontSize: 40 }}>🎵</Text>
+            <MaterialIcons name="music-note" size={40} color="#fff" />
           </View>
           <Text style={styles.cardTitle}>Connect TikTok</Text>
           {loading ? (
@@ -86,7 +88,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   {tiktok.avatar ? (
                     <Image source={{ uri: tiktok.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                   ) : (
-                    <Text style={{ fontSize: 20 }}>🎵</Text>
+                    <MaterialIcons name="music-note" size={20} color="#fff" />
                   )}
                 </View>
                 <View>
@@ -105,7 +107,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                 <Text style={styles.permsTitle}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
                 {['Upload videos to your TikTok', 'View your basic profile info', 'Receive post notifications'].map((p, i) => (
                   <View key={i} style={styles.permRow}>
-                    <Text style={styles.permCheck}>✓</Text>
+                    <MaterialIcons name="check" size={16} color="#2ecc71" />
                     <Text style={styles.permText}>{p}</Text>
                   </View>
                 ))}

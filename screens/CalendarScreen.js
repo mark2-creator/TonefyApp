@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, ActivityIndicator, Alert
@@ -84,7 +85,7 @@ export default function CalendarScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
       <View style={styles.header}>
-        <Text style={styles.title}>📅 Content Calendar</Text>
+        <Text style={styles.title}>Content Calendar</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -160,11 +161,11 @@ export default function CalendarScreen({ navigation }) {
           <ActivityIndicator color="#2ecc71" style={{ marginTop: 20 }} />
         ) : filteredPosts.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📭</Text>
+            <MaterialIcons name="inbox" size={48} color="#333" style={styles.emptyIcon} />
             <Text style={styles.emptyTitle}>No posts here</Text>
             <Text style={styles.emptySub}>Create a video and schedule it to get started</Text>
             <TouchableOpacity style={styles.btnCreate} onPress={() => navigation.navigate('IdeaToVideo')}>
-              <Text style={styles.btnCreateText}>✨ Create Video</Text>
+              <Text style={styles.btnCreateText}>Create Video</Text>
             </TouchableOpacity>
           </View>
         ) : filteredPosts.map(post => (
@@ -176,7 +177,7 @@ export default function CalendarScreen({ navigation }) {
             <Text style={styles.postCaption} numberOfLines={2}>{post.caption || 'Untitled'}</Text>
             <View style={[styles.postStatus, post.status === 'posted' && styles.postStatusPosted]}>
               <Text style={[styles.postStatusText, post.status === 'posted' && styles.postStatusPostedText]}>
-                {post.status === 'posted' ? '✓ Posted' : '⏳ Scheduled'}
+                {post.status === 'posted' ? 'Posted' : 'Scheduled'}
               </Text>
             </View>
             <View style={styles.postActions}>
