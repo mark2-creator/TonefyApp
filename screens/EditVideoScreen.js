@@ -15,12 +15,13 @@ import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import ColorPicker, { normalizeHex } from '../components/ColorPicker';
 import FontPicker from '../components/FontPicker';
 import CaptionStylePicker from '../components/CaptionStylePicker';
-import CaptionText from '../components/CaptionText';
+import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
   captionFontSize, captionFill, captionExportSpec, captionHighlight, activeWordIndex,
+  DEFAULT_TEXT_BACKGROUND, withAlpha, backgroundExportBox,
 } from '../constants/captionStyles';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
@@ -300,7 +301,29 @@ function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX,
 // What an overlay looks like. Where it sits, how big it is and which way up it is
 // are CanvasOverlay's business - this only draws. Splitting the two is what lets
 // the same content be dragged, pinched and turned without the renderer knowing.
-function TextOverlayContent({ overlay, maxWidth, playhead = 0 }) {
+// What an overlay sends as its export spec. A caption already has one from its
+// style; a manual overlay has at most a chip, which is a `box` like any other -
+// so a manual overlay with a background is exported through exactly the machinery
+// that draws Newsroom and Sticker, rather than a second path beside it.
+function overlayExportSpec(overlay) {
+  const box = backgroundExportBox(overlay.background);
+  if (!box) return overlay.captionSpec;
+  return { ...(overlay.captionSpec || null), box };
+}
+
+// Typing happens on the canvas, over the overlay as it is actually drawn, rather
+// than in a sheet with a plain input in it. The text being edited is the text you
+// are looking at, so a font, a stroke or a chip is judged against the frame behind
+// it instead of against a grey modal.
+//
+// The caret is a transparent TextInput laid over the rendered overlay: nothing can
+// reproduce the stacked stroke and glow layers, and a real input styled to match
+// would lose them the moment editing began. Both are laid out from `captionMetrics`
+// so the caret lands between the right two letters - the one thing this approach
+// can get wrong, and the reason there is a single definition of those metrics.
+function TextOverlayContent({
+  overlay, maxWidth, playhead = 0, editing = false, onChangeText, onEndEditing,
+}) {
   // An auto-caption is drawn by the shared caption renderer from its style spec;
   // a manual text overlay has no style and keeps the plain path. The overlay's own
   // font, size and colour win over the style's, so editing a caption in the text
@@ -313,6 +336,7 @@ function TextOverlayContent({ overlay, maxWidth, playhead = 0 }) {
   // undefined for 'Default' and for the legacy Bold/Italic/Mono values, which are
   // weight and slant on the system face rather than families of their own.
   const overlayFamily = fontFamilyFor(overlay.font);
+  const bg = overlay.background && overlay.background.enabled ? overlay.background : null;
 
   // Which word the chip is on. -1 for every style that does not chip a word, and
   // for a playhead outside the phrase - both of which render as plain text.
@@ -323,8 +347,44 @@ function TextOverlayContent({ overlay, maxWidth, playhead = 0 }) {
     [renderStyle, overlay.words, playhead]
   );
 
-  if (renderStyle) {
+  // An overlay emptied while editing collapses to nothing, and nothing cannot be
+  // tapped - so there would be no way back to the caret you were just using.
+  const editingBox = editing ? { minWidth: overlay.size * 4, minHeight: overlay.size } : null;
+
+  function withCaret(content, metrics) {
+    if (!editing) return content;
     return (
+      <View style={editingBox}>
+        {content}
+        <TextInput
+          style={[
+            StyleSheet.absoluteFill,
+            metrics,
+            // The glyphs are already on screen underneath; drawing them twice would
+            // double every stroke. Android puts padding on an input and none on a
+            // Text, which would offset the caret by that padding on every line.
+            { color: 'transparent', padding: 0, margin: 0, textAlignVertical: 'top' },
+          ]}
+          value={overlay.text}
+          onChangeText={onChangeText}
+          onBlur={onEndEditing}
+          onSubmitEditing={onEndEditing}
+          autoFocus
+          multiline
+          blurOnSubmit
+          scrollEnabled={false}
+          allowFontScaling={false}
+          selectionColor="#2ECC71"
+          cursorColor="#2ECC71"
+          underlineColorAndroid="transparent"
+          accessibilityLabel="Edit overlay text"
+        />
+      </View>
+    );
+  }
+
+  if (renderStyle) {
+    return withCaret(
       <CaptionText
         style={renderStyle}
         text={overlay.text}
@@ -333,27 +393,61 @@ function TextOverlayContent({ overlay, maxWidth, playhead = 0 }) {
         align="center"
         maxWidth={maxWidth}
         activeWord={activeWord}
-      />
+      />,
+      captionMetrics(renderStyle, overlay.size, 'center')
     );
   }
 
-  return (
+  const plainMetrics = {
+    fontSize: overlay.size,
+    ...(overlayFamily
+      // A loaded family already carries the weight it was downloaded at, and
+      // asking Android to synthesise more on top of a single registered face
+      // is what makes a custom font silently fall back to the system one.
+      ? { fontFamily: overlayFamily }
+      : {
+        fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
+        fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
+      }),
+    textAlign: 'center',
+  };
+
+  const plain = (
     <Text style={{
-      color: overlay.color, fontSize: overlay.size,
-      ...(overlayFamily
-        // A loaded family already carries the weight it was downloaded at, and
-        // asking Android to synthesise more on top of a single registered face
-        // is what makes a custom font silently fall back to the system one.
-        ? { fontFamily: overlayFamily }
-        : {
-          fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
-          fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
-        }),
-      textAlign: 'center',
-      textShadowColor: '#000',
-      textShadowRadius: 4,
-      textShadowOffset: { width: 1, height: 1 },
+      ...plainMetrics,
+      color: overlay.color,
+      // A chip already separates the text from the frame, and the drop shadow
+      // under it only muddies the chip's own edge.
+      ...(bg ? null : {
+        textShadowColor: '#000',
+        textShadowRadius: 4,
+        textShadowOffset: { width: 1, height: 1 },
+      }),
     }}>{overlay.text}</Text>
+  );
+
+  // The chip hugs the words rather than the overlay's column, so a short line does
+  // not sit in a box the width of the frame. Same reasoning as the caption chip,
+  // and the export draws it from the same four numbers - which is why the geometry
+  // is scaled by size/18 here too. The server's `sscale` is exactly that, so a
+  // chip specified at the 18pt base lands identically in the burned-in video;
+  // rendering it unscaled would leave the preview right only at size 18.
+  const bgScale = overlay.size / 18;
+  return withCaret(
+    bg
+      ? (
+        <View style={{
+          alignSelf: 'center',
+          backgroundColor: withAlpha(bg.color, bg.opacity),
+          borderRadius: bg.radius * bgScale,
+          paddingHorizontal: bg.padX * bgScale,
+          paddingVertical: bg.padY * bgScale,
+        }}>
+          {plain}
+        </View>
+      )
+      : plain,
+    plainMetrics
   );
 }
 
@@ -578,6 +672,10 @@ export default function EditVideoScreen({ navigation }) {
   const [showTextModal, setShowTextModal] = useState(false);
   const [editingText, setEditingText] = useState(null);
   const [selectedOverlayKey, setSelectedOverlayKey] = useState(null);
+  // Which overlay is being typed into on the canvas. Separate from selection: an
+  // overlay is selected to be moved and edited to be rewritten, and conflating
+  // them would mean every tap-to-move opened the keyboard.
+  const [inlineEditKey, setInlineEditKey] = useState(null);
   const [textInput, setTextInput] = useState('');
   const [textColor, setTextColor] = useState('#fff');
   const [recentColors, setRecentColors] = useState([]);
@@ -585,6 +683,11 @@ export default function EditVideoScreen({ navigation }) {
   const [colorDragging, setColorDragging] = useState(false);
   const [textFont, setTextFont] = useState('Default');
   const [textSize, setTextSize] = useState(18);
+  const [textBackground, setTextBackground] = useState(DEFAULT_TEXT_BACKGROUND);
+  const setBackgroundField = useCallback(
+    (field, value) => setTextBackground(prev => ({ ...prev, [field]: value })),
+    []
+  );
 
   // Audio
   const [audioTracks, setAudioTracks] = useState([]);
@@ -670,7 +773,7 @@ export default function EditVideoScreen({ navigation }) {
   }, []);
   const manualTextOverlays = useMemo(() => textOverlays.filter(t => !t.isAutoCaption), [textOverlays]);
   const onPressTextChip = useCallback((t) => {
-    setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setShowTextModal(true);
+    setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setTextBackground(t.background || DEFAULT_TEXT_BACKGROUND); setShowTextModal(true);
   }, []);
   const onPressAddText = useCallback(() => {
     setEditingText(null); setTextInput(''); setShowTextModal(true);
@@ -1085,6 +1188,7 @@ export default function EditVideoScreen({ navigation }) {
     if (editingText) {
       setTextOverlays(prev => prev.map(t => t.key === editingText.key
         ? { ...t, text: textInput, color: textColor, font: textFont, size: textSize,
+            background: textBackground,
             ...(t.captionStyleId ? { captionColorOverride: textColor, captionSpec: { ...t.captionSpec, gradient: undefined } } : null) }
         : t));
     } else {
@@ -1094,6 +1198,7 @@ export default function EditVideoScreen({ navigation }) {
         color: textColor,
         font: textFont,
         size: textSize,
+        background: textBackground,
         x: 50, y: 80,
         scale: 1,
         rotation: 0,
@@ -1118,17 +1223,42 @@ export default function EditVideoScreen({ navigation }) {
   }, []);
 
   // First tap selects and shows the frame, so an overlay can be picked up and moved
-  // without the edit sheet covering the canvas; tapping the selected one opens it.
+  // without a keyboard covering the canvas; tapping the selected one puts a caret
+  // in it. The style sheet moved to a long press - typing is the common act and
+  // deserves the shorter gesture.
   const openOverlayEditor = useCallback((ov) => {
     setSelectedOverlayKey(prev => {
       if (prev !== ov.key) return ov.key;
-      setEditingText(ov);
-      setTextInput(ov.text);
-      setTextColor(ov.color);
-      setTextFont(ov.font);
-      setTextSize(ov.size);
-      setShowTextModal(true);
+      setInlineEditKey(ov.key);
       return prev;
+    });
+  }, []);
+
+  const openOverlayStyleSheet = useCallback((ov) => {
+    setInlineEditKey(null);
+    setEditingText(ov);
+    setTextInput(ov.text);
+    setTextColor(ov.color);
+    setTextFont(ov.font);
+    setTextSize(ov.size);
+    setTextBackground(ov.background || DEFAULT_TEXT_BACKGROUND);
+    setShowTextModal(true);
+  }, []);
+
+  // Typed straight onto the overlay. Only this one phrase changes even for an
+  // auto-caption, unlike a move - the captions share a position but not their words.
+  const setOverlayText = useCallback((key, text) => {
+    setTextOverlays(prev => prev.map(t => (t.key === key ? { ...t, text } : t)));
+  }, []);
+
+  // Leaving the caret behind commits. An overlay typed empty is deleted rather
+  // than left as an invisible object that still catches every tap on the canvas.
+  const endInlineEdit = useCallback(() => {
+    setInlineEditKey(key => {
+      if (key) {
+        setTextOverlays(prev => prev.filter(t => t.key !== key || String(t.text || '').trim() !== ''));
+      }
+      return null;
     });
   }, []);
 
@@ -1243,7 +1373,15 @@ export default function EditVideoScreen({ navigation }) {
             size: Math.max(1, Math.round(t.size * (t.scale ?? 1))),
             x: t.x, y: t.y, anchor: 'center', rotation: t.rotation ?? 0,
             isAutoCaption: t.isAutoCaption || false,
-            captionStyleId: t.captionStyleId, captionSpec: t.captionSpec,
+            captionStyleId: t.captionStyleId,
+            // A manual overlay's chip travels as a spec box, which is the same
+            // thing a boxed caption style sends and the same code that draws it -
+            // the server needs no idea that one came from a catalogue and the
+            // other from four sliders.
+            captionSpec: overlayExportSpec(t),
+            // Word timings, for the styles whose chip follows the voice. Absent on
+            // every other overlay, which is most of them.
+            words: t.words,
             startTime: t.startTime, endTime: t.endTime,
           })),
           overlays: uploadedOverlays,
@@ -1957,7 +2095,7 @@ export default function EditVideoScreen({ navigation }) {
             <TouchableOpacity
               style={StyleSheet.absoluteFill}
               activeOpacity={1}
-              onPress={() => setSelectedOverlayKey(null)}
+              onPress={() => { endInlineEdit(); setSelectedOverlayKey(null); }}
             />
           )}
           {/* Text overlays on preview - drag, pinch and turn. Auto-captions are
@@ -1972,8 +2110,17 @@ export default function EditVideoScreen({ navigation }) {
               onSelect={setSelectedOverlayKey}
               onTransform={applyOverlayTransform}
               onTap={openOverlayEditor}
+              onLongPress={openOverlayStyleSheet}
+              editing={inlineEditKey === t.key}
             >
-              <TextOverlayContent overlay={t} maxWidth={PREVIEW_W * 0.8} playhead={position} />
+              <TextOverlayContent
+                overlay={t}
+                maxWidth={PREVIEW_W * 0.8}
+                playhead={position}
+                editing={inlineEditKey === t.key}
+                onChangeText={text => setOverlayText(t.key, text)}
+                onEndEditing={endInlineEdit}
+              />
             </CanvasOverlay>
           ))}
         </View>
@@ -2199,6 +2346,69 @@ export default function EditVideoScreen({ navigation }) {
             <Slider style={styles.modalSlider} minimumValue={10} maximumValue={48} step={2}
               value={textSize} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
               thumbTintColor="#00d4d4" onValueChange={setTextSize} />
+
+            {/* The chip. Off by default: text over a video usually wants a stroke
+                or a shadow, and a box behind every overlay would be the louder
+                choice made for the user rather than by them. */}
+            <TouchableOpacity
+              style={styles.bgToggleRow}
+              onPress={() => setBackgroundField('enabled', !textBackground.enabled)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: textBackground.enabled }}
+              accessibilityLabel="Text background"
+            >
+              <Text style={styles.modalLabel}>Background</Text>
+              <View style={[styles.bgSwitch, textBackground.enabled && styles.bgSwitchOn]}>
+                <View style={[styles.bgKnob, textBackground.enabled && styles.bgKnobOn]} />
+              </View>
+            </TouchableOpacity>
+
+            {textBackground.enabled && (
+              <>
+                <View style={styles.bgPreviewRow}>
+                  <View style={{
+                    backgroundColor: withAlpha(textBackground.color, textBackground.opacity),
+                    borderRadius: textBackground.radius * (textSize / 18),
+                    paddingHorizontal: textBackground.padX * (textSize / 18),
+                    paddingVertical: textBackground.padY * (textSize / 18),
+                  }}>
+                    <Text style={{ color: textColor, fontSize: textSize }} numberOfLines={1}>
+                      {textInput.trim() || 'Preview'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.modalLabel}>Background colour</Text>
+                <ColorPicker
+                  color={textBackground.color}
+                  onChange={c => setBackgroundField('color', c)}
+                  onCommit={rememberColor}
+                  presets={TEXT_COLORS}
+                  recents={recentColors}
+                  onDragStateChange={setColorDragging}
+                />
+                <Text style={styles.modalLabel}>
+                  Opacity: {Math.round(textBackground.opacity * 100)}%
+                </Text>
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1} step={0.05}
+                  value={textBackground.opacity} minimumTrackTintColor="#2ECC71"
+                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  onValueChange={v => setBackgroundField('opacity', v)} />
+                <Text style={styles.modalLabel}>Corner radius: {textBackground.radius}</Text>
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={28} step={1}
+                  value={textBackground.radius} minimumTrackTintColor="#2ECC71"
+                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  onValueChange={v => setBackgroundField('radius', v)} />
+                <Text style={styles.modalLabel}>Padding: {textBackground.padX} × {textBackground.padY}</Text>
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={32} step={1}
+                  value={textBackground.padX} minimumTrackTintColor="#2ECC71"
+                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  onValueChange={v => setBackgroundField('padX', v)} />
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={24} step={1}
+                  value={textBackground.padY} minimumTrackTintColor="#2ECC71"
+                  maximumTrackTintColor="#333" thumbTintColor="#2ECC71"
+                  onValueChange={v => setBackgroundField('padY', v)} />
+              </>
+            )}
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowTextModal(false)}>
                 <Text style={styles.modalBtnCancelText}>Cancel</Text>
@@ -2379,7 +2589,7 @@ export default function EditVideoScreen({ navigation }) {
             <ScrollView>
               {textOverlays.map(t => (
                 <TouchableOpacity key={t.key}
-                  onPress={() => { setShowTextListModal(false); setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setShowTextModal(true); }}
+                  onPress={() => { setShowTextListModal(false); setEditingText(t); setTextInput(t.text); setTextColor(t.color); setTextFont(t.font); setTextSize(t.size); setTextBackground(t.background || DEFAULT_TEXT_BACKGROUND); setShowTextModal(true); }}
                   style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
                   <Text style={{ color: t.color, flex:1, fontSize:13 }} numberOfLines={1}>{t.text}</Text>
                   <TouchableOpacity onPress={() => removeTextOverlay(t.key)}>
@@ -2692,6 +2902,21 @@ const styles = StyleSheet.create({
   modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
   modalLabel: { color: '#888', fontSize: 12, marginBottom: 4, marginTop: 8 },
   modalSlider: { width: '100%', height: 32 },
+  bgToggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingRight: 2,
+  },
+  // Drawn rather than imported: RN's Switch takes the platform's own look, which
+  // on Android is a different green from the brand's and cannot be told otherwise
+  // for the track and thumb independently.
+  bgSwitch: {
+    width: 44, height: 26, borderRadius: 13, backgroundColor: '#333',
+    padding: 3, justifyContent: 'center',
+  },
+  bgSwitchOn: { backgroundColor: '#2ECC71' },
+  bgKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#888' },
+  bgKnobOn: { backgroundColor: '#0b0b0b', alignSelf: 'flex-end' },
+  bgPreviewRow: { alignItems: 'center', paddingVertical: 10 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },

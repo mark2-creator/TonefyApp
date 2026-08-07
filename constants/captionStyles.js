@@ -264,6 +264,41 @@ export function captionExportSpec(style, overrideColor) {
   return spec;
 }
 
+// What a manual text overlay's chip starts as. Not a caption style: a plain text
+// overlay has no spec to hang a `box` on, and giving it one would mean every
+// overlay pretending to be a caption to get a background.
+export const DEFAULT_TEXT_BACKGROUND = {
+  enabled: false,
+  color: '#000000',
+  opacity: 0.6,
+  radius: 8,
+  padX: 12,
+  padY: 6,
+};
+
+// Fold an opacity into a hex colour. Both renderers take one colour string rather
+// than a colour plus an alpha - React Native has no backgroundOpacity, and the
+// export's ImageMagick fill reads #RRGGBBAA - so the two must not each invent
+// their own way of combining them.
+export function withAlpha(hex, opacity) {
+  const base = String(hex || '#000000').slice(0, 7);
+  const a = Math.round(Math.max(0, Math.min(1, opacity == null ? 1 : opacity)) * 255);
+  return base + a.toString(16).padStart(2, '0').toUpperCase();
+}
+
+// The chip as the export wants it: one colour with the alpha already folded in,
+// and the geometry it draws with. Returns null when there is no chip to draw, so
+// a caller can spread it into a spec without testing twice.
+export function backgroundExportBox(background) {
+  if (!background || !background.enabled) return null;
+  return {
+    color: withAlpha(background.color, background.opacity),
+    radius: background.radius || 0,
+    padX: background.padX || 0,
+    padY: background.padY || 0,
+  };
+}
+
 // Whether a style highlights the current word. Kept as a function rather than
 // read off `style.highlight` at each call site so that the one place that decides
 // "this needs word timings" is the same place the renderers ask.

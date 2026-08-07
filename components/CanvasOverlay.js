@@ -56,7 +56,8 @@ function normaliseAngle(deg) {
 }
 
 export default function CanvasOverlay({
-  overlay, containerW, containerH, selected, onSelect, onTransform, onTap, children,
+  overlay, containerW, containerH, selected, onSelect, onTransform, onTap, onLongPress,
+  editing = false, children,
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -93,6 +94,7 @@ export default function CanvasOverlay({
 
   const select = useCallback(() => onSelect(overlay.key), [overlay.key, onSelect]);
   const tap = useCallback(() => onTap(overlay), [overlay, onTap]);
+  const longPress = useCallback(() => { if (onLongPress) onLongPress(overlay); }, [overlay, onLongPress]);
 
   const panGesture = Gesture.Pan()
     // A finger never lands perfectly still, and without a threshold that jitter
@@ -143,6 +145,13 @@ export default function CanvasOverlay({
       if (ok) { runOnJS(select)(); runOnJS(tap)(); }
     });
 
+  // Holding an overlay opens its style sheet. Tapping it twice types into it, so
+  // without this there would be no gesture left for "change the font" and the
+  // sheet would only be reachable from the text list.
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(400)
+    .onStart(() => { runOnJS(select)(); runOnJS(longPress)(); });
+
   // A corner handle turns and resizes with one finger, which is the only way to do
   // either while holding the phone in the other hand. The maths never needs the
   // canvas's position on screen: the vector from the element's centre out to the
@@ -173,10 +182,17 @@ export default function CanvasOverlay({
 
   // Pan, pinch and rotate run together so a two-finger gesture can move, resize and
   // turn in one motion. The tap races them: it only wins if nothing moved.
+  //
+  // While the overlay is being typed into, every one of them is switched off. A
+  // gesture handler that merely loses a race still swallows the touch, so leaving
+  // them enabled means taps land on the overlay instead of in the text - no
+  // placing the caret, no selecting a word, no dragging the handles the keyboard
+  // puts there.
   const composed = Gesture.Race(
+    longPressGesture,
     tapGesture,
     Gesture.Simultaneous(panGesture, pinchGesture, rotationGesture)
-  );
+  ).enabled(!editing);
 
   const elementStyle = useAnimatedStyle(() => ({
     transform: [
@@ -211,11 +227,16 @@ export default function CanvasOverlay({
             {selected && (
               <ReanimatedAnimated.View
                 pointerEvents="none"
-                style={[StyleSheet.absoluteFill, styles.frame, chromeStyle]}
+                style={[
+                  StyleSheet.absoluteFill,
+                  styles.frame,
+                  editing && styles.frameEditing,
+                  chromeStyle,
+                ]}
               />
             )}
             {children}
-            {selected && size.w > 0 && (
+            {selected && !editing && size.w > 0 && (
               <GestureDetector gesture={handleGesture}>
                 <ReanimatedAnimated.View style={[styles.handleHit, handleStyle]}>
                   <View style={styles.handle} />
@@ -232,6 +253,7 @@ export default function CanvasOverlay({
 const styles = StyleSheet.create({
   centreWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   frame: { borderColor: '#2ECC71', borderStyle: 'dashed', borderRadius: 2 },
+  frameEditing: { borderStyle: 'solid' },
   // The hit area is deliberately larger than the dot it draws - a 10pt target is
   // not reliably hittable, and the handle sits half off the element's corner.
   handleHit: {

@@ -132,6 +132,20 @@ function metricsOf(base) {
 
 const STRETCH = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 };
 
+// The metrics a style resolves to at a given size. Exported because the on-canvas
+// editor lays a transparent TextInput over the rendered caption and its caret is
+// only in the right place if it wraps and tracks identically - two definitions of
+// "what this style measures" would drift the moment either changed.
+export function captionMetrics(style, size, align = 'center') {
+  const family = fontFamilyFor(style && style.font);
+  return {
+    fontSize: size,
+    ...(family ? { fontFamily: family } : { fontWeight: 'bold' }),
+    ...(style && style.spacing ? { letterSpacing: style.spacing * (size / 18) } : null),
+    textAlign: align,
+  };
+}
+
 function CaptionText({
   style, text, size, color, align = 'center', maxWidth, boxStyle, numberOfLines,
   activeWord = -1,
@@ -152,19 +166,13 @@ function CaptionText({
   }, [raw, hl, activeWord]);
 
   const fill = captionFill(style, color);
-  const family = fontFamilyFor(style.font);
   const strokeW = style.stroke ? Math.max(0.5, style.stroke.width * (size / 18)) : 0;
 
-  const base = {
-    fontSize: size,
-    // A loaded family already carries the weight it was downloaded at, and asking
-    // Android to synthesise more on top of a single registered face is what makes
-    // a custom font silently fall back to the system one. No lineHeight either:
-    // a fixed one clips the display faces with deep descenders.
-    ...(family ? { fontFamily: family } : { fontWeight: 'bold' }),
-    ...(style.spacing ? { letterSpacing: style.spacing * (size / 18) } : null),
-    textAlign: align,
-  };
+  // A loaded family already carries the weight it was downloaded at, and asking
+  // Android to synthesise more on top of a single registered face is what makes a
+  // custom font silently fall back to the system one. No lineHeight either: a
+  // fixed one clips the display faces with deep descenders.
+  const base = captionMetrics(style, size, align);
   const metrics = metricsOf(base);
   // Passed to every layer, never to one: a line limit that clipped the fill but
   // not the outline would leave the outline of a word the fill no longer shows.
