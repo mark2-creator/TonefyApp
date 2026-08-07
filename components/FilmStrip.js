@@ -45,9 +45,10 @@ function cacheKey(uri, count) {
   return uri + '|' + count;
 }
 
-function describeError(err) {
-  if (!err) return 'unknown';
-  return String(err.message || err.code || err).slice(0, 120);
+function describeError(err, uri) {
+  const scheme = uri ? String(uri).split(':')[0] : '';
+  const msg = err ? String(err.message || err.code || err) : 'unknown';
+  return (scheme ? scheme + ': ' : '') + msg.slice(0, 100);
 }
 
 // How many frames to decode for this source, and how much time each one stands for.
@@ -77,6 +78,16 @@ function getStrip(uri, count, interval) {
   return entry;
 }
 
+// One frame per call, always, and never a batch.
+//
+// `generateThumbnailsAsync` opens a single MediaMetadataRetriever and then fans the
+// requested times out across concurrent coroutines that all call into it. That class
+// is not thread-safe, and the number of coroutines is the number of times asked for -
+// which here scales with the clip's length. Short clips ask for a handful and get away
+// with it; a minute of footage asks for forty at once and comes back with nothing.
+// Asking one at a time means one coroutine per retriever, which is the only shape that
+// is safe to rely on. It costs a retriever per frame, which is why frames are
+// published as they land rather than at the end.
 async function runExtraction(uri, count, interval, entry, key) {
   const notify = () => entry.listeners.forEach(fn => fn());
   // Sample the middle of each frame's span rather than its leading edge: the first
@@ -93,31 +104,24 @@ async function runExtraction(uri, count, interval, entry, key) {
     player.muted = true;
     player.audioMixingMode = 'mixWithOthers';
     const opts = { maxWidth: THUMB_MAX_PX, maxHeight: THUMB_MAX_PX };
-    try {
-      // The fast path, and the one that should normally run.
-      const tiles = await player.generateThumbnailsAsync(times, opts);
-      tiles.forEach((t, i) => { entry.tiles[i] = t || null; });
-      notify();
-    } catch (batchErr) {
-      // The native side awaits the whole batch together, so one seek point it cannot
-      // decode rejects every frame with it - and a variable frame rate recording,
-      // which is what phone cameras produce, is exactly where that happens. Ask again
-      // one at a time and keep whatever lands. A time that fails stays null rather
-      // than being dropped, so the strip keeps its length and goes on lining up with
-      // the ruler.
-      entry.error = describeError(batchErr);
-      for (let i = 0; i < times.length; i += 1) {
-        try {
-          const [tile] = await player.generateThumbnailsAsync([times[i]], opts);
-          entry.tiles[i] = tile || null;
-        } catch {
-          entry.tiles[i] = null;
-        }
-        notify();
+    let lastErr = null;
+    for (let i = 0; i < times.length; i += 1) {
+      try {
+        const [tile] = await player.generateThumbnailsAsync([times[i]], opts);
+        entry.tiles[i] = tile || null;
+      } catch (err) {
+        // A seek point that will not decode holds its place as null rather than being
+        // dropped, so the strip keeps its length and goes on lining up with the ruler.
+        lastErr = err;
+        entry.tiles[i] = null;
       }
+      notify();
     }
+    // Only worth reporting if it cost every frame. One bad seek in forty is not
+    // something to put on the clip.
+    if (lastErr && !entry.tiles.some(Boolean)) entry.error = describeError(lastErr, uri);
   } catch (err) {
-    entry.error = describeError(err);
+    entry.error = describeError(err, uri);
     // A source that could not be opened at all should be retried the next time the
     // clip is shown, not remembered as permanently frameless.
     stripCache.delete(key);
@@ -258,6 +262,9 @@ const styles = StyleSheet.create({
   row: { position: 'absolute', top: 0, flexDirection: 'row' },
   pending: { backgroundColor: '#181818' },
   gap: { backgroundColor: '#242424' },
-  reasonBox: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  // At the clip's head, not centred in it. A clip's box is as wide as its footage -
+  // a minute of video is 2400px - so anything centred in it is off the side of the
+  // screen, which is how a failing strip came to look like a silent one.
+  reasonBox: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 180, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 6 },
   reasonText: { color: '#c94f4f', fontSize: 8, textAlign: 'center' },
 });
