@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { createVideoPlayer } from 'expo-video';
 
@@ -45,6 +45,44 @@ export function stripGrid(sourceDuration, pixelsPerSecond) {
   return { count, interval: dur / count };
 }
 
+function describeError(err) {
+  if (!err) return 'unknown';
+  return String(err.message || err.code || err).slice(0, 120);
+}
+
+// Ask for every frame in one call. This is the fast path and the one that should
+// normally run.
+//
+// It is not the only path because the native side awaits the whole batch together:
+// one time it cannot decode rejects every frame with it, and the clip is left with
+// no strip at all rather than with one gap. That is not hypothetical - a frame can
+// fail to come back for a single seek point on a variable-frame-rate recording,
+// which phone cameras produce as a matter of course.
+async function generateTiles(player, times, opts) {
+  try {
+    return { tiles: await player.generateThumbnailsAsync(times, opts), error: null };
+  } catch (batchErr) {
+    // Ask again one frame at a time and keep whatever comes back. A time that fails
+    // stays null rather than being dropped, so the strip keeps its full length and
+    // goes on lining up with the ruler.
+    const tiles = [];
+    let lastErr = batchErr;
+    let anyOk = false;
+    for (const t of times) {
+      try {
+        const [tile] = await player.generateThumbnailsAsync([t], opts);
+        tiles.push(tile || null);
+        if (tile) anyOk = true;
+      } catch (err) {
+        lastErr = err;
+        tiles.push(null);
+      }
+    }
+    if (!anyOk) throw lastErr;
+    return { tiles, error: describeError(lastErr) };
+  }
+}
+
 async function extractStrip(uri, times) {
   // A player is only the handle the API hangs off. On Android the frames come from
   // MediaMetadataRetriever, not from the playback decoder, so this does not touch
@@ -54,7 +92,7 @@ async function extractStrip(uri, times) {
   try {
     player.muted = true;
     player.audioMixingMode = 'mixWithOthers';
-    return await player.generateThumbnailsAsync(times, {
+    return await generateTiles(player, times, {
       maxWidth: THUMB_MAX_PX,
       maxHeight: THUMB_MAX_PX,
     });
@@ -72,11 +110,14 @@ function loadStrip(uri, count, interval) {
   // frame of a file is often black or a fade-in, and a strip that opens on black
   // reads as a failed extraction.
   const times = Array.from({ length: count }, (_, i) => (i + 0.5) * interval);
-  const promise = extractStrip(uri, times).catch(() => {
+  const promise = extractStrip(uri, times).catch((err) => {
     // A source that cannot be decoded should be retried the next time the clip is
     // shown, not remembered as permanently frameless.
     stripCache.delete(key);
-    return null;
+    // Reported rather than swallowed. A strip that silently stays grey gives nothing
+    // to act on, and this failure is only reachable on a real device.
+    console.warn('[FilmStrip] no frames for', uri, '-', describeError(err));
+    return { tiles: null, error: describeError(err) };
   });
   stripCache.set(key, promise);
   return promise;
@@ -100,12 +141,16 @@ export default function FilmStrip({
     [isVideo, sourceDuration, pixelsPerSecond]
   );
   const [tiles, setTiles] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!isVideo || !uri || !count) return undefined;
     let alive = true;
+    setError(null);
     loadStrip(uri, count, interval).then((result) => {
-      if (alive && result) setTiles(result);
+      if (!alive || !result) return;
+      if (result.tiles) setTiles(result.tiles);
+      if (result.error) setError(result.error);
     });
     return () => { alive = false; };
   }, [isVideo, uri, count, interval]);
@@ -133,7 +178,20 @@ export default function FilmStrip({
   }
 
   if (!tiles || !tiles.length) {
-    return <Animated.View style={[styles.window, styles.pending, { width, height }]} />;
+    // Why there are no frames, on the clip, rather than in a log no phone will show.
+    // `no duration` means nothing ever asked for a frame - the picker did not report
+    // how long the video is, so there was no grid to sample. Anything else is the
+    // decoder's own message.
+    const reason = error || (count ? null : 'no duration');
+    return (
+      <Animated.View style={[styles.window, styles.pending, { width, height }]}>
+        {reason ? (
+          <View style={styles.reasonBox}>
+            <Text style={styles.reasonText} numberOfLines={2}>{reason}</Text>
+          </View>
+        ) : null}
+      </Animated.View>
+    );
   }
 
   const tileW = interval * pixelsPerSecond;
@@ -145,15 +203,21 @@ export default function FilmStrip({
     <Animated.View style={[styles.window, { width, height }]}>
       <Animated.View style={[styles.row, { left: offset }]}>
         {tiles.map((tile, i) => (
-          <Image
-            key={i}
-            source={tile}
-            style={{ width: tileW, height }}
-            contentFit="cover"
-            // The bitmaps are already in memory and handed over as native refs;
-            // a fade would flash the strip grey every time a clip re-renders.
-            transition={0}
-          />
+          tile ? (
+            <Image
+              key={i}
+              source={tile}
+              style={{ width: tileW, height }}
+              contentFit="cover"
+              // The bitmaps are already in memory and handed over as native refs;
+              // a fade would flash the strip grey every time a clip re-renders.
+              transition={0}
+            />
+          ) : (
+            // A seek point that would not decode. It holds its place so the frames
+            // either side of it stay at the time they belong to.
+            <View key={i} style={[styles.gap, { width: tileW, height }]} />
+          )
         ))}
       </Animated.View>
     </Animated.View>
@@ -164,4 +228,7 @@ const styles = StyleSheet.create({
   window: { overflow: 'hidden' },
   row: { position: 'absolute', top: 0, flexDirection: 'row' },
   pending: { backgroundColor: '#181818' },
+  gap: { backgroundColor: '#242424' },
+  reasonBox: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  reasonText: { color: '#c94f4f', fontSize: 8, textAlign: 'center' },
 });
