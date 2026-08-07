@@ -56,8 +56,7 @@ function StyleTile({ style, selected, ready, onPress }) {
 
 const MemoTile = React.memo(StyleTile);
 
-export default function CaptionStylePicker({ value, onChange, label = 'Caption Style' }) {
-  const [open, setOpen] = useState(false);
+export function CaptionStyleSheet({ visible, value, onChange, onClose }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(ALL);
   const ready = useAppFonts();
@@ -86,40 +85,18 @@ export default function CaptionStylePicker({ value, onChange, label = 'Caption S
 
   const pick = useCallback((id) => {
     onChange(id);
-    setOpen(false);
-  }, [onChange]);
+    onClose();
+  }, [onChange, onClose]);
 
   const renderItem = useCallback(({ item }) => (
     <MemoTile style={item} selected={item.id === selected.id} ready={ready} onPress={pick} />
   ), [selected.id, ready, pick]);
 
-  const chunk = captionChunkSize(selected);
-
   return (
-    <>
-      <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        style={styles.trigger}
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`Caption style: ${selected.label}. Tap to change.`}
-      >
-        <View style={styles.triggerStage}>
-          {ready ? <CaptionText style={selected} text={SAMPLE} size={16} numberOfLines={1} /> : null}
-        </View>
-        <View style={styles.triggerMeta}>
-          <Text style={styles.triggerName} numberOfLines={1}>{selected.label}</Text>
-          <Text style={styles.triggerSub} numberOfLines={1}>
-            {selected.category} · {chunk === 1 ? 'word by word' : `${chunk} words`}
-          </Text>
-        </View>
-        <MaterialIcons name="grid-view" size={18} color="#666" />
-      </TouchableOpacity>
-
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <View style={styles.modalOverlay}>
           <View style={styles.sheet}>
-            <SheetHeader title={`Caption Style · ${CAPTION_STYLES.length}`} onClose={() => setOpen(false)} />
+            <SheetHeader title={`Caption Style · ${CAPTION_STYLES.length}`} onClose={onClose} />
 
             <View style={styles.searchWrap}>
               <MaterialIcons name="search" size={18} color="#666" />
@@ -177,6 +154,39 @@ export default function CaptionStylePicker({ value, onChange, label = 'Caption S
           </View>
         </View>
       </Modal>
+  );
+}
+
+// Trigger row plus sheet, for a screen with nowhere else to open it from. Screens
+// that already have a settings row of their own use CaptionStyleSheet directly
+// rather than growing a second row beside it.
+export default function CaptionStylePicker({ value, onChange, label = 'Caption Style' }) {
+  const [open, setOpen] = useState(false);
+  const ready = useAppFonts();
+  const selected = resolveCaptionStyle(value);
+  const chunk = captionChunkSize(selected);
+
+  return (
+    <>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity
+        style={styles.trigger}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Caption style: ${selected.label}. Tap to change.`}
+      >
+        <View style={styles.triggerStage}>
+          {ready ? <CaptionText style={selected} text={SAMPLE} size={16} numberOfLines={1} /> : null}
+        </View>
+        <View style={styles.triggerMeta}>
+          <Text style={styles.triggerName} numberOfLines={1}>{selected.label}</Text>
+          <Text style={styles.triggerSub} numberOfLines={1}>
+            {selected.category} · {chunk === 1 ? 'word by word' : `${chunk} words`}
+          </Text>
+        </View>
+        <MaterialIcons name="grid-view" size={18} color="#666" />
+      </TouchableOpacity>
+      <CaptionStyleSheet visible={open} value={value} onChange={onChange} onClose={() => setOpen(false)} />
     </>
   );
 }

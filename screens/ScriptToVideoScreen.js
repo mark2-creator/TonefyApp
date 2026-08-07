@@ -10,6 +10,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
+import { CaptionStyleSheet } from '../components/CaptionStylePicker';
+import {
+  resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
+} from '../constants/captionStyles';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -31,20 +35,6 @@ const ASPECT_RATIOS = [
   { id: '1:1',  label: '1:1',  icon: '⬛', desc: 'Instagram' },
 ];
 
-const CAPTION_STYLES = [
-  { id: 'classic',   label: 'Classic',   desc: 'White + black outline',     color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'tiktok',    label: 'TikTok',    desc: 'Bold yellow, viral style',  color: '#00FFFF', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'bold',      label: 'Bold',      desc: 'Thick heavy stroke',        color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'neon',      label: 'Neon',      desc: 'Glowing green text',        color: '#7FFF00', bg: 'transparent', bold: true,  shadow: false },
-  { id: 'fire',      label: 'Fire',      desc: 'Burning orange text',       color: '#FF4500', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'sticker',   label: 'Sticker',   desc: 'White box behind text',     color: '#000',    bg: '#fff',        bold: true,  shadow: false },
-  { id: 'shadow3d',  label: '3D Shadow', desc: 'Deep 3D drop shadow',       color: '#fff',    bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'highlight', label: 'Highlight', desc: 'Alternating word colors',   color: '#00FFFF', bg: 'transparent', bold: true,  shadow: true  },
-  { id: 'outline',   label: 'Outline',   desc: 'White border, no fill',     color: '#fff',    bg: 'transparent', bold: true,  shadow: false },
-  { id: 'cinematic', label: 'Cinematic', desc: 'Elegant spaced italic',     color: '#fff',    bg: 'transparent', bold: false, shadow: true  },
-  { id: 'minimal',   label: 'Minimal',   desc: 'Small clean white text',    color: '#fff',    bg: 'transparent', bold: false, shadow: false },
-  { id: 'purple',    label: 'Purple',    desc: 'Bold purple glow',          color: '#FF00FF', bg: 'transparent', bold: true,  shadow: true  },
-];
 
 const TRANSITION_STYLES = [
   { id: 'none',        label: 'Cut',          desc: 'Hard cut, no transition',        icon: '✂️',  group: 'Basic' },
@@ -165,73 +155,14 @@ function SelectorRow({ icon, label, value, onPress }) {
   );
 }
 
-function CaptionPreview({ item }) {
-  const base = { fontSize: 13, fontWeight: item.bold ? 'bold' : 'normal' };
-  const shadow = item.shadow ? {
-    textShadowColor: '#000', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 4
-  } : {};
-
-  if (item.id === 'sticker') {
-    const boxColors = ['#FF6B00','#FF0090','#00CC00','#FFCC00','#0000CC','#990099'];
-    return (
-      <View style={{ width: 90, height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-        {['Aa','Bb'].map((t, i) => (
-          <View key={i} style={{ backgroundColor: boxColors[i], borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>{t}</Text>
-          </View>
-        ))}
-      </View>
-    );
-  }
-  if (item.id === 'outline') {
-    return (
-      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ ...base, color: 'transparent', fontSize: 15, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6, letterSpacing: 1 }}>ABC</Text>
-      </View>
-    );
-  }
-  if (item.id === 'cinematic') {
-    return (
-      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#fff', fontSize: 11, fontStyle: 'italic', letterSpacing: 3 }}>CAPTION</Text>
-      </View>
-    );
-  }
-  if (item.id === 'shadow3d') {
-    return (
-      <View style={{ width: 90, height: 40, backgroundColor: '#111', borderRadius: 6, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, textShadowColor: '#555', textShadowOffset: { width: 4, height: 4 }, textShadowRadius: 1 }}>ABC</Text>
-      </View>
-    );
-  }
-  if (item.id === 'highlight') {
-    return (
-      <View style={{ width: 90, height: 40, backgroundColor: '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 3 }}>
-        <Text style={{ color: '#00FFFF', fontWeight: 'bold', fontSize: 13 }}>AB</Text>
-        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>CD</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ width: 90, height: 40, backgroundColor: item.bg !== 'transparent' ? item.bg : '#000', borderRadius: 6, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
-      <Text style={[base, shadow, { color: item.color, fontSize: 14, textAlign: 'center' }]}>Caption</Text>
-    </View>
-  );
-}
 
 function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
-  const isCaption = item.color !== undefined && item.icon === undefined;
   return (
     <TouchableOpacity
       style={[styles.optionRow, selectedId === item.id && styles.optionRowActive]}
       onPress={() => { onSelect(item.id); onClose(); }}
     >
-      {isCaption ? (
-        <CaptionPreview item={item} />
-      ) : (
-        <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
-      )}
+      <Text style={styles.optionIcon}>{item.icon || item.preview}</Text>
       <View style={styles.optionText}>
         <Text style={[styles.optionLabel, selectedId === item.id && styles.optionLabelActive]}>{item.label}</Text>
         <Text style={styles.optionDesc}>{item.accent || item.desc}</Text>
@@ -472,41 +403,6 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
 
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
   const sheetInset = useSheetInset();
-  const isCaption = options.length > 0 && options[0].color !== undefined && options[0].icon === undefined;
-  if (isCaption) {
-    return (
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-          <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
-            <View style={styles.modalHandle} />
-            <SheetHeader title={title} onClose={onClose} style={styles.sheetHeaderPad} />
-            <FlatList
-              data={options}
-              keyExtractor={item => item.id}
-              numColumns={2}
-              columnWrapperStyle={{ gap: 8, paddingHorizontal: 4 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => { onSelect(item.id); onClose(); }}
-                  style={{
-                    flex: 1, marginBottom: 8,
-                    backgroundColor: selectedId === item.id ? '#1a3a1a' : '#1a1a1a',
-                    borderWidth: 1.5,
-                    borderColor: selectedId === item.id ? '#2ecc71' : '#333',
-                    borderRadius: 12, padding: 10, alignItems: 'center',
-                  }}
-                >
-                  <CaptionPreview item={item} />
-                  <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 11, fontWeight: 'bold', marginTop: 6, textAlign: 'center' }}>{item.label}</Text>
-                  <Text style={{ color: '#666', fontSize: 9, textAlign: 'center', marginTop: 2 }}>{item.desc}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    );
-  }
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
@@ -549,7 +445,7 @@ export default function ScriptToVideoScreen({ navigation }) {
 
   const selectedVoice = VOICES.find(v => v.id === voiceId);
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
-  const selectedCaption = CAPTION_STYLES.find(c => c.id === captionStyle);
+  const selectedCaption = resolveCaptionStyle(captionStyle);
   const selectedTransition = TRANSITION_STYLES.find(t => t.id === transition);
   const selectedSpeed = VIDEO_SPEEDS.find(s => s.id === videoSpeed) || VIDEO_SPEEDS[0];
 
@@ -624,6 +520,16 @@ export default function ScriptToVideoScreen({ navigation }) {
         body: JSON.stringify({
           voiceover: script, segments,
           audioUrl, aspectRatio, captionStyle, transition, videoSpeed,
+          // The server burns these captions in itself and has no copy of the
+          // catalogue, so it needs the style rather than just its name.
+          captionMeta: {
+            spec: captionExportSpec(selectedCaption),
+            font: selectedCaption.font || null,
+            size: captionFontSize(selectedCaption),
+            color: captionFill(selectedCaption).color,
+            upper: !!selectedCaption.upper,
+            words: captionChunkSize(selectedCaption),
+          },
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
@@ -710,7 +616,7 @@ export default function ScriptToVideoScreen({ navigation }) {
             <View style={styles.divider} />
             <SelectorRow icon="📐" label="Format" value={`${selectedRatio.icon} ${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <View style={styles.divider} />
-            <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.desc}`} onPress={() => setModal('caption')} />
+            <SelectorRow icon="💬" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
             <View style={styles.divider} />
             <SelectorRow icon="🎬" label="Transition" value={`${selectedTransition.icon} ${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
             <View style={styles.divider} />
@@ -764,7 +670,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       {/* MODALS */}
       <OptionModal visible={modal === 'voice'} title="🎙️ Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'ratio'} title="📐 Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
-      <OptionModal visible={modal === 'caption'} title="💬 Caption Style" options={CAPTION_STYLES} selectedId={captionStyle} onSelect={setCaptionStyle} onClose={() => setModal(null)} />
+      <CaptionStyleSheet visible={modal === 'caption'} value={captionStyle} onChange={setCaptionStyle} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'speed'} title="⚡ Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, icon: '⚡'}))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
       <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
     </View>

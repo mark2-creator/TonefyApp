@@ -16,6 +16,7 @@ import ColorPicker, { normalizeHex } from '../components/ColorPicker';
 import FontPicker from '../components/FontPicker';
 import CaptionStylePicker from '../components/CaptionStylePicker';
 import CaptionText from '../components/CaptionText';
+import CanvasOverlay from '../components/CanvasOverlay';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
@@ -296,37 +297,10 @@ function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX,
   );
 }
 
-function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }) {
-  const pan = useRef(new Animated.ValueXY({
-    x: (overlay.x / 100) * containerW,
-    y: (overlay.y / 100) * containerH,
-  })).current;
-  const lastPos = useRef({ x: (overlay.x / 100) * containerW, y: (overlay.y / 100) * containerH });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (e, g) => Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
-      onPanResponderGrant: () => {
-        pan.setOffset({ x: lastPos.current.x, y: lastPos.current.y });
-        pan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
-      onPanResponderRelease: (e, g) => {
-        pan.flattenOffset();
-        let newX = lastPos.current.x + g.dx;
-        let newY = lastPos.current.y + g.dy;
-        newX = Math.max(0, Math.min(containerW - 20, newX));
-        newY = Math.max(0, Math.min(containerH - 20, newY));
-        lastPos.current = { x: newX, y: newY };
-        pan.setValue({ x: newX, y: newY });
-        const xPct = (newX / containerW) * 100;
-        const yPct = (newY / containerH) * 100;
-        onMove(overlay.key, xPct, yPct);
-      },
-    })
-  ).current;
-
+// What an overlay looks like. Where it sits, how big it is and which way up it is
+// are CanvasOverlay's business - this only draws. Splitting the two is what lets
+// the same content be dragged, pinched and turned without the renderer knowing.
+function TextOverlayContent({ overlay, maxWidth }) {
   // An auto-caption is drawn by the shared caption renderer from its style spec;
   // a manual text overlay has no style and keeps the plain path. The overlay's own
   // font, size and colour win over the style's, so editing a caption in the text
@@ -340,41 +314,36 @@ function DraggableTextOverlay({ overlay, containerW, containerH, onMove, onTap }
   // weight and slant on the system face rather than families of their own.
   const overlayFamily = fontFamilyFor(overlay.font);
 
+  if (renderStyle) {
+    return (
+      <CaptionText
+        style={renderStyle}
+        text={overlay.text}
+        size={overlay.size}
+        color={overlay.captionColorOverride}
+        align="center"
+        maxWidth={maxWidth}
+      />
+    );
+  }
+
   return (
-    <Animated.View
-      {...panResponder.panHandlers}
-      style={{ position: 'absolute', transform: pan.getTranslateTransform(),
-        width: overlay.isAutoCaption ? containerW * 0.8 : undefined }}>
-      <TouchableOpacity onPress={() => onTap(overlay)} activeOpacity={0.7}>
-        {renderStyle ? (
-          <CaptionText
-            style={renderStyle}
-            text={overlay.text}
-            size={overlay.size}
-            color={overlay.captionColorOverride}
-            align={overlay.isAutoCaption ? 'center' : 'left'}
-            maxWidth={overlay.isAutoCaption ? containerW * 0.8 : undefined}
-          />
-        ) : (
-          <Text style={{
-            color: overlay.color, fontSize: overlay.size,
-            ...(overlayFamily
-              // A loaded family already carries the weight it was downloaded at, and
-              // asking Android to synthesise more on top of a single registered face
-              // is what makes a custom font silently fall back to the system one.
-              ? { fontFamily: overlayFamily }
-              : {
-                fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
-                fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
-              }),
-            textAlign: 'left',
-            textShadowColor: '#000',
-            textShadowRadius: 4,
-            textShadowOffset: { width: 1, height: 1 },
-          }}>{overlay.text}</Text>
-        )}
-      </TouchableOpacity>
-    </Animated.View>
+    <Text style={{
+      color: overlay.color, fontSize: overlay.size,
+      ...(overlayFamily
+        // A loaded family already carries the weight it was downloaded at, and
+        // asking Android to synthesise more on top of a single registered face
+        // is what makes a custom font silently fall back to the system one.
+        ? { fontFamily: overlayFamily }
+        : {
+          fontWeight: overlay.font === 'Bold' ? 'bold' : 'normal',
+          fontStyle: overlay.font === 'Italic' ? 'italic' : 'normal',
+        }),
+      textAlign: 'center',
+      textShadowColor: '#000',
+      textShadowRadius: 4,
+      textShadowOffset: { width: 1, height: 1 },
+    }}>{overlay.text}</Text>
   );
 }
 
@@ -598,6 +567,7 @@ export default function EditVideoScreen({ navigation }) {
   const [textOverlays, setTextOverlays] = useState([]);
   const [showTextModal, setShowTextModal] = useState(false);
   const [editingText, setEditingText] = useState(null);
+  const [selectedOverlayKey, setSelectedOverlayKey] = useState(null);
   const [textInput, setTextInput] = useState('');
   const [textColor, setTextColor] = useState('#fff');
   const [recentColors, setRecentColors] = useState([]);
@@ -1115,6 +1085,8 @@ export default function EditVideoScreen({ navigation }) {
         font: textFont,
         size: textSize,
         x: 50, y: 80,
+        scale: 1,
+        rotation: 0,
       }]);
     }
     setShowTextModal(false);
@@ -1122,9 +1094,33 @@ export default function EditVideoScreen({ navigation }) {
     setEditingText(null);
   }
 
-  function updateTextOverlayPosition(key, x, y) {
-    setTextOverlays(prev => prev.map(t => t.key === key ? { ...t, x, y } : t));
-  }
+  // Auto-captions move as one. They are a caption per phrase rather than a single
+  // object, and only the phrase under the playhead is on screen - so dragging the
+  // one you can see and leaving the other forty where they were would look like
+  // the caption jumping back the moment the clip moves on.
+  const applyOverlayTransform = useCallback((key, next) => {
+    setTextOverlays(prev => {
+      const target = prev.find(t => t.key === key);
+      if (!target) return prev;
+      const movesTogether = t => (target.isAutoCaption ? t.isAutoCaption : t.key === key);
+      return prev.map(t => (movesTogether(t) ? { ...t, ...next } : t));
+    });
+  }, []);
+
+  // First tap selects and shows the frame, so an overlay can be picked up and moved
+  // without the edit sheet covering the canvas; tapping the selected one opens it.
+  const openOverlayEditor = useCallback((ov) => {
+    setSelectedOverlayKey(prev => {
+      if (prev !== ov.key) return ov.key;
+      setEditingText(ov);
+      setTextInput(ov.text);
+      setTextColor(ov.color);
+      setTextFont(ov.font);
+      setTextSize(ov.size);
+      setShowTextModal(true);
+      return prev;
+    });
+  }, []);
 
   const removeTextOverlay = useCallback((key) => {
     setTextOverlays(prev => prev.filter(t => t.key !== key));
@@ -1228,7 +1224,18 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mediaItems, userId: user.uid, resolution,
-          textOverlays: textOverlays.map(t => ({ text: t.text, color: t.color, font: t.font, size: t.size, x: t.x, y: t.y, isAutoCaption: t.isAutoCaption || false, captionStyleId: t.captionStyleId, captionSpec: t.captionSpec, startTime: t.startTime, endTime: t.endTime })),
+          textOverlays: textOverlays.map(t => ({
+            text: t.text, color: t.color, font: t.font,
+            // A pinch scales every part of the overlay together, and every part is
+            // already a multiple of the size - stroke, padding, glow - so folding
+            // the scale into the size reproduces it exactly, with no second factor
+            // for the renderer to apply and get wrong.
+            size: Math.max(1, Math.round(t.size * (t.scale ?? 1))),
+            x: t.x, y: t.y, anchor: 'center', rotation: t.rotation ?? 0,
+            isAutoCaption: t.isAutoCaption || false,
+            captionStyleId: t.captionStyleId, captionSpec: t.captionSpec,
+            startTime: t.startTime, endTime: t.endTime,
+          })),
           overlays: uploadedOverlays,
           audioTracks: uploadedAudio,
         }),
@@ -1604,7 +1611,11 @@ export default function EditVideoScreen({ navigation }) {
           // other overlay. It stays editable in the text sheet afterwards.
           font: style.font || 'Default',
           size,
-          x: 10, y: 80,
+          // Centre-anchored: 50 is the middle of the frame whatever the phrase
+          // happens to be, which a left-edge percentage could never be.
+          x: 50, y: 80,
+          scale: 1,
+          rotation: 0,
           startTime: startOffset + group[0].start,
           endTime: startOffset + group[group.length - 1].end,
           isAutoCaption: true,
@@ -1918,17 +1929,30 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.previewEmptyText}>Add media to get started</Text>
             </View>
           )}
-          {/* Text overlays on preview - draggable. Auto-captions are time-gated
-              to the playhead position; manual overlays always show. */}
+          {/* Sits under the overlays and over the video, so a tap that misses every
+              overlay clears the selection instead of doing nothing. */}
+          {selectedOverlayKey && (
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSelectedOverlayKey(null)}
+            />
+          )}
+          {/* Text overlays on preview - drag, pinch and turn. Auto-captions are
+              time-gated to the playhead position; manual overlays always show. */}
           {textOverlays.filter(t => !t.isAutoCaption || (position >= t.startTime && position <= t.endTime)).map(t => (
-            <DraggableTextOverlay
+            <CanvasOverlay
               key={t.key}
               overlay={t}
               containerW={PREVIEW_W}
               containerH={PREVIEW_H}
-              onMove={updateTextOverlayPosition}
-              onTap={(ov) => { setEditingText(ov); setTextInput(ov.text); setTextColor(ov.color); setTextFont(ov.font); setTextSize(ov.size); setShowTextModal(true); }}
-            />
+              selected={selectedOverlayKey === t.key}
+              onSelect={setSelectedOverlayKey}
+              onTransform={applyOverlayTransform}
+              onTap={openOverlayEditor}
+            >
+              <TextOverlayContent overlay={t} maxWidth={PREVIEW_W * 0.8} />
+            </CanvasOverlay>
           ))}
         </View>
 

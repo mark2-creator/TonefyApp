@@ -155,6 +155,47 @@ Things worth not rediscovering:
   exporting a second, conflicting `CAPTION_STYLES`), searchable and filtered by category.
   130 tiles will not fit in the Auto Captions sheet, and a vertical list nested in that
   sheet's ScrollView is the one arrangement RN handles worst: neither scroller virtualises.
+  It exports `CaptionStyleSheet` (sheet alone, for a screen that already has a row to open
+  it from) and a default `CaptionStylePicker` (trigger row + sheet).
+
+**All four screens share the catalogue (Aug 7 2026).** Edit Video, and Idea/Script/Url →
+Video, which each carried their own duplicated 12-style copy. All three generation screens
+POST to the same `/api/idea-to-video-v2`, so one endpoint change covered them. Their
+`OptionModal` caption branch and its `CaptionPreview` swatch are gone — every remaining
+caller passes options with an `icon`, so that branch was unreachable.
+
+**Canvas overlays are free (Aug 7 2026)** — `components/CanvasOverlay.js`. Drag anywhere,
+pinch to scale, two-finger rotate, plus a corner handle that turns and resizes with one
+finger. Replaces the drag-only PanResponder.
+
+- **Position is the element's CENTRE, as a percentage** (`anchor: 'center'` in the export
+  payload). Top-left is not a position you can rotate about: spin an element and its
+  top-left corner describes a circle while the thing being aimed stays put. Centre is also
+  the only anchor that centres a caption by default without measuring its particular words.
+  Overlays are session-only, so there was nothing on disk to migrate; the server still
+  accepts top-left from older clients.
+- **Nothing measures anything to place it.** The element sits in a wrapper that fills the
+  frame and centres its child, so a translate of `(x - w/2, y - h/2)` lands its centre on
+  the point — no `onLayout` round trip and no frame where the overlay is in the wrong place.
+- **Scale folds into `size` at export.** Every part of an overlay is already a multiple of
+  the size — stroke, padding, glow — so multiplying reproduces a pinch exactly, and there
+  is no second factor for the renderer to apply and get wrong.
+- **Auto-captions move as one.** They are one caption per phrase and only the phrase under
+  the playhead is on screen, so moving just the visible one would look like the caption
+  jumping back as soon as the clip moves on.
+- The corner handle never needs the canvas's position on screen: the vector from centre to
+  handle is known when the drag starts, the finger's translation is added to it, and length
+  gives scale while angle gives rotation.
+- Rotation snaps within 4° of a right angle. Turning by hand never lands on exactly 0, and
+  a caption a degree and a half off level reads as a mistake.
+- Pan carries `minDistance(2)`. A finger never lands perfectly still, and without it that
+  jitter activates the pan before the tap can finish, so tap-to-select works only sometimes.
+
+**`npx expo export` is necessary but not sufficient.** Metro bundles a reference to a
+function that no longer exists and only fails when that branch renders. Deleting a
+component and leaving one of its two call sites behind is exactly how that happens — it
+happened here. `scratchpad/jsxrefs.py` checks every capitalised JSX tag resolves to
+something the file imports or defines; worth re-running after any component deletion.
 
 ### Phase 4: Performance/memoization reapply — ✅ COMPLETE
 
