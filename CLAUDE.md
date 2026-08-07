@@ -144,8 +144,9 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `24fa85fa-d9e5-4449-9d40-34a9a8b6af57` (commit `ef882e58`, runtime
-   1.1.0) on Aug 7 2026, superseding `42422470-8b9d-4381-b2ae-f831fff19ff8`
+   update group `f63025f2-1c0e-4262-871b-19fa019004bd` (commit `b289df85`, runtime
+   1.1.0) on Aug 7 2026, superseding `24fa85fa-d9e5-4449-9d40-34a9a8b6af57`
+   (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
    - **Font grid (`734d746e`, specimen word `ef882e58`)** — the font sheet lays the families out as a
