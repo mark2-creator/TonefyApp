@@ -256,13 +256,37 @@ the JSX swap.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `e3705693-3ccd-49d9-ae60-de700a4e3af9` (commit `50570dc9`, runtime
-   1.1.0, the 130-style caption catalogue) on Aug 7 2026, superseding
+   update group `9be0586f-0d06-4de4-a475-0b966df5d7c6` (commit `256fff8e`, runtime
+   1.1.0, on-canvas typing + text background chip + the `size / 18` scaling fixes) on
+   Aug 7 2026, superseding `e3705693-3ccd-49d9-ae60-de700a4e3af9` (commit `50570dc9`,
+   the 130-style caption catalogue),
    `f63025f2-1c0e-4262-871b-19fa019004bd` (commit `b289df85`),
    `24fa85fa-d9e5-4449-9d40-34a9a8b6af57`
    (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
+   - **On-canvas typing (`dd1c0a81`)** — tap an overlay to select, tap again to put a
+     caret in it. Test: type into a stroked style and confirm the stroke and glow stay
+     on while editing (a plain input would drop them); place the caret mid-word and
+     confirm it lands between the letters it looks like it lands between, which is the
+     `captionMetrics` shared-layout claim; drag the keyboard's own selection handles,
+     which only work if the canvas gestures really are off. Long press should open the
+     style sheet. Clearing an overlay to empty should delete it rather than leave an
+     invisible tap target. The discriminating case is a **tracked or large style**,
+     where a caret laid out from different metrics than the render drifts visibly.
+   - **Text background chip (`dd1c0a81`)** — Add Text now has colour, opacity, radius
+     and padding for a chip behind the words. Test: set one, then export and confirm the
+     burned-in chip matches; it travels as a spec `box`, so it shares the server path
+     with boxed caption styles and needs the backend restart below to draw at all.
+   - **Chip corners and shadow blur (`4d47c7cc`)** — both were fixed on this side while
+     everything around them scaled with the font size. Test: put a rounded boxed style
+     (Sticker, Reels, Cobalt) on the canvas at a large size and check the corner
+     rounding matches its own tile in the picker and the burned-in export — this is
+     three renders of one number and they should now agree. A pill style (`radius: 999`)
+     must still be a pill at every size. Then a heavy shadow style (Heavyweight,
+     Clickbait) large, where the blur should grow with the word instead of staying a
+     hard second copy of it. All three are invisible at size 18, which is exactly the
+     size a swatch is nearest — check on the canvas, not in the sheet.
    - **Font grid (`734d746e`, specimen word `ef882e58`, group order `b289df85`)** —
      the font sheet lays the families out as a three-column grid of specimen tiles
      (the word "Quick" set in the family, name beneath in the system face) instead
