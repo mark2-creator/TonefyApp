@@ -2493,10 +2493,14 @@ export default function EditVideoScreen({ navigation }) {
                 // Nothing to centre on until that row has been laid out once.
                 if (!frame) return null;
                 const h = r.big ? CLIP_H : RAIL_BTN;
+                // Clamped so a button can never be placed outside the rail, whatever a
+                // row's height turns out to be. Centring on a row shorter than the
+                // button gives a negative top, which puts it over the timecode strip.
+                const top = Math.max(0, frame.y + (frame.height - h) / 2);
                 return (
                   <TouchableOpacity
                     key={r.key}
-                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top: frame.y + (frame.height - h) / 2 }]}
+                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top }]}
                     onPress={railActions[r.key]}
                     accessibilityLabel={r.label}>
                     <MaterialIcons name={r.icon} size={r.big ? 22 : 14} color={r.big ? '#888' : '#c0c0c0'} />
@@ -3124,7 +3128,11 @@ const styles = StyleSheet.create({
   coverEditIcon: { position: 'absolute', top: 2, right: -2 },
   clipsWrapper: { flex: 1, position: 'relative' },
   scrubberLine: { position: 'absolute', top: 0, bottom: 0, width: SCRUBBER_LINE_W, backgroundColor: '#fff', zIndex: 10, opacity: 0.9 },
-  clipsScroll: { flexDirection: 'row', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
+  // minHeight so the row keeps a clip's height with no clips on it. Without it the
+  // empty row collapses to its own padding, the aux rows ride up into the space, and
+  // the add-clip square - centred on a 12px row - is placed above the track area
+  // entirely, in the timecode strip.
+  clipsScroll: { flexDirection: 'row', paddingRight: 40, alignItems: 'center', paddingVertical: 6, minHeight: CLIP_H + 12 },
   clipSlot: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
   clipFrame: { height: CLIP_H, borderRadius: 3, overflow: 'hidden', borderWidth: 1, borderColor: '#333', position: 'relative' },
   clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
