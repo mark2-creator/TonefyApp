@@ -341,11 +341,31 @@ nothing to aim at.
   is a trim that selects the clip instead. They also carry
   `onPanResponderTerminationRequest: () => false`, or the horizontal ScrollView they live
   in asks for the touch back the moment the finger moves sideways — which is every trim.
+- **One undecodable frame used to cost the whole strip.** The native side does
+  `bitmaps.awaitAll()` — it awaits every requested frame together, so a single seek point
+  that will not decode rejects all of them, and the clip gets no strip at all rather than
+  one gap. Variable-frame-rate footage, which is what phone cameras record, is exactly
+  where `getFrameAtTime` returns null. **This was the bug that made every clip grey on
+  first release** (`24c2ec84`). The batch is still tried first; only on failure are the
+  frames asked for one at a time, keeping whatever lands, with a failed time held as a
+  gap tile so the strip keeps its length and stays aligned to the ruler.
+- A strip that fails now **says why, on the clip**, instead of being a silent grey box —
+  the decoder's message, or `no duration` for the case below. Worth keeping: this failure
+  is only reachable on a real device, and the first version swallowed the reason in a
+  `catch` that cost a whole round trip to the device to recover.
+- **Add buttons float, one per row, down the right edge** (`ADD_RAIL` / `styles.addRail`).
+  They have to be outside the ScrollView: they used to sit at the end of their own row,
+  which was survivable when a clip was a 72px chip and stopped being so the moment a row
+  became as long as the media on it. Each is centred on its row's **measured** frame, not
+  on a table of row heights — a row is only as tall as whatever chip is on it. The rail
+  is `pointerEvents="box-none"`, or it would swallow every scrub crossing the right-hand
+  end of the strip. The empty-state buttons stay at the *head* of each row; they are
+  already in reach and they are what names a row with nothing on it yet.
 - Known gap this exposed, not fixed: **`ImagePicker` does not always report a video's
   duration**, and nothing measures it afterwards. `pickMedia` falls back to `trimEnd: 3`,
   so such a clip is 3s to the strip, the playhead and the export alike. Its right handle
   refuses to extend, which is the safe reading of not knowing, but the real fix is to
-  measure the duration on add.
+  measure the duration on add. The strip shows `no duration` when this bites.
 
 ## Repo hygiene (as of Aug 5 2026)
 
@@ -363,9 +383,15 @@ nothing to aim at.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `6ac0e67a-91f3-41fd-9d94-f45fa41ce3df` (commit `22cbb059`, runtime
-   1.1.0, the timeline filmstrip + time-proportional clips + clip trim handles) on
-   Aug 7 2026, superseding `6a6076f6-6c26-4632-94cc-e09a13cea57b` (commit `b67b08cb`,
+   update group `3f80b004-a225-4e48-b610-a186ddeda402` (commit `25b02b2d`, runtime
+   1.1.0, per-row floating add buttons) on Aug 7 2026, superseding
+   `b9008c6b-6dae-43a6-aa81-9becc1e0fc73` (commit `310644df`, a header add bar —
+   reverted, the buttons belong on their own rows),
+   `d884a9b4-b92d-43ba-ba69-050f3c648ebc` (commit `24c2ec84`, the per-frame fallback
+   that made the filmstrip actually render — **confirmed working on device**),
+   `6ac0e67a-91f3-41fd-9d94-f45fa41ce3df` (commit `22cbb059`,
+   the timeline filmstrip + time-proportional clips + clip trim handles),
+   `6a6076f6-6c26-4632-94cc-e09a13cea57b` (commit `b67b08cb`,
    the corner handle winning its own finger + `averageTouches`),
    `a9d57a65-71d1-4c7a-9a8c-bb335cd2759b` (commit `05e26d3b`, the guard
    script and updater purity), `e7850ff7-a5d7-494f-bba3-9507196d21f0` (commit
@@ -380,22 +406,29 @@ nothing to aim at.
    (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
-   - **Timeline filmstrip and clip trim handles (`48c35bec`, `22cbb059`)** — a video
-     clip now draws its own frames, at the width of the time it covers, and a selected
-     clip has a handle at each end. Test: add a clip and confirm the strip fills with
-     real frames rather than one poster or a grey box (extraction is async, so a beat
-     of `#181818` first is expected). Then the alignment claim, which is the point of
-     the change: add a voiceover, and a moment in the audio should sit under the frame
-     it belongs to — **two or more clips of different lengths** is the discriminating
-     case, since the old fixed-width chips were only ever right when every clip was
-     the same length as every other. Drag each handle and confirm the frames slide
-     under it live rather than the strip going blank and repainting on release, that
-     it stops dead at the end of the footage rather than running past and snapping
-     back, and that the clip cannot go below ~0.3s. Trim, then play, and confirm the
-     export starts where the handle was left. A **still image** clip is its own case:
-     both edges just change how long it is held, up to 30s. A clip whose duration the
-     picker did not report is stuck at 3s and will not extend — a known gap, recorded
-     under "Timeline filmstrip" above, not a regression.
+   - **Timeline filmstrip (`48c35bec`, `24c2ec84`)** — ✅ frames confirmed rendering on
+     device Aug 7 2026. Still unconfirmed on this surface: the **alignment** claim,
+     which is the real point of the change — add a voiceover and a moment in the audio
+     should sit under the frame it belongs to, with **two or more clips of different
+     lengths** as the discriminating case, since the old fixed-width chips were only
+     ever right when every clip was the same length as every other.
+   - **Clip trim handles (`22cbb059`)** — a selected clip has a handle at each end.
+     Test: drag each and confirm the frames slide under it live rather than the strip
+     going blank and repainting on release, that it stops dead at the end of the
+     footage rather than running past and snapping back, and that the clip cannot go
+     below ~0.3s. Trim, then play, and confirm the export starts where the handle was
+     left. A **still image** clip is its own case: both edges just change how long it
+     is held, up to 30s.
+   - **Per-row floating add buttons (`25b02b2d`)** — clip, voiceover, music, text,
+     captions, stacked down the right edge, each floating over its own row. Test: scroll
+     the timeline a long way and confirm all five stay put and still open the right
+     thing; scrub by dragging across the right-hand end of the strip and confirm the
+     rail does not swallow it (that is the `box-none` claim). Each button should sit
+     centred on its row, including after a row changes height — adding the first text
+     overlay swaps a chip in and is the case that would expose a hardcoded height
+     table. Note `310644df` put these in a header bar instead and was reverted in
+     `25b02b2d`; the time markers it removed are back, and are still the static
+     `[0,1,2,3,4]` ruler they always were — a real ruler is unbuilt work, not a bug.
    - **Corner handle and two-finger rotate (`b67b08cb`)** — dragging the corner
      handle used to move the overlay instead of turning it, and a two-finger turn
      threw it across the frame. Test: drag the handle on a selected overlay and
