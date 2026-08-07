@@ -157,7 +157,13 @@ the JSX swap.
      `lineHeight`, which would clip the taller display faces. Group headers keep a
      full-width row of their own, so the grid is built by chunking each group into
      rows of three and making each row one FlatList item — `numColumns` cannot do
-     this, as it lays every item into a cell, headers included. Test: the last row
+     this, as it lays every item into a cell, headers included. Groups run
+     Handwriting, Display, Sans, Serif, Mono — that order is `GROUP_ORDER` in
+     `FontPicker.js`, not in `constants/fonts.js`, whose "GENERATED" header means an
+     order set there would be lost on regeneration; groups it does not name keep
+     their upstream position behind the ones it does. System/Default stays pinned
+     above all of them, being the current-value fallback rather than a category.
+     Test: the last row
      of a group should keep its tiles at column width rather than stretching them,
      and search should still return a flat grid with no headers.
    - **Fonts (`f8b0d7ec`)** — the text sheet now offers 130 families instead of

@@ -30,6 +30,27 @@ const COLUMNS = 3;
 // hide the very letters that distinguish one face from another.
 const SPECIMEN = 'Quick';
 
+// Group order is a presentation choice, so it lives here rather than in
+// constants/fonts.js - that file is headed "GENERATED - do not edit by hand", and
+// an order set there would be silently reverted the next time it is regenerated.
+// Handwriting and Display lead because they are what the picker is usually opened
+// for: a caption wants a face with character, and the workhorse Sans families are
+// what you settle for, not what you go looking for. Anything not named here keeps
+// its existing position behind the ones that are, so a new group added upstream
+// appears rather than vanishing.
+const GROUP_ORDER = ['Handwriting', 'Display'];
+
+function orderedGroups(groups) {
+  const rank = (label) => {
+    const i = GROUP_ORDER.indexOf(label);
+    return i === -1 ? GROUP_ORDER.length : i;
+  };
+  return groups
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => rank(a.g.label) - rank(b.g.label) || a.i - b.i)
+    .map(({ g }) => g);
+}
+
 const FontTile = React.memo(function FontTile({ name, selected, ready, onPress }) {
   const family = ready ? fontFamilyFor(name) : undefined;
   return (
@@ -90,7 +111,7 @@ export default function FontPicker({ value, onChange }) {
       { key: 'h-system', type: 'header', label: 'System' },
       ...toRows([DEFAULT_FONT], 'system'),
     ];
-    for (const g of FONT_GROUPS) {
+    for (const g of orderedGroups(FONT_GROUPS)) {
       out.push({ key: 'h-' + g.label, type: 'header', label: g.label });
       out.push(...toRows(g.fonts, g.label));
     }
