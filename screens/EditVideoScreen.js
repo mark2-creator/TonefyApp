@@ -53,6 +53,19 @@ const TRIM_HANDLE_W = 16;
 const MIN_CLIP_DUR = 0.3;
 // A still has no footage to run out of, so its right handle needs a stop of its own.
 const IMAGE_MAX_DUR = 30;
+// The floating add button on each timeline row. Small enough to sit inside a 26px
+// aux row without touching its edges.
+const RAIL_BTN = 24;
+// In row order, which is the order they are drawn down the timeline. Each carries its
+// own row's icon rather than a bare plus: five identical buttons in a column say
+// nothing about which row each one adds to.
+const ADD_RAIL = [
+  { key: 'clips', icon: 'movie', label: 'Add clip' },
+  { key: 'voiceover', icon: 'record-voice-over', label: 'Add voiceover' },
+  { key: 'music', icon: 'music-note', label: 'Add music' },
+  { key: 'text', icon: 'title', label: 'Add text' },
+  { key: 'captions', icon: 'closed-caption', label: 'Auto captions' },
+];
 
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
@@ -465,12 +478,13 @@ function TextOverlayContent({
 
 const AudioTrackRow = React.memo(function AudioTrackRow({
   scrollRef, timelineContentWidth, tracksComputed, waveformCache, selectedAudioTrackKey,
-  accentColor, iconName, addLabel, leadOffset, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd
+  accentColor, iconName, addLabel, leadOffset, onDragEnd, onTrimEnd, onPressTrack, onLongPressTrack, onPressAdd, onLayout
 }) {
   const hasTracks = tracksComputed.length > 0;
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
+      onLayout={onLayout}
       style={[styles.auxScrollRow, { paddingLeft: 0 }]}
       contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       <View style={{ width: hasTracks ? timelineContentWidth : 0, height: 26, position: 'relative', overflow: 'visible' }}>
@@ -505,10 +519,11 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
   );
 });
 
-const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewGroups, leadOffset, onPress }) {
+const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewGroups, leadOffset, onPress, onLayout }) {
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
+      onLayout={onLayout}
       style={styles.auxScrollRow}
       contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       {captionPreviewGroups.length > 0 ? (
@@ -529,10 +544,11 @@ const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewG
   );
 });
 
-const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, leadOffset, onLongPressChip, onPressChip, onPressAdd }) {
+const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, leadOffset, onLongPressChip, onPressChip, onPressAdd, onLayout }) {
   return (
     <ReanimatedAnimated.ScrollView horizontal showsHorizontalScrollIndicator={false} scrollEnabled={false}
       ref={scrollRef}
+      onLayout={onLayout}
       style={styles.auxScrollRow}
       contentContainerStyle={{ paddingLeft: leadOffset, alignItems: 'center' }}>
       {manualTextOverlays.map(t => (
@@ -912,6 +928,30 @@ export default function EditVideoScreen({ navigation }) {
   // rows, which have always been positioned by time. Nothing else in this row may take
   // horizontal space: a fixed-size chip, a margin or an inline transition button all
   // push every later clip out of time by their own width, and the error accumulates.
+  // Where each timeline row sits and how tall it is, so the floating add button for
+  // that row can be centred on it. Measured rather than computed from a table of
+  // heights: a row is as tall as whatever chip is on it, and a text chip is not the
+  // same height as an audio block, so a table would be right until someone restyled
+  // one row and then silently wrong for every row below it.
+  const [rowFrames, setRowFrames] = useState({});
+  const rowLayout = useMemo(() => {
+    const make = (key) => (e) => {
+      const { y, height } = e.nativeEvent.layout;
+      setRowFrames(prev => {
+        const cur = prev[key];
+        if (cur && cur.y === y && cur.height === height) return prev;
+        return { ...prev, [key]: { y, height } };
+      });
+    };
+    return {
+      clips: make('clips'),
+      voiceover: make('voiceover'),
+      music: make('music'),
+      text: make('text'),
+      captions: make('captions'),
+    };
+  }, []);
+
   const clipsComputed = useMemo(() => {
     return items.map((item, idx) => {
       const length = clipLength(item);
@@ -2219,6 +2259,17 @@ export default function EditVideoScreen({ navigation }) {
     }
   };
 
+  // What each rail button does, keyed the same way the rows are. Defined here rather
+  // than in ADD_RAIL because these are the screen's own handlers, and ADD_RAIL is only
+  // the order and the icons.
+  const railActions = useMemo(() => ({
+    clips: pickMedia,
+    voiceover: onPressAddVoiceover,
+    music: onPressAddMusic,
+    text: onPressAddText,
+    captions: openCaptionModal,
+  }), [pickMedia, onPressAddVoiceover, onPressAddMusic, onPressAddText, openCaptionModal]);
+
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
   // Generate Captions still has two paths - with a voiceover the words are timed
@@ -2335,23 +2386,9 @@ export default function EditVideoScreen({ navigation }) {
       <View style={styles.timeline}>
         <View style={styles.timecodeRow}>
           <Text style={styles.timecode}>{fmtTime(position)} / {fmtTime(duration)}</Text>
-          {/* Fixed, because everything these add used to be added from a button at the
-              end of its own row - and a row is now as long as the footage on it, so
-              adding a second clip meant scrolling the whole length of the first. They
-              sit in the timeline's header rather than floating over the tracks, so
-              they cover no footage. This replaces a ruler that read [0,1,2,3,4] no
-              matter where the timeline was scrolled or how long it was. */}
-          <View style={styles.addBar}>
-            {[
-              { key: 'clip', icon: 'movie', label: 'Clip', onPress: pickMedia },
-              { key: 'voice', icon: 'mic', label: 'Voice', onPress: onPressAddVoiceover },
-              { key: 'music', icon: 'music-note', label: 'Music', onPress: onPressAddMusic },
-              { key: 'text', icon: 'title', label: 'Text', onPress: onPressAddText },
-            ].map(b => (
-              <TouchableOpacity key={b.key} style={styles.addBarBtn} onPress={b.onPress}>
-                <MaterialIcons name={b.icon} size={13} color="#9a9a9a" />
-                <Text style={styles.addBarLabel}>{b.label}</Text>
-              </TouchableOpacity>
+          <View style={styles.timeMarkers}>
+            {[0,1,2,3,4].map(t => (
+              <Text key={t} style={styles.timeMarker}>{fmtTime(t)}</Text>
             ))}
           </View>
         </View>
@@ -2412,7 +2449,7 @@ export default function EditVideoScreen({ navigation }) {
                 setPosition(newPos);
               }}>
             <View>
-            <View style={[styles.clipsScroll, { paddingLeft: rowLeadW }]}>
+            <View style={[styles.clipsScroll, { paddingLeft: rowLeadW }]} onLayout={rowLayout.clips}>
               <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onTrimEnd={applyClipTrimEdit} />
             </View>
 
@@ -2422,21 +2459,45 @@ export default function EditVideoScreen({ navigation }) {
               selectedAudioTrackKey={selectedAudioTrackKey}
               accentColor="#3b82f6" iconName="record-voice-over" addLabel="Add voiceover" leadOffset={rowLeadW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
-              onLongPressTrack={onLongPressVoiceoverTrack} onPressAdd={onPressAddVoiceover} />
+              onLongPressTrack={onLongPressVoiceoverTrack} onPressAdd={onPressAddVoiceover} onLayout={rowLayout.voiceover} />
             {/* Music row */}
             <AudioTrackRow scrollRef={musicScrollRef} timelineContentWidth={timelineContentWidth}
               tracksComputed={musicTracksComputed} waveformCache={waveformCache}
               selectedAudioTrackKey={selectedAudioTrackKey}
               accentColor="#22c55e" iconName="music-note" addLabel="Add music" leadOffset={rowLeadW}
               onDragEnd={onDragEndAudioTrack} onTrimEnd={applyAudioTrimEdit} onPressTrack={onPressAudioTrack}
-              onLongPressTrack={onLongPressMusicTrack} onPressAdd={onPressAddMusic} />
+              onLongPressTrack={onLongPressMusicTrack} onPressAdd={onPressAddMusic} onLayout={rowLayout.music} />
             {/* Text row */}
-            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} leadOffset={rowLeadW} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} />
+            <TextRow scrollRef={textScrollRef} manualTextOverlays={manualTextOverlays} leadOffset={rowLeadW} onLongPressChip={removeTextOverlay} onPressChip={onPressTextChip} onPressAdd={onPressAddText} onLayout={rowLayout.text} />
             {/* Captions row - grouped preview chips, see comment on
                 captionPreviewGroups for why. */}
-            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} leadOffset={rowLeadW} onPress={openCaptionModal} />
+            <CaptionsRow scrollRef={captionsScrollRef} captionPreviewGroups={captionPreviewGroups} leadOffset={rowLeadW} onPress={openCaptionModal} onLayout={rowLayout.captions} />
             </View>
             </ReanimatedAnimated.ScrollView>
+
+            {/* One add button per row, each pinned to its row's centre and to the right
+                edge of the timeline. Outside the ScrollView, so the footage moves under
+                them and they stay where they were left - the buttons these replace sat
+                at the end of their rows, and a row is now as long as the media on it,
+                so reaching the one that adds a second clip meant scrolling the whole
+                length of the first. box-none lets touches through everywhere except on
+                a button, or the rail would swallow scrubbing across the whole strip. */}
+            <View style={styles.addRail} pointerEvents="box-none">
+              {ADD_RAIL.map(r => {
+                const frame = rowFrames[r.key];
+                // Nothing to centre on until that row has been laid out once.
+                if (!frame) return null;
+                return (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={[styles.railBtn, { top: frame.y + (frame.height - RAIL_BTN) / 2 }]}
+                    onPress={railActions[r.key]}
+                    accessibilityLabel={r.label}>
+                    <MaterialIcons name={r.icon} size={14} color="#c0c0c0" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
       </View>
@@ -3034,9 +3095,15 @@ const styles = StyleSheet.create({
   timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
   timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
   timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
-  addBar: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  addBarBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 22, paddingHorizontal: 8, borderRadius: 11, borderWidth: 1, borderColor: '#2a2a2a', backgroundColor: '#161616' },
-  addBarLabel: { color: '#9a9a9a', fontSize: 10, fontWeight: '600' },
+  timeMarkers: { flexDirection: 'row', gap: 20 },
+  timeMarker: { color: '#333', fontSize: 9 },
+  // The add buttons ride above the rows rather than in them: each one is pinned to
+  // its own row's vertical centre and to the right edge of the timeline, so it stays
+  // put however far the footage under it is scrolled. Laid out from each row's
+  // measured frame rather than from a table of heights, because a row is only as tall
+  // as whatever chip happens to be on it.
+  addRail: { position: 'absolute', right: 6, top: 0, bottom: 0, zIndex: 20 },
+  railBtn: { position: 'absolute', right: 0, width: RAIL_BTN, height: RAIL_BTN, borderRadius: RAIL_BTN / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(18,18,18,0.9)', borderWidth: 1, borderColor: '#3a3a3a' },
   trackArea: { flex: 1, flexDirection: 'row' },
   sidebar: { width: 72, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
   sideBtn: { alignItems: 'center', gap: 2 },
