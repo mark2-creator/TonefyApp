@@ -196,7 +196,11 @@ function CaptionText({
               color: style.shadow.color,
               textShadowColor: style.shadow.color,
               textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: style.shadow.radius || 0,
+              // Scaled like the glow's radius below it and like the export's,
+              // which blurs by `radius * sscale`. Left fixed, a drop shadow
+              // stayed the same softness as the caption grew and read as a
+              // hard second copy of the word at canvas size.
+              textShadowRadius: (style.shadow.radius || 0) * (size / 18),
               transform: [
                 { translateX: (style.shadow.dx || 0) * (size / 18) },
                 { translateY: (style.shadow.dy || 0) * (size / 18) },
@@ -260,7 +264,13 @@ function CaptionText({
           {
             alignSelf: align === 'center' ? 'center' : 'flex-start',
             backgroundColor: style.box.color,
-            borderRadius: style.box.radius,
+            // Radius scales with the size like the padding does. The export scales
+            // every part of the chip by the same `size / 18`, so a fixed radius here
+            // would have matched it only at size 18: at canvas size the corners
+            // would come out tighter than the burned-in ones, and in the picker's
+            // swatch rounder. A pill is written as a radius larger than the chip and
+            // stays one - both sides clamp it to half the shorter side.
+            borderRadius: (style.box.radius || 0) * (size / 18),
             paddingHorizontal: (style.box.padX || 0) * (size / 18),
             paddingVertical: (style.box.padY || 0) * (size / 18),
           },
