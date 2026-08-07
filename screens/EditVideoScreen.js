@@ -785,10 +785,6 @@ export default function EditVideoScreen({ navigation }) {
   const [position, setPosition] = useState(0); // seconds
   const [duration, setDuration] = useState(0);
   const [timelineLeadW, setTimelineLeadW] = useState(0);
-  // The timeline's own width, kept so the empty add-clip slot can be stretched from
-  // the playhead to the right edge. The rail positions from the right, so reaching
-  // leftward to a point measured from the left needs both numbers.
-  const [timelineWrapW, setTimelineWrapW] = useState(0);
   const sheetInset = useSheetInset();
   const rowLeadW = timelineLeadW + SCRUBBER_LINE_W + SCRUBBER_GAP;
   const playTimer = useRef(null);
@@ -2431,10 +2427,7 @@ export default function EditVideoScreen({ navigation }) {
 
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}
-            onLayout={(e) => {
-              setTimelineLeadW(e.nativeEvent.layout.width * SCRUBBER_POS);
-              setTimelineWrapW(e.nativeEvent.layout.width);
-            }}>
+            onLayout={(e) => setTimelineLeadW(e.nativeEvent.layout.width * SCRUBBER_POS)}>
             <View style={[styles.scrubberLine, { left: timelineLeadW }]} pointerEvents="none" />
             <ReanimatedAnimated.ScrollView
               ref={timelineScrollRef}
@@ -2507,18 +2500,10 @@ export default function EditVideoScreen({ navigation }) {
                 // row's height turns out to be. Centring on a row shorter than the
                 // button gives a negative top, which puts it over the timecode strip.
                 const top = Math.max(0, frame.y + (frame.height - h) / 2);
-                // With no clips on it, the add-clip slot reaches back to the playhead
-                // so the row starts where the aux rows start, instead of leaving the
-                // one empty track with nothing at its head and a small square adrift
-                // at the far end. It goes back to that square as soon as there is a
-                // clip, which is footage the slot would otherwise be sitting on.
-                const wide = r.big && clipsComputed.length === 0 && timelineWrapW > 0
-                  ? { width: Math.max(40, timelineWrapW - rowLeadW - RAIL_INSET) }
-                  : null;
                 return (
                   <TouchableOpacity
                     key={r.key}
-                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top }, wide]}
+                    style={[r.big ? styles.railBtnClip : styles.railBtn, { top }]}
                     onPress={railActions[r.key]}
                     accessibilityLabel={r.label}>
                     <MaterialIcons name={r.icon} size={r.big ? 22 : 14} color={r.big ? '#888' : '#c0c0c0'} />
