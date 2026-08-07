@@ -149,8 +149,8 @@ the JSX swap.
    (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
    (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
    `f8b0d7ec`). Awaiting confirmation:
-   - **Font grid (`734d746e`, specimen word `ef882e58`)** — the font sheet lays the families out as a
-     three-column grid of specimen tiles (the word "Quick" set in the family, name
+   - **Font grid (`734d746e`, specimen word `ef882e58`, group order `b289df85`)** —
+     the font sheet lays the families out as a three-column grid of specimen tiles (the word "Quick" set in the family, name
      beneath in the system face) instead of one full-width row each. The specimen
      is a whole word rather than a letter pair because a typeface's character is in
      its rhythm; it shrinks to fit (`adjustsFontSizeToFit`, floor 0.6) since the
