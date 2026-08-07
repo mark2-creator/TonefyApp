@@ -273,6 +273,44 @@ the JSX swap.
 4. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
    item, low priority, not urgent).
 
+## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
+
+Changed Aug 7 2026 alongside the caption catalogue, **committed but NOT deployed** — the
+pm2 process `tonefy-backend` is still running the old code. Restart it to pick this up.
+
+Both caption paths are now driven by the style spec the app sends, so the server holds no
+copy of the catalogue and a style added in the app renders without a deploy on this side.
+Overlays and requests without a spec keep the old id-keyed behaviour.
+
+- **`/api/media-to-video`** (voiceover path, ImageMagick) — `t.captionSpec` drives stroke,
+  glow, drop shadow, box and tracking. Layers composite back-to-front: shadow, glow,
+  stroke ring, fill, all inside the box.
+  - The stroke ring is a **dilate of the alpha on an already-padded canvas**. Dilating an
+    alpha cropped to the glyphs squares the ring off at the text's bounding box, which
+    reads as a black slab behind the word rather than an outline around it. This was
+    caught by rendering it, not by reading it.
+  - **`roundrectangle` with radius 0 draws nothing at all** — not a square-cornered box,
+    nothing. A hard-edged chip has to ask for `rectangle` by name. Newsroom and Noir were
+    silently losing their box to this.
+  - Geometry: `effWt`/`effHt` must track the padded and boxed sizes, since placement
+    centres on them.
+- **`/api/edit-video`** (burn-in path, ASS) — `captionMeta` in the request body carries
+  spec, font, size, colour, case and cadence. `assStyleFromSpec` maps it onto ASS's native
+  outline / box / shadow / spacing. Gradients fall back to the first stop: per-glyph colour
+  tags cannot coexist with the karaoke timing tags this file already emits.
+  - **ASS colour is `&HAABBGGRR`** — channels reversed from CSS *and* alpha inverted, where
+    `00` is opaque and `FF` invisible.
+  - **libass needs `fontsdir`.** It resolves `Fontname` through fontconfig, which has never
+    heard of the families this app ships, so without it every custom face silently becomes
+    DejaVu Sans — it renders, just in the wrong typeface. All three `ass=` call sites go
+    through `assFilter()` so no one site can forget it.
+
+Verified before commit: all 130 specs render through the ImageMagick chain with the
+reported geometry matching the files on disk, and all 130 produce valid ASS with correct
+field counts, colours, border styles and cadence. Samples burned into video frames to
+confirm the fonts and boxes actually land. What is **not** verified is the app-side
+rendering — that needs a device.
+
 ## Known gaps vs. the original lost version (lower priority, not yet rebuilt)
 
 - No pinch-to-zoom on timeline.
@@ -280,7 +318,7 @@ the JSX swap.
   which seeks the canvas on scrub; still keyframe-accurate rather than frame-accurate,
   since expo-av does not expose ExoPlayer's exact seek parameters.
 - ~~Sticker/Outline caption styles not rendered on the backend export side (ImageMagick)~~
-  — closed Aug 7 2026; the export is spec-driven now (see the backend note below).
+  — closed Aug 7 2026; the export is spec-driven now (see “Backend caption rendering” above).
 - ~~"Highlight" caption style alternating-color bug~~ — gone with the old style table.
 - Full teal→green rebrand — incomplete.
 - Split/Fade audio actions — stubbed "Coming soon" in the original, not present here.
