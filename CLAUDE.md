@@ -191,6 +191,42 @@ finger. Replaces the drag-only PanResponder.
 - Pan carries `minDistance(2)`. A finger never lands perfectly still, and without it that
   jitter activates the pan before the tap can finish, so tap-to-select works only sometimes.
 
+**Type on the canvas (Aug 7 2026).** A second tap puts a caret in the overlay itself
+instead of opening a sheet with a plain input in it, so a font, a stroke or a colour is
+judged against the frame it will sit on rather than against a grey modal.
+
+- The caret is a **transparent `TextInput` laid over the rendered overlay**, not an input
+  styled to look like one. Nothing reproduces the stacked stroke and glow layers, so a
+  real input would drop them the moment editing began. Both are laid out from
+  `captionMetrics`, exported from `CaptionText.js` and used by the renderer itself — two
+  definitions of what a style measures drift, and the drift shows as a caret between the
+  wrong two letters.
+- **Every gesture is off while an overlay is being typed into.** A handler that merely
+  loses a race still swallows the touch, so leaving them on means taps land on the overlay
+  instead of in the text: no placing the caret, no selecting a word, no dragging the
+  handles the keyboard puts there. The style sheet moved to a long press (typing is the
+  commoner act), and an overlay typed empty is deleted rather than left as an invisible
+  object that still catches every tap.
+- Manual text overlays carry a **background chip** of their own — colour, opacity, radius,
+  padding. It travels to the export as a spec `box`, the same thing a boxed caption style
+  sends, so the server draws both with one code path and needs no idea which came from the
+  catalogue and which from four sliders.
+
+**Everything in a caption style is a multiple of the font size, scaled by `size / 18`.**
+The export scales by exactly that (`sscale` in `server.js`), so anything left fixed on
+this side matches the export at size 18 and nowhere else — and the picker's swatch is the
+same component at a smaller size, so it drifts the other way at the same time. Scaled:
+tracking, stroke width, glow radius, shadow offset **and blur**, chip padding **and corner
+radius**. `4d47c7cc` fixed the last two, which had been missed while their immediate
+neighbours were scaled — a rounded sticker came out squarer than the burned-in one on the
+canvas and rounder in its own tile, and a drop shadow drifted from the word without
+softening, reading as a hard second copy of it. When adding a part to a style, the
+question to ask is not whether it looks right but whether it is scaled.
+
+Highlight is the one deliberate exception: the app pads the spoken word with thin spaces
+(`\u2009`) where the export draws a real chip with `hlPadX`/`hlPadY` geometry, because
+React Native ignores padding on a nested `Text`. Close approximation, not the same maths.
+
 **`npx expo export` is necessary but not sufficient.** Metro bundles a reference to a
 function that no longer exists and only fails when that branch renders. Deleting a
 component and leaving one of its two call sites behind is exactly how that happens — it
