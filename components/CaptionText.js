@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { fontFamilyFor } from '../constants/fonts';
-import { captionFill } from '../constants/captionStyles';
+import { captionFill, captionHighlight } from '../constants/captionStyles';
 
 // One renderer for every caption style. The old code branched per style id inside
 // the overlay component, which meant a new look needed renderer code and the
@@ -13,7 +13,11 @@ import { captionFill } from '../constants/captionStyles';
 // React Native gives text one shadow and no stroke, so both are built out of
 // stacked copies of the same string, absolutely positioned over each other:
 //
-//   shadow -> glow -> stroke ring -> fill
+//   highlight chip -> shadow -> glow -> stroke ring -> fill
+//
+// The chip goes at the bottom for the same reason it is a whole extra copy of the
+// string rather than a background on the fill: paint it on the fill and it covers
+// the stroke ring of the word it is meant to sit behind.
 //
 // Every copy is stretched to the wrapper's box (left/right/top/bottom 0) and
 // displaced with `transform` rather than being offset with `left`/`top`. An
@@ -52,6 +56,55 @@ function mixHex(from, to, t) {
   return '#' + c.map(n => n.toString(16).padStart(2, '0')).join('');
 }
 
+// Split on whitespace but keep it, so the runs can be reassembled into exactly the
+// original string. A chip drawn over runs that dropped their spaces would sit at
+// the wrong x once there was more than one word.
+function splitRuns(text) {
+  return String(text || '').split(/(\s+)/).filter(r => r !== '');
+}
+
+// Which run is the nth word. Whitespace runs are not words, so the caller's word
+// index has to be mapped through the run list rather than used on it directly.
+function runIndexOfWord(runs, wordIndex) {
+  if (wordIndex < 0) return -1;
+  let w = -1;
+  for (let i = 0; i < runs.length; i++) {
+    if (!/^\s+$/.test(runs[i])) {
+      w += 1;
+      if (w === wordIndex) return i;
+    }
+  }
+  return -1;
+}
+
+// The chip layer: every run invisible except the one being spoken, which is
+// painted as a background behind transparent glyphs. React Native ignores padding
+// on a nested Text, so the chip hugs the word - a thin space at each end buys the
+// bit of breathing room that `padX` gets in the export, where the box is drawn
+// with real geometry.
+const THIN = '\u2009';
+
+function HighlightRun({ runs, activeRun, color }) {
+  return runs.map((r, i) => (
+    <Text
+      key={i}
+      style={i === activeRun
+        ? { color: 'transparent', backgroundColor: color }
+        : { color: 'transparent' }}
+    >{r}</Text>
+  ));
+}
+
+// The fill, with the spoken word recoloured so it stays legible on its chip. Fed
+// the same runs as the chip layer, so the two agree on where the word starts.
+function FillRuns({ runs, activeRun, activeColor }) {
+  return runs.map((r, i) => (
+    i === activeRun && activeColor
+      ? <Text key={i} style={{ color: activeColor }}>{r}</Text>
+      : <Text key={i}>{r}</Text>
+  ));
+}
+
 // A gradient across a line of text needs either a mask or an SVG text node, and
 // this app has neither dependency - adding one would mean a new native build for
 // a fill colour. Colouring each character its own step along the ramp needs
@@ -79,8 +132,25 @@ function metricsOf(base) {
 
 const STRETCH = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 };
 
-function CaptionText({ style, text, size, color, align = 'center', maxWidth, boxStyle, numberOfLines }) {
-  const shown = style.upper ? String(text || '').toUpperCase() : String(text || '');
+function CaptionText({
+  style, text, size, color, align = 'center', maxWidth, boxStyle, numberOfLines,
+  activeWord = -1,
+}) {
+  const raw = style.upper ? String(text || '').toUpperCase() : String(text || '');
+  const hl = captionHighlight(style);
+
+  // The chip widens the word it sits behind, so the padding has to be baked into
+  // the string every layer is laid out from - not added by the chip layer alone,
+  // which would leave the stroke ring tracing the unpadded text underneath it.
+  const { runs, activeRun, shown } = useMemo(() => {
+    if (!hl || activeWord < 0) return { runs: null, activeRun: -1, shown: raw };
+    const split = splitRuns(raw);
+    const at = runIndexOfWord(split, activeWord);
+    if (at < 0) return { runs: null, activeRun: -1, shown: raw };
+    const padded = split.map((r, i) => (i === at ? THIN + r + THIN : r));
+    return { runs: padded, activeRun: at, shown: padded.join('') };
+  }, [raw, hl, activeWord]);
+
   const fill = captionFill(style, color);
   const family = fontFamilyFor(style.font);
   const strokeW = style.stroke ? Math.max(0.5, style.stroke.width * (size / 18)) : 0;
@@ -102,6 +172,12 @@ function CaptionText({ style, text, size, color, align = 'center', maxWidth, box
 
   const body = (
     <View style={maxWidth ? { maxWidth } : null}>
+      {activeRun >= 0 ? (
+        <Text allowFontScaling={false} numberOfLines={lines} style={[STRETCH, metrics]}>
+          <HighlightRun runs={runs} activeRun={activeRun} color={hl.color} />
+        </Text>
+      ) : null}
+
       {style.shadow ? (
         <Text
           allowFontScaling={false}
@@ -160,7 +236,9 @@ function CaptionText({ style, text, size, color, align = 'center', maxWidth, box
       <Text allowFontScaling={false} numberOfLines={lines} style={[base, { color: fill.color }]}>
         {fill.gradient
           ? <GradientRun text={shown} from={fill.gradient[0]} to={fill.gradient[1]} />
-          : shown}
+          : activeRun >= 0
+            ? <FillRuns runs={runs} activeRun={activeRun} activeColor={hl.textColor} />
+            : shown}
       </Text>
     </View>
   );

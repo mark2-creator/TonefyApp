@@ -20,7 +20,7 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
-  captionFontSize, captionFill, captionExportSpec,
+  captionFontSize, captionFill, captionExportSpec, captionHighlight, activeWordIndex,
 } from '../constants/captionStyles';
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
@@ -300,7 +300,7 @@ function DraggableAudioTrack({ trackKey, initialLeft, width, height, minX, maxX,
 // What an overlay looks like. Where it sits, how big it is and which way up it is
 // are CanvasOverlay's business - this only draws. Splitting the two is what lets
 // the same content be dragged, pinched and turned without the renderer knowing.
-function TextOverlayContent({ overlay, maxWidth }) {
+function TextOverlayContent({ overlay, maxWidth, playhead = 0 }) {
   // An auto-caption is drawn by the shared caption renderer from its style spec;
   // a manual text overlay has no style and keeps the plain path. The overlay's own
   // font, size and colour win over the style's, so editing a caption in the text
@@ -314,6 +314,15 @@ function TextOverlayContent({ overlay, maxWidth }) {
   // weight and slant on the system face rather than families of their own.
   const overlayFamily = fontFamilyFor(overlay.font);
 
+  // Which word the chip is on. -1 for every style that does not chip a word, and
+  // for a playhead outside the phrase - both of which render as plain text.
+  const activeWord = useMemo(
+    () => (renderStyle && captionHighlight(renderStyle)
+      ? activeWordIndex(overlay.words, playhead)
+      : -1),
+    [renderStyle, overlay.words, playhead]
+  );
+
   if (renderStyle) {
     return (
       <CaptionText
@@ -323,6 +332,7 @@ function TextOverlayContent({ overlay, maxWidth }) {
         color={overlay.captionColorOverride}
         align="center"
         maxWidth={maxWidth}
+        activeWord={activeWord}
       />
     );
   }
@@ -1594,6 +1604,7 @@ export default function EditVideoScreen({ navigation }) {
       const fill = captionFill(style, captionColor);
       const exportSpec = captionExportSpec(style, captionColor);
       const size = captionFontSize(style);
+      const highlight = captionHighlight(style);
       const newOverlays = chunks.map((group, idx) => {
         const words = group.map(w => w.word).join(' ');
         return {
@@ -1618,6 +1629,17 @@ export default function EditVideoScreen({ navigation }) {
           rotation: 0,
           startTime: startOffset + group[0].start,
           endTime: startOffset + group[group.length - 1].end,
+          // Per-word timings, kept only for the styles that chip the spoken word -
+          // every caption carrying a copy of its words would be paid for by every
+          // project, to be read by almost none of them. Offset like the phrase's own
+          // times, or the chip would lead the voice by the length of the intro.
+          words: highlight
+            ? group.map(w => ({
+              word: style.upper ? String(w.word).toUpperCase() : w.word,
+              start: startOffset + w.start,
+              end: startOffset + w.end,
+            }))
+            : undefined,
           isAutoCaption: true,
           captionStyleId: style.id,
           captionSpec: exportSpec,
@@ -1951,7 +1973,7 @@ export default function EditVideoScreen({ navigation }) {
               onTransform={applyOverlayTransform}
               onTap={openOverlayEditor}
             >
-              <TextOverlayContent overlay={t} maxWidth={PREVIEW_W * 0.8} />
+              <TextOverlayContent overlay={t} maxWidth={PREVIEW_W * 0.8} playhead={position} />
             </CanvasOverlay>
           ))}
         </View>

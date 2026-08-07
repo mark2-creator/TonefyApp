@@ -6,6 +6,7 @@ import CaptionText from './CaptionText';
 import { useAppFonts } from '../constants/fontLoader';
 import {
   CAPTION_STYLES, CAPTION_CATEGORIES, resolveCaptionStyle, captionChunkSize,
+  captionHighlight,
 } from '../constants/captionStyles';
 
 // A hundred and thirty styles will not fit in a grid inside the Auto Captions
@@ -22,6 +23,11 @@ const COLUMNS = 2;
 // case on purpose - a style with `upper` capitalises it and one without does not,
 // so the tile shows which of the two you are picking.
 const SAMPLE = 'Say this';
+// A style that chips the spoken word has nothing to show at rest, so the tile is
+// drawn mid-phrase - the second word of the sample, chipped as it would be on the
+// canvas. Every other style ignores this and draws plain.
+const SAMPLE_WORD = 1;
+const sampleWordFor = style => (captionHighlight(style) ? SAMPLE_WORD : -1);
 
 const ALL = 'All';
 
@@ -39,7 +45,7 @@ function StyleTile({ style, selected, ready, onPress }) {
             tile would preview in the system face and they would all look alike,
             so the sample is held back rather than shown wrong. */}
         {ready ? (
-          <CaptionText style={style} text={SAMPLE} size={15} numberOfLines={1} />
+          <CaptionText style={style} text={SAMPLE} size={15} numberOfLines={1} activeWord={sampleWordFor(style)} />
         ) : null}
       </View>
       <Text numberOfLines={1} style={[styles.tileName, selected && styles.tileNameSelected]}>
@@ -176,7 +182,7 @@ export default function CaptionStylePicker({ value, onChange, label = 'Caption S
         accessibilityLabel={`Caption style: ${selected.label}. Tap to change.`}
       >
         <View style={styles.triggerStage}>
-          {ready ? <CaptionText style={selected} text={SAMPLE} size={16} numberOfLines={1} /> : null}
+          {ready ? <CaptionText style={selected} text={SAMPLE} size={16} numberOfLines={1} activeWord={sampleWordFor(selected)} /> : null}
         </View>
         <View style={styles.triggerMeta}>
           <Text style={styles.triggerName} numberOfLines={1}>{selected.label}</Text>

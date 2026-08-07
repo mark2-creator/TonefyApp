@@ -24,6 +24,11 @@
 //   glow     { color, radius } soft halo, no offset
 //   shadow   { color, dx, dy, radius } offset drop shadow
 //   box      { color, radius, padX, padY } filled chip behind the text
+//   highlight { color, textColor, padX, padY } chip behind the word being spoken
+//            right now, rather than behind the whole phrase. Needs word timings,
+//            so it only does anything on an auto-caption; a manual overlay has no
+//            playhead to be at a word of and renders as if the field were absent.
+//            `textColor` recolours that one word so it stays legible on the chip.
 //   upper    render in capitals
 //   spacing  letter spacing, in points at the 18pt base size
 //   scale    multiplier on the base caption size
@@ -52,6 +57,19 @@ export const CAPTION_STYLES = [
   { id: 'streamer',   label: 'Streamer',    category: 'Trending', font: 'Kanit',           color: '#FFFFFF', stroke: { color: '#7C3AED', width: 2 }, glow: { color: '#7C3AED', radius: 8 }, upper: true, words: 1 },
   { id: 'podcast',    label: 'Podcast',     category: 'Trending', font: 'Inter',           color: '#F5F5F5', box: { color: '#0F0F0FD9', radius: 10, padX: 12, padY: 6 }, spacing: 0.3, words: 4 },
   { id: 'clickbait',  label: 'Clickbait',   category: 'Trending', font: 'Bangers',         color: '#FF2D6F', stroke: { color: '#FFFFFF', width: 2 }, shadow: { color: '#000000AA', dx: 2, dy: 3, radius: 2 }, upper: true, scale: 1.25, words: 1 },
+
+  // --------------------------------------------------------------- Highlight
+  // The chip follows the voice: the phrase stays on screen and the word being
+  // spoken is boxed. These carry a multi-word cadence on purpose - a one-word
+  // chunk has nothing to highlight against, so it would read as a plain chip.
+  { id: 'hl-yellow',  label: 'Highlight',   category: 'Highlight', font: 'Poppins',       color: '#FFFFFF', stroke: { color: '#000000', width: 1.5 }, highlight: { color: '#FFE24A', textColor: '#1A1400', padX: 6, padY: 2 }, upper: true, words: 3 },
+  { id: 'hl-green',   label: 'Karaoke',     category: 'Highlight', font: 'Montserrat',    color: '#FFFFFF', stroke: { color: '#000000', width: 1.5 }, highlight: { color: '#2ECC71', textColor: '#04240F', padX: 6, padY: 2 }, upper: true, words: 3 },
+  { id: 'hl-red',     label: 'Hot Word',    category: 'Highlight', font: 'Archivo Black', color: '#FFFFFF', stroke: { color: '#000000', width: 2 }, highlight: { color: '#DC2626', textColor: '#FFFFFF', padX: 6, padY: 2 }, upper: true, words: 3 },
+  { id: 'hl-blue',    label: 'Cobalt Beat', category: 'Highlight', font: 'Inter',         color: '#FFFFFF', stroke: { color: '#00000099', width: 1 }, highlight: { color: '#2563EB', textColor: '#FFFFFF', padX: 6, padY: 3 }, words: 4 },
+  { id: 'hl-purple',  label: 'Pulse',       category: 'Highlight', font: 'Kanit',         color: '#E9D5FF', stroke: { color: '#2E1065', width: 1.5 }, highlight: { color: '#7C3AED', textColor: '#FFFFFF', padX: 6, padY: 2 }, upper: true, words: 3 },
+  { id: 'hl-mono',    label: 'Reader',      category: 'Highlight', font: 'Figtree',       color: '#F5F5F5', box: { color: '#0B0B0BCC', radius: 8, padX: 10, padY: 5 }, highlight: { color: '#FFE24A', textColor: '#1A1400', padX: 5, padY: 2 }, words: 5 },
+  { id: 'hl-mint',    label: 'Fresh',       category: 'Highlight', font: 'Outfit',        color: '#FFFFFF', shadow: { color: '#000000AA', dx: 0, dy: 2, radius: 4 }, highlight: { color: '#A7F3D0', textColor: '#052E1B', padX: 6, padY: 2 }, words: 4 },
+  { id: 'hl-ink',     label: 'Inkwell',     category: 'Highlight', font: 'Barlow',        color: '#FFFFFF', stroke: { color: '#000000', width: 1.5 }, highlight: { color: '#0B0B0B', textColor: '#FFE24A', padX: 6, padY: 2 }, upper: true, words: 4 },
 
   // ------------------------------------------------------------- Bold Impact
   { id: 'slab',       label: 'Slab',        category: 'Bold', font: 'Alfa Slab One',   color: '#FFFFFF', stroke: { color: '#000000', width: 2 }, upper: true, scale: 1.1, words: 2 },
@@ -241,6 +259,25 @@ export function captionExportSpec(style, overrideColor) {
   if (style.glow) spec.glow = { color: style.glow.color, radius: style.glow.radius };
   if (style.shadow) spec.shadow = { ...style.shadow };
   if (style.box) spec.box = { ...style.box };
+  if (style.highlight) spec.highlight = { ...style.highlight };
   if (style.spacing) spec.spacing = style.spacing;
   return spec;
+}
+
+// Whether a style highlights the current word. Kept as a function rather than
+// read off `style.highlight` at each call site so that the one place that decides
+// "this needs word timings" is the same place the renderers ask.
+export function captionHighlight(style) {
+  return (style && style.highlight) || null;
+}
+
+// Which word of a phrase is being spoken at `t`. Returns -1 when the phrase has
+// no timings or the playhead is outside it, which every renderer reads as "chip
+// nothing" - a caption with no active word must still draw its text.
+export function activeWordIndex(words, t) {
+  if (!Array.isArray(words) || words.length === 0) return -1;
+  for (let i = 0; i < words.length; i++) {
+    if (t >= words[i].start && t <= words[i].end) return i;
+  }
+  return -1;
 }
