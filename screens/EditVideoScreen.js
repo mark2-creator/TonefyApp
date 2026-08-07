@@ -20,7 +20,7 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import { Image as ExpoImage } from 'expo-image';
-import { usePosterFrame } from '../utils/videoPoster';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { measureVideoDuration } from '../utils/videoDuration';
 import { fontFamilyFor } from '../constants/fonts';
 import {
@@ -408,27 +408,55 @@ function overlayExportSpec(overlay) {
   return { ...(overlay.captionSpec || null), box };
 }
 
-// A media overlay's picture on the canvas. A video shows a poster frame rather than
-// running a second decoder inside the preview: the canvas already drives one player,
-// and a throwaway second one has broken this app's audio session before (e1937cfe).
-// Positioning is what this view is for, and a still frame positions just as well.
-function MediaOverlayContent({ overlay }) {
-  const isVideo = overlay.type === 'video';
-  const poster = usePosterFrame(overlay.uri, isVideo);
+// A video overlay actually playing on the canvas - picture-in-picture, not a still
+// standing in for one. This is expo-video rather than the expo-av <Video> driving the
+// main canvas, and deliberately: expo-av's session manager is what cut the preview's
+// audio in e1937cfe, while expo-video takes an explicit audioMixingMode and can be
+// told to stay out of the way. useVideoPlayer also releases the player when this
+// unmounts, which createVideoPlayer would not.
+function MediaOverlayVideo({ uri, width, height, isPlaying }) {
+  const player = useVideoPlayer(uri, p => {
+    // Muted because the export cannot do otherwise: the server's overlay filter takes
+    // the video stream alone ([n:v]), so PiP audio is not in the burned-in result.
+    // A preview that played it would promise something the export does not deliver.
+    p.muted = true;
+    p.audioMixingMode = 'mixWithOthers';
+    // No timing controls yet, so the overlay spans the whole video. A PiP shorter
+    // than the piece would otherwise sit on its last frame for the remainder.
+    p.loop = true;
+  });
+
+  // Follows the preview's transport instead of running on its own clock. A PiP still
+  // playing while the timeline is paused reads as a bug.
+  useEffect(() => {
+    if (isPlaying) player.play(); else player.pause();
+  }, [isPlaying, player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width, height }}
+      contentFit="contain"
+      nativeControls={false}
+    />
+  );
+}
+
+// A media overlay on the canvas: a second video or photo sitting on top of the main
+// one, at whatever size and angle it has been put.
+function MediaOverlayContent({ overlay, isPlaying }) {
   const w = PREVIEW_W * OVERLAY_BASE_FRAC;
   // Its own proportions, not a guessed square. An asset that reported no size falls
   // back to square, which is wrong for the picture but right for the layout.
   const ratio = overlay.naturalW && overlay.naturalH ? overlay.naturalH / overlay.naturalW : 1;
   const h = w * ratio;
-  const source = isVideo ? poster : { uri: overlay.uri };
-  if (!source) {
-    return (
-      <View style={[styles.overlayPending, { width: w, height: h }]}>
-        <ActivityIndicator size="small" color="#555" />
-      </View>
-    );
+  if (overlay.type === 'video') {
+    return <MediaOverlayVideo uri={overlay.uri} width={w} height={h} isPlaying={isPlaying} />;
   }
-  return <ExpoImage source={source} style={{ width: w, height: h }} contentFit="contain" transition={0} />;
+  return (
+    <ExpoImage source={{ uri: overlay.uri }} style={{ width: w, height: h }}
+      contentFit="contain" transition={0} />
+  );
 }
 
 // Typing happens on the canvas, over the overlay as it is actually drawn, rather
@@ -2769,7 +2797,7 @@ export default function EditVideoScreen({ navigation }) {
               onTap={() => setSelectedOverlayKey(o.key)}
               onLongPress={() => confirmRemoveOverlay(o)}
             >
-              <MediaOverlayContent overlay={o} />
+              <MediaOverlayContent overlay={o} isPlaying={isPlaying} />
             </CanvasOverlay>
           ))}
 
@@ -3728,7 +3756,6 @@ const styles = StyleSheet.create({
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
-  overlayPending: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1a', borderRadius: 6 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
