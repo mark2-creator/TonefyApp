@@ -86,6 +86,43 @@ What remains true and still worth knowing:
 A GitHub PAT is exposed in plaintext in `~/xauusd_scalper/.git/config` remote URL
 (unrelated repo). Rotate when convenient.
 
+## Known bug pattern: gesture composition + config methods
+
+**Symptom:** grey screen / silent unmount on render, no error visible in normal
+usage — only shows up on-device, not in `expo export` build checks.
+
+**Root cause:** calling a `BaseGesture` config method (`.enabled()`, `.onStart()`,
+etc.) directly on a `Gesture.Race()` / `Gesture.Simultaneous()` composition. RNGH's
+`class Gesture {}` is empty — composed gestures (`ComposedGesture`) sit on
+`ComposedGesture → Gesture → Object`, which does NOT include `BaseGesture` where
+those methods actually live. The call throws `TypeError: ... is not a function`
+during render, which unmounts the tree.
+
+**Fix pattern:** apply config methods (`.enabled()`, etc.) to each individual leaf
+gesture before composing them, not to the composed result.
+
+**This is the third bug of this shape in the project** (after `useDragTracker`
+returning the `PanResponder` wrapper instead of `panHandlers`, and a deleted-
+component call site) — same signature: passes every static check
+(bundling, `node --check`, lint) and only a real device catches it.
+
+**Guard added:** `scripts/check-gesture-composition.py` — reads
+`ComposedGesture`/`BaseGesture` method lists from the installed
+`react-native-gesture-handler` and flags any of its config methods chained onto a
+composition. Tracks library upgrades instead of going stale on a hardcoded list.
+Run this after any gesture-handler changes, and consider running it in CI/pre-commit
+if that gets set up.
+
+**Fixed in:** commit `75198f47` (gesture fix; the guard script landed in `05e26d3b`) + `05e26d3b` (separate, unrelated
+correctness fix: `openOverlayEditor` was calling `setInlineEditKey` from inside a
+`setSelectedOverlayKey` updater — updaters must be pure; harmless today since the
+replayed call sets the same key, but flagged as a landmine for a future React
+upgrade).
+
+**Newly-testable surface:** tap-to-select → tap-again-to-type and the long-press
+style sheet on text overlays were unreachable before this fix (crashed on mount).
+Confirmed working on-device as of this fix.
+
 ## Design/brand note
 
 Project is mid-rebrand from teal `#00d4d4` to green `#2ECC71`. Incomplete — only new
@@ -227,18 +264,11 @@ Highlight is the one deliberate exception: the app pads the spoken word with thi
 (`\u2009`) where the export draws a real chip with `hlPadX`/`hlPadY` geometry, because
 React Native ignores padding on a nested `Text`. Close approximation, not the same maths.
 
-**`.enabled()` goes on a leaf gesture, never on a composition.** `Gesture.Race`,
-`Gesture.Simultaneous` and `Gesture.Exclusive` return a `ComposedGesture`, whose
-prototype chain is `ComposedGesture -> Gesture -> Object`. The configuration methods —
-`enabled`, `minDistance`, `maxDuration`, 25 of them — are defined on `BaseGesture`,
-which is **not** on that chain. Calling one on a composition throws
-`enabled is not a function` while rendering, which takes the screen grey.
-
-This shipped in `dd1c0a81` and grey-screened Add Text (`75198f47`). Every overlay
-rendered through that line, so the Add button was only the first thing to mount one.
-`scripts/check-gesture-composition.py` reads the two class bodies out of the installed
-library and flags a banned method chained onto a composition, so it tracks a
-gesture-handler upgrade rather than going stale. Verified by running it against the
+**`.enabled()` goes on a leaf gesture, never on a composition.** Full account in
+"Known bug pattern: gesture composition + config methods" above. It shipped in
+`dd1c0a81` and grey-screened Add Text (`75198f47`); every overlay rendered through
+that line, so the Add button was only the first thing to mount one. The
+`scripts/check-gesture-composition.py` guard was verified by running it against the
 broken file, not only the fixed one.
 
 **`npx expo export` is necessary but not sufficient.** Metro bundles a reference to a
