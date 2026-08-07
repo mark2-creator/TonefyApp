@@ -410,8 +410,20 @@ nothing to aim at.
 1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
    straight to `preview` is approved (single user, nothing to protect). Test there.
 2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
-   update group `3f80b004-a225-4e48-b610-a186ddeda402` (commit `25b02b2d`, runtime
-   1.1.0, per-row floating add buttons) on Aug 7 2026, superseding
+   update group `6ae72ff8-619c-40b0-90ba-beb34d4b62c0` (commit `e8683619`, runtime
+   1.1.0, filmstrip trim sheet + trim/replace correctness + PostRecording colours)
+   on Aug 7 2026.
+
+   **A commit is not a publish.** Four changes landed on `main` before this update
+   went out, and a device test of them reported the *old* screen back - correctly,
+   because the phone was still running `25b02b2d` from nineteen commits earlier.
+   `eas update --branch preview` is the step that makes work testable; running it is
+   part of finishing a change, not a separate errand. Cheap way to tell which bundle
+   a phone is on: pick any colour that moved recently. The modal Apply button was
+   `#00d4d4` at `25b02b2d` and is `#2ECC71` now, so a teal Apply dates the build
+   without any guessing.
+
+   Superseding
    `b9008c6b-6dae-43a6-aa81-9becc1e0fc73` (commit `310644df`, a header add bar —
    reverted, the buttons belong on their own rows),
    `d884a9b4-b92d-43ba-ba69-050f3c648ebc` (commit `24c2ec84`, the per-frame fallback
