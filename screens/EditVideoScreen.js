@@ -45,6 +45,14 @@ const PREVIEW_H = PREVIEW_W * (16/9);
 // accurate ruler, which is the better trade against a clip too small to touch.
 const CLIP_MIN_W = 16;
 const CLIP_H = 56;
+// The grab area on each edge of a selected clip. Wide enough to hit with a thumb
+// without the two handles meeting in the middle of a short clip.
+const TRIM_HANDLE_W = 16;
+// Nothing may be trimmed shorter than this. A zero-length clip is not a thing the
+// export or the playhead can make sense of.
+const MIN_CLIP_DUR = 0.3;
+// A still has no footage to run out of, so its right handle needs a stop of its own.
+const IMAGE_MAX_DUR = 30;
 
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
@@ -539,60 +547,183 @@ const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, lea
   );
 });
 
-const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd }) {
+// One clip on the timeline, and the edges you trim it by.
+//
+// Trimming happens on the clip itself rather than through the sliders in the trim
+// modal, because a trim is a judgement about a frame: you drag until you can see the
+// frame you want to start on. The modal is still there on long press for setting an
+// exact number.
+//
+// The drag is local and animated. Only two numbers move - how wide the clip's window
+// is, and how far the strip is slid inside it - and the edit is committed once, on
+// release. Writing to `items` on every frame instead would re-lay-out every later clip
+// and every aux row sixty times a second for a gesture that has one outcome.
+function TimelineClip({
+  item, idx, isLast, width, length, selected,
+  onPressClip, onLongPressClip, onPressRemove, onPressTransition, onTrimEnd,
+}) {
+  const trimStart = item.trimStart ?? 0;
+  const baseOffset = -trimStart * PIXELS_PER_SECOND;
+  const leftDx = useRef(new Animated.Value(0)).current;
+  const rightDx = useRef(new Animated.Value(0)).current;
+
+  // Dragging the left edge takes width off the front, so it both narrows the window
+  // and slides the strip the same amount - which is what keeps the frames under the
+  // cursor still while the clip's start moves through them. The right edge only
+  // changes the width.
+  const animWidth = useMemo(
+    () => Animated.add(width, Animated.subtract(rightDx, leftDx)),
+    [width, leftDx, rightDx]
+  );
+  const animOffset = useMemo(
+    () => Animated.subtract(baseOffset, leftDx),
+    [baseOffset, leftDx]
+  );
+
+  // The responders below are built once, so they would otherwise clamp against the
+  // geometry of the first render - and a clip's length changes with every trim.
+  const srcDur = item.sourceDuration ?? item.trimEnd ?? 0;
+  const geomRef = useRef(null);
+  geomRef.current = {
+    length,
+    trimStart,
+    // How much unused footage lies past the clip's end - how far right the right edge
+    // may still be pulled. A clip whose duration the picker never reported has
+    // trimEnd standing in for the source length, which makes this zero: better to
+    // refuse to extend than to open a window onto footage that may not be there.
+    headroom: item.type === 'image'
+      ? IMAGE_MAX_DUR - length
+      : srcDur - (item.trimEnd ?? srcDur),
+  };
+  // Kept out of geomRef, which is rebuilt on every render: a re-render landing mid-drag
+  // would take the gesture's own progress with it and commit a trim of zero.
+  const dragDxRef = useRef(0);
+
+  const makeTrimResponder = (side, dxValue) => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (e, g) => Math.abs(g.dx) > 2,
+    // The clip row lives in a horizontal ScrollView, which will otherwise ask for the
+    // touch back the moment the finger moves sideways - which is every trim.
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: () => { dragDxRef.current = 0; dxValue.setValue(0); },
+    onPanResponderMove: (e, g) => {
+      const { length: len, trimStart: start, headroom } = geomRef.current;
+      // Clamped here rather than at the commit so the edge stops where the footage
+      // does. Letting it run past and correcting on release drags a handle out to
+      // somewhere the clip cannot go, then snaps it back.
+      const dx = side === 'left'
+        // Back to the head of the source at most, forward to the minimum length.
+        ? Math.max(-start * PIXELS_PER_SECOND, Math.min((len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, g.dx))
+        // Out to whatever footage is left, in to the minimum length.
+        : Math.max(-(len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, Math.min(headroom * PIXELS_PER_SECOND, g.dx));
+      dxValue.setValue(dx);
+      dragDxRef.current = dx;
+    },
+    onPanResponderRelease: () => {
+      const dx = dragDxRef.current;
+      dragDxRef.current = 0;
+      dxValue.setValue(0);
+      if (dx !== 0) onTrimEnd(item.key, side, dx);
+    },
+    onPanResponderTerminate: () => {
+      dragDxRef.current = 0;
+      dxValue.setValue(0);
+    },
+  });
+
+  const leftTrim = useRef(makeTrimResponder('left', leftDx)).current;
+  const rightTrim = useRef(makeTrimResponder('right', rightDx)).current;
+
+  return (
+    <View style={styles.clipSlot}>
+      <TouchableOpacity
+        onPress={() => onPressClip(item.key)}
+        onLongPress={() => onLongPressClip(item)}
+        activeOpacity={0.85}>
+        <Animated.View style={[styles.clipFrame, { width: animWidth }, selected && styles.clipFrameSelected]}>
+          <FilmStrip
+            uri={item.uri}
+            type={item.type}
+            // A still is its own source and can be held for as long as the right
+            // handle allows, so its strip is laid out over that whole span.
+            sourceDuration={item.type === 'image'
+              ? IMAGE_MAX_DUR
+              : (item.sourceDuration ?? item.trimEnd ?? item.duration)}
+            width={animWidth}
+            height={CLIP_H}
+            offset={animOffset}
+            pixelsPerSecond={PIXELS_PER_SECOND}
+          />
+          {idx === 0 && (
+            <View style={styles.coverBadge}>
+              <MaterialIcons name="edit" size={9} color="#fff" />
+              <Text style={styles.coverText}>Cover</Text>
+            </View>
+          )}
+          {item.muted && (
+            <View style={styles.mutedBadge}>
+              <MaterialIcons name="volume-off" size={10} color="#fff" />
+            </View>
+          )}
+          {item.speed && item.speed !== 1 && (
+            <View style={styles.speedBadge}>
+              <Text style={styles.speedBadgeText}>{item.speed}x</Text>
+            </View>
+          )}
+          <View style={styles.clipBottom}>
+            <Text style={styles.clipDuration}>
+              {length.toFixed(1)}s
+            </Text>
+          </View>
+          {selected && (
+            <TouchableOpacity style={styles.clipRemove} onPress={() => onPressRemove(item.key)}>
+              <MaterialIcons name="close" size={11} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+      {/* Outside the press target rather than inside it: a PanResponder nested in a
+          TouchableOpacity has to win the touch back from it on every grab, and losing
+          that race once means a trim that selects the clip instead of trimming it. */}
+      {selected && (
+        <React.Fragment>
+          <View {...leftTrim.panHandlers} style={[styles.trimHandle, { left: 0 }]}>
+            <View style={styles.trimGrip} />
+          </View>
+          <View {...rightTrim.panHandlers} style={[styles.trimHandle, { right: 0 }]}>
+            <View style={styles.trimGrip} />
+          </View>
+        </React.Fragment>
+      )}
+      {/* The transition marker sits where the right handle goes, so it stands down
+          while the clip is selected. Deselect to reach it. */}
+      {!isLast && !selected && (
+        <TouchableOpacity onPress={() => onPressTransition(item.key)} style={styles.transitionBtn}>
+          <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd, onTrimEnd }) {
   return (
     <React.Fragment>
       {clipsComputed.map(({ item, idx, isLast, width, length }) => (
-        <View key={item.key} style={styles.clipSlot}>
-          <TouchableOpacity
-            onPress={() => onPressClip(item.key)}
-            onLongPress={() => onLongPressClip(item)}
-            activeOpacity={0.85}>
-            <View style={[styles.clipFrame, { width }, item.key === selectedKey && styles.clipFrameSelected]}>
-              <FilmStrip
-                uri={item.uri}
-                type={item.type}
-                sourceDuration={item.sourceDuration ?? item.trimEnd ?? item.duration}
-                trimStart={item.trimStart ?? 0}
-                trimEnd={item.trimEnd}
-                width={width}
-                height={CLIP_H}
-                pixelsPerSecond={PIXELS_PER_SECOND}
-              />
-              {idx === 0 && (
-                <View style={styles.coverBadge}>
-                  <MaterialIcons name="edit" size={9} color="#fff" />
-                  <Text style={styles.coverText}>Cover</Text>
-                </View>
-              )}
-              {item.muted && (
-                <View style={styles.mutedBadge}>
-                  <MaterialIcons name="volume-off" size={10} color="#fff" />
-                </View>
-              )}
-              {item.speed && item.speed !== 1 && (
-                <View style={styles.speedBadge}>
-                  <Text style={styles.speedBadgeText}>{item.speed}x</Text>
-                </View>
-              )}
-              <View style={styles.clipBottom}>
-                <Text style={styles.clipDuration}>
-                  {length.toFixed(1)}s
-                </Text>
-              </View>
-              {item.key === selectedKey && (
-                <TouchableOpacity style={styles.clipRemove} onPress={() => onPressRemove(item.key)}>
-                  <MaterialIcons name="close" size={11} color="#fff" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </TouchableOpacity>
-          {!isLast && (
-            <TouchableOpacity onPress={() => onPressTransition(item.key)} style={styles.transitionBtn}>
-              <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <TimelineClip
+          key={item.key}
+          item={item}
+          idx={idx}
+          isLast={isLast}
+          width={width}
+          length={length}
+          selected={item.key === selectedKey}
+          onPressClip={onPressClip}
+          onLongPressClip={onLongPressClip}
+          onPressRemove={onPressRemove}
+          onPressTransition={onPressTransition}
+          onTrimEnd={onTrimEnd}
+        />
       ))}
       <TouchableOpacity style={styles.addClipBtn} onPress={onPressAdd}>
         <MaterialIcons name="add" size={22} color="#888" />
@@ -1626,6 +1757,31 @@ export default function EditVideoScreen({ navigation }) {
     }
   }
 
+  // Commit of a clip's edge drag. The handle has already clamped the pixels it hands
+  // over against the footage that exists, so this only has to convert and store - but
+  // it clamps again, because the two ends of a gesture are far enough apart in time
+  // that the clip may have been trimmed from the modal in between.
+  const applyClipTrimEdit = useCallback((key, side, dx) => {
+    const deltaSec = dx / PIXELS_PER_SECOND;
+    setItems(prev => prev.map(i => {
+      if (i.key !== key) return i;
+      // A still has no footage to seek into, so neither edge is a trim: both just
+      // change how long it is on the timeline.
+      if (i.type === 'image') {
+        const cur = i.duration || 3;
+        const next = cur + (side === 'left' ? -deltaSec : deltaSec);
+        return { ...i, duration: Math.max(MIN_CLIP_DUR, Math.min(IMAGE_MAX_DUR, next)) };
+      }
+      const srcDur = i.sourceDuration ?? i.trimEnd ?? 0;
+      const curStart = i.trimStart ?? 0;
+      const curEnd = i.trimEnd ?? srcDur;
+      if (side === 'left') {
+        return { ...i, trimStart: Math.max(0, Math.min(curStart + deltaSec, curEnd - MIN_CLIP_DUR)) };
+      }
+      return { ...i, trimEnd: Math.min(srcDur, Math.max(curEnd + deltaSec, curStart + MIN_CLIP_DUR)) };
+    }));
+  }, []);
+
   const applyAudioTrimEdit = useCallback((trackKey, side, dx) => {
     const deltaSec = dx / PIXELS_PER_SECOND;
     const MIN_DUR = 0.3;
@@ -2239,7 +2395,7 @@ export default function EditVideoScreen({ navigation }) {
               }}>
             <View>
             <View style={[styles.clipsScroll, { paddingLeft: rowLeadW }]}>
-              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} />
+              <ClipsRow clipsComputed={clipsComputed} selectedKey={selectedKey} onPressClip={onPressClip} onLongPressClip={openTrim} onPressRemove={removeItem} onPressTransition={onPressClipTransition} onPressAdd={pickMedia} onTrimEnd={applyClipTrimEdit} />
             </View>
 
             {/* Voiceover row */}
@@ -2883,7 +3039,11 @@ const styles = StyleSheet.create({
   speedBadgeText: { color: '#00d4d4', fontSize: 8, fontWeight: '700' },
   clipBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 3, paddingVertical: 1 },
   clipDuration: { color: '#fff', fontSize: 8, fontWeight: '700' },
-  clipRemove: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  // Inset past the right trim handle, which appears under exactly the same condition
+  // this button does and would otherwise be sitting on top of it.
+  clipRemove: { position: 'absolute', top: 3, right: TRIM_HANDLE_W + 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  trimHandle: { position: 'absolute', top: 0, width: TRIM_HANDLE_W, height: CLIP_H, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00d4d4' },
+  trimGrip: { width: 3, height: CLIP_H * 0.4, borderRadius: 2, backgroundColor: '#04211f' },
   // Inside the clip's own right edge rather than straddling the boundary: a marker
   // centred on the join would be overdrawn by the next clip, which is painted after it.
   transitionBtn: { position: 'absolute', right: 3, top: (CLIP_H - 22) / 2, width: 22, height: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1ae6', borderRadius: 11, borderWidth: 1, borderColor: '#333' },

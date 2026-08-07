@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { createVideoPlayer } from 'expo-video';
 
@@ -85,11 +85,14 @@ function loadStrip(uri, count, interval) {
 /**
  * The frames under one clip.
  *
- * `width`/`height` are the clip's box on the timeline; `trimStart`/`trimEnd` are
- * absolute offsets into the source, the same convention the rest of the screen uses.
+ * `width` is the clip's box and `offset` is how far the strip is slid left inside it,
+ * which is -trimStart * pixelsPerSecond. Both may be Animated values: a trim handle
+ * drags by changing exactly these two numbers, and taking them as inputs rather than
+ * deriving them from trimStart is what lets it do so at frame rate without this
+ * component knowing a drag is in progress.
  */
 export default function FilmStrip({
-  uri, type, sourceDuration, trimStart, trimEnd, width, height, pixelsPerSecond,
+  uri, type, sourceDuration, width, height, offset = 0, pixelsPerSecond,
 }) {
   const isVideo = type !== 'image';
   const { count, interval } = useMemo(
@@ -107,35 +110,40 @@ export default function FilmStrip({
     return () => { alive = false; };
   }, [isVideo, uri, count, interval]);
 
-  // A still image has no frames to find, so the strip is that image repeated. One
-  // copy stretched across the clip would smear a photo over the whole timeline.
   if (!isVideo) {
+    // A still image has no frames to find, so the strip is that image repeated, laid
+    // out over the same span a video's tiles would cover so that a trim windows it the
+    // same way. One copy stretched across the clip would smear a photo over the whole
+    // timeline.
     const tileW = Math.max(1, height * 0.75);
-    const repeats = Math.max(1, Math.ceil(width / tileW));
+    // Laid out over the longest the still can be, not over the clip's current width -
+    // `width` is an Animated node mid-drag and has no number to read here, and the
+    // tiles have to already exist to be revealed as the right edge is pulled out.
+    const span = Math.max(sourceDuration || 0, 0) * pixelsPerSecond;
+    const repeats = Math.max(1, Math.ceil(span / tileW));
     return (
-      <View style={[styles.window, { width, height }]}>
-        <View style={styles.row}>
+      <Animated.View style={[styles.window, { width, height }]}>
+        <Animated.View style={[styles.row, { left: offset }]}>
           {Array.from({ length: repeats }, (_, i) => (
             <Image key={i} source={{ uri }} style={{ width: tileW, height }} contentFit="cover" />
           ))}
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     );
   }
 
   if (!tiles || !tiles.length) {
-    return <View style={[styles.window, styles.pending, { width, height }]} />;
+    return <Animated.View style={[styles.window, styles.pending, { width, height }]} />;
   }
 
   const tileW = interval * pixelsPerSecond;
-  // The whole source is laid out and the clip's box shows the part of it the clip
-  // covers. Sliding the strip by trimStart is what makes a trim handle free: the
-  // tiles never change, only how much of them is visible.
-  const offset = -(trimStart || 0) * pixelsPerSecond;
 
+  // The whole source is laid out and the clip's box shows the part of it the clip
+  // covers. Sliding the strip is what makes a trim handle cheap: the tiles never
+  // change, only how much of them is visible.
   return (
-    <View style={[styles.window, { width, height }]}>
-      <View style={[styles.row, { left: offset }]}>
+    <Animated.View style={[styles.window, { width, height }]}>
+      <Animated.View style={[styles.row, { left: offset }]}>
         {tiles.map((tile, i) => (
           <Image
             key={i}
@@ -147,8 +155,8 @@ export default function FilmStrip({
             transition={0}
           />
         ))}
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
