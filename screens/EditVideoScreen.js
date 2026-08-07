@@ -17,6 +17,7 @@ import FontPicker from '../components/FontPicker';
 import CaptionStylePicker from '../components/CaptionStylePicker';
 import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
+import FilmStrip from '../components/FilmStrip';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
@@ -39,7 +40,10 @@ const SCRUBBER_LINE_W = 2;
 const SCRUBBER_GAP = 4;
 const PREVIEW_W = SW * 0.5;
 const PREVIEW_H = PREVIEW_W * (16/9);
-const CLIP_W = 72;
+// A clip is as wide as the time it covers - see clipsComputed. CLIP_MIN_W only
+// keeps a very short clip selectable; below about 0.4s the strip stops being an
+// accurate ruler, which is the better trade against a clip too small to touch.
+const CLIP_MIN_W = 16;
 const CLIP_H = 56;
 
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
@@ -538,14 +542,23 @@ const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, lea
 const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPressClip, onLongPressClip, onPressRemove, onPressTransition, onPressAdd }) {
   return (
     <React.Fragment>
-      {clipsComputed.map(({ item, idx, isLast }) => (
-        <View key={item.key} style={{ flexDirection:'row', alignItems:'center' }}>
+      {clipsComputed.map(({ item, idx, isLast, width, length }) => (
+        <View key={item.key} style={styles.clipSlot}>
           <TouchableOpacity
             onPress={() => onPressClip(item.key)}
             onLongPress={() => onLongPressClip(item)}
             activeOpacity={0.85}>
-            <View style={[styles.clipFrame, item.key === selectedKey && styles.clipFrameSelected]}>
-              <Image source={{ uri: item.uri }} style={styles.clipFrameImg} resizeMode="cover" />
+            <View style={[styles.clipFrame, { width }, item.key === selectedKey && styles.clipFrameSelected]}>
+              <FilmStrip
+                uri={item.uri}
+                type={item.type}
+                sourceDuration={item.sourceDuration ?? item.trimEnd ?? item.duration}
+                trimStart={item.trimStart ?? 0}
+                trimEnd={item.trimEnd}
+                width={width}
+                height={CLIP_H}
+                pixelsPerSecond={PIXELS_PER_SECOND}
+              />
               {idx === 0 && (
                 <View style={styles.coverBadge}>
                   <MaterialIcons name="edit" size={9} color="#fff" />
@@ -564,7 +577,7 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
               )}
               <View style={styles.clipBottom}>
                 <Text style={styles.clipDuration}>
-                  {item.type === 'image' ? item.duration + 's' : (item.trimEnd ? item.trimEnd.toFixed(1) + 's' : 'Full')}
+                  {length.toFixed(1)}s
                 </Text>
               </View>
               {item.key === selectedKey && (
@@ -575,10 +588,7 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
             </View>
           </TouchableOpacity>
           {!isLast && (
-            <TouchableOpacity
-              onPress={() => onPressTransition(item.key)}
-              style={{ width:24, alignSelf:'center', alignItems:'center', justifyContent:'center',
-                backgroundColor:'#1a1a1a', borderRadius:12, height:24, borderWidth:1, borderColor:'#333', marginHorizontal:2 }}>
+            <TouchableOpacity onPress={() => onPressTransition(item.key)} style={styles.transitionBtn}>
               <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#555', fontSize:14, fontWeight:'bold' }}>+</Text>
             </TouchableOpacity>
           )}
@@ -761,8 +771,23 @@ export default function EditVideoScreen({ navigation }) {
   // clip duration, with a floor so short/empty timelines still give tracks
   // room to be dragged around rather than being pinned to a near-zero width.
   const timelineContentWidth = Math.max(duration * PIXELS_PER_SECOND, 300);
+  // A clip is drawn as wide as the time it covers, at the same pixels-per-second the
+  // scroll offset is read back through - so the frame under the playhead really is the
+  // frame being played, and a clip boundary lines up with the audio, text and caption
+  // rows, which have always been positioned by time. Nothing else in this row may take
+  // horizontal space: a fixed-size chip, a margin or an inline transition button all
+  // push every later clip out of time by their own width, and the error accumulates.
   const clipsComputed = useMemo(() => {
-    return items.map((item, idx) => ({ item, idx, isLast: idx === items.length - 1 }));
+    return items.map((item, idx) => {
+      const length = clipLength(item);
+      return {
+        item,
+        idx,
+        isLast: idx === items.length - 1,
+        length,
+        width: Math.max(CLIP_MIN_W, length * PIXELS_PER_SECOND),
+      };
+    });
   }, [items]);
   const onPressClip = useCallback((key) => {
     setSelectedKey(prevKey => prevKey === key ? null : key);
@@ -2848,9 +2873,9 @@ const styles = StyleSheet.create({
   clipsWrapper: { flex: 1, position: 'relative' },
   scrubberLine: { position: 'absolute', top: 0, bottom: 0, width: SCRUBBER_LINE_W, backgroundColor: '#fff', zIndex: 10, opacity: 0.9 },
   clipsScroll: { flexDirection: 'row', paddingRight: 40, alignItems: 'center', paddingVertical: 6 },
-  clipFrame: { width: CLIP_W, height: CLIP_H, borderRadius: 3, overflow: 'hidden', marginRight: 2, borderWidth: 1, borderColor: '#333', position: 'relative' },
+  clipSlot: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
+  clipFrame: { height: CLIP_H, borderRadius: 3, overflow: 'hidden', borderWidth: 1, borderColor: '#333', position: 'relative' },
   clipFrameSelected: { borderColor: '#00d4d4', borderWidth: 2 },
-  clipFrameImg: { width: '100%', height: '100%' },
   coverBadge: { position: 'absolute', top: 3, left: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 3, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 3, paddingVertical: 1 },
   coverText: { color: '#fff', fontSize: 8, fontWeight: '700' },
   mutedBadge: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, padding: 2 },
@@ -2859,6 +2884,9 @@ const styles = StyleSheet.create({
   clipBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 3, paddingVertical: 1 },
   clipDuration: { color: '#fff', fontSize: 8, fontWeight: '700' },
   clipRemove: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  // Inside the clip's own right edge rather than straddling the boundary: a marker
+  // centred on the join would be overdrawn by the next clip, which is painted after it.
+  transitionBtn: { position: 'absolute', right: 3, top: (CLIP_H - 22) / 2, width: 22, height: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1ae6', borderRadius: 11, borderWidth: 1, borderColor: '#333' },
   addClipBtn: { width: 40, height: CLIP_H, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111', marginLeft: 2 },
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
