@@ -1041,6 +1041,8 @@ export default function EditVideoScreen({ navigation }) {
   const [masterVolume, setMasterVolume] = useState(1);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
   const [showClipVolumeModal, setShowClipVolumeModal] = useState(false);
+  const [fadeSheetKey, setFadeSheetKey] = useState(null);
+  const [slipSheetKey, setSlipSheetKey] = useState(null);
   const [audioSheetKey, setAudioSheetKey] = useState(null);
   const [audioLoadStatus, setAudioLoadStatus] = useState({});   // key -> loading | ready | failed
 
@@ -1477,15 +1479,47 @@ export default function EditVideoScreen({ navigation }) {
     return () => clearInterval(id);
   }, [isPlaying, syncPreviewAudio, pausePreviewAudio]);
 
+  // The gain a track's fades imply at a given moment. Returns 1 outside them, so a
+  // track with no fade set is untouched by this.
+  const fadeGainAt = useCallback((t, timelineSec) => {
+    const len = trackLength(t);
+    if (!len) return 1;
+    const start = t.startOffset ?? 0;
+    const into = timelineSec - start;
+    if (into < 0 || into > len) return 1;
+    const fin = Math.max(0, Math.min(Number(t.fadeIn) || 0, len));
+    const fout = Math.max(0, Math.min(Number(t.fadeOut) || 0, len));
+    let g = 1;
+    if (fin > 0 && into < fin) g = Math.min(g, into / fin);
+    if (fout > 0 && into > len - fout) g = Math.min(g, (len - into) / fout);
+    return Math.max(0, Math.min(1, g));
+  }, [trackLength]);
+
   // Live volume: master scales every track, so the slider is audible while the
-  // preview is running instead of only mattering at export.
+  // preview is running instead of only mattering at export. The fade rides on top of
+  // it for the same reason - a fade you can only hear after exporting is a fade you
+  // have to guess at, and this runs on every position tick anyway.
   useEffect(() => {
     audioTracks.forEach(t => {
       const entry = audioSoundsRef.current.get(t.key);
-      const vol = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolume));
+      const vol = Math.max(0, Math.min(1, (t.volume ?? 1) * masterVolume * fadeGainAt(t, position)));
       entry?.sound?.setVolumeAsync(vol).catch(() => {});
     });
-  }, [audioTracks, masterVolume]);
+  }, [audioTracks, masterVolume, position, fadeGainAt]);
+
+  // How long a track occupies the timeline. trimEnd may be unset on a track whose
+  // duration never landed, in which case there is no length to fade against and the
+  // fade sheet says so rather than offering a slider with nothing behind it.
+  const trackLength = useCallback((t) => {
+    if (!t) return 0;
+    const end = t.trimEnd ?? t.sourceDuration ?? null;
+    if (end == null) return 0;
+    return Math.max(0, end - (t.trimStart ?? 0));
+  }, []);
+
+  const setTrackField = useCallback((key, patch) => {
+    setAudioTracks(prev => prev.map(t => (t.key === key ? { ...t, ...patch } : t)));
+  }, []);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
@@ -1872,6 +1906,10 @@ export default function EditVideoScreen({ navigation }) {
       // the timeline preview plays back.
       const audioPlacement = (track) => ({
         volume: (track.volume ?? 1) * masterVolume,
+        // Fades are seconds at each end of the trimmed region, applied before the
+        // track is delayed into place so they refer to the audio and not the timeline.
+        fadeIn: Math.max(0, Number(track.fadeIn) || 0),
+        fadeOut: Math.max(0, Number(track.fadeOut) || 0),
         isVoiceover: !!track.isVoiceover,
         startOffset: track.startOffset ?? 0,
         trimStart: track.trimStart ?? 0,
@@ -2773,7 +2811,12 @@ export default function EditVideoScreen({ navigation }) {
     split: splitAudioAtPlayhead,
     volume: () => setAudioSheetKey(selectedAudioTrackKey),
     captions: openCaptionModal,
+    fade: () => setFadeSheetKey(selectedAudioTrackKey),
+    slip: () => setSlipSheetKey(selectedAudioTrackKey),
   };
+
+  const fadeSheetTrack = audioTracks.find(t => t.key === fadeSheetKey) || null;
+  const slipSheetTrack = audioTracks.find(t => t.key === slipSheetKey) || null;
 
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
@@ -3342,6 +3385,108 @@ export default function EditVideoScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* FADE - seconds of ramp at each end of a track. Fade was in the audio toolbar
+          from the start and had no action behind it, so it fell through to the
+          "coming soon" alert like the tools that are genuinely unbuilt. */}
+      <Modal visible={!!fadeSheetTrack} transparent animationType="slide"
+        onRequestClose={() => setFadeSheetKey(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Fade" onClose={() => setFadeSheetKey(null)} />
+            {fadeSheetTrack && (trackLength(fadeSheetTrack) > 0 ? (() => {
+              const len = trackLength(fadeSheetTrack);
+              // Half the track each, or the two ramps meet and the middle never
+              // reaches full level - a fade that quietly becomes a volume cut.
+              const maxFade = Math.max(0.1, Math.min(5, len / 2));
+              const fin = Math.min(Number(fadeSheetTrack.fadeIn) || 0, maxFade);
+              const fout = Math.min(Number(fadeSheetTrack.fadeOut) || 0, maxFade);
+              return (
+                <>
+                  <Text numberOfLines={1} style={styles.audioSheetName}>{fadeSheetTrack.name}</Text>
+                  <View style={styles.clipVolRow}>
+                    <Text style={styles.clipVolLabel}>Fade in</Text>
+                    <Text style={styles.clipVolValue}>{fin.toFixed(1)}s</Text>
+                  </View>
+                  <Slider style={styles.modalSlider} minimumValue={0} maximumValue={maxFade}
+                    value={fin} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
+                    thumbTintColor="#00d4d4"
+                    onValueChange={v => setTrackField(fadeSheetTrack.key, { fadeIn: v })} />
+                  <View style={styles.clipVolRow}>
+                    <Text style={styles.clipVolLabel}>Fade out</Text>
+                    <Text style={styles.clipVolValue}>{fout.toFixed(1)}s</Text>
+                  </View>
+                  <Slider style={styles.modalSlider} minimumValue={0} maximumValue={maxFade}
+                    value={fout} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
+                    thumbTintColor="#00d4d4"
+                    onValueChange={v => setTrackField(fadeSheetTrack.key, { fadeOut: v })} />
+                  <Text style={styles.clipVolNote}>
+                    Play the timeline across this track to hear it.
+                  </Text>
+                </>
+              );
+            })() : (
+              <Text style={styles.clipVolNote}>
+                This track's length has not been measured yet, so there is nothing to
+                fade against. Give it a moment and reopen.
+              </Text>
+            ))}
+            <TouchableOpacity style={styles.modalBtnApplyBlock} onPress={() => setFadeSheetKey(null)}>
+              <Text style={styles.modalBtnApplyText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SLIP - move the source window inside the track without moving the track. The
+          block stays exactly where it sits on the timeline and different audio plays
+          through it, which is what makes it a distinct tool from trim or drag. */}
+      <Modal visible={!!slipSheetTrack} transparent animationType="slide"
+        onRequestClose={() => setSlipSheetKey(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, sheetInset]}>
+            <SheetHeader title="Slip" onClose={() => setSlipSheetKey(null)} />
+            {slipSheetTrack && (() => {
+              const len = trackLength(slipSheetTrack);
+              const src = Number(slipSheetTrack.sourceDuration) || 0;
+              const room = src - len;
+              if (!len || room <= 0.05) {
+                return (
+                  <Text style={styles.clipVolNote}>
+                    There is no spare footage in this track to slip - it already uses
+                    the whole file. Trim an end first to make room.
+                  </Text>
+                );
+              }
+              const at = Math.max(0, Math.min(slipSheetTrack.trimStart ?? 0, room));
+              return (
+                <>
+                  <Text numberOfLines={1} style={styles.audioSheetName}>{slipSheetTrack.name}</Text>
+                  <View style={styles.clipVolRow}>
+                    <Text style={styles.clipVolLabel}>Starts at</Text>
+                    <Text style={styles.clipVolValue}>{at.toFixed(1)}s of {src.toFixed(1)}s</Text>
+                  </View>
+                  <Slider style={styles.modalSlider} minimumValue={0} maximumValue={room}
+                    value={at} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
+                    thumbTintColor="#00d4d4"
+                    // Both ends move together by design: the window keeps its length,
+                    // so the block on the timeline does not change size or position
+                    // and only the audio inside it changes.
+                    onValueChange={v => setTrackField(slipSheetTrack.key, {
+                      trimStart: v, trimEnd: v + len,
+                    })} />
+                  <Text style={styles.clipVolNote}>
+                    Same length, same place on the timeline - a different part of the file.
+                  </Text>
+                </>
+              );
+            })()}
+            <TouchableOpacity style={styles.modalBtnApplyBlock} onPress={() => setSlipSheetKey(null)}>
+              <Text style={styles.modalBtnApplyText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* AUDIO TRACK MODAL - per-track level, opened by tapping a timeline track */}
       <Modal visible={!!audioSheetTrack} transparent animationType="slide"
         onRequestClose={() => setAudioSheetKey(null)}>
@@ -3859,6 +4004,7 @@ const styles = StyleSheet.create({
   modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  audioSheetName: { color: '#888', fontSize: 12, marginBottom: 14 },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
   clipVolValue: { color: '#00d4d4', fontSize: 13 },
   clipMuteBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
