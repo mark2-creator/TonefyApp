@@ -5,6 +5,9 @@ import {
   StyleSheet, ActivityIndicator, Alert, StatusBar
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
@@ -12,8 +15,40 @@ const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 function VideoPreview({ url }) {
-  const player = useVideoPlayer(url, p => { p.loop = true; p.play(); });
-  return <VideoView player={player} style={styles.video} allowsFullscreen />;
+  // Not autoplaying. It used to call p.play() in setup with loop on, so the video was
+  // already running before the screen settled and the only thing the control could do
+  // was pause - which is not what "press play to watch what I just made" should feel
+  // like, and made the button look dead.
+  const player = useVideoPlayer(url, p => { p.loop = true; });
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const onPlaying = player.addListener('playingChange', ({ isPlaying }) => setPlaying(isPlaying));
+    const onStatus = player.addListener('statusChange', ({ status }) => setReady(status === 'readyToPlay'));
+    return () => { onPlaying.remove(); onStatus.remove(); };
+  }, [player]);
+
+  return (
+    <View>
+      {/* Our own control rather than the native overlay. The native one sits inside a
+          ScrollView here and was not reliably taking the tap; this is also the only
+          way the button matches the rest of the app. */}
+      <VideoView player={player} style={styles.video} contentFit="contain"
+        nativeControls={false} allowsFullscreen />
+      <TouchableOpacity
+        style={styles.playFab}
+        onPress={() => (playing ? player.pause() : player.play())}
+        accessibilityLabel={playing ? 'Pause' : 'Play'}>
+        <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={26} color="#04211f" />
+      </TouchableOpacity>
+      {!ready && (
+        <View style={styles.videoLoading} pointerEvents="none">
+          <ActivityIndicator size="small" color="#00d4d4" />
+        </View>
+      )}
+    </View>
+  );
 }
 
 export default function EditPostVideoScreen({ navigation, route }) {
@@ -98,6 +133,39 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
   const fullUrl = videoUrl ? (videoUrl.startsWith('http') ? videoUrl : `${BACKEND}${videoUrl}`) : null;
 
+  // Getting the finished video off the phone's screen and into the phone.
+  //
+  // This downloads it and hands it to the system share sheet, which is where "Save to
+  // Files", "Save video" and every messaging app live. It is not a one-tap write into
+  // the gallery: that needs expo-media-library, which is not installed, and adding a
+  // native module cannot be done over the air - it would need a new build of the app.
+  // The share sheet is the honest thing that works today.
+  const [downloading, setDownloading] = useState(false);
+  async function downloadVideo() {
+    if (!fullUrl || downloading) return;
+    setDownloading(true);
+    try {
+      const name = (videoPath || fullUrl).split('/').pop().split('?')[0] || 'tonefy-video.mp4';
+      const target = new File(Paths.cache, name);
+      // A previous download of the same export would otherwise collide.
+      try { if (target.exists) target.delete(); } catch {}
+      const file = await File.downloadFileAsync(fullUrl, target);
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Saved', `Downloaded to the app's storage as ${name}.`);
+        return;
+      }
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'video/mp4',
+        dialogTitle: 'Save or share your video',
+        UTI: 'public.movie',
+      });
+    } catch (e) {
+      Alert.alert('Download failed', e?.message || 'Could not download the video.');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
@@ -125,6 +193,17 @@ export default function EditPostVideoScreen({ navigation, route }) {
           )}
         </View>
 
+        {fullUrl && (
+          <TouchableOpacity style={styles.downloadBtn} onPress={downloadVideo} disabled={downloading}>
+            {downloading
+              ? <ActivityIndicator size="small" color="#04211f" />
+              : <MaterialIcons name="file-download" size={20} color="#04211f" />}
+            <Text style={styles.downloadText}>
+              {downloading ? 'Preparing…' : 'Save video'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Caption */}
         <Text style={styles.sectionLabel}>CAPTION</Text>
         <TextInput
@@ -141,21 +220,21 @@ export default function EditPostVideoScreen({ navigation, route }) {
         <Text style={styles.sectionLabel}>POST TO</Text>
         <View style={styles.platformsCard}>
           <View style={styles.platformRow}>
-            <MaterialIcons name="facebook" size={22} color="#fff" style={styles.platformIcon} />
+            <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
             <Text style={styles.platformName}>Facebook</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
             <View style={styles.toggleOff} />
           </View>
           <View style={styles.divider} />
           <View style={styles.platformRow}>
-            <MaterialIcons name="camera-alt" size={22} color="#fff" style={styles.platformIcon} />
+            <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
             <Text style={styles.platformName}>Instagram</Text>
             <Text style={styles.comingSoon}>Coming soon</Text>
             <View style={styles.toggleOff} />
           </View>
           <View style={styles.divider} />
           <View style={styles.platformRow}>
-            <MaterialIcons name="music-note" size={22} color="#fff" style={styles.platformIcon} />
+            <View style={styles.platformIcon}><TikTokLogo size={22} /></View>
             <Text style={styles.platformName}>TikTok</Text>
             {tiktokConnected ? (
               <Text style={styles.connectedText}>Connected</Text>
@@ -227,7 +306,17 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, padding: 16 },
   sectionLabel: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, marginTop: 16 },
   videoWrap: { backgroundColor: '#1a1a1a', borderRadius: 14, overflow: 'hidden', marginBottom: 4, minHeight: 200 },
-  video: { width: '100%', height: 260 },
+  video: { width: '100%', height: 260, backgroundColor: '#000' },
+  playFab: {
+    position: 'absolute', left: 12, bottom: 12, width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center',
+  },
+  videoLoading: { position: 'absolute', right: 14, bottom: 22 },
+  downloadBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#2ECC71', borderRadius: 12, paddingVertical: 13, marginTop: 10,
+  },
+  downloadText: { color: '#04211f', fontSize: 14, fontWeight: '700' },
   noVideo: { alignItems: 'center', padding: 32 },
   noVideoIcon: { fontSize: 36, marginBottom: 8 },
   noVideoText: { color: '#fff', fontWeight: '600', marginBottom: 6 },
