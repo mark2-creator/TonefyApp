@@ -23,7 +23,9 @@ import TransitionSheet from '../components/TransitionPicker';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
-import { transitionSpec, resolveTransition, hasTransition } from '../constants/transitions';
+import {
+  transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
+} from '../constants/transitions';
 import { usePlan } from '../constants/plan';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -122,18 +124,6 @@ const VOICES = [
   { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
   { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
 ];
-
-// The colour a join dips through. Taken from what the transition actually does, so a
-// Flash White reads white and a Fade Black reads black rather than every join looking
-// like the same grey blink.
-function joinTint(def) {
-  const base = def?.base || '';
-  const fx = (def?.fx || []).join(' ');
-  if (base === 'fadewhite' || /brightness=0\.[34]/.test(fx)) return '#ffffff';
-  if (base === 'fadeblack' || base === 'fadegrays') return '#000000';
-  if (/rgbashift|chromashift|noise/.test(fx)) return '#0a0a2a';
-  return '#000000';
-}
 
 // What a locked feature says when tapped.
 //
@@ -2635,14 +2625,46 @@ export default function EditVideoScreen({ navigation }) {
       if (Math.abs(position - t) <= HALF) {
         const def = resolveTransition(items[i].transition);
         if (!def?.base) return null;
-        // 0 at the edges of the window, 1 dead on the join.
-        const strength = 1 - Math.abs(position - t) / HALF;
-        return { def, strength };
+        return {
+          def,
+          // 0 at the start of the window, 1 at the end - the same parameter xfade
+          // runs on, so the canvas is somewhere sensible on the curve rather than
+          // just "near a join".
+          p: (position - (t - HALF)) / (HALF * 2),
+          outItem: items[i],
+          incItem: items[i + 1],
+          // getPreviewItem switches at the join's centre, so the main <Video> is the
+          // outgoing clip for the first half of the window and the incoming one for
+          // the second. Knowing which it currently holds is what lets the second
+          // layer be the other one, without restructuring the playback path.
+          mainIsOutgoing: position < t,
+          fidelity: previewFidelity(items[i].transition),
+        };
       }
       if (t - position > HALF) break;
     }
     return null;
   }, [items, position]);
+
+  // The two layers the join is drawn from, in screen units.
+  const joinLayers = useMemo(() => {
+    if (!activeJoin) return null;
+    const f = transitionPreviewFrame(activeJoin.def.base, activeJoin.p);
+    const toStyle = (l) => ({
+      opacity: l.opacity,
+      transform: [
+        { translateX: l.tx * PREVIEW_W },
+        { translateY: l.ty * PREVIEW_H },
+        { scale: l.scale },
+      ],
+    });
+    return {
+      main: toStyle(activeJoin.mainIsOutgoing ? f.out : f.inc),
+      other: toStyle(activeJoin.mainIsOutgoing ? f.inc : f.out),
+      otherItem: activeJoin.mainIsOutgoing ? activeJoin.incItem : activeJoin.outItem,
+      tint: f.tint,
+    };
+  }, [activeJoin]);
 
   // Held across renders on purpose. `position` is React state written ~25 times a
   // second during playback, so this screen re-renders at that rate - and building
@@ -2930,7 +2952,7 @@ export default function EditVideoScreen({ navigation }) {
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
-                style={[styles.previewImage, flipTransform(previewItem)]} resizeMode="cover"
+                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode="cover"
                 shouldPlay={isPlaying} isLooping={false}
                 // isMuted was here and volume was not, which is exactly why muting a
                 // clip worked and setting its level did nothing: there was no prop
@@ -2945,7 +2967,7 @@ export default function EditVideoScreen({ navigation }) {
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
             ) : (
               <Image source={{ uri: previewItem.uri }}
-                style={[styles.previewImage, flipTransform(previewItem)]} resizeMode="cover" />
+                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode="cover" />
             )
           ) : (
             <View style={styles.previewEmpty}>
@@ -2953,20 +2975,46 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.previewEmptyText}>Add media to get started</Text>
             </View>
           )}
-          {/* The join marker. Under the overlays so a caption is never hidden by it,
-              and pointerEvents none so it never eats a tap meant for the canvas. */}
-          {activeJoin && (
+          {/* The other side of the join, drawn as a second layer over the canvas.
+              This is what makes a transition actually play here: the outgoing and the
+              incoming clip are both on screen, which is the same pair xfade gets.
+              Muted always - the main <Video> carries the audio and two sources
+              playing at once would double it. */}
+          {joinLayers && joinLayers.otherItem && (
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              <View style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: joinTint(activeJoin.def),
-                  opacity: activeJoin.strength * 0.55,
-                },
-              ]} />
+              {joinLayers.otherItem.type === 'video' ? (
+                <Video
+                  source={{ uri: joinLayers.otherItem.uri }}
+                  style={[styles.previewImage, flipTransform(joinLayers.otherItem), joinLayers.other]}
+                  resizeMode="cover"
+                  shouldPlay={isPlaying}
+                  isLooping={false}
+                  isMuted
+                  rate={joinLayers.otherItem.speed || 1}
+                  shouldCorrectPitch
+                />
+              ) : (
+                <Image
+                  source={{ uri: joinLayers.otherItem.uri }}
+                  style={[styles.previewImage, flipTransform(joinLayers.otherItem), joinLayers.other]}
+                  resizeMode="cover"
+                />
+              )}
+              {/* Fades that go THROUGH a colour rather than between the two frames. */}
+              {joinLayers.tint && (
+                <View style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: joinLayers.tint.color, opacity: joinLayers.tint.opacity },
+                ]} />
+              )}
+              {/* Says which transition is running, and admits when the canvas is
+                  standing in rather than reproducing it - a wipe shown as a dissolve
+                  should not be mistaken for what the export will do. */}
               <View style={styles.joinLabel}>
                 <MaterialIcons name="compare-arrows" size={12} color="#04211f" />
-                <Text style={styles.joinLabelText}>{activeJoin.def.label}</Text>
+                <Text style={styles.joinLabelText}>
+                  {activeJoin.def.label}{activeJoin.fidelity === 'approx' ? ' · approx' : ''}
+                </Text>
               </View>
             </View>
           )}

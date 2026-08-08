@@ -225,3 +225,120 @@ export function transitionSpec(id) {
 export function isPremiumTransition(id) {
   return !!resolveTransition(id)?.premium;
 }
+
+// ---------------------------------------------------------------------------
+// Preview motion
+// ---------------------------------------------------------------------------
+
+// How a join should look on the canvas at progress `p` (0 at the start of the
+// transition window, 1 at the end), as two layers plus an optional tint.
+//
+// The canvas can show a transition properly because it draws the outgoing and
+// incoming clips as two stacked layers - the same two inputs xfade gets. What it
+// cannot do is reproduce 133 ffmpeg filters, so this maps a base onto the motion
+// that defines it and accepts an honest approximation everywhere else:
+//
+//  - the moves (slide, cover, reveal, squeeze, zoom) are exact, because a translate
+//    or a scale is the whole effect
+//  - the dips (fade to black/white) are exact
+//  - the masked ones (wipes, slices, shapes) fall back to a dissolve. A wipe needs a
+//    hard edge travelling across one layer, which means a mask, and RN has no mask
+//    without another native dependency
+//  - the graded ones (Film Burn, VHS, Glitch) show their move and their tint but not
+//    their grain or channel shifts
+//
+// Offsets are FRACTIONS of the frame so this stays free of layout, and the screen
+// multiplies by its own width and height.
+//
+// A caller that wants to know how faithful this is can ask `previewFidelity(base)`.
+
+const SLIDE = { slideleft: [1, 0], slideright: [-1, 0], slideup: [0, 1], slidedown: [0, -1] };
+const SMOOTH = { smoothleft: [1, 0], smoothright: [-1, 0], smoothup: [0, 1], smoothdown: [0, -1] };
+const COVER = { coverleft: [1, 0], coverright: [-1, 0], coverup: [0, 1], coverdown: [0, -1] };
+const REVEAL = { revealleft: [-1, 0], revealright: [1, 0], revealup: [0, -1], revealdown: [0, 1] };
+
+const IDLE = { opacity: 1, tx: 0, ty: 0, scale: 1 };
+
+export function transitionPreviewFrame(base, p) {
+  const t = Math.max(0, Math.min(1, p));
+  const out = { ...IDLE };
+  const inc = { ...IDLE, opacity: 1 };
+  let tint = null;
+
+  // Both frames travel: the outgoing leaves as the incoming arrives, which is what
+  // makes a slide read as one movement rather than two.
+  if (SLIDE[base] || SMOOTH[base]) {
+    const [dx, dy] = SLIDE[base] || SMOOTH[base];
+    inc.tx = dx * (1 - t); inc.ty = dy * (1 - t);
+    out.tx = -dx * t;      out.ty = -dy * t;
+    return { out, inc, tint };
+  }
+  // The incoming slides over an outgoing that stays put.
+  if (COVER[base]) {
+    const [dx, dy] = COVER[base];
+    inc.tx = dx * (1 - t); inc.ty = dy * (1 - t);
+    return { out, inc, tint };
+  }
+  // The outgoing slides away and uncovers an incoming that was always there.
+  if (REVEAL[base]) {
+    const [dx, dy] = REVEAL[base];
+    out.tx = dx * t; out.ty = dy * t;
+    return { out, inc, tint };
+  }
+
+  switch (base) {
+    case 'fadeblack':
+    case 'fadegrays':
+      // Through black rather than between the two: the outgoing is gone before the
+      // incoming appears, which is the whole character of it.
+      out.opacity = Math.max(0, 1 - t * 2);
+      inc.opacity = Math.max(0, t * 2 - 1);
+      tint = { color: '#000000', opacity: 1 - Math.abs(t - 0.5) * 2 };
+      return { out, inc, tint };
+    case 'fadewhite':
+      out.opacity = Math.max(0, 1 - t * 2);
+      inc.opacity = Math.max(0, t * 2 - 1);
+      tint = { color: '#ffffff', opacity: 1 - Math.abs(t - 0.5) * 2 };
+      return { out, inc, tint };
+    case 'zoomin':
+      inc.scale = 1 + 0.35 * (1 - t);
+      inc.opacity = t;
+      return { out, inc, tint };
+    case 'squeezeh':
+      inc.scale = 1; out.scale = 1;
+      inc.opacity = t;
+      out.ty = -0.5 * t;
+      return { out, inc, tint };
+    case 'squeezev':
+      inc.opacity = t;
+      out.tx = -0.5 * t;
+      return { out, inc, tint };
+    case 'distance':
+      inc.opacity = t;
+      inc.scale = 1 + 0.12 * (1 - t);
+      out.scale = 1 - 0.12 * t;
+      return { out, inc, tint };
+    default:
+      // Dissolve. Correct for the fade family, and the honest stand-in for every
+      // masked one - it says "these two frames are changing over" without pretending
+      // to an edge shape it cannot draw.
+      inc.opacity = t;
+      return { out, inc, tint };
+  }
+}
+
+const EXACT = new Set([
+  ...Object.keys(SLIDE), ...Object.keys(SMOOTH), ...Object.keys(COVER), ...Object.keys(REVEAL),
+  'fade', 'fadefast', 'fadeslow', 'dissolve', 'fadeblack', 'fadewhite', 'fadegrays',
+  'zoomin', 'distance',
+]);
+
+/** 'exact' if the canvas can really draw this one, 'approx' if it is standing in. */
+export function previewFidelity(id) {
+  const def = resolveTransition(id);
+  if (!def?.base) return 'exact';
+  // A composed transition carries a grade or grain the canvas cannot reproduce, even
+  // when its underlying move is one of the exact ones.
+  if (def.fx && def.fx.length) return 'approx';
+  return EXACT.has(def.base) ? 'exact' : 'approx';
+}
