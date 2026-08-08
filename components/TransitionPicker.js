@@ -6,6 +6,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { MaterialIcons } from '@expo/vector-icons';
 import SheetHeader, { useSheetInset } from './SheetHeader';
 import { TRANSITIONS, TRANSITION_GROUPS } from '../constants/transitions';
+import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 
 // One tile per transition, and every tile shows its OWN transition running.
 //
@@ -19,7 +20,10 @@ import { TRANSITIONS, TRANSITION_GROUPS } from '../constants/transitions';
 const COLS = 3;
 
 function previewUri(backend, id) {
-  return `${backend}/transitions/${id}.webp`;
+  // The version is what makes a re-render visible. These are served with a 30 day
+  // max-age and cached to disk, so the same url would keep returning last month's
+  // picture however many times the file behind it was rebuilt.
+  return `${backend}/transitions/${id}.webp?v=${TRANSITION_PREVIEW_VERSION}`;
 }
 
 const Tile = React.memo(function Tile({ item, selected, backend, locked, onPick }) {
