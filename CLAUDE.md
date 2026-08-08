@@ -13,7 +13,13 @@ video processing, faster_whisper transcription, ImageMagick caption rendering).
 
 - **`mark2-creator/TonefyApp`** — the actual frontend app (matches EAS project slug `tonefyapp`).
   This is the one being worked on.
-- **`mark2-creator/Tonefy-react`** — backend-only repo. Not the frontend.
+- **`mark2-creator/Tonefy-react`** — the backend AND the website, in one repo:
+  `backend/` (Node/Express, pm2 `tonefy-backend`) and `frontend/` (the Tonefy
+  website — React 19 + Vite 7 + Tailwind 3, Firebase auth, three.js/VRM avatars).
+  It is not the mobile app. Calling this "backend-only" was wrong and made the
+  website hard to find; `~/pages-app` is a FitLife Flask app, not Tonefy.
+  `frontend/` has been untouched since Jun 19 2026 and has no `dist/` — nothing on
+  this VPS builds or serves it.
 
 On this VPS there are three confusable local directories:
 
@@ -606,10 +612,12 @@ nothing to aim at.
    restart deploys the working tree, not the last commit, so read `git diff` before
    restarting rather than trusting the commit id. Those changes are still uncommitted.
 
-   **Still blocked on you:**
-   - `git -C ~/Tonefy-react push origin master` — denied 403, the stored credential
-     has no access to that repo. The commits are local-only until this lands, which
-     means the deployed backend exists on exactly one disk.
+   **No longer blocked (Aug 8 2026).** `git -C ~/Tonefy-react push origin master`
+   now succeeds — verified by pushing seven backend commits and confirming
+   `origin/master` matches local at `2b7bccc1`, 0 ahead / 0 behind. Whatever denied
+   the credential 403 has been resolved. The backend is no longer single-disk, so
+   "commit it but you cannot push" is not a constraint to plan around any more.
+   Push backend work as normal.
 
    Once confirmed on device, open a PR into `main` and merge.
 3. **Eight caption styles have never been verified against the export.** The pass
