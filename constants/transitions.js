@@ -174,13 +174,20 @@ const COMPOSED = [
   ['origami',     'Origami',         'Graphic',   'diagbr',     ['gblur=sigma=7', 'eq=contrast=1.15']],
 ];
 
+// Free covers every xfade primitive - all 58 of them, which is a complete set of
+// plain transitions and enough to finish a video with. Premium is the composed tier:
+// the ones carrying a grade, a blur, grain or a shift on top of the move, which are
+// the ones that read as produced rather than as a default.
+//
+// The split is by what a transition IS rather than by a hand-picked list, so a
+// composition added later is premium without anyone remembering to mark it.
 export const TRANSITIONS = [
   // "None" is a real choice and has to be in the list to be choosable. It is not a
   // transition with a zero duration - the concat gives it the shortest join it can,
   // which is a cut.
-  { id: 'none', label: 'None', group: 'Basic', base: null, fx: [] },
-  ...BASE.map(([id, label, group]) => ({ id, label, group, base: id, fx: [] })),
-  ...COMPOSED.map(([id, label, group, base, fx]) => ({ id, label, group, base, fx })),
+  { id: 'none', label: 'None', group: 'Basic', base: null, fx: [], premium: false },
+  ...BASE.map(([id, label, group]) => ({ id, label, group, base: id, fx: [], premium: false })),
+  ...COMPOSED.map(([id, label, group, base, fx]) => ({ id, label, group, base, fx, premium: true })),
 ];
 
 export const TRANSITION_GROUPS = [
@@ -201,4 +208,9 @@ export function transitionSpec(id) {
   const t = resolveTransition(id);
   if (!t || !t.base) return null;
   return { base: t.base, fx: t.fx };
+}
+
+/** Whether an id needs a paid plan. Unknown ids resolve to Fade, which is free. */
+export function isPremiumTransition(id) {
+  return !!resolveTransition(id)?.premium;
 }

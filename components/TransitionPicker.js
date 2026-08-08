@@ -22,11 +22,11 @@ function previewUri(backend, id) {
   return `${backend}/transitions/${id}.webp`;
 }
 
-const Tile = React.memo(function Tile({ item, selected, backend, onPick }) {
+const Tile = React.memo(function Tile({ item, selected, backend, locked, onPick }) {
   return (
     <TouchableOpacity
       style={styles.tile}
-      onPress={() => onPick(item.id)}
+      onPress={() => onPick(item)}
       activeOpacity={0.85}>
       <View style={[styles.thumb, selected && styles.thumbSelected]}>
         {item.id === 'none' ? (
@@ -44,8 +44,16 @@ const Tile = React.memo(function Tile({ item, selected, backend, onPick }) {
             cachePolicy="disk"
           />
         )}
+        {/* The preview still plays at full strength behind this. Showing a locked
+            transition doing its actual job is the argument for paying for it; a
+            greyed-out thumbnail would just look broken. */}
+        {locked && (
+          <View style={styles.lockWash}>
+            <MaterialIcons name="diamond" size={13} color="#f5c451" />
+          </View>
+        )}
       </View>
-      <Text numberOfLines={1} style={[styles.label, selected && styles.labelSelected]}>
+      <Text numberOfLines={1} style={[styles.label, selected && styles.labelSelected, locked && styles.labelLocked]}>
         {item.label}
       </Text>
     </TouchableOpacity>
@@ -55,7 +63,7 @@ const Tile = React.memo(function Tile({ item, selected, backend, onPick }) {
 /**
  * The sheet on its own. `value` is the current transition id for the clip being edited.
  */
-export function TransitionSheet({ visible, value, backend, onSelect, onClose }) {
+export function TransitionSheet({ visible, value, backend, isPremium = false, onSelect, onLocked, onClose }) {
   const sheetInset = useSheetInset(16);
   const [query, setQuery] = useState('');
 
@@ -83,6 +91,14 @@ export function TransitionSheet({ visible, value, backend, onSelect, onClose }) 
     return out;
   }, [query]);
 
+  const pick = (t) => {
+    // A locked tile is not inert - it explains itself. Silently doing nothing is the
+    // worst of the options, and swapping in a free transition behind the user's back
+    // is worse still.
+    if (t.premium && !isPremium) { onLocked?.(t); return; }
+    onSelect(t.id);
+  };
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.groupHeader}>{item.label.toUpperCase()}</Text>;
@@ -90,7 +106,8 @@ export function TransitionSheet({ visible, value, backend, onSelect, onClose }) 
     return (
       <View style={styles.row}>
         {item.items.map(t => (
-          <Tile key={t.id} item={t} backend={backend} selected={t.id === value} onPick={onSelect} />
+          <Tile key={t.id} item={t} backend={backend} selected={t.id === value}
+            locked={t.premium && !isPremium} onPick={pick} />
         ))}
         {/* Keeps a short last row at column width instead of stretching its tiles. */}
         {item.items.length < COLS
@@ -167,6 +184,12 @@ const styles = StyleSheet.create({
   },
   thumbSelected: { borderColor: '#2ECC71', borderWidth: 2 },
   noneThumb: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  lockWash: {
+    position: 'absolute', top: 3, right: 3,
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 9,
+    paddingHorizontal: 3, paddingVertical: 3,
+  },
   label: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 5 },
   labelSelected: { color: '#2ECC71' },
+  labelLocked: { color: '#888' },
 });

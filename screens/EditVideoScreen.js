@@ -20,7 +20,8 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
-import { transitionSpec, resolveTransition } from '../constants/transitions';
+import { transitionSpec } from '../constants/transitions';
+import { usePlan } from '../constants/plan';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { measureVideoDuration } from '../utils/videoDuration';
@@ -91,6 +92,20 @@ const ADD_RAIL = [
 // What the bottom bar becomes while a clip is selected. Grouped as written; the
 // groups are separated by a rule rather than run together, since the order is the
 // only thing that says these belong to each other.
+// What a locked feature says when tapped.
+//
+// There is no checkout in this app yet, so this does not claim there is one. Saying
+// "upgrade now" and then going nowhere is worse than saying plainly that the feature
+// is on the paid plans - and when billing lands, this is the one function that has to
+// learn how to open it.
+function promptUpgrade(label) {
+  Alert.alert(
+    label,
+    `${label} is on the Standard and Pro plans.\n\nPlans are not on sale in the app yet - this feature unlocks as soon as they are.`,
+    [{ text: 'OK' }]
+  );
+}
+
 const CLIP_TOOLS = [
   [
     { key: 'replace', icon: 'swap-horiz', label: 'Replace' },
@@ -106,21 +121,23 @@ const CLIP_TOOLS = [
   ],
   [
     { key: 'transition', icon: 'compare-arrows', label: 'Transition' },
-    { key: 'transparency', icon: 'opacity', label: 'Transparency' },
-    { key: 'layers', icon: 'layers', label: 'Layers' },
+    { key: 'transparency', icon: 'opacity', label: 'Transparency', premium: true },
+    { key: 'layers', icon: 'layers', label: 'Layers', premium: true },
+    // More is an overflow, not a feature, so it carries no diamond: there is nothing
+    // behind it to sell.
     { key: 'more', icon: 'more-horiz', label: 'More' },
   ],
   [
-    { key: 'crop', icon: 'crop', label: 'Crop' },
+    { key: 'crop', icon: 'crop', label: 'Crop', premium: true },
     { key: 'flip', icon: 'flip', label: 'Flip' },
-    { key: 'colour', icon: 'palette', label: 'Colour' },
-    { key: 'animate', icon: 'animation', label: 'Animate' },
-    { key: 'transform', icon: 'transform', label: 'Transform' },
+    { key: 'colour', icon: 'palette', label: 'Colour', premium: true },
+    { key: 'animate', icon: 'animation', label: 'Animate', premium: true },
+    { key: 'transform', icon: 'transform', label: 'Transform', premium: true },
   ],
   [
-    { key: 'adjust', icon: 'tune', label: 'Adjust' },
-    { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover' },
-    { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio' },
+    { key: 'adjust', icon: 'tune', label: 'Adjust', premium: true },
+    { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover', premium: true },
+    { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio', premium: true },
     { key: 'filters', icon: 'photo-filter', label: 'Filters' },
   ],
 ];
@@ -2625,6 +2642,27 @@ export default function EditVideoScreen({ navigation }) {
   // What each clip tool does. Only the ones already built are here; anything absent
   // falls through to a "coming soon" below rather than being silently inert, so the
   // bar is honest about which of its buttons are wired.
+  const { isPremium } = usePlan();
+
+  // Whether a paid plan would actually change anything about this tool right now.
+  // A diamond on something UNBUILT marks it as a planned tier, not as something an
+  // upgrade unlocks today - so an unbuilt tool keeps saying "coming soon" whatever
+  // the plan is. Telling a paying user to pay for a feature that does not exist is
+  // the one outcome worth engineering around.
+  const toolTapAction = useCallback((t, actions) => {
+    const action = actions[t.key];
+    if (!action) {
+      return () => Alert.alert(
+        t.label,
+        t.premium
+          ? 'Coming soon on the paid plans.'
+          : 'Coming soon.'
+      );
+    }
+    if (t.premium && !isPremium) return () => promptUpgrade(t.label);
+    return action;
+  }, [isPremium]);
+
   const clipToolActions = {
     replace: replaceSelectedClip,
     trim: () => selectedItem && openTrim(selectedItem),
@@ -2939,14 +2977,14 @@ export default function EditVideoScreen({ navigation }) {
                 <TouchableOpacity
                   key={t.key}
                   style={styles.clipToolBtn}
-                  onPress={audioToolActions[t.key] || (() => Alert.alert(t.label, 'Coming soon.'))}>
+                  onPress={toolTapAction(t, audioToolActions)}>
                   <View style={styles.toolIconWrap}>
                     <MaterialIcons name={t.icon} size={20} color={audioToolActions[t.key] ? '#e6e6e6' : '#5a5a5a'} />
                     {/* The premium mark is a badge on the icon rather than a word in
                         the label, which would not fit the column and would read as
                         part of the tool's name. */}
                     {t.premium && (
-                      <MaterialIcons name="workspace-premium" size={11} color="#f5c451" style={styles.premiumBadge} />
+                      <MaterialIcons name="diamond" size={12} color="#f5c451" style={styles.premiumBadge} />
                     )}
                   </View>
                   <Text style={[styles.clipToolLabel, !audioToolActions[t.key] && { color: '#5a5a5a' }]}>{t.label}</Text>
@@ -2969,15 +3007,29 @@ export default function EditVideoScreen({ navigation }) {
           {selectedItem ? CLIP_TOOLS.map((group, gi) => (
             <React.Fragment key={'g' + gi}>
               {gi > 0 && <View style={styles.toolGroupDivider} />}
-              {group.map(t => (
-                <TouchableOpacity
-                  key={t.key}
-                  style={styles.clipToolBtn}
-                  onPress={clipToolActions[t.key] || (() => Alert.alert(t.label, 'Coming soon.'))}>
-                  <MaterialIcons name={t.icon} size={20} color={clipToolActions[t.key] ? '#e6e6e6' : '#5a5a5a'} />
-                  <Text style={[styles.clipToolLabel, !clipToolActions[t.key] && { color: '#5a5a5a' }]}>{t.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {group.map(t => {
+                // Dimming still tracks whether the tool DOES anything, not whether it
+                // is paid: a built premium tool is live-looking and says so when
+                // tapped, an unbuilt one is dim whatever the plan.
+                const built = !!clipToolActions[t.key];
+                const locked = t.premium && !isPremium;
+                return (
+                  <TouchableOpacity
+                    key={t.key}
+                    style={styles.clipToolBtn}
+                    onPress={toolTapAction(t, clipToolActions)}>
+                    <View>
+                      <MaterialIcons name={t.icon} size={20} color={built ? '#e6e6e6' : '#5a5a5a'} />
+                      {t.premium && (
+                        <MaterialIcons name="diamond" size={12}
+                          color={built || locked ? '#f5c451' : '#7a663a'}
+                          style={styles.premiumBadge} />
+                      )}
+                    </View>
+                    <Text style={[styles.clipToolLabel, !built && { color: '#5a5a5a' }]}>{t.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </React.Fragment>
           )) : (<>
           {bottomTabs.map(tab => (
@@ -3653,7 +3705,11 @@ export default function EditVideoScreen({ navigation }) {
         visible={showTransitionModal}
         value={items.find(i => i.key === transitionTargetKey)?.transition || 'none'}
         backend={BACKEND}
+        isPremium={isPremium}
         onSelect={(id) => { setClipTransition(transitionTargetKey, id); setShowTransitionModal(false); }}
+        // Stays open on a locked tap: the point is to keep browsing the ones that are
+        // locked, not to be thrown out of the sheet for touching one.
+        onLocked={(t) => promptUpgrade(t.label)}
         onClose={() => setShowTransitionModal(false)}
       />
 
