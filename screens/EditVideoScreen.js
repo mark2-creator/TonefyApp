@@ -20,6 +20,8 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
+import ConfirmSheet from '../components/ConfirmSheet';
+import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import { transitionSpec, resolveTransition, hasTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
 import { Image as ExpoImage } from 'expo-image';
@@ -981,6 +983,7 @@ export default function EditVideoScreen({ navigation }) {
 
   // Transition picker
   const [showTransitionModal, setShowTransitionModal] = useState(false);
+  const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [transitionTargetKey, setTransitionTargetKey] = useState(null);
 
   // Undo/Redo history
@@ -2239,26 +2242,17 @@ export default function EditVideoScreen({ navigation }) {
     const already = items.slice(0, -1).every(it => (it.transition || 'none') === id);
     if (already) return;
 
-    const def = resolveTransition(id);
-    const removing = !def?.base;
-    Alert.alert(
-      removing ? 'Remove from every join?' : `Use ${def.label} everywhere?`,
-      removing
-        ? `Would you like to remove the transition from all ${joins} joins? You can always set them again one at a time.`
-        : `Would you like to use ${def.label} between all ${joins} of your clips? You can change any of them afterwards.`,
-      [
-        { text: 'No, just this one', style: 'cancel' },
-        {
-          text: removing ? 'Yes, remove all' : 'Yes, apply to all',
-          onPress: () => setItems(prev => prev.map((it, i) => (
-            // The last clip's right edge is the end of the video, so it has nothing to
-            // transition into and is left alone.
-            i === prev.length - 1 ? it : { ...it, transition: id }
-          ))),
-        },
-      ]
-    );
+    setApplyAllPrompt({ id, joins, def: resolveTransition(id) });
   }, [items]);
+
+  const applyTransitionEverywhere = useCallback((id) => {
+    setItems(prev => prev.map((it, i) => (
+      // The last clip's right edge is the end of the video, so it has nothing to
+      // transition into and is left alone.
+      i === prev.length - 1 ? it : { ...it, transition: id }
+    )));
+    setApplyAllPrompt(null);
+  }, []);
 
   function setClipTransition(key, transitionId) {
     setItems(prev => prev.map(i => i.key === key ? { ...i, transition: transitionId } : i));
@@ -3830,6 +3824,27 @@ export default function EditVideoScreen({ navigation }) {
         // locked, not to be thrown out of the sheet for touching one.
         onLocked={(t) => promptUpgrade(t.label)}
         onClose={() => setShowTransitionModal(false)}
+      />
+
+      {/* Asked in the app's own surface rather than through Alert.alert, whose grey
+          platform slab has no relationship to anything around it. */}
+      <ConfirmSheet
+        visible={!!applyAllPrompt}
+        title={applyAllPrompt?.def?.base
+          ? `Use ${applyAllPrompt.def.label} everywhere?`
+          : 'Remove every transition?'}
+        message={applyAllPrompt?.def?.base
+          ? `${applyAllPrompt.def.label} is on this join. Put it between all ${applyAllPrompt?.joins} of your clips? You can change any of them afterwards.`
+          : `Take the transition off all ${applyAllPrompt?.joins} joins? You can set them again one at a time.`}
+        previewUri={applyAllPrompt?.def?.base
+          ? `${BACKEND}/transitions/${applyAllPrompt.def.id}.webp?v=${TRANSITION_PREVIEW_VERSION}`
+          : null}
+        icon="content-cut"
+        confirmLabel={applyAllPrompt?.def?.base ? 'Apply to all' : 'Remove all'}
+        cancelLabel="Just this one"
+        destructive={!applyAllPrompt?.def?.base}
+        onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
+        onCancel={() => setApplyAllPrompt(null)}
       />
 
       {/* AUTO CAPTIONS MODAL */}
