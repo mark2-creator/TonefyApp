@@ -38,6 +38,23 @@ import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnima
 import Svg, { Path } from 'react-native-svg';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
+
+// Every /api route on the server sits behind verifyToken. A call that forgets the
+// header does not fail loudly: it gets a 401 whose JSON has none of the fields the
+// caller was reading, so the feature silently does nothing. That is how the export
+// bar sat at 0% while the render finished on disk, and how the music library, the
+// voice preview and voiceover generation had all quietly stopped working.
+//
+// The token is read per call rather than captured: these expire after an hour and a
+// long render outlives that. getIdToken() returns the cached one until it is near
+// expiry, so this is not a round trip every time.
+async function apiFetch(path, options = {}) {
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : null;
+  const headers = { ...(options.headers || {}) };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  return fetch(BACKEND + path, { ...options, headers });
+}
 const { width: SW, height: SH } = Dimensions.get('window');
 const PIXELS_PER_SECOND = 40;
 // Where the playhead sits across the timeline viewport. Left of it is elapsed
@@ -1886,7 +1903,7 @@ export default function EditVideoScreen({ navigation }) {
     if (!voiceoverScript.trim()) { Alert.alert('Script required', 'Enter text to generate voiceover.'); return; }
     setGeneratingVoiceover(true);
     try {
-      const res = await fetch(BACKEND + '/api/generate-audio', {
+      const res = await apiFetch('/api/generate-audio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: voiceoverScript, voiceId }),
@@ -1910,7 +1927,7 @@ export default function EditVideoScreen({ navigation }) {
     try {
       if (voiceoverPreviewSound) { await voiceoverPreviewSound.stopAsync(); await voiceoverPreviewSound.unloadAsync(); }
       setGeneratingVoiceover(true);
-      const res = await fetch(BACKEND + '/api/generate-audio', {
+      const res = await apiFetch('/api/generate-audio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: 'Hi, this is a quick preview of my voice.', voiceId: voice.id }),
@@ -1952,7 +1969,7 @@ export default function EditVideoScreen({ navigation }) {
     if (musicLibraryTracks.length > 0) return;
     setMusicLoading(true);
     try {
-      const res = await fetch(BACKEND + '/api/music-tracks');
+      const res = await apiFetch('/api/music-tracks');
       const data = await res.json();
       setMusicLibraryTracks(data.tracks || []);
     } catch (e) {
@@ -2453,12 +2470,12 @@ export default function EditVideoScreen({ navigation }) {
   function pollCaptionJob(jobId) {
     const interval = setInterval(async () => {
       try {
-        const r = await fetch(BACKEND + '/api/job/' + jobId);
+        const r = await apiFetch('/api/job/' + jobId);
         const job = await r.json();
         setProgress(job.progress || 0); setMessage(job.message || '');
         if (job.status === 'done') {
           clearInterval(interval); setUploading(false);
-          const captionedUrl = 'https://api.fitlifesolutions.site' + job.videoUrl;
+          const captionedUrl = BACKEND + job.videoUrl;
           setItems(prev => prev.map((item, i) =>
             i === 0 ? { ...item, uri: captionedUrl, type: 'video' } : item
           ));
@@ -2472,19 +2489,38 @@ export default function EditVideoScreen({ navigation }) {
   }
 
   function pollJob(jobId) {
+    let consecutiveFailures = 0;
     const interval = setInterval(async () => {
       try {
-        const r = await fetch(BACKEND + '/api/job/' + jobId);
+        // This poll sent no Authorization header, so it got 401 forever while the
+        // render finished perfectly: job.progress came back undefined, the bar sat at
+        // 0%, job.status was never 'done', and the export looked broken when the video
+        // was already on disk.
+        const r = await apiFetch('/api/job/' + jobId);
+        if (!r.ok) throw new Error(`Job status ${r.status}`);
         const job = await r.json();
+        consecutiveFailures = 0;
         setProgress(job.progress || 0); setMessage(job.message || '');
         if (job.status === 'done') {
           clearInterval(interval); setUploading(false);
           navigation.navigate('EditPostVideo', { videoUrl: job.videoUrl, videoPath: job.videoUrl });
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);
-          Alert.alert('Error', job.error || 'Video creation failed');
+          Alert.alert('Export failed', job.error || 'Video creation failed');
         }
-      } catch (e) {}
+      } catch (e) {
+        // A dropped packet on mobile data is normal and not worth reporting; a poll
+        // that cannot succeed at all is, and swallowing it silently is exactly how a
+        // 401 went unnoticed while the bar sat at zero.
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 8) {
+          clearInterval(interval); setUploading(false);
+          Alert.alert(
+            'Lost track of the export',
+            `The video may still be rendering. ${e.message}`,
+          );
+        }
+      }
     }, 2000);
   }
 
