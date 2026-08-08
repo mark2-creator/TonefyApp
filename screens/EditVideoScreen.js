@@ -733,6 +733,10 @@ function TimelineClip({
   geomRef.current = {
     length,
     trimStart,
+    // Pixels per second OF SOURCE. trimStart and headroom are measured in the source
+    // file while `length` is measured on the timeline, and the two only convert at
+    // the same rate when speed is 1.
+    srcPps: PIXELS_PER_SECOND / clipSpeed(item),
     // How much unused footage lies past the clip's end - how far right the right edge
     // may still be pulled. A clip whose duration the picker never reported has
     // trimEnd standing in for the source length, which makes this zero: better to
@@ -753,15 +757,15 @@ function TimelineClip({
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: () => { dragDxRef.current = 0; dxValue.setValue(0); },
     onPanResponderMove: (e, g) => {
-      const { length: len, trimStart: start, headroom } = geomRef.current;
+      const { length: len, trimStart: start, headroom, srcPps } = geomRef.current;
       // Clamped here rather than at the commit so the edge stops where the footage
       // does. Letting it run past and correcting on release drags a handle out to
       // somewhere the clip cannot go, then snaps it back.
       const dx = side === 'left'
         // Back to the head of the source at most, forward to the minimum length.
-        ? Math.max(-start * PIXELS_PER_SECOND, Math.min((len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, g.dx))
+        ? Math.max(-start * srcPps, Math.min((len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, g.dx))
         // Out to whatever footage is left, in to the minimum length.
-        : Math.max(-(len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, Math.min(headroom * PIXELS_PER_SECOND, g.dx));
+        : Math.max(-(len - MIN_CLIP_DUR) * PIXELS_PER_SECOND, Math.min(headroom * srcPps, g.dx));
       dxValue.setValue(dx);
       dragDxRef.current = dx;
     },
@@ -798,7 +802,10 @@ function TimelineClip({
             width={animWidth}
             height={CLIP_H}
             offset={animOffset}
-            pixelsPerSecond={PIXELS_PER_SECOND}
+            // Source seconds into timeline pixels: a 2x clip shows the same frames in
+            // half the width, so the strip has to be laid out at half the scale or it
+            // runs past the clip's own box.
+            pixelsPerSecond={PIXELS_PER_SECOND / clipSpeed(item)}
           />
           {idx === 0 && (
             <View style={styles.coverBadge}>
@@ -924,10 +931,22 @@ function flipTransform(item) {
 // the timeline. Counting trimEnd alone stretches every later clip boundary past
 // where it is actually drawn, and the canvas then shows the wrong clip for the
 // scroll position.
+// A clip's length ON THE TIMELINE, which is not the length of the footage it shows:
+// at 2x, ten seconds of source occupies five. Everything positional reads this - the
+// clip's width, the playhead's mapping, where every later clip and aux row starts -
+// so leaving speed out of it put a sped-up clip out of step with its own audio and
+// with the frame under the playhead.
+//
+// A still has no motion to speed up, so its held duration is already timeline time.
+function clipSpeed(item) {
+  const s = Number(item.speed);
+  return Number.isFinite(s) && s > 0 ? s : 1;
+}
+
 function clipLength(item) {
   if (item.type === 'image') return item.duration || 3;
   const end = item.trimEnd ?? item.sourceDuration ?? 0;
-  return Math.max(0, end - (item.trimStart ?? 0));
+  return Math.max(0, end - (item.trimStart ?? 0)) / clipSpeed(item);
 }
 
 export default function EditVideoScreen({ navigation }) {
@@ -1598,7 +1617,8 @@ export default function EditVideoScreen({ navigation }) {
       part1 = { ...selectedItem, key: selectedItem.key + '_a', duration: into };
       part2 = { ...selectedItem, key: selectedItem.key + '_b', duration: len - into };
     } else {
-      const cut = (selectedItem.trimStart ?? 0) + into;
+      // `into` is timeline seconds from the clip's start; the cut is a source offset.
+      const cut = (selectedItem.trimStart ?? 0) + into * clipSpeed(selectedItem);
       part1 = { ...selectedItem, key: selectedItem.key + '_a', trimEnd: cut };
       part2 = { ...selectedItem, key: selectedItem.key + '_b', trimStart: cut };
     }
@@ -2126,16 +2146,21 @@ export default function EditVideoScreen({ navigation }) {
   // it clamps again, because the two ends of a gesture are far enough apart in time
   // that the clip may have been trimmed from the modal in between.
   const applyClipTrimEdit = useCallback((key, side, dx) => {
-    const deltaSec = dx / PIXELS_PER_SECOND;
+    const timelineDelta = dx / PIXELS_PER_SECOND;
     const next = items.map(i => {
       if (i.key !== key) return i;
       // A still has no footage to seek into, so neither edge is a trim: both just
       // change how long it is on the timeline.
       if (i.type === 'image') {
         const cur = i.duration || 3;
-        const next = cur + (side === 'left' ? -deltaSec : deltaSec);
+        const next = cur + (side === 'left' ? -timelineDelta : timelineDelta);
         return { ...i, duration: Math.max(MIN_CLIP_DUR, Math.min(IMAGE_MAX_DUR, next)) };
       }
+      // The finger moved a distance on the timeline; the in and out points it moves
+      // are offsets into the source, and a second of timeline is `speed` seconds of
+      // source. Without this a trim on a 2x clip moved the edge half as far as the
+      // handle went.
+      const deltaSec = timelineDelta * clipSpeed(i);
       const srcDur = i.sourceDuration ?? i.trimEnd ?? 0;
       const curStart = i.trimStart ?? 0;
       const curEnd = i.trimEnd ?? srcDur;
@@ -2796,6 +2821,10 @@ export default function EditVideoScreen({ navigation }) {
                 // clip worked and setting its level did nothing: there was no prop
                 // for the level to arrive on. expo-av takes 0..1.
                 volume={Math.max(0, Math.min(1, previewItem.volume ?? 1))}
+                // The export changes tempo with atempo, which leaves pitch alone.
+                // expo-av's default shifts pitch with rate, so without this a sped-up
+                // clip auditions an octave up and exports at its own pitch.
+                shouldCorrectPitch
                 progressUpdateIntervalMillis={50}
                 onPlaybackStatusUpdate={onVideoStatus}
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
