@@ -92,6 +92,17 @@ const ADD_RAIL = [
 // What the bottom bar becomes while a clip is selected. Grouped as written; the
 // groups are separated by a rule rather than run together, since the order is the
 // only thing that says these belong to each other.
+const VOICES = [
+  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   },
+  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   },
+  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   },
+  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     },
+  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     },
+  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   },
+  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
+  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
+];
+
 // What a locked feature says when tapped.
 //
 // There is no checkout in this app yet, so this does not claim there is one. Saying
