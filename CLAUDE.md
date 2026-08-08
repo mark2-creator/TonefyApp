@@ -13,13 +13,13 @@ video processing, faster_whisper transcription, ImageMagick caption rendering).
 
 - **`mark2-creator/TonefyApp`** — the actual frontend app (matches EAS project slug `tonefyapp`).
   This is the one being worked on.
-- **`mark2-creator/Tonefy-react`** — the backend AND the website, in one repo:
-  `backend/` (Node/Express, pm2 `tonefy-backend`) and `frontend/` (the Tonefy
-  website — React 19 + Vite 7 + Tailwind 3, Firebase auth, three.js/VRM avatars).
-  It is not the mobile app. Calling this "backend-only" was wrong and made the
-  website hard to find; `~/pages-app` is a FitLife Flask app, not Tonefy.
-  `frontend/` has been untouched since Jun 19 2026 and has no `dist/` — nothing on
-  this VPS builds or serves it.
+- **`mark2-creator/Tonefy-react`** — backend only, and now accurately so: the repo
+  is just `backend/` (Node/Express, pm2 `tonefy-backend`). It is not the mobile app.
+  It did also hold a `frontend/` — a React 19 + Vite prototype — which was deleted in
+  `5be8def1`: never deployed, hardcoded to `http://localhost:5000`, sent no Firebase
+  token so every call would have 401'd, and superseded by the live site below. Do not
+  go looking for a website in here, and note `~/pages-app` is a FitLife Flask app,
+  not Tonefy.
 
 On this VPS there are three confusable local directories:
 
@@ -29,6 +29,39 @@ On this VPS there are three confusable local directories:
   no `babel.config.js`. Ignore it. Do not patch files here.
 - **`/tmp/tonefy-build`** — ❌ the old working copy, now superseded. Left in place as a
   temporary backup only. Do not edit here; it will vanish on reboot.
+
+## One backend, two clients (confirmed Aug 8 2026)
+
+The Android app and the live website already share a single backend. This was traced
+end to end; it does not need investigating again.
+
+```
+Android app (~/tonefy-build, all 7 screens) ──┐
+                                              ├─→ https://api.fitlifesolutions.site
+Live website (tonefy-ai.fitlifesolutions.site)┘         │
+                                    DNS → 173.212.232.182 (this VPS)
+                                    nginx → proxy_pass http://localhost:5000
+                                    PID on :5000 == pm2 `tonefy-backend`
+                                    == ~/Tonefy-react/backend/server.js
+```
+
+- Every screen in the app declares `const BACKEND = 'https://api.fitlifesolutions.site'`.
+  There is no second host, no staging URL and no localhost anywhere in the app.
+- The **live website is not in any repo you have checked out.** It is hand-written
+  static HTML in `/var/www/tonefy-ai`, served straight by nginx — 13 pages plus
+  `firebase-auth.js`, Tailwind from CDN, and the downloadable APK. It is *not* the
+  Vite app that used to be in `Tonefy-react/frontend`.
+- `tonefy-ai.` resolves to Cloudflare and proxies back here; `api.` resolves straight
+  to the VPS. Only the API is direct, so moving the VPS is not a one-record change.
+- Same process and same job store, **different endpoints**: the site uses
+  `/api/idea-to-video-v2`, `/api/extract-segments`, `/api/generate-script`; the app's
+  editor uses `/api/media-to-video`, `/api/upload-media`, `/api/edit-video`. They
+  share `/api/job` and `/api/generate-audio`. That separation is why editor-side
+  backend changes cannot break the website.
+- **Every `/api` route is behind `app.use("/api", verifyToken)`.** A call with no
+  Authorization header does not fail loudly - it gets a 401 whose JSON lacks every
+  field the caller reads, so the feature silently does nothing. That is what pinned
+  the export bar at 0% while renders completed. In the app, go through `apiFetch`.
 
 ## Environment / workflow reality
 
