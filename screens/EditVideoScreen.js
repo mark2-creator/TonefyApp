@@ -2792,6 +2792,10 @@ export default function EditVideoScreen({ navigation }) {
               <Video ref={videoRef} source={previewVideoSource}
                 style={[styles.previewImage, flipTransform(previewItem)]} resizeMode="cover"
                 shouldPlay={isPlaying} isLooping={false}
+                // isMuted was here and volume was not, which is exactly why muting a
+                // clip worked and setting its level did nothing: there was no prop
+                // for the level to arrive on. expo-av takes 0..1.
+                volume={Math.max(0, Math.min(1, previewItem.volume ?? 1))}
                 progressUpdateIntervalMillis={50}
                 onPlaybackStatusUpdate={onVideoStatus}
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
@@ -3260,8 +3264,8 @@ export default function EditVideoScreen({ navigation }) {
                     {selectedItem.muted ? 'Muted' : Math.round((selectedItem.volume ?? 1) * 100) + '%'}
                   </Text>
                 </View>
-                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={2}
-                  value={selectedItem.volume ?? 1}
+                <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1}
+                  value={Math.min(1, selectedItem.volume ?? 1)}
                   minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
                   thumbTintColor="#00d4d4"
                   // Touching the slider is a clear statement that you want to hear it,
@@ -3284,7 +3288,7 @@ export default function EditVideoScreen({ navigation }) {
                 </Text>
               </>
             )}
-            <TouchableOpacity style={styles.modalBtnApply} onPress={() => setShowClipVolumeModal(false)}>
+            <TouchableOpacity style={styles.modalBtnApplyBlock} onPress={() => setShowClipVolumeModal(false)}>
               <Text style={styles.modalBtnApplyText}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -3302,7 +3306,7 @@ export default function EditVideoScreen({ navigation }) {
             <Text style={{ color:'#666', fontSize:11, textAlign:'center', marginBottom:10 }}>
               Scales every voiceover and music track. Tap a track on the timeline to set its own level.
             </Text>
-            <TouchableOpacity style={styles.modalBtnApply} onPress={() => setShowVolumeModal(false)}>
+            <TouchableOpacity style={styles.modalBtnApplyBlock} onPress={() => setShowVolumeModal(false)}>
               <Text style={styles.modalBtnApplyText}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -3820,6 +3824,10 @@ const styles = StyleSheet.create({
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
+  // Same button standing alone in a column. flex: 1 belongs only to the pair in
+  // modalBtns, which is a row: in a column it resolves flexBasis to 0, so the
+  // button collapses to its own padding and the label is clipped out of it.
+  modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
