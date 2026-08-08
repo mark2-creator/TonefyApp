@@ -11,7 +11,8 @@
 // Writes to backend/public/transitions/<id>.webp, served as /transitions/<id>.webp.
 
 import { execFile } from 'node:child_process';
-import { mkdir, access, writeFile } from 'node:fs/promises';
+import { mkdir, access, writeFile, readdir } from 'node:fs/promises';
+import os from 'node:os';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -21,6 +22,10 @@ import { TRANSITIONS } from '../constants/transitions.js';
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.resolve(HERE, '../../Tonefy-react/backend/public/transitions');
+// Real photographs, downloaded once and reused. Cached outside both repos: they are
+// inputs to a build step, not source, and ~2MB of stock jpegs does not belong in git.
+// Refill with scripts/fetch-transition-photos.sh if the cache is empty.
+const SRC_DIR = path.join(os.homedir(), '.cache/tonefy/transition-src');
 
 // Small: these are tiles in a grid, and 133 of them are on one screen.
 const W = 160, H = 90, FPS = 20;
@@ -38,18 +43,29 @@ const force = args.includes('--force');
 // chain rather than being fed one. speed=0 holds it still; left at its default it
 // slowly rotates, which would put motion in the preview that the transition is not
 // responsible for.
-function sourceFilter(kind) {
-  const common = `s=${W}x${H}:d=${HOLD}:r=${FPS}:speed=0.00001`;
-  return kind === 'a'
-    ? `gradients=${common}:c0=0xFF7A45:c1=0xFFC46B:x0=0:y0=0:x1=${W}:y1=${H},`
-      + `drawbox=x=0:y=${Math.round(H * 0.62)}:w=${W}:h=${Math.round(H * 0.38)}:color=0x2A1206@0.85:t=fill`
-    : `gradients=${common}:c0=0x0F3B57:c1=0x00D4D4:x0=${W}:y0=0:x1=0:y1=${H},`
-      + `drawbox=x=0:y=0:w=${W}:h=${Math.round(H * 0.34)}:color=0xE8FBFF@0.85:t=fill`;
+// Each transition gets its OWN pair of photographs. Two shared gradients showed the
+// shape of a move but nothing about how it reads over real footage - a grade, a grain
+// or a blur has almost nothing to act on in a flat ramp - and 133 tiles running the
+// same two frames made the grid look like one effect rendered 133 times.
+//
+// Pairing is by index, so it is stable across runs: transition i uses photo i against
+// photo i+1. Every transition therefore has a distinct pair AND a distinct first
+// frame, which is what stops neighbouring tiles reading as the same clip.
+function pairFor(index, photos) {
+  const n = photos.length;
+  return [photos[index % n], photos[(index + 1) % n]];
+}
+
+// Fill the frame rather than letterbox it: a bar down the side of a tile reads as a
+// broken image, and a transition that slides needs the whole frame to slide.
+function inputFilter(stream) {
+  return `[${stream}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,`
+    + `crop=${W}:${H},fps=${FPS},format=rgba,setsar=1`;
 }
 
 function buildFilter(t) {
-  const a = `${sourceFilter('a')},format=rgba,setsar=1[a]`;
-  const b = `${sourceFilter('b')},format=rgba,setsar=1[b]`;
+  const a = `${inputFilter(0)}[a]`;
+  const b = `${inputFilter(1)}[b]`;
   // A cut has no xfade to run. Give it the shortest join ffmpeg will take so the
   // preview still shows both frames and reads as the hard cut it is.
   const base = t.base || 'fade';
@@ -74,6 +90,17 @@ async function exists(p) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
+  const photos = (await readdir(SRC_DIR).catch(() => []))
+    .filter(f => f.endsWith('.jpg'))
+    // Numeric order, so the pairing does not shuffle when the filesystem returns
+    // things in a different order and every preview silently changes.
+    .sort((x, y) => Number(x.match(/\d+/)?.[0] ?? 0) - Number(y.match(/\d+/)?.[0] ?? 0))
+    .map(f => path.join(SRC_DIR, f));
+  if (photos.length < 2) {
+    console.error(`need photos in ${SRC_DIR} - run scripts/fetch-transition-photos.sh first`);
+    process.exit(1);
+  }
+
   const list = only ? TRANSITIONS.filter(t => t.id === only) : TRANSITIONS;
   if (!list.length) { console.error('no such transition:', only); process.exit(1); }
 
@@ -83,10 +110,14 @@ async function main() {
     const out = path.join(OUT_DIR, `${t.id}.webp`);
     if (!force && await exists(out)) { skipped += 1; continue; }
     const { filter, last } = buildFilter(t);
+    // Index into the full catalogue, not the filtered list, so --only regenerates a
+    // tile with the same photographs a full run gave it.
+    const [imgA, imgB] = pairFor(TRANSITIONS.indexOf(t), photos);
     try {
       await run('ffmpeg', [
         '-v', 'error', '-y',
-        // No -i at all: both frames are generated inside the graph.
+        '-loop', '1', '-t', String(HOLD), '-i', imgA,
+        '-loop', '1', '-t', String(HOLD), '-i', imgB,
         '-filter_complex', filter,
         '-map', `[${last}]`,
         '-loop', '0', '-c:v', 'libwebp_anim', '-lossless', '0', '-q:v', '72',
