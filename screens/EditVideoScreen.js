@@ -21,6 +21,7 @@ import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
 import ConfirmSheet from '../components/ConfirmSheet';
+import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import { transitionSpec, resolveTransition, hasTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
@@ -1001,6 +1002,12 @@ export default function EditVideoScreen({ navigation }) {
   // Transition picker
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
+  // Nothing may be written to the draft until the existing one has been read and
+  // answered. Autosaving before that would immediately overwrite the saved project
+  // with this screen's empty initial state - the draft would be destroyed by the very
+  // mount that was supposed to offer it back.
+  const [draftChecked, setDraftChecked] = useState(false);
+  const [draftOffer, setDraftOffer] = useState(null);
   const [transitionTargetKey, setTransitionTargetKey] = useState(null);
 
   // Undo/Redo history
@@ -1443,6 +1450,51 @@ export default function EditVideoScreen({ navigation }) {
   const setTrackField = useCallback((key, patch) => {
     setAudioTracks(prev => prev.map(t => (t.key === key ? { ...t, ...patch } : t)));
   }, []);
+
+  // Look for unfinished work, once, on mount.
+  useEffect(() => {
+    let alive = true;
+    loadDraft().then(draft => {
+      if (!alive) return;
+      if (draft) setDraftOffer(draft);
+      else setDraftChecked(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const restoreDraft = useCallback((draft) => {
+    setItems(draft.items || []);
+    setAudioTracks(draft.audioTracks || []);
+    setTextOverlays(draft.textOverlays || []);
+    setOverlays(draft.overlays || []);
+    if (draft.masterVolume != null) setMasterVolume(draft.masterVolume);
+    if (draft.captionStyle) setCaptionStyle(draft.captionStyle);
+    setDraftOffer(null);
+    setDraftChecked(true);
+  }, []);
+
+  const discardDraft = useCallback(() => {
+    clearDraft();
+    setDraftOffer(null);
+    setDraftChecked(true);
+  }, []);
+
+  // Autosave. Debounced because a trim drag commits on release and a slider does not,
+  // and writing the whole project to disk on every keystroke of a caption would be
+  // felt on the JS thread this screen already shares with playback.
+  useEffect(() => {
+    if (!draftChecked) return undefined;
+    const t = setTimeout(() => {
+      if (items.length === 0) {
+        // An empty timeline is a project that has been cleared, not one worth
+        // restoring. Leaving the old draft would offer work the user deleted.
+        clearDraft();
+        return;
+      }
+      saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle });
+    }, 900);
+    return () => clearTimeout(t);
+  }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle]);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
@@ -3881,6 +3933,20 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      {/* Unfinished work from a previous session. */}
+      <ConfirmSheet
+        visible={!!draftOffer}
+        icon="history"
+        title="Pick up where you left off?"
+        message={draftOffer
+          ? `You were editing ${draftOffer.items?.length || 0} clip${(draftOffer.items?.length || 0) === 1 ? '' : 's'} ${describeAge(draftOffer.savedAt)}. Restore that project, or start a new one?`
+          : ''}
+        confirmLabel="Restore"
+        cancelLabel="Start fresh"
+        onConfirm={() => restoreDraft(draftOffer)}
+        onCancel={discardDraft}
       />
 
       {/* AUTO CAPTIONS MODAL */}
