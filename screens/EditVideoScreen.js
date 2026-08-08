@@ -2226,6 +2226,40 @@ export default function EditVideoScreen({ navigation }) {
     });
   }, [audioTracks]);
 
+  // Picking a transition has already applied it to this join by the time this runs, so
+  // the question is only whether to spread it. Asked rather than offered as a button:
+  // the sheet closes on selection, so a button in it could only ever act on the
+  // PREVIOUS choice, which is not the one anybody wants to spread.
+  const offerApplyToAll = useCallback((id) => {
+    const joins = items.length - 1;
+    // One join is the whole project; there is nothing else to apply it to.
+    if (joins < 2) return;
+    // Every join already carries it - usually because this was answered yes a moment
+    // ago. Asking again would be noise.
+    const already = items.slice(0, -1).every(it => (it.transition || 'none') === id);
+    if (already) return;
+
+    const def = resolveTransition(id);
+    const removing = !def?.base;
+    Alert.alert(
+      removing ? 'Remove from every join?' : `Use ${def.label} everywhere?`,
+      removing
+        ? `Would you like to remove the transition from all ${joins} joins? You can always set them again one at a time.`
+        : `Would you like to use ${def.label} between all ${joins} of your clips? You can change any of them afterwards.`,
+      [
+        { text: 'No, just this one', style: 'cancel' },
+        {
+          text: removing ? 'Yes, remove all' : 'Yes, apply to all',
+          onPress: () => setItems(prev => prev.map((it, i) => (
+            // The last clip's right edge is the end of the video, so it has nothing to
+            // transition into and is left alone.
+            i === prev.length - 1 ? it : { ...it, transition: id }
+          ))),
+        },
+      ]
+    );
+  }, [items]);
+
   function setClipTransition(key, transitionId) {
     setItems(prev => prev.map(i => i.key === key ? { ...i, transition: transitionId } : i));
   }
@@ -3787,15 +3821,10 @@ export default function EditVideoScreen({ navigation }) {
         value={items.find(i => i.key === transitionTargetKey)?.transition || 'none'}
         backend={BACKEND}
         isPremium={isPremium}
-        onSelect={(id) => { setClipTransition(transitionTargetKey, id); setShowTransitionModal(false); }}
-        // Every join but the last clip's - a transition sits on a clip's right edge,
-        // and the final clip has nothing to its right to transition into.
-        canApplyAll={items.length > 2}
-        onApplyAll={(id) => {
-          setItems(prev => prev.map((it, i) => (
-            i === prev.length - 1 ? it : { ...it, transition: id }
-          )));
+        onSelect={(id) => {
+          setClipTransition(transitionTargetKey, id);
           setShowTransitionModal(false);
+          offerApplyToAll(id);
         }}
         // Stays open on a locked tap: the point is to keep browsing the ones that are
         // locked, not to be thrown out of the sheet for touching one.
