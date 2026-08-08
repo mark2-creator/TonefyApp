@@ -1188,7 +1188,15 @@ export default function EditVideoScreen({ navigation }) {
         if (!isUserScrubbing.current) {
           scrollXShared.value = localPos * PIXELS_PER_SECOND;
         }
-        if (ts - lastPlaybackPosUpdateRef.current >= 40) {
+        // `position` is what the transition layers are drawn from, and at 40ms it
+        // only moves 12 times across a half-second join - which is why transitions
+        // looked steppy on real clips while the picker tiles, rendered at 20fps by
+        // ffmpeg with real interpolation, looked smooth. Inside a join the budget
+        // drops to a frame, so the motion is drawn at the display's rate; everywhere
+        // else it stays at 40ms, because a re-render of this screen is not cheap and
+        // nothing outside a join needs more than 25 updates a second.
+        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 0.3);
+        if (ts - lastPlaybackPosUpdateRef.current >= (nearJoin ? 16 : 40)) {
           lastPlaybackPosUpdateRef.current = ts;
           setPosition(localPos);
         }
@@ -2605,6 +2613,19 @@ export default function EditVideoScreen({ navigation }) {
       }
     : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
+
+  // The timeline second of every join that actually has a transition on it. Held in a
+  // ref because the playback loop is created once and must not close over items.
+  const joinTimesRef = useRef([]);
+  useEffect(() => {
+    const out = [];
+    let t = 0;
+    for (let i = 0; i < items.length - 1; i += 1) {
+      t += clipLength(items[i]);
+      if (hasTransition(items[i].transition)) out.push(t);
+    }
+    joinTimesRef.current = out;
+  }, [items]);
 
   // The join the playhead is currently crossing, if any.
   //
