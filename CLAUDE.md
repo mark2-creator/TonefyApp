@@ -58,6 +58,24 @@ Live website (tonefy-ai.fitlifesolutions.site)┘         │
   editor uses `/api/media-to-video`, `/api/upload-media`, `/api/edit-video`. They
   share `/api/job` and `/api/generate-audio`. That separation is why editor-side
   backend changes cannot break the website.
+- **The live site is now in git — but its `.git` is NOT in the webroot.** Repo is
+  `mark2-creator/tonefy-website` (private). The work tree is `/var/www/tonefy-ai`;
+  the git directory is `~/tonefy-website.git`. Work on it with:
+
+  ```bash
+  git --git-dir=~/tonefy-website.git status      # work-tree is configured already
+  git --git-dir=~/tonefy-website.git add -A && git --git-dir=~/tonefy-website.git commit
+  git --git-dir=~/tonefy-website.git push
+  ```
+
+  They are split for a reason: `git init` inside the webroot made `/.git/config` and
+  `/.git/HEAD` fetchable over HTTPS — the whole repository was downloadable from the
+  public site. nginx's existing rules do not catch it (`\.(env|json|...|config)$`
+  needs a dot before `config`, and `.git/config` has a slash). There is no
+  passwordless sudo here to add a deny rule, and moving the git dir out is the better
+  fix anyway. **Never run `git init` in `/var/www/tonefy-ai`.** The APK is gitignored:
+  84MB of an 85MB directory, and a release artefact rather than source.
+
 - **Every `/api` route is behind `app.use("/api", verifyToken)`.** A call with no
   Authorization header does not fail loudly - it gets a 401 whose JSON lacks every
   field the caller reads, so the feature silently does nothing. That is what pinned
