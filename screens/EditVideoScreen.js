@@ -19,6 +19,8 @@ import CaptionText, { captionMetrics } from '../components/CaptionText';
 import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
+import TransitionSheet from '../components/TransitionPicker';
+import { transitionSpec, resolveTransition } from '../constants/transitions';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { measureVideoDuration } from '../utils/videoDuration';
@@ -146,157 +148,6 @@ const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 // wants the same one, and re-finding it by eye on the plane is not possible.
 const RECENT_COLORS_KEY = 'tonefy.recentTextColors';
 const MAX_RECENT_COLORS = 8;
-const TRANSITION_STYLES = [
-  { id: 'none',        label: 'Cut',          group: 'Basic' },
-  { id: 'fade',        label: 'Fade',         group: 'Basic' },
-  { id: 'fadewhite',   label: 'Flash White',  group: 'Trendy' },
-  { id: 'fadeblack',   label: 'Fade Black',   group: 'Basic' },
-  { id: 'fadefast',    label: 'Flash Cut',    group: 'Trendy' },
-  { id: 'fadeslow',    label: 'Slow Burn',    group: 'Cinematic' },
-  { id: 'zoomin',      label: 'Zoom In',      group: 'Trendy' },
-  { id: 'hblur',       label: 'Blur Wipe',    group: 'Trendy' },
-  { id: 'pixelize',    label: 'Pixelate',     group: 'Trendy' },
-  { id: 'dissolve',    label: 'Dissolve',     group: 'Basic' },
-  { id: 'radial',      label: 'Radial',       group: 'Cinematic' },
-  { id: 'circleopen',  label: 'Circle Open',  group: 'Cinematic' },
-  { id: 'circleclose', label: 'Circle Close', group: 'Cinematic' },
-  { id: 'coverleft',   label: 'Cover Left',   group: 'Trendy' },
-  { id: 'coverright',  label: 'Cover Right',  group: 'Trendy' },
-  { id: 'coverup',     label: 'Cover Up',     group: 'Trendy' },
-  { id: 'coverdown',   label: 'Cover Down',   group: 'Trendy' },
-  { id: 'slideleft',   label: 'Slide Left',   group: 'Basic' },
-  { id: 'slideright',  label: 'Slide Right',  group: 'Basic' },
-  { id: 'slideup',     label: 'Slide Up',     group: 'Basic' },
-  { id: 'slidedown',   label: 'Slide Down',   group: 'Basic' },
-  { id: 'wipeleft',    label: 'Wipe Left',    group: 'Basic' },
-  { id: 'wiperight',   label: 'Wipe Right',   group: 'Basic' },
-  { id: 'hlslice',     label: 'H Slices',     group: 'Trendy' },
-  { id: 'vuslice',     label: 'V Slices',     group: 'Trendy' },
-  { id: 'hlwind',      label: 'H Wind',       group: 'Trendy' },
-  { id: 'vuwind',      label: 'V Wind',       group: 'Trendy' },
-];
-
-const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
-];
-
-function TransitionPreview({ item }) {
-  const anim = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 100, useNativeDriver: true }),
-        Animated.delay(600),
-      ])
-    ).start();
-  }, []);
-  const W = 70, H = 44;
-  const IMG_A = { uri: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=60' };
-  const IMG_B = { uri: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=200&q=60' };
-  const imgStyle = { position: 'absolute', width: W, height: H, resizeMode: 'cover' };
-  const getPreview = () => {
-    switch(item.id) {
-      case 'fade': case 'fadeslow': case 'fadefast': case 'dissolve':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim }]} />
-        </View>);
-      case 'slideleft': case 'smoothleft': case 'coverleft': case 'wipeleft': case 'hlslice': case 'hlwind':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [W, 0] }) }] }]} />
-        </View>);
-      case 'slideright': case 'smoothright': case 'coverright': case 'wiperight':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateX: anim.interpolate({ inputRange: [0,1], outputRange: [-W, 0] }) }] }]} />
-        </View>);
-      case 'slideup': case 'smoothup': case 'coverup': case 'wipeup': case 'vuslice': case 'vuwind':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [H, 0] }) }] }]} />
-        </View>);
-      case 'slidedown': case 'smoothdown': case 'coverdown': case 'wipedown':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [-H, 0] }) }] }]} />
-        </View>);
-      case 'zoomin':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_B} style={imgStyle} />
-          <Animated.Image source={IMG_A} style={[imgStyle, { transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1, 2.5] }) }], opacity: anim.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 0.3, 0] }) }]} />
-        </View>);
-      case 'fadewhite':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.View style={{ ...imgStyle, backgroundColor: '#fff', opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }]} />
-        </View>);
-      case 'fadeblack':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.View style={{ ...imgStyle, backgroundColor: '#000', opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] }) }} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0, 1] }) }]} />
-        </View>);
-      case 'radial': case 'circleopen': case 'circleclose': case 'hblur': case 'pixelize':
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim, transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [1.15, 1] }) }] }]} />
-        </View>);
-      default:
-        return (<View style={{ width: W, height: H, borderRadius: 6, overflow: 'hidden' }}>
-          <Image source={IMG_A} style={imgStyle} />
-          <Animated.Image source={IMG_B} style={[imgStyle, { opacity: anim }]} />
-        </View>);
-    }
-  };
-  return <View style={{ marginBottom: 6 }}>{getPreview()}</View>;
-}
-
-function TransitionModal({ visible, targetKey, onSelect, onClose }) {
-  const groups = ['Basic', 'Trendy', 'Cinematic'];
-  const sheetInset = useSheetInset(16);
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={{ flex:1, backgroundColor:'rgba(0,0,0,0.6)', justifyContent:'flex-end' }} activeOpacity={1} onPress={onClose}>
-        <View style={[{ backgroundColor:'#111', borderTopLeftRadius:20, borderTopRightRadius:20, padding:16, maxHeight:'85%' }, sheetInset]}>
-          <View style={{ width:36, height:4, backgroundColor:'#333', borderRadius:2, alignSelf:'center', marginBottom:12 }} />
-          <SheetHeader title="Transition Style" onClose={onClose} />
-          <ScrollView>
-            {groups.map(group => {
-              const items = TRANSITION_STYLES.filter(o => o.group === group);
-              if (!items.length) return null;
-              return (
-                <View key={group} style={{ marginBottom: 16 }}>
-                  <Text style={{ color:'#888', fontSize:11, fontWeight:'bold', letterSpacing:1, marginBottom:8 }}>{group.toUpperCase()}</Text>
-                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
-                    {items.map(item => (
-                      <TouchableOpacity key={item.id}
-                        onPress={() => { onSelect(targetKey, item.id); onClose(); }}
-                        style={{ width:'30%', backgroundColor:'#1a1a1a', borderWidth:1.5, borderColor:'#333', borderRadius:12, padding:8, alignItems:'center' }}>
-                        <TransitionPreview item={item} />
-                        <Text style={{ color:'#fff', fontSize:10, fontWeight:'bold', textAlign:'center' }}>{item.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
-
 function WaveformBars({ peaks, color = '#00d4d4', height = 28 }) {
   if (!peaks || peaks.length === 0) {
     return (
@@ -1866,7 +1717,11 @@ export default function EditVideoScreen({ navigation }) {
         // the file that came back.
         volume: items[i].volume ?? 1,
         muted: !!items[i].muted,
-        transition: items[i].transition || (items[i].transition || 'none'),
+        transition: items[i].transition || 'none',
+        // The recipe itself - an xfade base plus an fx chain the server gates to the
+        // join. Sending it means a transition added to the catalogue renders without a
+        // backend deploy, the same arrangement the caption styles use.
+        transitionSpec: transitionSpec(items[i].transition),
       }));
 
       // Upload overlays if any
@@ -3793,11 +3648,12 @@ export default function EditVideoScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* TRANSITION PICKER MODAL */}
-      <TransitionModal
+      {/* TRANSITION PICKER - 133 recipes, each tile playing its own preview. */}
+      <TransitionSheet
         visible={showTransitionModal}
-        targetKey={transitionTargetKey}
-        onSelect={setClipTransition}
+        value={items.find(i => i.key === transitionTargetKey)?.transition || 'none'}
+        backend={BACKEND}
+        onSelect={(id) => { setClipTransition(transitionTargetKey, id); setShowTransitionModal(false); }}
         onClose={() => setShowTransitionModal(false)}
       />
 
