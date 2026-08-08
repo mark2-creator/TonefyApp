@@ -67,7 +67,10 @@ const Tile = React.memo(function Tile({ item, selected, backend, locked, onPick 
 /**
  * The sheet on its own. `value` is the current transition id for the clip being edited.
  */
-export function TransitionSheet({ visible, value, backend, isPremium = false, onSelect, onLocked, onClose }) {
+export function TransitionSheet({
+  visible, value, backend, isPremium = false, canApplyAll = false,
+  onSelect, onLocked, onApplyAll, onClose,
+}) {
   const sheetInset = useSheetInset(16);
   const [query, setQuery] = useState('');
 
@@ -94,6 +97,12 @@ export function TransitionSheet({ visible, value, backend, isPremium = false, on
     });
     return out;
   }, [query]);
+
+  // What "apply to all" would apply. The current value, so the button acts on what is
+  // already chosen rather than needing a second selection - picking a transition and
+  // then deciding it should be everywhere is the order this actually happens in.
+  const current = TRANSITIONS.find(t => t.id === value) || null;
+  const currentLocked = !!current?.premium && !isPremium;
 
   const pick = (t) => {
     // A locked tile is not inert - it explains itself. Silently doing nothing is the
@@ -143,6 +152,23 @@ export function TransitionSheet({ visible, value, backend, isPremium = false, on
               </TouchableOpacity>
             )}
           </View>
+          {canApplyAll && current && (
+            <TouchableOpacity
+              style={[styles.applyAll, currentLocked && styles.applyAllLocked]}
+              onPress={() => {
+                if (currentLocked) { onLocked?.(current); return; }
+                onApplyAll?.(current.id);
+              }}
+              activeOpacity={0.85}>
+              <MaterialIcons
+                name={currentLocked ? 'diamond' : 'done-all'}
+                size={16}
+                color={currentLocked ? '#f5c451' : '#04211f'} />
+              <Text style={[styles.applyAllText, currentLocked && styles.applyAllTextLocked]}>
+                Apply {current.label} to all clips
+              </Text>
+            </TouchableOpacity>
+          )}
           <FlatList
             data={rows}
             keyExtractor={r => r.key}
@@ -196,4 +222,13 @@ const styles = StyleSheet.create({
   label: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 5 },
   labelSelected: { color: '#2ECC71' },
   labelLocked: { color: '#888' },
+  // Green: this commits a change to every clip, which is the one thing in this sheet
+  // that is an action rather than a choice.
+  applyAll: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#2ECC71', borderRadius: 10, paddingVertical: 11, marginBottom: 12,
+  },
+  applyAllLocked: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a' },
+  applyAllText: { color: '#04211f', fontSize: 13, fontWeight: '700' },
+  applyAllTextLocked: { color: '#888' },
 });

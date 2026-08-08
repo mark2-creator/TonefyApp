@@ -20,7 +20,7 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
-import { transitionSpec } from '../constants/transitions';
+import { transitionSpec, resolveTransition, hasTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -102,6 +102,18 @@ const VOICES = [
   { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
   { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
 ];
+
+// The colour a join dips through. Taken from what the transition actually does, so a
+// Flash White reads white and a Fade Black reads black rather than every join looking
+// like the same grey blink.
+function joinTint(def) {
+  const base = def?.base || '';
+  const fx = (def?.fx || []).join(' ');
+  if (base === 'fadewhite' || /brightness=0\.[34]/.test(fx)) return '#ffffff';
+  if (base === 'fadeblack' || base === 'fadegrays') return '#000000';
+  if (/rgbashift|chromashift|noise/.test(fx)) return '#0a0a2a';
+  return '#000000';
+}
 
 // What a locked feature says when tapped.
 //
@@ -783,10 +795,22 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
               <View style={[styles.clipSeam, { left: endX - CLIP_SEAM_W / 2 }]} pointerEvents="none" />
               {!busy && (
                 <TouchableOpacity
-                  style={[styles.transitionBtn, { left: endX - TRANSITION_BTN / 2 }]}
+                  style={[
+                    styles.transitionBtn,
+                    { left: endX - TRANSITION_BTN / 2 },
+                    hasTransition(item.transition) && styles.transitionBtnSet,
+                  ]}
                   onPress={() => onPressTransition(item.key)}
                   accessibilityLabel="Transition">
-                  <Text style={{ color: item.transition && item.transition !== 'none' ? '#00d4d4' : '#666', fontSize: 14, fontWeight: 'bold' }}>+</Text>
+                  {/* A plus invites you to add one; once there IS one, the marker
+                      has to say so - it filled teal for every clip before, including
+                      the ones with nothing on them, so adding a transition changed
+                      nothing on screen. */}
+                  {hasTransition(item.transition) ? (
+                    <MaterialIcons name="compare-arrows" size={13} color="#04211f" />
+                  ) : (
+                    <Text style={{ color: '#666', fontSize: 14, fontWeight: 'bold' }}>+</Text>
+                  )}
                 </TouchableOpacity>
               )}
             </React.Fragment>
@@ -1426,7 +1450,7 @@ export default function EditVideoScreen({ navigation }) {
         volume: 1,
         speed: 1,
         filter: 'None',
-        transition: 'None',
+        transition: 'none',
       }));
       setItems(prev => {
         const next = [...prev, ...picked];
@@ -1538,7 +1562,7 @@ export default function EditVideoScreen({ navigation }) {
     // A transition belongs to a clip's right edge, so it stays with the half that
     // still ends where the original did. The cut itself is a hard join: the user
     // asked for a cut, and inheriting the transition would put a crossfade on it.
-    part1.transition = 'None';
+    part1.transition = 'none';
 
     const next = [...items];
     next.splice(idx, 1, part1, part2);
@@ -2476,6 +2500,34 @@ export default function EditVideoScreen({ navigation }) {
     : null;
   const previewVideoSource = useMemo(() => (previewItem ? { uri: previewItem.uri } : null), [previewItem?.uri]);
 
+  // The join the playhead is currently crossing, if any.
+  //
+  // The canvas plays one clip at a time through a single <Video>, so a real
+  // two-source transition cannot be drawn here - there is nothing to cross-fade the
+  // outgoing clip WITH. What this does is mark the moment: the frame dips through the
+  // join, tinted the way the transition's own family would tint it, with the
+  // transition's name on it. It answers "is there a transition here and which one",
+  // which is the question that could not be answered at all before; it is not a
+  // faithful render of the effect, and the tile in the picker is still the place to
+  // see what one actually looks like.
+  const activeJoin = useMemo(() => {
+    if (items.length < 2) return null;
+    const HALF = 0.25;   // the export's xfade is 0.5s, centred on the join
+    let t = 0;
+    for (let i = 0; i < items.length - 1; i += 1) {
+      t += clipLength(items[i]);
+      if (Math.abs(position - t) <= HALF) {
+        const def = resolveTransition(items[i].transition);
+        if (!def?.base) return null;
+        // 0 at the edges of the window, 1 dead on the join.
+        const strength = 1 - Math.abs(position - t) / HALF;
+        return { def, strength };
+      }
+      if (t - position > HALF) break;
+    }
+    return null;
+  }, [items, position]);
+
   // Held across renders on purpose. `position` is React state written ~25 times a
   // second during playback, so this screen re-renders at that rate - and building
   // this list inline meant reconciling a native VideoView, and rebuilding every
@@ -2785,6 +2837,24 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.previewEmptyText}>Add media to get started</Text>
             </View>
           )}
+          {/* The join marker. Under the overlays so a caption is never hidden by it,
+              and pointerEvents none so it never eats a tap meant for the canvas. */}
+          {activeJoin && (
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              <View style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: joinTint(activeJoin.def),
+                  opacity: activeJoin.strength * 0.55,
+                },
+              ]} />
+              <View style={styles.joinLabel}>
+                <MaterialIcons name="compare-arrows" size={12} color="#04211f" />
+                <Text style={styles.joinLabelText}>{activeJoin.def.label}</Text>
+              </View>
+            </View>
+          )}
+
           {/* Sits under the overlays and over the video, so a tap that misses every
               overlay clears the selection instead of doing nothing. */}
           {selectedOverlayKey && (
@@ -3718,6 +3788,15 @@ export default function EditVideoScreen({ navigation }) {
         backend={BACKEND}
         isPremium={isPremium}
         onSelect={(id) => { setClipTransition(transitionTargetKey, id); setShowTransitionModal(false); }}
+        // Every join but the last clip's - a transition sits on a clip's right edge,
+        // and the final clip has nothing to its right to transition into.
+        canApplyAll={items.length > 2}
+        onApplyAll={(id) => {
+          setItems(prev => prev.map((it, i) => (
+            i === prev.length - 1 ? it : { ...it, transition: id }
+          )));
+          setShowTransitionModal(false);
+        }}
         // Stays open on a locked tap: the point is to keep browsing the ones that are
         // locked, not to be thrown out of the sheet for touching one.
         onLocked={(t) => promptUpgrade(t.label)}
@@ -3853,6 +3932,10 @@ const styles = StyleSheet.create({
   // rather than as a line drawn over them.
   clipSeam: { position: 'absolute', top: 0, bottom: 0, width: CLIP_SEAM_W, backgroundColor: '#0a0a0a' },
   transitionBtn: { position: 'absolute', top: (CLIP_H - TRANSITION_BTN) / 2, width: TRANSITION_BTN, height: TRANSITION_BTN, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a1af2', borderRadius: TRANSITION_BTN / 2, borderWidth: 1, borderColor: '#3a3a3a' },
+  // Filled rather than merely tinted: at 22px a colour change alone is easy to miss
+  // on a busy strip, and this is the only thing on the timeline that says a join has
+  // a transition on it.
+  transitionBtnSet: { backgroundColor: '#00d4d4', borderColor: '#00d4d4' },
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   auxTrackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
@@ -3926,6 +4009,12 @@ const styles = StyleSheet.create({
   // button collapses to its own padding and the label is clipped out of it.
   modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  joinLabel: {
+    position: 'absolute', top: 8, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'center', gap: 4, backgroundColor: '#00d4d4',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+  },
+  joinLabelText: { color: '#04211f', fontSize: 10, fontWeight: '700' },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   audioSheetName: { color: '#888', fontSize: 12, marginBottom: 14 },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },

@@ -200,7 +200,18 @@ const BY_ID = new Map(TRANSITIONS.map(t => [t.id, t]));
 /** The recipe for an id, or Fade for anything the catalogue no longer knows. */
 export function resolveTransition(id) {
   if (!id) return BY_ID.get('none');
-  return BY_ID.get(id) || BY_ID.get('fade');
+  // Clips were written with 'None' capitalised for as long as this screen has
+  // existed, and the catalogue's id is lowercase. Unmatched ids fall through to Fade,
+  // so every clip that had NO transition was exporting with one. Normalising here
+  // covers the sessions already carrying the old value, not just new clips.
+  const key = String(id).toLowerCase();
+  if (key === 'none') return BY_ID.get('none');
+  return BY_ID.get(key) || BY_ID.get('fade');
+}
+
+/** Whether a clip actually has a transition on its right edge. */
+export function hasTransition(id) {
+  return !!resolveTransition(id)?.base;
 }
 
 /** What travels to the server with a clip. Null for a hard cut. */
