@@ -29,6 +29,8 @@ import { requestNotificationPermission, scheduleReminders } from '../utils/notif
 import { persistMedia, newMediaId, sweepUnreferenced } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
+import AdjustSheet from '../components/AdjustSheet';
+import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -309,7 +311,9 @@ const CLIP_TOOLS = [
     { key: 'transform', icon: 'transform', label: 'Transform', premium: true },
   ],
   [
-    { key: 'adjust', icon: 'tune', label: 'Adjust', premium: true },
+    // Built, and free: hand correction of brightness and colour is table stakes in
+    // an editor, not a paid extra. It kept its diamond while it did nothing.
+    { key: 'adjust', icon: 'tune', label: 'Adjust' },
     { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover', premium: true },
     { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio', premium: true },
     { key: 'effects', icon: 'movie-filter', label: 'Effects', premium: true },
@@ -1216,6 +1220,7 @@ export default function EditVideoScreen({ navigation }) {
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   // Nothing may be written to the draft until the existing one has been read and
   // answered. Autosaving before that would immediately overwrite the saved project
   // with this screen's empty initial state - the draft would be destroyed by the very
@@ -2192,7 +2197,17 @@ export default function EditVideoScreen({ navigation }) {
         filter: items[i].filter || 'None',
         // The grade itself, so the catalogue lives in the app and a filter added there
         // renders without a backend deploy. The name is still sent for older servers.
-        filterSpec: filterSpec(items[i].filter),
+        // The chosen grade first, then the hand adjustment on top of it - the same
+        // order the sheets are used in, and the order that makes a correction correct
+        // what the filter did rather than the other way round. One chain, so the
+        // server needed no change at all to support this.
+        filterSpec: [
+          ...(filterSpec(items[i].filter) || []),
+          ...adjustChain(items[i].adjust),
+        // Bounded, but above anything reachable: a filter contributes at most 3
+        // fragments and the ten adjustments one each, so 13 is the real ceiling.
+        // A cap of 12 would have silently dropped grain from a fully-used clip.
+        ].slice(0, 20),
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
         // The clip's own audio. Neither of these was sent, and the server discarded
@@ -3194,7 +3209,7 @@ export default function EditVideoScreen({ navigation }) {
     // Filters is genuinely built: the grades and applyFilter already exist, they were
     // only reachable from inside the Effects tab and from a selected clip.
     { name: 'Filters', icon: 'photo-filter', built: true },
-    { name: 'Adjust', icon: 'tune', built: false, premium: true },
+    { name: 'Adjust', icon: 'tune', built: true },
     { name: 'Stickers', icon: 'emoji-emotions', built: false },
     { name: 'AI avatar', icon: 'smart-toy', built: false, premium: true },
     { name: 'Aspect ratio', icon: 'aspect-ratio', built: false },
@@ -3235,6 +3250,14 @@ export default function EditVideoScreen({ navigation }) {
           ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
+      case 'Adjust':
+        return [{
+          key: 'openadjust',
+          icon: 'tune',
+          label: hasAdjustments(selectedItem?.adjust) ? 'Adjusted' : 'Adjust',
+          color: hasAdjustments(selectedItem?.adjust) ? '#00d4d4' : undefined,
+          onPress: () => setShowAdjustSheet(true),
+        }];
       case 'Filters':
         // One button into the catalogue rather than seven chips. 77 grades cannot be
         // chosen from a scrolling row of words - a filter is picked by looking at it.
@@ -3313,6 +3336,7 @@ export default function EditVideoScreen({ navigation }) {
     speed: () => setChipPicker('speed'),
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setShowFilterSheet(true),
+    adjust: () => setShowAdjustSheet(true),
     flip: () => setChipPicker('flip'),
     // Built rather than dimmed: both are operations on the item list, which this
     // screen already owns. Adding them greyed out alongside the model calls would
@@ -4495,6 +4519,15 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      <AdjustSheet
+        visible={showAdjustSheet}
+        value={selectedItem?.adjust}
+        onChange={(next) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, adjust: next } : i
+        )))}
+        onClose={() => setShowAdjustSheet(false)}
       />
 
       <FilterSheet
