@@ -34,6 +34,7 @@ import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
 import StickerSheet, { stickerUri } from '../components/StickerPicker';
 import BackgroundSheet from '../components/BackgroundSheet';
+import CropSheet from '../components/CropSheet';
 import { DEFAULT_BACKGROUND, normaliseBackground } from '../constants/background';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
@@ -42,7 +43,7 @@ import {
 import { usePlan } from '../constants/plan';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { measureVideoDuration } from '../utils/videoDuration';
+import { measureVideoDuration, measureVideo } from '../utils/videoDuration';
 import { fontFamilyFor } from '../constants/fonts';
 import {
   DEFAULT_CAPTION_STYLE_ID, resolveCaptionStyle, captionChunkSize,
@@ -317,7 +318,8 @@ const CLIP_TOOLS = [
     // More is an overflow, not a feature, so it carries no diamond: there is nothing
     // behind it to sell.
     { key: 'more', icon: 'more-horiz', label: 'More' },
-    { key: 'crop', icon: 'crop', label: 'Crop', premium: true },
+    // Built and free: choosing which part of the shot is used is core editing.
+    { key: 'crop', icon: 'crop', label: 'Crop' },
     { key: 'colour', icon: 'palette', label: 'Colour', premium: true },
     { key: 'animate', icon: 'animation', label: 'Animate', premium: true },
     { key: 'transform', icon: 'transform', label: 'Transform', premium: true },
@@ -1236,6 +1238,8 @@ export default function EditVideoScreen({ navigation }) {
   const [showAspectSheet, setShowAspectSheet] = useState(false);
   const [showStickerSheet, setShowStickerSheet] = useState(false);
   const [showBackgroundSheet, setShowBackgroundSheet] = useState(false);
+  const [showCropSheet, setShowCropSheet] = useState(false);
+  const [cropSize, setCropSize] = useState(null);
   const [background, setBackground] = useState(DEFAULT_BACKGROUND);
 
   // How the canvas draws a clip has to match how the export will frame it, or Fit is
@@ -1819,6 +1823,11 @@ export default function EditVideoScreen({ navigation }) {
         // Identifies the FILE, not the clip: it survives the copy that changes `uri`,
         // and both halves of a split inherit it so they share one filmstrip.
         mediaId: newMediaId('clip'),
+        // The source's real shape. The crop editor draws its rectangle over a frame at
+        // this aspect, and a frame drawn to the wrong one puts the rectangle over the
+        // wrong part of the picture.
+        naturalW: a.width || 0,
+        naturalH: a.height || 0,
         uri: a.uri,
         type: a.type === 'video' ? 'video' : 'image',
         fileName: a.fileName || ('media_' + Date.now() + '_' + idx + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),
@@ -1867,6 +1876,10 @@ export default function EditVideoScreen({ navigation }) {
       // A different file behind the same clip, so a different media id - otherwise the
       // new footage would be drawn with the old one's cached filmstrip.
       mediaId: replacementId,
+      naturalW: a.width || 0,
+      naturalH: a.height || 0,
+      // A different picture is not cropped the way the last one was.
+      crop: null,
       // Whatever was wrong with the old file is not wrong with this one.
       missing: false,
       uri: a.uri,
@@ -2241,6 +2254,9 @@ export default function EditVideoScreen({ navigation }) {
         // fragments and the ten adjustments one each, so 13 is the real ceiling.
         // A cap of 12 would have silently dropped grain from a fully-used clip.
         ].slice(0, 20),
+        // Fractions of the source, so one rectangle is right for the phone's preview
+        // and for the 4K master.
+        crop: items[i].crop || null,
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
         // The clip's own audio. Neither of these was sent, and the server discarded
@@ -2854,6 +2870,34 @@ export default function EditVideoScreen({ navigation }) {
     setSelectedOverlayKey(key);
   }, []);
 
+  // Crop needs the source's pixel size. Clips added since this shipped carry it from
+  // the picker; older ones are measured on the way into the sheet - images by asking
+  // React Native, videos through the same sourceLoad the duration probe uses, which
+  // reports the track's size in the very same event.
+  const openCrop = useCallback(async () => {
+    if (!selectedItem) return;
+    setShowCropSheet(true);
+    if (selectedItem.naturalW && selectedItem.naturalH) {
+      setCropSize({ width: selectedItem.naturalW, height: selectedItem.naturalH });
+      return;
+    }
+    setCropSize(null);
+    const remember = (width, height) => {
+      if (!width || !height) return;
+      setCropSize({ width, height });
+      setItems(prev => prev.map(i => (
+        i.key === selectedItem.key ? { ...i, naturalW: width, naturalH: height } : i
+      )));
+    };
+    if (selectedItem.type === 'image') {
+      // react-native's Image, not expo-image: getSize is a static on the RN one.
+      Image.getSize(selectedItem.uri, (w, h) => remember(w, h), () => setCropSize(null));
+    } else {
+      const { width, height } = await measureVideo(selectedItem.uri);
+      remember(width, height);
+    }
+  }, [selectedItem]);
+
   const confirmRemoveOverlay = useCallback((o) => {
     Alert.alert('Remove overlay?', 'It will be taken off the video.', [
       { text: 'Cancel', style: 'cancel' },
@@ -3426,6 +3470,7 @@ export default function EditVideoScreen({ navigation }) {
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setShowFilterSheet(true),
     adjust: () => setShowAdjustSheet(true),
+    crop: openCrop,
     flip: () => setChipPicker('flip'),
     // Built rather than dimmed: both are operations on the item list, which this
     // screen already owns. Adding them greyed out alongside the model calls would
@@ -4608,6 +4653,19 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      <CropSheet
+        visible={showCropSheet}
+        item={selectedItem}
+        sourceSize={cropSize}
+        boxW={SW - 64}
+        boxH={SH * 0.42}
+        onApply={(crop) => {
+          setItems(prev => prev.map(i => (i.key === selectedKey ? { ...i, crop } : i)));
+          setShowCropSheet(false);
+        }}
+        onClose={() => setShowCropSheet(false)}
       />
 
       <BackgroundSheet

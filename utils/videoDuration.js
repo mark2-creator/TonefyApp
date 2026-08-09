@@ -20,8 +20,19 @@ import { createVideoPlayer } from 'expo-video';
  * promptly, and a sourceLoad that fires before anything is listening would hang the
  * promise until its timeout.
  */
-export function measureVideoDuration(uri, { timeoutMs = 5000 } = {}) {
+export function measureVideoDuration(uri, opts) {
+  return measureVideo(uri, opts).then(r => r.duration);
+}
+
+/**
+ * Duration AND pixel size, from one load.
+ *
+ * One sourceLoad event carries both, so the crop editor gets the source's real shape
+ * without opening a second player to ask for it.
+ */
+export function measureVideo(uri, { timeoutMs = 5000 } = {}) {
   return new Promise(resolve => {
+    let size = null;
     let player = null;
     let subs = [];
     let timer = null;
@@ -34,14 +45,22 @@ export function measureVideoDuration(uri, { timeoutMs = 5000 } = {}) {
       subs.forEach(s => { try { s.remove(); } catch {} });
       // createVideoPlayer's instances never release themselves.
       try { player?.release(); } catch {}
-      resolve(Number.isFinite(seconds) && seconds > 0 ? seconds : null);
+      resolve({
+        duration: Number.isFinite(seconds) && seconds > 0 ? seconds : null,
+        width: size?.width || null,
+        height: size?.height || null,
+      });
     };
 
     try {
       player = createVideoPlayer(null);
       player.muted = true;
       player.audioMixingMode = 'mixWithOthers';
-      subs.push(player.addListener('sourceLoad', ({ duration }) => finish(duration)));
+      subs.push(player.addListener('sourceLoad', ({ duration, availableVideoTracks }) => {
+        const track = (availableVideoTracks || [])[0];
+        if (track?.size) size = { width: track.size.width, height: track.size.height };
+        finish(duration);
+      }));
       // A source that fails to open never fires sourceLoad, and waiting the full
       // timeout for an answer that is already known reads as the app hanging.
       subs.push(player.addListener('statusChange', ({ status }) => {
