@@ -22,9 +22,11 @@ import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
 import Waveform from '../components/Waveform';
 import ConfirmSheet from '../components/ConfirmSheet';
-import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
+import {
+  saveDraft, loadDraft, clearDraft, describeAge, validateDraft, draftUris,
+} from '../utils/draft';
 import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
-import { persistMedia, newMediaId } from '../utils/mediaStore';
+import { persistMedia, newMediaId, sweepUnreferenced } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
@@ -916,6 +918,15 @@ function TimelineClip({
             // runs past the clip's own box.
             pixelsPerSecond={PIXELS_PER_SECOND / clipSpeed(item)}
           />
+          {/* Its file is gone. Says so on the clip rather than leaving a grey box the
+              filmstrip will keep trying to decode - and names the fix, since replacing
+              it keeps the trim, speed and grade already set on this clip. */}
+          {item.missing && (
+            <View style={styles.missingClip}>
+              <MaterialIcons name="image-not-supported" size={14} color="#ff6b6b" />
+              <Text style={styles.missingClipText} numberOfLines={2}>File gone{'\n'}Tap Replace</Text>
+            </View>
+          )}
           {idx === 0 && (
             <View style={styles.coverBadge}>
               <MaterialIcons name="edit" size={9} color="#fff" />
@@ -1665,11 +1676,24 @@ export default function EditVideoScreen({ navigation }) {
   // Look for unfinished work, once, on mount.
   useEffect(() => {
     let alive = true;
-    loadDraft().then(draft => {
+    (async () => {
+      const raw = await loadDraft();
       if (!alive) return;
-      if (draft) setDraftOffer(draft);
-      else setDraftChecked(true);
-    });
+      if (!raw) { setDraftChecked(true); return; }
+      // Check the media is still there before offering it back. A draft whose files
+      // the OS reclaimed restores as a timeline of broken clips, which looks like the
+      // app losing the work rather than the work already being gone.
+      const { draft, missing, total, allGone } = await validateDraft(raw);
+      if (!alive) return;
+      if (allGone) {
+        // Nothing left to restore. Offering a project of holes is worse than a clean
+        // start, and keeping it would offer the same holes on every launch.
+        await clearDraft();
+        setDraftChecked(true);
+        return;
+      }
+      setDraftOffer({ ...draft, missingCount: missing, mediaTotal: total });
+    })();
     return () => { alive = false; };
   }, []);
 
@@ -1689,6 +1713,22 @@ export default function EditVideoScreen({ navigation }) {
     setDraftOffer(null);
     setDraftChecked(true);
   }, []);
+
+  // With the draft answered, anything in permanent storage the project cannot reach
+  // is genuinely orphaned - a deleted clip, an abandoned draft, a Start fresh. Swept
+  // here rather than when a clip is removed, because undo can bring one back and
+  // deleting its file on removal would restore a clip pointing at nothing.
+  useEffect(() => {
+    if (!draftChecked) return;
+    const referenced = draftUris({ items, audioTracks, textOverlays, overlays });
+    sweepUnreferenced(referenced).then(({ removed, bytes }) => {
+      if (removed) console.log(`[media] swept ${removed} orphaned file(s), ${Math.round(bytes / 1024)}KB`);
+    });
+    // Deliberately once, on the launch pass. Re-running it as the timeline changes
+    // would race the background copies that patch a clip's uri moments after it is
+    // added, and delete the file that copy had just written.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftChecked]);
 
   // Autosave. Debounced because a trim drag commits on release and a slider does not,
   // and writing the whole project to disk on every keystroke of a caption would be
@@ -1789,6 +1829,8 @@ export default function EditVideoScreen({ navigation }) {
       // A different file behind the same clip, so a different media id - otherwise the
       // new footage would be drawn with the old one's cached filmstrip.
       mediaId: replacementId,
+      // Whatever was wrong with the old file is not wrong with this one.
+      missing: false,
       uri: a.uri,
       type: isVideo ? 'video' : 'image',
       fileName: a.fileName || ('media_' + Date.now() + '.' + (isVideo ? 'mp4' : 'jpg')),
@@ -3376,6 +3418,17 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.previewEmptyText}>Add media to get started</Text>
             </View>
           )}
+          {previewItem?.missing && (
+            <View style={styles.missingCanvas} pointerEvents="none">
+              <MaterialIcons name="image-not-supported" size={34} color="#ff6b6b" />
+              <Text style={styles.missingCanvasText}>
+                This clip&apos;s file is no longer on the device
+              </Text>
+              <Text style={styles.missingCanvasHint}>
+                Select it and use Replace to pick it again — its trim, speed and filter are kept
+              </Text>
+            </View>
+          )}
           {/* The other side of the join, drawn as a second layer over the canvas.
               This is what makes a transition actually play here: the outgoing and the
               incoming clip are both on screen, which is the same pair xfade gets.
@@ -4460,7 +4513,10 @@ export default function EditVideoScreen({ navigation }) {
         icon="history"
         title="Pick up where you left off?"
         message={draftOffer
-          ? `You were editing ${draftOffer.items?.length || 0} clip${(draftOffer.items?.length || 0) === 1 ? '' : 's'} ${describeAge(draftOffer.savedAt)}. Restore that project, or start a new one?`
+          ? `You were editing ${draftOffer.items?.length || 0} clip${(draftOffer.items?.length || 0) === 1 ? '' : 's'} ${describeAge(draftOffer.savedAt)}.`
+            + (draftOffer.missingCount
+              ? `\n\n${draftOffer.missingCount} of ${draftOffer.mediaTotal} files are no longer on this device - those clips come back empty and can be replaced. Everything else is intact.`
+              : ' Restore that project, or start a new one?')
           : ''}
         confirmLabel="Restore"
         cancelLabel="Start fresh"
@@ -4691,6 +4747,17 @@ const styles = StyleSheet.create({
   // button collapses to its own padding and the label is clipped out of it.
   modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  missingClip: {
+    ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#1a0d0dEE', gap: 2,
+  },
+  missingClipText: { color: '#ff6b6b', fontSize: 8, fontWeight: '600', textAlign: 'center' },
+  missingCanvas: {
+    ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#0a0a0aF2', paddingHorizontal: 22, gap: 8,
+  },
+  missingCanvasText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  missingCanvasHint: { color: '#888', fontSize: 11, textAlign: 'center', lineHeight: 15 },
   sourceTabsRow: { height: 40, marginBottom: 14 },
   sourceTabsContent: { gap: 8, alignItems: 'center', paddingRight: 4 },
   sourceTab: {

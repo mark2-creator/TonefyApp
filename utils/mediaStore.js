@@ -75,3 +75,52 @@ export function newMediaId(prefix = 'm') {
   seq += 1;
   return `${prefix}_${Date.now().toString(36)}_${seq}`;
 }
+
+/** Does the file behind a uri still exist? Remote urls are treated as present. */
+export async function mediaExists(uri) {
+  if (!uri || typeof uri !== 'string') return false;
+  if (/^https?:/i.test(uri)) return true;
+  try {
+    const info = await LegacyFS.getInfoAsync(uri);
+    return !!info.exists;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Delete anything in our media directory that the project no longer refers to.
+ *
+ * Reference-counted rather than tidied as things are deleted: undo can bring a clip
+ * back, so removing its file the moment it leaves the timeline would restore a clip
+ * pointing at nothing. Sweeping at launch, once the draft is settled, means the only
+ * files that go are the ones nothing can reach - deleted clips, abandoned drafts and
+ * whatever "Start fresh" left behind, in one rule.
+ *
+ * Returns what it removed, so a caller can log it rather than guess.
+ */
+export async function sweepUnreferenced(referencedUris) {
+  const kept = new Set(
+    (referencedUris || []).filter(u => typeof u === 'string' && u.startsWith(DIR))
+  );
+  try {
+    const names = await LegacyFS.readDirectoryAsync(DIR).catch(() => []);
+    let removed = 0;
+    let bytes = 0;
+    for (const name of names) {
+      const uri = DIR + name;
+      if (kept.has(uri)) continue;
+      try {
+        const info = await LegacyFS.getInfoAsync(uri, { size: true });
+        bytes += info.size || 0;
+        await LegacyFS.deleteAsync(uri, { idempotent: true });
+        removed += 1;
+      } catch {
+        // A file that will not delete is not worth failing a launch over.
+      }
+    }
+    return { removed, bytes };
+  } catch {
+    return { removed: 0, bytes: 0 };
+  }
+}
