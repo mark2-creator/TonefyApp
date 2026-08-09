@@ -1806,6 +1806,30 @@ export default function EditVideoScreen({ navigation }) {
   // object, and only the phrase under the playhead is on screen - so dragging the
   // one you can see and leaving the other forty where they were would look like
   // the caption jumping back the moment the clip moves on.
+  // A chip that follows the spoken word cannot be drawn by one still: the phrase is
+  // on screen for its whole length while the chip moves along it. The server draws
+  // exactly one word chipped, chosen by `activeWord`, so the export needs one overlay
+  // per word - each carrying the same phrase and position, differing only in which
+  // word is lit and when it is shown.
+  //
+  // The canvas never needed this: it recomputes activeWord from the playhead on every
+  // frame. So the app computed it, drew it correctly, and sent nothing - which is why
+  // a highlight style exported as plain white text with no chip at all.
+  const expandForExport = useCallback((t) => {
+    const style = t.captionStyleId ? resolveCaptionStyle(t.captionStyleId) : null;
+    const hl = style ? captionHighlight(style) : null;
+    if (!hl || !Array.isArray(t.words) || t.words.length === 0) return [t];
+    return t.words.map((w, i) => ({
+      ...t,
+      key: `${t.key}__w${i}`,
+      activeWord: i,
+      // Each still covers only its own word's span. Together they tile the phrase's
+      // original window, so nothing is on screen for longer than it was.
+      startTime: w.start,
+      endTime: w.end,
+    }));
+  }, []);
+
   const applyOverlayTransform = useCallback((key, next) => {
     setTextOverlays(prev => {
       const target = prev.find(t => t.key === key);
@@ -1985,7 +2009,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mediaItems, userId: user.uid, resolution,
-          textOverlays: textOverlays.map(t => ({
+          textOverlays: textOverlays.flatMap(expandForExport).map(t => ({
             text: t.text, color: t.color, font: t.font,
             // A pinch scales every part of the overlay together, and every part is
             // already a multiple of the size - stroke, padding, glow - so folding
@@ -2003,8 +2027,18 @@ export default function EditVideoScreen({ navigation }) {
             // Word timings, for the styles whose chip follows the voice. Absent on
             // every other overlay, which is most of them.
             words: t.words,
+            // Which word this still has chipped. The server reads exactly this to
+            // place the highlight, and treats a non-integer as "no chip" - so
+            // omitting it, as this did, silently produced plain text.
+            activeWord: Number.isInteger(t.activeWord) ? t.activeWord : undefined,
             startTime: t.startTime, endTime: t.endTime,
           })),
+          // The width the overlay positions and sizes were chosen against. The
+          // server scales text by W / previewWidth and this was never sent, so it
+          // fell back to 360 while the real canvas is half the screen - about 180 on
+          // this phone. Every caption therefore exported at roughly half the size it
+          // was set at, which is why they looked right here and shrank in the file.
+          previewWidth: PREVIEW_W,
           overlays: uploadedOverlays,
           audioTracks: uploadedAudio,
         }),
