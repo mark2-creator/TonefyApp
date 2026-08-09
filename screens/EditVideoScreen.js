@@ -1466,7 +1466,10 @@ export default function EditVideoScreen({ navigation }) {
         // drops to a frame, so the motion is drawn at the display's rate; everywhere
         // else it stays at 40ms, because a re-render of this screen is not cheap and
         // nothing outside a join needs more than 25 updates a second.
-        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 0.3);
+        // Matches the preview join's own WINDOW (1.4s), not the export's 0.5s xfade -
+        // the frame budget has to cover however long the ON-CANVAS blend actually
+        // runs for, which is now longer than the file's.
+        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 1.4);
         if (ts - lastPlaybackPosUpdateRef.current >= (nearJoin ? 16 : 40)) {
           lastPlaybackPosUpdateRef.current = ts;
           setPosition(localPos);
@@ -3169,7 +3172,16 @@ export default function EditVideoScreen({ navigation }) {
   // see what one actually looks like.
   const activeJoin = useMemo(() => {
     if (items.length < 2) return null;
-    const WINDOW = 0.5;  // matches the export's xfade duration
+    // Longer than the export's own 0.5s xfade, ON PURPOSE. That duration is correct
+    // for the file - fast cuts are what most of these transitions are for - but a
+    // 0.5s blend glimpsed on a small preview, while attention is on the timeline and
+    // the scrubber, is exactly what was "too subtle to notice" - and that was true
+    // whether or not the blend itself was actually correct. Stretching the WINDOW
+    // slows down how `p` advances relative to real time, so the same motion or
+    // dissolve plays out over more than a second instead of half of one - enough to
+    // actually watch it happen rather than glimpse it. The export is unaffected: this
+    // number lives only in the preview's own join detection.
+    const WINDOW = 1.4;
     let t = 0;
     for (let i = 0; i < items.length - 1; i += 1) {
       t += clipLength(items[i]);
@@ -3195,16 +3207,6 @@ export default function EditVideoScreen({ navigation }) {
     }
     return null;
   }, [items, position]);
-
-  // How strongly to signal "a transition is happening", 0 at either edge of the
-  // window and 1 dead centre. The blend itself was already correct - trim-accurate
-  // content, the right motion, the right mask - but on a small preview embedded in a
-  // busy screen a 0.5s crossfade between similar-looking frames is easy to miss
-  // entirely, and export looked obviously different only because grain, glow and
-  // colour work stack on top of the same blend there. This is a second, LOUD signal
-  // that rides alongside the blend rather than replacing it: unmissable regardless of
-  // how subtle the underlying content change happens to be.
-  const joinStrength = activeJoin ? 1 - Math.abs(activeJoin.p * 2 - 1) : 0;
 
   // The two layers the join is drawn from, in screen units.
   const joinLayers = useMemo(() => {
@@ -3570,14 +3572,7 @@ export default function EditVideoScreen({ navigation }) {
 
       {/* VIDEO PREVIEW */}
       <View style={styles.previewContainer}>
-        <View style={[
-          styles.previewFrame,
-          { width: frame.w, height: frame.h, backgroundColor: canvasBg },
-          activeJoin && {
-            borderColor: '#00d4d4',
-            borderWidth: 1 + joinStrength * 3,
-          },
-        ]}>
+        <View style={[styles.previewFrame, { width: frame.w, height: frame.h, backgroundColor: canvasBg }]}>
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
@@ -3647,11 +3642,8 @@ export default function EditVideoScreen({ navigation }) {
               {/* Says which transition is running, and admits when the canvas is
                   standing in rather than reproducing it - a wipe shown as a dissolve
                   should not be mistaken for what the export will do. */}
-              <View style={[
-                styles.joinLabel,
-                { transform: [{ scale: 0.85 + joinStrength * 0.25 }], opacity: 0.55 + joinStrength * 0.45 },
-              ]}>
-                <MaterialIcons name="compare-arrows" size={15} color="#04211f" />
+              <View style={styles.joinLabel}>
+                <MaterialIcons name="compare-arrows" size={12} color="#04211f" />
                 <Text style={styles.joinLabelText}>
                   {activeJoin.def.label}{activeJoin.fidelity === 'approx' ? ' · approx' : ''}
                 </Text>
@@ -4999,14 +4991,11 @@ const styles = StyleSheet.create({
   sourceTabTextActive: { color: '#000' },
   sourceTabTextDim: { color: '#5a5a5a' },
   joinLabel: {
-    position: 'absolute', top: 10, alignSelf: 'center', flexDirection: 'row',
-    alignItems: 'center', gap: 5, backgroundColor: '#00d4d4',
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
-    // A shadow under a teal chip on top of moving video is the difference between
-    // "obviously a control" and "a label that blends into whatever is behind it".
-    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4,
+    position: 'absolute', top: 8, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'center', gap: 4, backgroundColor: '#00d4d4',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
   },
-  joinLabelText: { color: '#04211f', fontSize: 12, fontWeight: '800' },
+  joinLabelText: { color: '#04211f', fontSize: 10, fontWeight: '700' },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   audioSheetName: { color: '#888', fontSize: 12, marginBottom: 14 },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
