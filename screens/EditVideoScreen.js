@@ -32,6 +32,7 @@ import { filterSpec, resolveFilter } from '../constants/filters';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
+import StickerSheet, { stickerUri } from '../components/StickerPicker';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -1231,6 +1232,7 @@ export default function EditVideoScreen({ navigation }) {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
+  const [showStickerSheet, setShowStickerSheet] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(DEFAULT_ASPECT);
 
   // The frame the project is actually being composed in. Everything that positions an
@@ -2244,10 +2246,14 @@ export default function EditVideoScreen({ navigation }) {
 
       // Upload overlays if any
       let uploadedOverlays = [];
-      if (overlays.length > 0) {
+      // Split before uploading. A sticker's picture is already on the server, so
+      // sending it up would be a round trip to hand the backend a file it wrote.
+      const stickerOverlays = overlays.filter(o => o.isSticker && o.stickerId);
+      const pickedOverlays = overlays.filter(o => !(o.isSticker && o.stickerId));
+      if (pickedOverlays.length > 0) {
         setMessage('Uploading overlays...');
         const overlayForm = new FormData();
-        overlays.forEach(o => overlayForm.append('files', {
+        pickedOverlays.forEach(o => overlayForm.append('files', {
           uri: o.uri, name: o.fileName, type: o.type === 'video' ? 'video/mp4' : 'image/jpeg',
         }));
         const overlayRes = await fetch(BACKEND + '/api/upload-media', {
@@ -2256,7 +2262,7 @@ export default function EditVideoScreen({ navigation }) {
         const overlayData = await overlayRes.json();
         if (overlayData.items) {
           uploadedOverlays = overlayData.items.map((u, i) => {
-            const o = overlays[i];
+            const o = pickedOverlays[i];
             return {
               url: u.url,
               type: o.type,
@@ -2271,6 +2277,17 @@ export default function EditVideoScreen({ navigation }) {
           });
         }
       }
+
+      // Stickers join the payload with the path they already have on disk.
+      // resolveMediaPath allows anything under public/, which is where they live.
+      uploadedOverlays = uploadedOverlays.concat(stickerOverlays.map(o => ({
+        url: `/stickers/${o.stickerId}.png`,
+        type: 'image',
+        x: o.x ?? 50,
+        y: o.y ?? 50,
+        widthPercent: OVERLAY_BASE_FRAC * 100 * (o.scale ?? 1),
+        rotation: o.rotation ?? 0,
+      })));
 
       // Upload audio tracks (voiceover + music) if any
       let uploadedAudio = [];
@@ -2804,6 +2821,28 @@ export default function EditVideoScreen({ navigation }) {
     setOverlays(prev => prev.map(o => (o.key === key ? { ...o, ...next } : o)));
   }, []);
 
+  // A sticker joins the same overlays list as a picked image, so it inherits dragging,
+  // pinching, rotating, the canvas render and the export compositing without any of it
+  // being written twice. What marks it out is that its file is ALREADY on the server:
+  // nothing to copy into permanent storage, and nothing to upload at export.
+  const addSticker = useCallback((sticker) => {
+    const key = 'st_' + Date.now();
+    setOverlays(prev => [...prev, {
+      key,
+      isSticker: true,
+      stickerId: sticker.id,
+      uri: stickerUri(BACKEND, sticker.id),
+      type: 'image',
+      fileName: `${sticker.id}.png`,
+      // Rendered square and centred on its own ink, so no measurement is needed to
+      // place it and two stickers dropped on the same point land in the same place.
+      naturalW: 1, naturalH: 1,
+      x: 50, y: 50, scale: 1, rotation: 0,
+    }]);
+    setShowStickerSheet(false);
+    setSelectedOverlayKey(key);
+  }, []);
+
   const confirmRemoveOverlay = useCallback((o) => {
     Alert.alert('Remove overlay?', 'It will be taken off the video.', [
       { text: 'Cancel', style: 'cancel' },
@@ -3230,7 +3269,7 @@ export default function EditVideoScreen({ navigation }) {
     // only reachable from inside the Effects tab and from a selected clip.
     { name: 'Filters', icon: 'photo-filter', built: true },
     { name: 'Adjust', icon: 'tune', built: true },
-    { name: 'Stickers', icon: 'emoji-emotions', built: false },
+    { name: 'Stickers', icon: 'emoji-emotions', built: true },
     { name: 'AI avatar', icon: 'smart-toy', built: false, premium: true },
     { name: 'Aspect ratio', icon: 'aspect-ratio', built: true },
     { name: 'Background', icon: 'wallpaper', built: false },
@@ -3270,6 +3309,11 @@ export default function EditVideoScreen({ navigation }) {
           ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
+      case 'Stickers':
+        return [{
+          key: 'openstickers', icon: 'emoji-emotions', label: 'Add sticker',
+          onPress: () => setShowStickerSheet(true),
+        }];
       case 'Aspect ratio':
         return ASPECT_RATIOS.map(a => ({
           key: 'ar-' + a.id,
@@ -4546,6 +4590,15 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      <StickerSheet
+        visible={showStickerSheet}
+        backend={BACKEND}
+        isPremium={isPremium}
+        onSelect={addSticker}
+        onLocked={(s) => promptUpgrade(s.label)}
+        onClose={() => setShowStickerSheet(false)}
       />
 
       <AdjustSheet
