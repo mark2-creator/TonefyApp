@@ -783,6 +783,17 @@ frames while a still has nothing to reveal.
   loudly if the target isn't found exactly once (avoids silent no-op edits).
 - Don't trust terminal echo/paste alone for verifying file state — re-read the file
   (`cat`/`grep`) after edits when in doubt.
+- **Install Expo packages with `npx expo install`, never `npm install`.** It picks the
+  version matched to the installed SDK; npm picks latest, which is how an app ends up
+  with a native module its SDK cannot build against. Applies to anything `expo-*` or
+  in Expo's compatibility list.
+- **A native module cannot ship over the air.** Adding one means a new binary, so a
+  top-level `import` of it reaches the installed build as JS for a module that is not
+  compiled in, and grey-screens on launch. Require it lazily inside a `try` and let
+  every entry point no-op when it is absent - that keeps the current install working
+  and lets the feature come alive when the new build lands. `utils/notifications.js`
+  is the worked example. Leave `runtimeVersion` alone unless you intend to cut the
+  current install off from updates.
 - **Push after every commit, not at the end of a session.** And never count an
   `eas update` publish as having saved the work: a published bundle is not
   recoverable source. On Aug 9 2026 this session published **21 updates while 38
