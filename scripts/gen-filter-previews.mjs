@@ -20,7 +20,16 @@ import { FILTERS } from '../constants/filters.js';
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.resolve(HERE, '../../Tonefy-react/backend/public/filters');
-const SRC_DIR = path.join(os.homedir(), '.cache/tonefy/transition-src');
+// A PORTRAIT, and a specific one, kept apart from the transition photos.
+//
+// The first version used the transition set's first image, which is a laptop on a
+// desk - the worst possible subject for judging a grade. Nearly every filter here is
+// built for skin, and a bleach bypass, a portra or a teal-and-orange say nothing at
+// all on a keyboard. This frame has a face, hair, white flowers for the highlights
+// and sky behind, so a cast shows up in something the eye actually reads.
+//
+// Refill with scripts/fetch-filter-portrait.sh if the cache is empty.
+const SRC = path.join(os.homedir(), '.cache/tonefy/filter-src/portrait.jpg');
 const VERSION_FILE = path.resolve(HERE, '../constants/filterPreviewVersion.js');
 
 // Portrait, because most of these are graded for skin and that is what the difference
@@ -37,17 +46,14 @@ async function exists(p) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const photos = (await readdir(SRC_DIR).catch(() => []))
-    .filter(f => f.endsWith('.jpg'))
-    .sort((a, b) => Number(a.match(/\d+/)?.[0] ?? 0) - Number(b.match(/\d+/)?.[0] ?? 0));
-  if (!photos.length) {
-    console.error(`no photos in ${SRC_DIR} - run scripts/fetch-transition-photos.sh`);
+  if (!(await exists(SRC))) {
+    console.error(`no portrait at ${SRC} - run scripts/fetch-filter-portrait.sh`);
     process.exit(1);
   }
   // ONE photo for every tile, unlike the transitions. A filter is a difference, and
   // comparing two grades means holding the subject still - a grid where each tile has
   // a different picture shows the pictures, not the filters.
-  const src = path.join(SRC_DIR, photos[0]);
+  const src = SRC;
 
   const list = only ? FILTERS.filter(f => f.id === only) : FILTERS;
   if (!list.length) { console.error('no such filter:', only); process.exit(1); }
