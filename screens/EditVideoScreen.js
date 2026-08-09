@@ -69,6 +69,9 @@ const SCRUBBER_LINE_W = 2;
 // Visible breathing room between the playhead and the first clip / aux chip.
 const SCRUBBER_GAP = 4;
 const PREVIEW_W = SW * 0.5;
+// The fixed left rail of the timeline. Read by both the sidebar and the ruler that
+// has to line up past it.
+const SIDEBAR_W = 72;
 // An overlay added at scale 1 covers this fraction of the frame's width. Read by
 // the canvas to draw it and by the export to reproduce it, so they cannot disagree.
 const OVERLAY_BASE_FRAC = 0.4;
@@ -3224,6 +3227,16 @@ export default function EditVideoScreen({ navigation }) {
 
         </View>
 
+        {/* Above the track area, not inside it. trackArea is a ROW - sidebar beside
+            clips - so a ruler placed in there became a third column and squeezed the
+            clips off screen entirely. It is inset by the sidebar's width instead, so
+            it starts where the clips start. */}
+        <TimeRuler
+          scrollRef={rulerScrollRef}
+          duration={duration}
+          leadOffset={timelineLeadW}
+        />
+
         <View style={styles.trackArea}>
           {/* Sidebar */}
           <View style={styles.sidebar}>
@@ -3259,12 +3272,6 @@ export default function EditVideoScreen({ navigation }) {
               <Text style={styles.sideBtnLabel}>Text</Text>
             </TouchableOpacity>
           </View>
-
-          <TimeRuler
-            scrollRef={rulerScrollRef}
-            duration={duration}
-            leadOffset={timelineLeadW}
-          />
 
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}
@@ -4248,7 +4255,9 @@ const styles = StyleSheet.create({
   timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
   timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
   timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
-  rulerRow: { height: 18, marginBottom: 2 },
+  // marginLeft is the sidebar's width, so tick 00:00 sits over the head of the
+  // clips rather than over the Mute button.
+  rulerRow: { height: 18, marginBottom: 2, marginLeft: SIDEBAR_W },
   rulerTick: { position: 'absolute', top: 0, alignItems: 'center', width: 60, marginLeft: -30 },
   rulerTickMark: { width: 1, height: 5, backgroundColor: '#3a3a3a' },
   rulerTickLabel: { color: '#666', fontSize: 9, marginTop: 2 },
@@ -4266,7 +4275,7 @@ const styles = StyleSheet.create({
   // footage reads as a broken edge on the clip behind it rather than as an empty slot.
   railBtnClip: { position: 'absolute', right: 0, width: 40, height: CLIP_H, borderRadius: 3, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' },
   trackArea: { flex: 1, flexDirection: 'row' },
-  sidebar: { width: 72, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
+  sidebar: { width: SIDEBAR_W, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
   sideBtn: { alignItems: 'center', gap: 2 },
   sideBtnLabel: { color: '#555', fontSize: 9, textAlign: 'center' },
   coverThumbWrap: { alignItems: 'center', gap: 2 },
