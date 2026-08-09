@@ -29,7 +29,7 @@ const OUT_DIR = path.resolve(HERE, '../../Tonefy-react/backend/public/filters');
 // and sky behind, so a cast shows up in something the eye actually reads.
 //
 // Refill with scripts/fetch-filter-portrait.sh if the cache is empty.
-const SRC = path.join(os.homedir(), '.cache/tonefy/filter-src/portrait.jpg');
+const SRC_DIR = path.join(os.homedir(), '.cache/tonefy/filter-src');
 const VERSION_FILE = path.resolve(HERE, '../constants/filterPreviewVersion.js');
 
 // Portrait, because most of these are graded for skin and that is what the difference
@@ -46,14 +46,24 @@ async function exists(p) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  if (!(await exists(SRC))) {
-    console.error(`no portrait at ${SRC} - run scripts/fetch-filter-portrait.sh`);
+  // A POOL of portraits, cycled by catalogue index.
+  //
+  // One face repeated 150 times reads as a placeholder however good the grades are,
+  // which is the whole reason every editor that ships a filter grid uses a different
+  // model per tile. Cycling by index rather than at random keeps a tile on the same
+  // face between runs, so a regeneration does not reshuffle the whole grid.
+  //
+  // Works with one file and improves with every file added - drop more portraits into
+  // the cache directory and re-run. Adjacent tiles are what matter, so even a handful
+  // of faces removes the repetition that a single one cannot.
+  const pool = (await readdir(SRC_DIR).catch(() => []))
+    .filter(f => /\.(jpe?g|png)$/i.test(f))
+    .sort();
+  if (!pool.length) {
+    console.error(`no portraits in ${SRC_DIR} - run scripts/fetch-filter-portrait.sh`);
     process.exit(1);
   }
-  // ONE photo for every tile, unlike the transitions. A filter is a difference, and
-  // comparing two grades means holding the subject still - a grid where each tile has
-  // a different picture shows the pictures, not the filters.
-  const src = SRC;
+  console.log(`${pool.length} portrait(s) in the pool`);
 
   const list = only ? FILTERS.filter(f => f.id === only) : FILTERS;
   if (!list.length) { console.error('no such filter:', only); process.exit(1); }
@@ -63,6 +73,9 @@ async function main() {
   for (const f of list) {
     const out = path.join(OUT_DIR, `${encodeURIComponent(f.id)}.webp`);
     if (!force && await exists(out)) { skipped += 1; continue; }
+    // Indexed against the FULL catalogue, so --only reproduces the face a full run
+    // would have given this tile.
+    const src = path.join(SRC_DIR, pool[FILTERS.indexOf(f) % pool.length]);
     const chain = [
       `scale=${W}:${H}:force_original_aspect_ratio=increase`,
       `crop=${W}:${H}`,

@@ -112,10 +112,108 @@ export const FILTERS = [
   F('midnight', 'Midnight', 'Night', ['colorbalance=bs=0.25:rm=-0.08', 'eq=brightness=-0.12:contrast=1.25']),
   F('neonnight', 'Neon Night', 'Night', ['colorbalance=bs=0.2:rh=0.15', 'eq=brightness=-0.05:saturation=1.6:contrast=1.2']),
   F('shadow', 'Shadow', 'Night', ['eq=brightness=-0.1:contrast=1.4:saturation=0.85', 'vignette']),
+  // --- Retro: the eighties and nineties, video and print.
+  F('vhs', 'VHS', 'Retro', ['colorbalance=rs=0.12:bs=0.1', 'eq=saturation=1.3:contrast=1.1', 'noise=alls=12:allf=t']),
+  F('polaroid', 'Polaroid', 'Retro', ['curves=all=0/0.12 0.5/0.52 1/0.94', 'colorbalance=rm=0.08:gm=0.04', 'eq=saturation=0.9']),
+  F('disposable', 'Disposable', 'Retro', ['eq=contrast=1.25:saturation=1.2:brightness=0.05', 'noise=alls=16:allf=t']),
+  F('technicolor', 'Technicolor', 'Retro', ['eq=saturation=1.7:contrast=1.25', 'colorbalance=rs=0.1:bh=0.1']),
+  F('eighties', 'Eighties', 'Retro', ['colorbalance=rs=0.15:bs=0.18', 'eq=saturation=1.4:contrast=1.15']),
+  F('faded90s', 'Nineties', 'Retro', ['curves=all=0/0.1 0.5/0.48 1/0.9', 'colorbalance=gs=0.08', 'eq=saturation=0.85']),
+  F('betamax', 'Betamax', 'Retro', ['colorbalance=rs=0.1:gs=-0.05:bs=0.12', 'eq=contrast=1.2', 'noise=alls=20:allf=t']),
+  F('newspaper', 'Newsprint', 'Retro', ['hue=s=0', 'eq=contrast=1.5:brightness=0.05', 'noise=alls=14:allf=t']),
+
+  // --- Pastel: low saturation, lifted blacks, soft colour.
+  F('pastel', 'Pastel', 'Pastel', ['curves=all=0/0.13 0.5/0.55 1/0.97', 'eq=saturation=0.8']),
+  F('blush', 'Blush', 'Pastel', ['colorbalance=rs=0.12:bs=0.06', 'eq=saturation=0.85:brightness=0.08']),
+  F('lavender', 'Lavender', 'Pastel', ['colorbalance=rs=0.08:bs=0.16', 'eq=saturation=0.85:brightness=0.06']),
+  F('peach', 'Peach', 'Pastel', ['colorbalance=rm=0.12:gm=0.05:bm=-0.05', 'eq=saturation=0.9:brightness=0.07']),
+  F('seafoam', 'Seafoam', 'Pastel', ['colorbalance=gs=0.12:bs=0.1', 'eq=saturation=0.82:brightness=0.06']),
+  F('powder', 'Powder', 'Pastel', ['curves=all=0/0.16 0.5/0.56 1/0.96', 'eq=saturation=0.7']),
+  F('cream', 'Cream', 'Pastel', ['colorbalance=rh=0.1:gh=0.07', 'eq=saturation=0.78:brightness=0.09']),
+  F('sorbet', 'Sorbet', 'Pastel', ['colorbalance=rs=0.1:gs=0.06:bs=0.08', 'eq=saturation=0.95:brightness=0.08']),
+
+  // --- Street: urban, contrasty, a little grubby.
+  F('street', 'Street', 'Street', ['eq=contrast=1.35:saturation=0.9', 'colorbalance=bs=0.08']),
+  F('concrete', 'Concrete', 'Street', ['eq=saturation=0.55:contrast=1.3', 'colorbalance=bs=0.1']),
+  F('tokyo', 'Tokyo', 'Street', ['colorbalance=bs=0.2:rh=0.1', 'eq=saturation=1.45:contrast=1.2']),
+  F('subway', 'Subway', 'Street', ['eq=brightness=-0.06:contrast=1.35:saturation=0.8', 'vignette']),
+  F('grit', 'Grit', 'Street', ['eq=contrast=1.4:saturation=0.85', 'noise=alls=15:allf=t', 'unsharp=5:5:0.8']),
+  F('brooklyn', 'Brooklyn', 'Street', ['curves=all=0/0.08 0.5/0.5 1/0.95', 'colorbalance=gm=0.06', 'eq=saturation=1.05']),
+  F('rooftop', 'Rooftop', 'Street', ['colorbalance=rh=0.12:bs=0.1', 'eq=contrast=1.22:saturation=1.1']),
+  F('monsoon', 'Monsoon', 'Street', ['colorbalance=bs=0.18:gs=0.06', 'eq=saturation=0.8:contrast=1.15']),
+
+  // --- Beauty: soft, flattering, high key.
+  F('softskin', 'Soft Skin', 'Beauty', ['eq=contrast=0.9:brightness=0.08:saturation=0.95', 'colorbalance=rm=0.06']),
+  F('airy', 'Airy', 'Beauty', ['curves=all=0/0.1 0.5/0.58 1/1', 'eq=saturation=0.9']),
+  F('highkey', 'High Key', 'Beauty', ['eq=brightness=0.16:contrast=0.9:saturation=0.9']),
+  F('satin', 'Satin', 'Beauty', ['eq=contrast=0.95:saturation=0.92', 'colorbalance=rh=0.07:gh=0.04']),
+  F('flawless', 'Flawless', 'Beauty', ['eq=brightness=0.1:contrast=0.94', 'colorbalance=rm=0.08:bm=0.03']),
+  F('sunkissed', 'Sunkissed', 'Beauty', ['colorbalance=rm=0.14:gm=0.07:bm=-0.1', 'eq=brightness=0.08:saturation=1.15']),
+  F('marble', 'Marble', 'Beauty', ['eq=saturation=0.7:brightness=0.1:contrast=1.05', 'colorbalance=bh=0.06']),
+  F('cashmere', 'Cashmere', 'Beauty', ['colorbalance=rm=0.1:gm=0.06:bm=-0.04', 'eq=saturation=0.85:contrast=0.96']),
+
+  // --- Moody: dark, desaturated, heavy.
+  F('moody', 'Moody', 'Moody', ['eq=brightness=-0.08:contrast=1.3:saturation=0.75']),
+  F('smoke', 'Smoke', 'Moody', ['eq=saturation=0.5:contrast=1.15', 'colorbalance=bs=0.12', 'vignette']),
+  F('ash', 'Ash', 'Moody', ['eq=saturation=0.35:contrast=1.25:brightness=-0.04']),
+  F('storm', 'Storm', 'Moody', ['colorbalance=bs=0.2:gs=0.05', 'eq=brightness=-0.1:contrast=1.3:saturation=0.7']),
+  F('rust', 'Rust', 'Moody', ['colorbalance=rm=0.16:gm=0.04:bm=-0.16', 'eq=saturation=0.85:contrast=1.25']),
+  F('charcoal', 'Charcoal', 'Moody', ['hue=s=0', 'eq=contrast=1.35:brightness=-0.08', 'vignette']),
+  F('deepwood', 'Deep Wood', 'Moody', ['colorbalance=rm=0.1:gm=0.08:bm=-0.12', 'eq=brightness=-0.06:contrast=1.28:saturation=0.9']),
+  F('eclipse', 'Eclipse', 'Moody', ['eq=brightness=-0.14:contrast=1.4:saturation=0.65', 'vignette']),
+
+  // --- Summer / Winter: seasonal casts.
+  F('summerhaze', 'Summer Haze', 'Season', ['curves=all=0/0.1 0.5/0.55 1/0.98', 'colorbalance=rh=0.12:gh=0.06', 'eq=saturation=1.1']),
+  F('poolside', 'Poolside', 'Season', ['colorbalance=gs=0.1:bs=0.2', 'eq=brightness=0.08:saturation=1.3']),
+  F('beachday', 'Beach Day', 'Season', ['colorbalance=rh=0.1:bs=0.12', 'eq=brightness=0.1:contrast=1.12:saturation=1.25']),
+  F('vividspring', 'Vivid Spring', 'Season', ['colorbalance=gm=0.1', 'eq=saturation=1.5:brightness=0.06:contrast=1.1']),
+  F('autumn', 'Autumn', 'Season', ['colorbalance=rm=0.16:gm=0.06:bm=-0.16', 'eq=saturation=1.2:contrast=1.12']),
+  F('frost', 'Frost', 'Season', ['colorbalance=bs=0.22:gs=0.06', 'eq=brightness=0.08:saturation=0.8:contrast=1.1']),
+  F('snowlight', 'Snow Light', 'Season', ['eq=brightness=0.14:contrast=1.1:saturation=0.75', 'colorbalance=bh=0.1']),
+  F('harvest', 'Harvest', 'Season', ['colorbalance=rm=0.12:gm=0.1:bm=-0.14', 'eq=saturation=1.25:contrast=1.15']),
+
+  // --- Neon / night city.
+  F('neonlights', 'Neon Lights', 'Neon', ['colorbalance=rs=0.15:bs=0.22', 'eq=saturation=1.8:contrast=1.25']),
+  F('cyberpunk', 'Cyberpunk', 'Neon', ['colorbalance=rs=0.2:bs=0.28:gm=-0.08', 'eq=saturation=1.9:contrast=1.3']),
+  F('synthwave', 'Synthwave', 'Neon', ['colorbalance=rs=0.25:bs=0.25:gs=-0.1', 'eq=saturation=1.7:contrast=1.2']),
+  F('vapor', 'Vaporwave', 'Neon', ['colorbalance=rs=0.18:bs=0.2', 'eq=saturation=1.5:brightness=0.06:contrast=1.05']),
+  F('acidhouse', 'Acid', 'Neon', ['hue=h=140', 'eq=saturation=1.8:contrast=1.2']),
+  F('ultraviolet', 'Ultraviolet', 'Neon', ['colorbalance=bs=0.3:rs=0.14', 'eq=saturation=1.6:brightness=-0.04']),
+  F('infrared', 'Infrared', 'Neon', ['hue=h=200', 'eq=saturation=1.7:contrast=1.25']),
+  F('laser', 'Laser', 'Neon', ['colorbalance=rh=0.2:bh=0.18', 'eq=saturation=1.75:contrast=1.3', 'unsharp=5:5:0.6']),
+
+  // --- Analog film stocks, pushed and pulled.
+  F('push2', 'Push +2', 'Analog', ['eq=contrast=1.45:brightness=0.08:saturation=1.1', 'noise=alls=14:allf=t']),
+  F('pull1', 'Pull -1', 'Analog', ['eq=contrast=0.85:brightness=-0.04:saturation=0.9']),
+  F('ektar', 'Ektar', 'Analog', ['eq=saturation=1.35:contrast=1.18', 'colorbalance=rs=0.06:bh=0.06']),
+  F('trix', 'Tri-X', 'Analog', ['hue=s=0', 'eq=contrast=1.3', 'noise=alls=18:allf=t']),
+  F('hp5', 'HP5', 'Analog', ['hue=s=0', 'curves=all=0/0.08 0.5/0.5 1/0.94', 'noise=alls=14:allf=t']),
+  F('velvia', 'Velvia', 'Analog', ['eq=saturation=1.55:contrast=1.25', 'colorbalance=gs=0.06:bs=0.06']),
+  F('agfa', 'Agfa', 'Analog', ['colorbalance=gm=0.08:bm=0.05', 'eq=saturation=1.1:contrast=1.08']),
+  F('lomo', 'Lomo', 'Analog', ['eq=saturation=1.5:contrast=1.35', 'vignette', 'colorbalance=bs=0.1']),
+
+  // --- Fashion / editorial.
+  F('editorial', 'Editorial', 'Fashion', ['eq=contrast=1.2:saturation=0.9', 'colorbalance=rm=0.05:bh=0.05', 'unsharp=5:5:0.5']),
+  F('runway', 'Runway', 'Fashion', ['eq=brightness=0.06:contrast=1.25:saturation=0.95', 'unsharp=5:5:0.7']),
+  F('monochromered', 'Red Room', 'Fashion', ['hue=s=0', 'colorbalance=rs=0.35:rm=0.15']),
+  F('couture', 'Couture', 'Fashion', ['curves=all=0/0.04 0.5/0.5 1/0.96', 'eq=saturation=0.88:contrast=1.15']),
+  F('glossy', 'Glossy', 'Fashion', ['eq=contrast=1.3:saturation=1.2:brightness=0.04', 'unsharp=5:5:1.0']),
+  F('minimal', 'Minimal', 'Fashion', ['eq=saturation=0.6:contrast=1.1:brightness=0.06']),
+  F('studio', 'Studio', 'Fashion', ['eq=contrast=1.15:brightness=0.05', 'colorbalance=rh=0.04:bh=0.04']),
+  F('spotlightf', 'Spotlight', 'Fashion', ['eq=contrast=1.35:brightness=0.06', 'vignette']),
+
+  // --- Duotones. Mono first, then two stops pushed into the shadows and highlights.
+  F('duo_teal', 'Duo Teal', 'Mono', ['hue=s=0', 'colorbalance=bs=0.3:gs=0.18:rh=0.12']),
+  F('duo_rose', 'Duo Rose', 'Mono', ['hue=s=0', 'colorbalance=rs=0.3:bs=0.12:gh=0.08']),
+  F('duo_gold', 'Duo Gold', 'Mono', ['hue=s=0', 'colorbalance=rs=0.25:gs=0.15:bh=0.1']),
+  F('duo_violet', 'Duo Violet', 'Mono', ['hue=s=0', 'colorbalance=rs=0.2:bs=0.3:gm=-0.06']),
+  F('duo_forest', 'Duo Forest', 'Mono', ['hue=s=0', 'colorbalance=gs=0.28:bs=0.1:rh=0.08']),
+  F('duo_slate', 'Duo Slate', 'Mono', ['hue=s=0', 'colorbalance=bs=0.2:rm=-0.06:bh=0.08']),
 ];
 
 export const FILTER_CATEGORIES = [
-  'Basic', 'Portrait', 'Cinematic', 'Film', 'Vivid', 'Cool', 'Warm', 'Nature', 'Mono', 'Night',
+  'Basic', 'Portrait', 'Beauty', 'Cinematic', 'Film', 'Analog', 'Fashion', 'Vivid', 'Neon',
+  'Cool', 'Warm', 'Season', 'Nature', 'Street', 'Pastel', 'Retro', 'Moody', 'Mono', 'Night',
 ];
 
 const BY_ID = new Map(FILTERS.map(f => [f.id, f]));
