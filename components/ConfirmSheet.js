@@ -18,13 +18,16 @@ import { useSheetInset } from './SheetHeader';
 export default function ConfirmSheet({
   visible, icon, title, message, previewUri,
   confirmLabel = 'Confirm', cancelLabel = 'Cancel',
-  destructive = false, onConfirm, onCancel,
+  destructive = false, onConfirm, onCancel, onDismiss,
 }) {
+  // Dismissing usually means the same as cancelling, but not always: when cancel is
+  // itself destructive, a stray tap on the backdrop must not perform it.
+  const dismiss = onDismiss || onCancel;
   const sheetInset = useSheetInset(16);
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
       <View style={styles.overlay}>
-        <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onCancel} />
+        <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={dismiss} />
         <View style={[styles.sheet, sheetInset]}>
           <View style={styles.grabber} />
 

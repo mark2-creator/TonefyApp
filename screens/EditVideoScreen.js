@@ -607,6 +607,7 @@ function fmtClock(s) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+const RULER_H = 18;
 const RULER_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300];
 function rulerStep(pixelsPerSecond) {
   const MIN_LABEL_GAP = 56;
@@ -617,7 +618,13 @@ const TimeRuler = React.memo(function TimeRuler({ scrollRef, duration, leadOffse
   const step = rulerStep(PIXELS_PER_SECOND);
   // One past the end, so the final tick is reachable rather than stopping short.
   const ticks = Math.max(1, Math.ceil(duration / step) + 1);
+  // Wrapped in a fixed-height View with overflow hidden. A height on the ScrollView
+  // itself was not holding it: the row pushed the whole track area - sidebar, clips
+  // and every aux row - about 200px down the screen. Whatever the ScrollView was
+  // measuring, a parent with a hard height cannot be argued with, and a ruler is
+  // exactly the kind of element that should never be able to grow.
   return (
+    <View style={styles.rulerClip}>
     <ScrollView
       ref={scrollRef}
       horizontal
@@ -626,7 +633,7 @@ const TimeRuler = React.memo(function TimeRuler({ scrollRef, duration, leadOffse
       style={styles.rulerRow}
       onLayout={onLayout}
       contentContainerStyle={{ paddingLeft: leadOffset }}>
-      <View style={{ width: Math.max(1, duration * PIXELS_PER_SECOND) + PIXELS_PER_SECOND }}>
+      <View style={{ height: RULER_H, width: Math.max(1, duration * PIXELS_PER_SECOND) + PIXELS_PER_SECOND }}>
         {Array.from({ length: ticks }, (_, i) => {
           const t = i * step;
           return (
@@ -638,6 +645,7 @@ const TimeRuler = React.memo(function TimeRuler({ scrollRef, duration, leadOffse
         })}
       </View>
     </ScrollView>
+    </View>
   );
 });
 
@@ -4173,6 +4181,11 @@ export default function EditVideoScreen({ navigation }) {
         cancelLabel="Start fresh"
         onConfirm={() => restoreDraft(draftOffer)}
         onCancel={discardDraft}
+        // Tapping the backdrop is not an answer. On every other sheet dismissing means
+        // "no", but here "no" DELETES the saved project - so a stray tap beside the
+        // card would throw away the work it was offering back. Only the explicit
+        // Start fresh discards; dismissing leaves the draft alone to be offered again.
+        onDismiss={() => { setDraftOffer(null); setDraftChecked(true); }}
       />
 
       {/* AUTO CAPTIONS MODAL */}
@@ -4257,7 +4270,8 @@ const styles = StyleSheet.create({
   timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
   // marginLeft is the sidebar's width, so tick 00:00 sits over the head of the
   // clips rather than over the Mute button.
-  rulerRow: { height: 18, marginBottom: 2, marginLeft: SIDEBAR_W },
+  rulerClip: { height: RULER_H, marginBottom: 2, marginLeft: SIDEBAR_W, overflow: 'hidden' },
+  rulerRow: { height: RULER_H },
   rulerTick: { position: 'absolute', top: 0, alignItems: 'center', width: 60, marginLeft: -30 },
   rulerTickMark: { width: 1, height: 5, backgroundColor: '#3a3a3a' },
   rulerTickLabel: { color: '#666', fontSize: 9, marginTop: 2 },
