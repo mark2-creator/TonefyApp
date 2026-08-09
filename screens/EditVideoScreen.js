@@ -20,6 +20,7 @@ import CanvasOverlay from '../components/CanvasOverlay';
 import FilmStrip from '../components/FilmStrip';
 import TrimStrip from '../components/TrimStrip';
 import TransitionSheet from '../components/TransitionPicker';
+import Waveform from '../components/Waveform';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
@@ -264,30 +265,6 @@ const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 // wants the same one, and re-finding it by eye on the plane is not possible.
 const RECENT_COLORS_KEY = 'tonefy.recentTextColors';
 const MAX_RECENT_COLORS = 8;
-function WaveformBars({ peaks, color = '#00d4d4', height = 28 }) {
-  if (!peaks || peaks.length === 0) {
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height, gap: 1 }}>
-        {Array.from({ length: 20 }).map((_, i) => (
-          <View key={i} style={{ width: 2, height: 4, backgroundColor: '#333', borderRadius: 1 }} />
-        ))}
-      </View>
-    );
-  }
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', height, gap: 1 }}>
-      {peaks.map((p, i) => (
-        <View key={i} style={{
-          width: 2,
-          height: Math.max(2, p * height),
-          backgroundColor: color,
-          borderRadius: 1,
-        }} />
-      ))}
-    </View>
-  );
-}
-
 // Draggable/trimmable wrapper for an absolute-positioned audio timeline
 // block. Position is driven externally (via initialLeft, recomputed from
 // startOffset/PIXELS_PER_SECOND by the caller) but tracked internally
@@ -590,7 +567,10 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
               onLongPress={() => onLongPressTrack(track.key)}
               style={{ backgroundColor: accentColor, borderRadius:8, paddingHorizontal:8, paddingVertical:4, width: trackW, height: 26, justifyContent: 'center', overflow: 'hidden', borderWidth: selectedAudioTrackKey === track.key ? 2 : 0, borderColor: '#fff' }}>
               <Text style={{ color:'#fff', fontSize:9, marginBottom:1 }} numberOfLines={1}>{track.name?.slice(0, 18)}</Text>
-              <WaveformBars peaks={waveformCache[track.key]} color="rgba(255,255,255,0.7)" height={12} />
+              {/* Width is the block's own width, so the waveform is the audio that
+                  is actually under it - the old one was a fixed 3px per sample and
+                  simply got clipped. */}
+              <Waveform peaks={waveformCache[track.key]} width={trackW - 16} height={12} />
             </TouchableOpacity>
           </DraggableAudioTrack>
         ))}
@@ -606,6 +586,55 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
         </TouchableOpacity>
       )}
     </ReanimatedAnimated.ScrollView>
+  );
+});
+
+// The time ruler. It scrolls with everything else, so a tick sits over the moment it
+// names for the whole length of the project.
+//
+// It replaces a hardcoded [0,1,2,3,4] printed in the header: five labels that never
+// moved, never went past four seconds, and had no relationship to what was under
+// them. On a 27-second project they were simply wrong.
+//
+// Label spacing is chosen so labels never collide: at 40px per second, one every
+// second would overlap, so the step grows with how much time is on screen.
+function fmtClock(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+const RULER_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300];
+function rulerStep(pixelsPerSecond) {
+  const MIN_LABEL_GAP = 56;
+  return RULER_STEPS.find(st => st * pixelsPerSecond >= MIN_LABEL_GAP) || RULER_STEPS[RULER_STEPS.length - 1];
+}
+
+const TimeRuler = React.memo(function TimeRuler({ scrollRef, duration, leadOffset, onLayout }) {
+  const step = rulerStep(PIXELS_PER_SECOND);
+  // One past the end, so the final tick is reachable rather than stopping short.
+  const ticks = Math.max(1, Math.ceil(duration / step) + 1);
+  return (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      scrollEnabled={false}
+      showsHorizontalScrollIndicator={false}
+      style={styles.rulerRow}
+      onLayout={onLayout}
+      contentContainerStyle={{ paddingLeft: leadOffset }}>
+      <View style={{ width: Math.max(1, duration * PIXELS_PER_SECOND) + PIXELS_PER_SECOND }}>
+        {Array.from({ length: ticks }, (_, i) => {
+          const t = i * step;
+          return (
+            <View key={t} style={[styles.rulerTick, { left: t * PIXELS_PER_SECOND }]}>
+              <View style={styles.rulerTickMark} />
+              <Text style={styles.rulerTickLabel}>{fmtClock(t)}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 });
 
@@ -950,6 +979,7 @@ export default function EditVideoScreen({ navigation }) {
   const musicScrollRef = useAnimatedRef();
   const textScrollRef = useAnimatedRef();
   const captionsScrollRef = useAnimatedRef();
+  const rulerScrollRef = useAnimatedRef();
   const isUserScrubbing = useRef(false);
   const scrollXShared = useSharedValue(0);
   const lastScrubUpdateRef = useRef(0);
@@ -981,6 +1011,9 @@ export default function EditVideoScreen({ navigation }) {
       scrollTo(musicScrollRef, x, 0, false);
       scrollTo(textScrollRef, x, 0, false);
       scrollTo(captionsScrollRef, x, 0, false);
+      // The ruler rides the same shared value as every row, so a tick stays over
+      // the frame it names no matter how the timeline got there.
+      scrollTo(rulerScrollRef, x, 0, false);
     },
     []
   );
@@ -3188,11 +3221,7 @@ export default function EditVideoScreen({ navigation }) {
       <View style={styles.timeline}>
         <View style={styles.timecodeRow}>
           <Text style={styles.timecode}>{fmtTime(position)} / {fmtTime(duration)}</Text>
-          <View style={styles.timeMarkers}>
-            {[0,1,2,3,4].map(t => (
-              <Text key={t} style={styles.timeMarker}>{fmtTime(t)}</Text>
-            ))}
-          </View>
+
         </View>
 
         <View style={styles.trackArea}>
@@ -3204,20 +3233,38 @@ export default function EditVideoScreen({ navigation }) {
               <MaterialIcons name={selectedItem?.muted ? 'volume-off' : 'volume-up'} size={18} color="#888" />
               <Text style={styles.sideBtnLabel}>Mute{'\n'}clip</Text>
             </TouchableOpacity>
-            <View style={styles.coverThumbWrap}>
+            {/* Choosing which frame represents the video is real work - it needs a
+                frame picker here and a poster on the export - and none of it exists.
+                It carries a pencil, so it looks like a control; dimmed and honest
+                beats live-looking and inert. */}
+            <TouchableOpacity
+              style={styles.coverThumbWrap}
+              onPress={() => Alert.alert('Cover', 'Choosing a cover frame is coming soon.')}>
               {items.length > 0
                 ? <Image source={{ uri: items[0].uri }} style={styles.coverThumbImg} resizeMode="cover" />
                 : <View style={styles.coverThumbEmpty} />}
-              <MaterialIcons name="edit" size={10} color="#fff" style={styles.coverEditIcon} />
-              <Text style={styles.sideBtnLabel}>Cover</Text>
-            </View>
-            <TouchableOpacity style={styles.sideBtn}>
-              <MaterialIcons name="music-note" size={18} color="#888" />
+              <MaterialIcons name="edit" size={10} color="#5a5a5a" style={styles.coverEditIcon} />
+              <Text style={[styles.sideBtnLabel, { color: '#5a5a5a' }]}>Cover</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sideBtn}>
+            {/* These two sit beside the music and text rows and had no onPress at all -
+                two buttons that looked like the rest of the rail and did nothing. They
+                add to the row they are next to, which is the only thing they could
+                sensibly mean. */}
+            <TouchableOpacity style={styles.sideBtn} onPress={onPressAddMusic}>
+              <MaterialIcons name="music-note" size={18} color="#888" />
+              <Text style={styles.sideBtnLabel}>Music</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sideBtn} onPress={onPressAddText}>
               <MaterialIcons name="title" size={18} color="#888" />
+              <Text style={styles.sideBtnLabel}>Text</Text>
             </TouchableOpacity>
           </View>
+
+          <TimeRuler
+            scrollRef={rulerScrollRef}
+            duration={duration}
+            leadOffset={timelineLeadW}
+          />
 
           {/* Clips + scrubber */}
           <View style={styles.clipsWrapper}
@@ -3480,9 +3527,23 @@ export default function EditVideoScreen({ navigation }) {
             <SheetHeader title={editingText ? 'Edit Text' : 'Add Text'} onClose={() => setShowTextModal(false)} />
             <ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={!colorDragging}
               showsVerticalScrollIndicator={false}>
-            <TextInput style={styles.textModalInput} value={textInput}
-              onChangeText={setTextInput} placeholder="Enter text..."
-              placeholderTextColor="#555" multiline />
+            {/* Typed in the face and colour that were chosen, not in the system font.
+                Judging a display face against a default sans is guessing, and the
+                whole point of picking one is to see it. Size is left alone - the
+                field is a place to type, not a preview of scale, and following the
+                slider up to 96pt would push everything else off the sheet. */}
+            <TextInput
+              style={[
+                styles.textModalInput,
+                { fontFamily: fontFamilyFor(textFont), color: textColor },
+                textBackground?.enabled && { backgroundColor: withAlpha(textBackground.color, textBackground.opacity) },
+              ]}
+              value={textInput}
+              onChangeText={setTextInput}
+              placeholder="Enter text..."
+              placeholderTextColor="#555"
+              multiline
+            />
             <Text style={styles.modalLabel}>Color</Text>
             <ColorPicker
               color={textColor}
@@ -3561,17 +3622,24 @@ export default function EditVideoScreen({ navigation }) {
                   onValueChange={v => setBackgroundField('padY', v)} />
               </>
             )}
-            <View style={styles.modalBtns}>
+            </ScrollView>
+            {/* Pinned below the scroller, not inside it. The sheet grew a background
+                section and this row went with it - so after choosing a colour, a font
+                and a background there was nothing on screen to press, and the way to
+                finish was to scroll past everything you had just set. Same rule the
+                context toolbar's Confirm follows: the thing that ends the job must
+                never be the thing that scrolled away. */}
+            <View style={styles.textModalActions}>
               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setShowTextModal(false)}>
                 <Text style={styles.modalBtnCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalBtnApply} onPress={addTextOverlay}>
+                <MaterialIcons name="check" size={18} color="#04211f" />
                 <Text style={styles.modalBtnApplyText}>
-                  {editingText ? 'Update' : 'Add'}
+                  {editingText ? 'Update' : 'Done'}
                 </Text>
               </TouchableOpacity>
             </View>
-            </ScrollView>
           </View>
         </View>
       </Modal>   {/* VOLUME MODAL */}
@@ -4180,6 +4248,10 @@ const styles = StyleSheet.create({
   timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
   timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
   timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
+  rulerRow: { height: 18, marginBottom: 2 },
+  rulerTick: { position: 'absolute', top: 0, alignItems: 'center', width: 60, marginLeft: -30 },
+  rulerTickMark: { width: 1, height: 5, backgroundColor: '#3a3a3a' },
+  rulerTickLabel: { color: '#666', fontSize: 9, marginTop: 2 },
   timeMarkers: { flexDirection: 'row', gap: 20 },
   timeMarker: { color: '#333', fontSize: 9 },
   // The add buttons ride above the rows rather than in them: each one is pinned to
@@ -4300,7 +4372,7 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
   modalBtnCancelText: { color: '#888', fontWeight: '600' },
-  modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center' },
+  modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   // Same button standing alone in a column. flex: 1 belongs only to the pair in
   // modalBtns, which is a row: in a column it resolves flexBasis to 0, so the
   // button collapses to its own padding and the label is clipped out of it.
@@ -4321,6 +4393,10 @@ const styles = StyleSheet.create({
   clipVolNote: { color: '#888', fontSize: 11, marginBottom: 12 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
+  textModalActions: {
+    flexDirection: 'row', gap: 12, paddingTop: 12, marginTop: 4,
+    borderTopWidth: 1, borderTopColor: '#2a2a2a',
+  },
   textModalInput: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, color: '#fff', fontSize: 15, minHeight: 60, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 8 },
   resRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   resRowActive: { },
