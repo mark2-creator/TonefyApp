@@ -3075,13 +3075,24 @@ export default function EditVideoScreen({ navigation }) {
   const audioSheetTrack = useMemo(
     () => audioTracks.find(t => t.key === audioSheetKey) || null, [audioTracks, audioSheetKey]);
 
+  // The bar with nothing selected. `built` says whether the tab has anything behind
+  // it; an unbuilt one does not switch, because switching would show an empty tool row
+  // and read as the app breaking rather than as a feature not being ready.
   const bottomTabs = [
-    { name: 'Edit', icon: 'content-cut' },
-    { name: 'Audio', icon: 'music-note' },
-    { name: 'Text', icon: 'title' },
-    { name: 'Effects', icon: 'auto-awesome' },
-    { name: 'Overlay', icon: 'image' },
-    { name: 'Captions', icon: 'closed-caption' },
+    { name: 'Edit', icon: 'content-cut', built: true },
+    { name: 'Audio', icon: 'music-note', built: true },
+    { name: 'Text', icon: 'title', built: true },
+    { name: 'Effects', icon: 'auto-awesome', built: true },
+    { name: 'Overlay', icon: 'image', built: true },
+    { name: 'Captions', icon: 'closed-caption', built: true },
+    // Filters is genuinely built: the grades and applyFilter already exist, they were
+    // only reachable from inside the Effects tab and from a selected clip.
+    { name: 'Filters', icon: 'photo-filter', built: true },
+    { name: 'Adjust', icon: 'tune', built: false, premium: true },
+    { name: 'Stickers', icon: 'emoji-emotions', built: false },
+    { name: 'AI avatar', icon: 'smart-toy', built: false, premium: true },
+    { name: 'Aspect ratio', icon: 'aspect-ratio', built: false },
+    { name: 'Background', icon: 'wallpaper', built: false },
   ];
 
   const [showImageDurationModal, setShowImageDurationModal] = useState(false);
@@ -3118,6 +3129,13 @@ export default function EditVideoScreen({ navigation }) {
           ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
+      case 'Filters':
+        // The same grades the Effects tab lists, on a tab of their own. Effects keeps
+        // showing them too rather than being quietly narrowed to speeds - that would
+        // be a change to a working tab nobody asked for.
+        return FILTERS.map(f => ({
+          key: 'flt-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f),
+        }));
       case 'Overlay':
         return [
           { key: 'addoverlay', icon: 'add-photo-alternate', label: 'Add Overlay', onPress: pickOverlay },
@@ -3609,13 +3627,35 @@ export default function EditVideoScreen({ navigation }) {
               })}
             </React.Fragment>
           )) : (<>
-          {bottomTabs.map(tab => (
-            <TouchableOpacity key={tab.name} style={[styles.tabBtn, activeTab === tab.name && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab.name)}>
-              <MaterialIcons name={tab.icon} size={20} color={activeTab === tab.name ? '#00d4d4' : '#555'} />
-              <Text style={[styles.tabLabel, activeTab === tab.name && { color: '#00d4d4' }]}>{tab.name}</Text>
-            </TouchableOpacity>
-          ))}
+          {bottomTabs.map(tab => {
+            const active = tab.built && activeTab === tab.name;
+            const locked = tab.premium && !isPremium;
+            return (
+              <TouchableOpacity
+                key={tab.name}
+                style={[styles.tabBtn, active && styles.tabBtnActive]}
+                onPress={() => (tab.built
+                  ? setActiveTab(tab.name)
+                  : Alert.alert(tab.name, tab.premium ? 'Coming soon on the paid plans.' : 'Coming soon.'))}>
+                <View>
+                  <MaterialIcons
+                    name={tab.icon}
+                    size={20}
+                    color={active ? '#00d4d4' : (tab.built ? '#555' : '#3a3a3a')}
+                  />
+                  {tab.premium && (
+                    <MaterialIcons name="diamond" size={11}
+                      color={locked ? '#f5c451' : '#7a663a'} style={styles.premiumBadge} />
+                  )}
+                </View>
+                <Text style={[
+                  styles.tabLabel,
+                  active && { color: '#00d4d4' },
+                  !tab.built && { color: '#3a3a3a' },
+                ]}>{tab.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
           <View style={{ width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 4 }} />
           {getTabTools().map(tool => (
             tool.isOverlayThumb ? (
