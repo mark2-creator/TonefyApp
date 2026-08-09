@@ -155,6 +155,13 @@ function JoinClipLayer({ item, isPlaying, style }) {
     return (
       <Video
         source={{ uri: item.uri }}
+        // The frame that plays right after this join finishes is trimStart, not
+        // whatever the file's own beginning is - without this, the layer showed the
+        // start of the source file for the whole transition. On a clip trimmed well
+        // into its footage that is a completely different shot from the one the
+        // export actually cross-fades to, which is why this read as "poor" while the
+        // export - which seeks with -ss - looked right.
+        positionMillis={(item.trimStart || 0) * 1000}
         style={[styles.previewImage, flipTransform(item), style]}
         resizeMode="cover"
         shouldPlay={isPlaying}
@@ -3210,7 +3217,11 @@ export default function EditVideoScreen({ navigation }) {
       mask: f.mask || null,
       tint: f.tint,
     };
-  }, [activeJoin]);
+  // `frame` in the deps too: it is a NEW object whenever the aspect ratio changes,
+  // and this used to recompute only when the playhead moved - so a join layer's
+  // translate would be sized against a frame that no longer matched the canvas until
+  // the next join was reached.
+  }, [activeJoin, frame]);
 
   // Held across renders on purpose. `position` is React state written ~25 times a
   // second during playback, so this screen re-renders at that rate - and building
