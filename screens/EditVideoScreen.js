@@ -242,6 +242,44 @@ const CLIP_TOOLS = [
     { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover', premium: true },
     { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio', premium: true },
     { key: 'filters', icon: 'photo-filter', label: 'Filters' },
+    { key: 'effects', icon: 'movie-filter', label: 'Effects', premium: true },
+    { key: 'retouch', icon: 'face-retouching-natural', label: 'Retouch', premium: true },
+  ],
+  // Clip handling: the everyday operations on the clip as an object.
+  [
+    { key: 'duplicate', icon: 'content-copy', label: 'Duplicate' },
+    { key: 'freeze', icon: 'ac-unit', label: 'Freeze', premium: true },
+    { key: 'reverse', icon: 'fast-rewind', label: 'Reverse', premium: true },
+    { key: 'unlink', icon: 'link-off', label: 'Unlink', premium: true },
+    { key: 'delete', icon: 'delete', label: 'Delete' },
+  ],
+  // Audio taken from the clip itself.
+  [
+    { key: 'extractaudio', icon: 'audiotrack', label: 'Extract audio', premium: true },
+    { key: 'reducenoise', icon: 'noise-control-off', label: 'Reduce noise', premium: true },
+    { key: 'audioeffects', icon: 'equalizer', label: 'Audio effects', premium: true },
+    { key: 'isolatevoice', icon: 'mic', label: 'Isolate voice', premium: true },
+    { key: 'enhancevoice', icon: 'record-voice-over', label: 'Enhance voice', premium: true },
+    { key: 'beats', icon: 'av-timer', label: 'Beats', premium: true },
+  ],
+  // Framing and motion.
+  [
+    { key: 'autoreframe', icon: 'crop-free', label: 'Auto reframe', premium: true },
+    { key: 'stabilize', icon: 'vibration', label: 'Stabilize', premium: true },
+    { key: 'motionblur', icon: 'blur-on', label: 'Motion blur', premium: true },
+    { key: 'mask', icon: 'masks', label: 'Mask', premium: true },
+    { key: 'relight', icon: 'light-mode', label: 'Relight', premium: true },
+  ],
+  // The generative set. Every one of these is a model call that does not exist yet,
+  // on this backend or any other - they are the furthest from being built of anything
+  // in this bar, and are grouped together so that is legible rather than scattered.
+  [
+    { key: 'airemove', icon: 'healing', label: 'AI remove', premium: true },
+    { key: 'aiexpand', icon: 'open-in-full', label: 'AI expand', premium: true },
+    { key: 'airemix', icon: 'auto-awesome-motion', label: 'AI remix', premium: true },
+    { key: 'eyecontact', icon: 'remove-red-eye', label: 'Eye contact', premium: true },
+    { key: 'lipsync', icon: 'face', label: 'Lip sync', premium: true },
+    { key: 'translate', icon: 'translate', label: 'Video translator', premium: true },
   ],
 ];
 
@@ -1703,6 +1741,41 @@ export default function EditVideoScreen({ navigation }) {
     }
   }, [selectedKey, items]);
 
+  // A copy directly after the original, carrying its trim, speed, volume and grade -
+  // duplicating a clip you have already worked on and getting back an unedited one
+  // would make the tool useless for the case it exists for.
+  const duplicateSelectedClip = useCallback(() => {
+    if (!selectedKey) return;
+    const idx = items.findIndex(i => i.key === selectedKey);
+    if (idx < 0) return;
+    const copy = {
+      ...items[idx],
+      key: `${items[idx].key}_copy${Date.now()}`,
+      // The original keeps the transition on its right edge; the copy is inserted at
+      // that join, so the transition now belongs to the copy's edge instead.
+      transition: items[idx].transition,
+    };
+    const next = [...items];
+    next.splice(idx + 1, 0, copy);
+    pushHistory(next);
+  }, [items, selectedKey]);
+
+  const confirmDeleteSelectedClip = useCallback(() => {
+    if (!selectedKey) return;
+    Alert.alert('Delete clip?', 'It will be removed from the timeline.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const next = items.filter(i => i.key !== selectedKey);
+          pushHistory(next);
+          setSelectedKey(null);
+        },
+      },
+    ]);
+  }, [items, selectedKey]);
+
   const removeItem = useCallback((key) => {
     setItems(prev => prev.filter(i => i.key !== key));
     setSelectedKey(prevKey => prevKey === key ? null : prevKey);
@@ -3057,6 +3130,11 @@ export default function EditVideoScreen({ navigation }) {
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setChipPicker('filter'),
     flip: () => setChipPicker('flip'),
+    // Built rather than dimmed: both are operations on the item list, which this
+    // screen already owns. Adding them greyed out alongside the model calls would
+    // have been the lazy reading of "add these tools".
+    duplicate: duplicateSelectedClip,
+    delete: confirmDeleteSelectedClip,
   };
 
   const toggleFlip = (axis) => setItems(prev => prev.map(i => (
