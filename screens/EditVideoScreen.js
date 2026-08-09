@@ -195,6 +195,66 @@ function maskInnerStyle(mask) {
   return { position: 'absolute', left, top, width: PREVIEW_W, height: PREVIEW_H };
 }
 
+// The row of sources at the top of Add Voiceover and Add Music.
+//
+// Two pills fitted a row; six do not, so this scrolls. It is wrapped in a
+// fixed-height View on purpose - an unconstrained horizontal ScrollView in a column
+// is what pushed the whole timeline 200px down the screen earlier, and a tab strip
+// is another element that must never be able to grow.
+//
+// An unbuilt source is dimmed and says so on tap rather than switching to an empty
+// panel. It does NOT offer the plan, even when it carries a diamond: paying does not
+// summon a feature that has not been written.
+function SourceTabs({ tabs, value, isPremium, onSelect }) {
+  return (
+    <View style={styles.sourceTabsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sourceTabsContent}>
+        {tabs.map(t => {
+          const active = t.built && t.key === value;
+          const locked = t.premium && !isPremium;
+          return (
+            <TouchableOpacity
+              key={t.key}
+              onPress={() => (t.built ? onSelect(t) : Alert.alert(
+                t.label,
+                t.premium ? 'Coming soon on the paid plans.' : 'Coming soon.'
+              ))}
+              style={[styles.sourceTab, active && styles.sourceTabActive]}>
+              <Text style={[
+                styles.sourceTabText,
+                active && styles.sourceTabTextActive,
+                !t.built && styles.sourceTabTextDim,
+              ]}>{t.label}</Text>
+              {t.premium && (
+                <MaterialIcons name="diamond" size={11} color={locked ? '#f5c451' : '#7a663a'} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+// Where a voiceover or a piece of music can come from. Generate is the app's
+// text-to-audio and Library is its sounds catalogue - both already built, so they are
+// not duplicated under the names another editor gives them.
+const VOICEOVER_SOURCES = [
+  { key: 'generate', label: 'Text to audio', built: true },
+  { key: 'file', label: 'Pick file', built: true },
+  { key: 'record', label: 'Record', built: false },
+];
+
+const MUSIC_SOURCES = [
+  { key: 'library', label: 'Sounds', built: true },
+  { key: 'device', label: 'Upload', built: true },
+  { key: 'soundfx', label: 'Sound FX', built: false, premium: true },
+  { key: 'brand', label: 'Brand music', built: false, premium: true },
+  { key: 'extract', label: 'Extract', built: false, premium: true },
+  { key: 'copyright', label: 'Copyright', built: false, premium: true },
+];
+
 // What a locked feature says when tapped.
 //
 // There is no checkout in this app yet, so this does not claim there is one. Saying
@@ -4113,18 +4173,12 @@ export default function EditVideoScreen({ navigation }) {
           <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }, sheetInset]}>
             <SheetHeader title="Add Voiceover" onClose={() => setShowVoiceoverModal(false)} />
 
-            <View style={{ flexDirection:'row', gap:8, marginBottom:14 }}>
-              <TouchableOpacity onPress={() => setVoiceoverTab('generate')}
-                style={{ flex:1, padding:10, borderRadius:8, alignItems:'center',
-                  backgroundColor: voiceoverTab === 'generate' ? '#00d4d4' : '#2a2a2a' }}>
-                <Text style={{ color: voiceoverTab === 'generate' ? '#000' : '#fff', fontWeight:'600' }}>Generate</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setVoiceoverTab('file')}
-                style={{ flex:1, padding:10, borderRadius:8, alignItems:'center',
-                  backgroundColor: voiceoverTab === 'file' ? '#00d4d4' : '#2a2a2a' }}>
-                <Text style={{ color: voiceoverTab === 'file' ? '#000' : '#fff', fontWeight:'600' }}>Pick File</Text>
-              </TouchableOpacity>
-            </View>
+            <SourceTabs
+              tabs={VOICEOVER_SOURCES}
+              value={voiceoverTab}
+              isPremium={isPremium}
+              onSelect={(t) => setVoiceoverTab(t.key)}
+            />
 
             {voiceoverTab === 'generate' ? (
               <ScrollView>
@@ -4202,18 +4256,15 @@ export default function EditVideoScreen({ navigation }) {
           <View style={[{ backgroundColor:'#1a1a1a', borderTopLeftRadius:16, borderTopRightRadius:16, padding:20, maxHeight:'85%' }, sheetInset]}>
             <SheetHeader title="Add Music" onClose={closeMusicModal} />
 
-            <View style={{ flexDirection:'row', gap:8, marginBottom:14 }}>
-              <TouchableOpacity onPress={() => { setMusicTab('library'); loadMusicLibrary(); }}
-                style={{ flex:1, padding:10, borderRadius:8, alignItems:'center',
-                  backgroundColor: musicTab === 'library' ? '#00d4d4' : '#2a2a2a' }}>
-                <Text style={{ color: musicTab === 'library' ? '#000' : '#fff', fontWeight:'600' }}>Library</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setMusicTab('device')}
-                style={{ flex:1, padding:10, borderRadius:8, alignItems:'center',
-                  backgroundColor: musicTab === 'device' ? '#00d4d4' : '#2a2a2a' }}>
-                <Text style={{ color: musicTab === 'device' ? '#000' : '#fff', fontWeight:'600' }}>Upload</Text>
-              </TouchableOpacity>
-            </View>
+            <SourceTabs
+              tabs={MUSIC_SOURCES}
+              value={musicTab}
+              isPremium={isPremium}
+              onSelect={(t) => {
+                setMusicTab(t.key);
+                if (t.key === 'library') loadMusicLibrary();
+              }}
+            />
 
             {musicTab === 'library' ? (
               musicLoading ? (
@@ -4523,6 +4574,17 @@ const styles = StyleSheet.create({
   // button collapses to its own padding and the label is clipped out of it.
   modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  sourceTabsRow: { height: 40, marginBottom: 14 },
+  sourceTabsContent: { gap: 8, alignItems: 'center', paddingRight: 4 },
+  sourceTab: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, backgroundColor: '#2a2a2a',
+  },
+  // Teal: these switch which view you are looking at, they do not commit anything.
+  sourceTabActive: { backgroundColor: '#00d4d4' },
+  sourceTabText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  sourceTabTextActive: { color: '#000' },
+  sourceTabTextDim: { color: '#5a5a5a' },
   joinLabel: {
     position: 'absolute', top: 8, alignSelf: 'center', flexDirection: 'row',
     alignItems: 'center', gap: 4, backgroundColor: '#00d4d4',
