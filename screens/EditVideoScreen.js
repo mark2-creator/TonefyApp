@@ -23,6 +23,7 @@ import TransitionSheet from '../components/TransitionPicker';
 import Waveform from '../components/Waveform';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
+import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -2841,6 +2842,14 @@ export default function EditVideoScreen({ navigation }) {
         setProgress(job.progress || 0); setMessage(job.message || '');
         if (job.status === 'done') {
           clearInterval(interval); setUploading(false);
+          // Asked here rather than on first launch. Before anything has been made the
+          // honest answer to "can we notify you" is no, and a refusal is permanent -
+          // Android will not show the dialog twice. Someone who has just finished a
+          // video has a reason to say yes.
+          //
+          // Scheduling also RESTARTS the series, so the nudges mean "you have not been
+          // here in a while" rather than firing on a clock set before this export.
+          requestNotificationPermission().then(ok => { if (ok) scheduleReminders(); });
           navigation.navigate('EditPostVideo', { videoUrl: job.videoUrl, videoPath: job.videoUrl });
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);

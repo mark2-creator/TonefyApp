@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
+import { configureForegroundBehaviour } from './utils/notifications';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
@@ -45,6 +46,10 @@ function App() {
   // Kicked off here rather than in the editor so the families are usually
   // registered by the time anyone opens the text sheet. Deliberately not awaited.
   useEffect(() => { loadAppFonts(); }, []);
+  // Set once, at the top. Without a handler the OS shows nothing while the app is
+  // open - which is precisely when someone is testing whether this works. A no-op
+  // on a build without the native module.
+  useEffect(() => { configureForegroundBehaviour(); }, []);
 
   useEffect(() => {
     async function checkUpdates() {
