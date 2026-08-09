@@ -783,3 +783,13 @@ frames while a still has nothing to reveal.
   loudly if the target isn't found exactly once (avoids silent no-op edits).
 - Don't trust terminal echo/paste alone for verifying file state — re-read the file
   (`cat`/`grep`) after edits when in doubt.
+- **Push after every commit, not at the end of a session.** And never count an
+  `eas update` publish as having saved the work: a published bundle is not
+  recoverable source. On Aug 9 2026 this session published **21 updates while 38
+  commits sat unpushed** — Expo's CDN held every bundle and the source history existed
+  on one disk, which is precisely the incident this file was written after. The push is
+  part of finishing a change, the same way the build check is.
+  Both repos, every time: `git -C ~/tonefy-build push origin rebuild/phase-4` and
+  `git -C ~/Tonefy-react push origin master` (the latter's old 403 is long resolved —
+  see IMMEDIATE NEXT STEPS). `git rev-list --left-right --count HEAD...@{upstream}`
+  answers "is anything stranded here" in one line.
