@@ -24,6 +24,7 @@ import Waveform from '../components/Waveform';
 import ConfirmSheet from '../components/ConfirmSheet';
 import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
 import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
+import { persistMedia, newMediaId } from '../utils/mediaStore';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -896,6 +897,9 @@ function TimelineClip({
         <Animated.View style={[styles.clipFrame, { width: animWidth }, selected && styles.clipFrameSelected]}>
           <FilmStrip
             uri={item.uri}
+            // Survives the copy into permanent storage, so the strip is not rebuilt
+            // when the path changes under it.
+            cacheId={item.mediaId}
             type={item.type}
             // A still is its own source and can be held for as long as the right
             // handle allows, so its strip is laid out over that whole span.
@@ -1706,6 +1710,21 @@ export default function EditVideoScreen({ navigation }) {
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   };
 
+  // A picked file is added immediately with its cache path and copied into permanent
+  // storage behind the user's back. Waiting for the copy before showing the clip would
+  // put a multi-second pause in the picker for a video of any size; adding it now and
+  // patching the path when the copy lands costs nothing visible, because the filmstrip
+  // is keyed on mediaId rather than on the path.
+  //
+  // Failure is not fatal: persistMedia returns the original uri, so the clip still
+  // plays from the cache for this session and is simply not protected from a sweep.
+  const persistInto = useCallback((setList, key, mediaId, uri, kind) => {
+    persistMedia(uri, mediaId, kind).then(next => {
+      if (!next || next === uri) return;
+      setList(prev => prev.map(x => (x.key === key && x.uri === uri ? { ...x, uri: next } : x)));
+    });
+  }, []);
+
   const pickMedia = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
@@ -1716,6 +1735,9 @@ export default function EditVideoScreen({ navigation }) {
     if (!result.canceled) {
       const picked = result.assets.map((a, idx) => ({
         key: String(Date.now()) + '_' + idx,
+        // Identifies the FILE, not the clip: it survives the copy that changes `uri`,
+        // and both halves of a split inherit it so they share one filmstrip.
+        mediaId: newMediaId('clip'),
         uri: a.uri,
         type: a.type === 'video' ? 'video' : 'image',
         fileName: a.fileName || ('media_' + Date.now() + '_' + idx + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),
@@ -1733,6 +1755,8 @@ export default function EditVideoScreen({ navigation }) {
         pushHistory(next);
         return next;
       });
+      picked.forEach(it => persistInto(setItems, it.key, it.mediaId,
+        it.uri, it.type === 'video' ? 'mp4' : 'jpg'));
     }
   }, []);
 
@@ -1756,8 +1780,12 @@ export default function EditVideoScreen({ navigation }) {
     const isVideo = a.type === 'video';
     const reported = a.duration ? a.duration / 1000 : null;
 
+    const replacementId = newMediaId('clip');
     const next = items.map(i => (i.key !== selectedKey ? i : {
       ...i,
+      // A different file behind the same clip, so a different media id - otherwise the
+      // new footage would be drawn with the old one's cached filmstrip.
+      mediaId: replacementId,
       uri: a.uri,
       type: isVideo ? 'video' : 'image',
       fileName: a.fileName || ('media_' + Date.now() + '.' + (isVideo ? 'mp4' : 'jpg')),
@@ -1777,6 +1805,7 @@ export default function EditVideoScreen({ navigation }) {
     // nothing else on screen holds it. Going through history rather than straight to
     // setItems is what makes the undo button in the header apply to this.
     pushHistory(next);
+    persistInto(setItems, selectedKey, replacementId, a.uri, isVideo ? 'mp4' : 'jpg');
 
     // ImagePicker reports no duration for a lot of phone-camera footage, and the 3s
     // fallback above would hold a long take at three seconds with no way to recover
@@ -2080,9 +2109,14 @@ export default function EditVideoScreen({ navigation }) {
       allowsMultipleSelection: false,
     });
     if (!result.canceled && result.assets[0]) {
+      const audioId = newMediaId('aud');
+      const audioKey = String(Date.now());
+      const audioUri = result.assets[0].uri;
+      persistInto(setAudioTracks, audioKey, audioId, audioUri, 'm4a');
       setAudioTracks(prev => [...prev, {
-        key: String(Date.now()),
-        uri: result.assets[0].uri,
+        key: audioKey,
+        mediaId: audioId,
+        uri: audioUri,
         name: result.assets[0].fileName || 'Audio track',
         volume: 1,
       }]);
@@ -2290,8 +2324,14 @@ export default function EditVideoScreen({ navigation }) {
     const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
+      const voKey = String(Date.now());
+      const voId = newMediaId('vo');
+      // A picked voiceover FILE is the user's own and needs protecting. A GENERATED
+      // one does not - it comes back from the backend as a remoteUrl and is durable
+      // there, so it is deliberately left alone.
+      persistInto(setVoiceoverTracks, voKey, voId, a.uri, 'mp3');
       setVoiceoverTracks(prev => [...prev, {
-        key: String(Date.now()), uri: a.uri, name: a.name || 'Voiceover file', volume: 1, isVoiceover: true,
+        key: voKey, mediaId: voId, uri: a.uri, name: a.name || 'Voiceover file', volume: 1, isVoiceover: true,
       }]);
     }
   }
@@ -2375,7 +2415,10 @@ export default function EditVideoScreen({ navigation }) {
     const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
-      const newTrack = { key: String(Date.now()), uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
+      const musicKey = String(Date.now());
+      const musicId = newMediaId('mus');
+      const newTrack = { key: musicKey, mediaId: musicId, uri: a.uri, name: a.name || 'Music track', volume: 1, isMusic: true, startOffset: 0, trimStart: 0, trimEnd: null, sourceDuration: null };
+      persistInto(setAudioTracks, musicKey, musicId, a.uri, 'mp3');
       setAudioTracks(prev => [...prev, newTrack]);
       closeMusicModal();
       attachAudioSource(newTrack);
@@ -2520,8 +2563,10 @@ export default function EditVideoScreen({ navigation }) {
     const res = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
     if (res.canceled || !res.assets?.length) return;
     const a = res.assets[0];
+    const swapId = newMediaId('aud');
+    persistInto(setAudioTracks, selectedAudioTrackKey, swapId, a.uri, 'mp3');
     setAudioTracks(prev => prev.map(t => (t.key !== selectedAudioTrackKey ? t : {
-      ...t, uri: a.uri, name: a.name || t.name, sourceDuration: null, trimStart: 0, trimEnd: null,
+      ...t, mediaId: swapId, uri: a.uri, name: a.name || t.name, sourceDuration: null, trimStart: 0, trimEnd: null,
     })));
   }, [selectedAudioTrackKey]);
 
@@ -2646,12 +2691,16 @@ export default function EditVideoScreen({ navigation }) {
     });
     if (!result.canceled) {
       const a = result.assets[0];
+      const ovId = newMediaId('ov');
+      const ovKey = 'ov_' + Date.now();
+      persistInto(setOverlays, ovKey, ovId, a.uri, a.type === 'video' ? 'mp4' : 'jpg');
       setOverlays(prev => [...prev, {
         // Prefixed, because canvas selection is one slot shared with text overlays and
         // both key generators are Date.now(). Two overlays added in the same
         // millisecond is unlikely; two *kinds* colliding on one key is not worth
         // leaving to chance when a prefix costs nothing.
-        key: 'ov_' + Date.now(),
+        key: ovKey,
+        mediaId: ovId,
         uri: a.uri,
         type: a.type === 'video' ? 'video' : 'image',
         fileName: a.fileName || ('overlay_' + Date.now() + '.' + (a.type === 'video' ? 'mp4' : 'jpg')),

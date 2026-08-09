@@ -41,8 +41,18 @@ const THUMB_MAX_PX = 120;
 // file and therefore one strip, and re-selecting a clip must not decode it again.
 const stripCache = new Map();
 
-function cacheKey(uri, count) {
-  return uri + '|' + count;
+// Keyed on a caller-supplied id rather than the uri.
+//
+// A clip's uri CHANGES once its file has been copied out of the cache into permanent
+// storage. Keyed on the uri, that change is a cache miss: the entry is rebuilt with
+// all-null tiles, `haveAny` goes false, and the clip blanks to grey and re-decodes -
+// a visible flicker for a file whose pixels did not move. Keyed on an id that survives
+// the copy, the already-extracted frames are simply found again.
+//
+// The id is per FILE, not per clip, which is what keeps two halves of a split sharing
+// one strip instead of decoding the same source twice.
+function cacheKey(cacheId, count) {
+  return cacheId + '|' + count;
 }
 
 function describeError(err, uri) {
@@ -63,8 +73,8 @@ export function stripGrid(sourceDuration, pixelsPerSecond) {
 // Frames arrive into a shared, mutable record and listeners are told each time one
 // lands, so the strip fills in as it decodes instead of staying blank until the last
 // frame is in. On a long clip the difference is tens of seconds of grey.
-function getStrip(uri, count, interval) {
-  const key = cacheKey(uri, count);
+function getStrip(cacheId, uri, count, interval) {
+  const key = cacheKey(cacheId, count);
   const hit = stripCache.get(key);
   if (hit) return hit;
   const entry = {
@@ -145,7 +155,10 @@ async function runExtraction(uri, count, interval, entry, key) {
  */
 export default function FilmStrip({
   uri, type, sourceDuration, width, height, offset = 0, pixelsPerSecond,
+  // Defaults to the uri, so a caller that has no stable id behaves exactly as before.
+  cacheId,
 }) {
+  const stripId = cacheId || uri;
   const isVideo = type !== 'image';
   const { count, interval } = useMemo(
     () => (isVideo ? stripGrid(sourceDuration, pixelsPerSecond) : { count: 0, interval: 0 }),
@@ -155,7 +168,7 @@ export default function FilmStrip({
 
   useEffect(() => {
     if (!isVideo || !uri || !count) return undefined;
-    const entry = getStrip(uri, count, interval);
+    const entry = getStrip(stripId, uri, count, interval);
     let alive = true;
     const update = () => {
       if (!alive) return;
@@ -166,7 +179,10 @@ export default function FilmStrip({
     // clip cut from the same file has been filling in.
     update();
     return () => { alive = false; entry.listeners.delete(update); };
-  }, [isVideo, uri, count, interval]);
+    // `uri` is deliberately NOT a dependency. It changes when the file is copied into
+    // permanent storage, and re-running this would find the same entry anyway - but
+    // leaving it out makes that explicit rather than incidental.
+  }, [isVideo, stripId, count, interval]);
 
   // How the strip is drawn: enough tiles to keep each one near its natural size, with
   // each showing whichever decoded frame is nearest the middle of the span it covers.
