@@ -3230,20 +3230,20 @@ export default function EditVideoScreen({ navigation }) {
         </View>
       </View> {/* TIMELINE */}
       <View style={styles.timeline}>
+        {/* The clock and the ruler share one line. The clock occupies exactly the
+            sidebar's width, so the ruler begins where the clips begin and a tick still
+            sits over the moment it names - which is the only constraint that matters
+            here, and the reason the ruler cannot simply follow the text. */}
         <View style={styles.timecodeRow}>
-          <Text style={styles.timecode}>{fmtTime(position)} / {fmtTime(duration)}</Text>
-
+          <View style={styles.timecodeCell}>
+            <Text style={styles.timecode}>{fmtTime(position)}/{fmtTime(duration)}</Text>
+          </View>
+          <TimeRuler
+            scrollRef={rulerScrollRef}
+            duration={duration}
+            leadOffset={timelineLeadW}
+          />
         </View>
-
-        {/* Above the track area, not inside it. trackArea is a ROW - sidebar beside
-            clips - so a ruler placed in there became a third column and squeezed the
-            clips off screen entirely. It is inset by the sidebar's width instead, so
-            it starts where the clips start. */}
-        <TimeRuler
-          scrollRef={rulerScrollRef}
-          duration={duration}
-          leadOffset={timelineLeadW}
-        />
 
         <View style={styles.trackArea}>
           {/* Sidebar */}
@@ -3271,13 +3271,14 @@ export default function EditVideoScreen({ navigation }) {
                 two buttons that looked like the rest of the rail and did nothing. They
                 add to the row they are next to, which is the only thing they could
                 sensibly mean. */}
+            {/* Icon only. Labelling these cost about 26px of column, which was enough
+                to push the last one off the bottom of the rail - the rail is as tall as
+                the track area and does not scroll. */}
             <TouchableOpacity style={styles.sideBtn} onPress={onPressAddMusic}>
               <MaterialIcons name="music-note" size={18} color="#888" />
-              <Text style={styles.sideBtnLabel}>Music</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.sideBtn} onPress={onPressAddText}>
               <MaterialIcons name="title" size={18} color="#888" />
-              <Text style={styles.sideBtnLabel}>Text</Text>
             </TouchableOpacity>
           </View>
 
@@ -4266,11 +4267,16 @@ const styles = StyleSheet.create({
   playBtnMain: { padding: 4 },
 
   timeline: { flex: 1, backgroundColor: '#0a0a0a', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
-  timecodeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4 },
-  timecode: { color: '#555', fontSize: 10, fontFamily: 'monospace' },
+  timecodeRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  // Exactly the sidebar's width, so what follows lines up with the clips rather
+  // than with the end of a string whose length changes as the video plays.
+  timecodeCell: { width: SIDEBAR_W, paddingLeft: 10 },
+  timecode: { color: '#555', fontSize: 9, fontFamily: 'monospace' },
   // marginLeft is the sidebar's width, so tick 00:00 sits over the head of the
   // clips rather than over the Mute button.
-  rulerClip: { height: RULER_H, marginBottom: 2, marginLeft: SIDEBAR_W, overflow: 'hidden' },
+  // No left margin now: it sits after the clock's cell, which is already the
+  // sidebar's width. flex so it takes the rest of the line.
+  rulerClip: { height: RULER_H, flex: 1, overflow: 'hidden' },
   rulerRow: { height: RULER_H },
   rulerTick: { position: 'absolute', top: 0, alignItems: 'center', width: 60, marginLeft: -30 },
   rulerTickMark: { width: 1, height: 5, backgroundColor: '#3a3a3a' },
