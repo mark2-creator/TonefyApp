@@ -259,11 +259,68 @@ const REVEAL = { revealleft: [-1, 0], revealright: [1, 0], revealup: [0, -1], re
 
 const IDLE = { opacity: 1, tx: 0, ty: 0, scale: 1 };
 
+// A hard-edged reveal, described as a clip region in fractions of the frame.
+//
+// This is the part that was missing. A wipe is not a fade - it is one frame appearing
+// through a growing window with a hard edge, and RN draws that with a container that
+// has overflow hidden and a child positioned so it does NOT move while the container
+// grows. Same mechanism gives circles, boxes and the open/close pairs. Falling back to
+// a dissolve for all of them is what made most of the catalogue look identical and
+// cheap on the canvas while the export looked like the thing it is.
+//
+// Returns null when the transition is not a masked one.
+const WIPE_EDGE = {
+  // [axis, fromStart] - which way the window opens
+  wipeleft: ['x', true], wiperight: ['x', false],
+  wipeup: ['y', true], wipedown: ['y', false],
+};
+
+function maskFor(base, t) {
+  if (WIPE_EDGE[base]) {
+    const [axis, fromStart] = WIPE_EDGE[base];
+    if (axis === 'x') {
+      return { type: 'rect', x: fromStart ? 0 : 1 - t, y: 0, w: t, h: 1 };
+    }
+    return { type: 'rect', x: 0, y: fromStart ? 0 : 1 - t, w: 1, h: t };
+  }
+  switch (base) {
+    // The circle grows past the corner, so the last of the outgoing frame is gone
+    // before the window stops - r reaches the half-diagonal, not the half-width.
+    case 'circleopen':
+    case 'circlecrop':
+      return { type: 'circle', cx: 0.5, cy: 0.5, r: t * 0.75 };
+    case 'circleclose':
+      return { type: 'circle', cx: 0.5, cy: 0.5, r: (1 - t) * 0.75, invert: true };
+    case 'rectcrop':
+      return { type: 'rect', x: 0.5 - t / 2, y: 0.5 - t / 2, w: t, h: t };
+    // Opening from the centre line outwards, and closing in from the edges.
+    case 'horzopen':
+      return { type: 'rect', x: 0, y: 0.5 - t / 2, w: 1, h: t };
+    case 'vertopen':
+      return { type: 'rect', x: 0.5 - t / 2, y: 0, w: t, h: 1 };
+    // horzclose and vertclose close IN from both edges, which is two bands with a
+    // shrinking gap - two mask regions, not one. Left to the dissolve rather than
+    // rendered as a single rect, which would just show the whole incoming frame.
+    // The corner wipes are a box growing out of one corner.
+    case 'wipetl': return { type: 'rect', x: 0, y: 0, w: t, h: t };
+    case 'wipetr': return { type: 'rect', x: 1 - t, y: 0, w: t, h: t };
+    case 'wipebl': return { type: 'rect', x: 0, y: 1 - t, w: t, h: t };
+    case 'wipebr': return { type: 'rect', x: 1 - t, y: 1 - t, w: t, h: t };
+    default:
+      return null;
+  }
+}
+
 export function transitionPreviewFrame(base, p) {
   const t = Math.max(0, Math.min(1, p));
   const out = { ...IDLE };
   const inc = { ...IDLE, opacity: 1 };
   let tint = null;
+
+  // A masked transition reveals the incoming frame through a window instead of
+  // fading it, so neither layer moves and neither changes opacity.
+  const mask = maskFor(base, t);
+  if (mask) return { out, inc, tint, mask };
 
   // Both frames travel: the outgoing leaves as the incoming arrives, which is what
   // makes a slide read as one movement rather than two.
@@ -331,6 +388,10 @@ const EXACT = new Set([
   ...Object.keys(SLIDE), ...Object.keys(SMOOTH), ...Object.keys(COVER), ...Object.keys(REVEAL),
   'fade', 'fadefast', 'fadeslow', 'dissolve', 'fadeblack', 'fadewhite', 'fadegrays',
   'zoomin', 'distance',
+  // Masked reveals, drawn with a real hard edge rather than a dissolve.
+  ...Object.keys(WIPE_EDGE),
+  'circleopen', 'circleclose', 'circlecrop', 'rectcrop',
+  'horzopen', 'vertopen', 'wipetl', 'wipetr', 'wipebl', 'wipebr',
 ]);
 
 /** 'exact' if the canvas can really draw this one, 'approx' if it is standing in. */

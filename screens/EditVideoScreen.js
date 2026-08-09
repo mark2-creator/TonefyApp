@@ -125,6 +125,72 @@ const VOICES = [
   { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
 ];
 
+// One side of a join, drawn as a plain layer. Muted always - the main <Video> owns
+// the audio and the clock, and a second source playing aloud would double it.
+function JoinClipLayer({ item, isPlaying, style }) {
+  if (item.type === 'video') {
+    return (
+      <Video
+        source={{ uri: item.uri }}
+        style={[styles.previewImage, flipTransform(item), style]}
+        resizeMode="cover"
+        shouldPlay={isPlaying}
+        isLooping={false}
+        isMuted
+        rate={item.speed || 1}
+        shouldCorrectPitch
+      />
+    );
+  }
+  return (
+    <Image
+      source={{ uri: item.uri }}
+      style={[styles.previewImage, flipTransform(item), style]}
+      resizeMode="cover"
+    />
+  );
+}
+
+// The window a masked transition reveals through. Fractions become points here, which
+// is the only place that needs to know the canvas is PREVIEW_W x PREVIEW_H.
+function maskContainerStyle(mask) {
+  if (mask.type === 'circle') {
+    // A square with a full corner radius. Sized off the larger edge so the circle can
+    // grow past the corners and clear the frame completely.
+    const side = 2 * mask.r * Math.max(PREVIEW_W, PREVIEW_H);
+    return {
+      position: 'absolute',
+      left: mask.cx * PREVIEW_W - side / 2,
+      top: mask.cy * PREVIEW_H - side / 2,
+      width: side,
+      height: side,
+      borderRadius: side / 2,
+      overflow: 'hidden',
+    };
+  }
+  return {
+    position: 'absolute',
+    left: mask.x * PREVIEW_W,
+    top: mask.y * PREVIEW_H,
+    width: mask.w * PREVIEW_W,
+    height: mask.h * PREVIEW_H,
+    overflow: 'hidden',
+  };
+}
+
+// Cancels the container's offset, so the clip inside sits exactly where it would have
+// sat unmasked. Without this the picture slides along with the window and the whole
+// effect looks like a slide with a ragged edge.
+function maskInnerStyle(mask) {
+  const left = mask.type === 'circle'
+    ? -(mask.cx * PREVIEW_W - (mask.r * Math.max(PREVIEW_W, PREVIEW_H)))
+    : -mask.x * PREVIEW_W;
+  const top = mask.type === 'circle'
+    ? -(mask.cy * PREVIEW_H - (mask.r * Math.max(PREVIEW_W, PREVIEW_H)))
+    : -mask.y * PREVIEW_H;
+  return { position: 'absolute', left, top, width: PREVIEW_W, height: PREVIEW_H };
+}
+
 // What a locked feature says when tapped.
 //
 // There is no checkout in this app yet, so this does not claim there is one. Saying
@@ -2639,30 +2705,29 @@ export default function EditVideoScreen({ navigation }) {
   // see what one actually looks like.
   const activeJoin = useMemo(() => {
     if (items.length < 2) return null;
-    const HALF = 0.25;   // the export's xfade is 0.5s, centred on the join
+    const WINDOW = 0.5;  // matches the export's xfade duration
     let t = 0;
     for (let i = 0; i < items.length - 1; i += 1) {
       t += clipLength(items[i]);
-      if (Math.abs(position - t) <= HALF) {
+      // The window RUNS UP TO the join rather than straddling it. getPreviewItem
+      // swaps clips at the join's centre, so a straddling window meant the main
+      // <Video> became the incoming clip half way through - and a masked reveal has
+      // to draw the outgoing frame underneath for its whole length, which is
+      // impossible once the thing underneath has already changed. Ending at the join
+      // keeps the main layer on the outgoing clip throughout, so the second layer is
+      // always the incoming one and the mask always means the same thing.
+      if (position >= t - WINDOW && position < t) {
         const def = resolveTransition(items[i].transition);
         if (!def?.base) return null;
         return {
           def,
-          // 0 at the start of the window, 1 at the end - the same parameter xfade
-          // runs on, so the canvas is somewhere sensible on the curve rather than
-          // just "near a join".
-          p: (position - (t - HALF)) / (HALF * 2),
+          p: (position - (t - WINDOW)) / WINDOW,
           outItem: items[i],
           incItem: items[i + 1],
-          // getPreviewItem switches at the join's centre, so the main <Video> is the
-          // outgoing clip for the first half of the window and the incoming one for
-          // the second. Knowing which it currently holds is what lets the second
-          // layer be the other one, without restructuring the playback path.
-          mainIsOutgoing: position < t,
           fidelity: previewFidelity(items[i].transition),
         };
       }
-      if (t - position > HALF) break;
+      if (t - position > WINDOW) break;
     }
     return null;
   }, [items, position]);
@@ -2679,10 +2744,13 @@ export default function EditVideoScreen({ navigation }) {
         { scale: l.scale },
       ],
     });
+    // The main <Video> is the outgoing clip for the whole window, so the second
+    // layer is always the incoming one.
     return {
-      main: toStyle(activeJoin.mainIsOutgoing ? f.out : f.inc),
-      other: toStyle(activeJoin.mainIsOutgoing ? f.inc : f.out),
-      otherItem: activeJoin.mainIsOutgoing ? activeJoin.incItem : activeJoin.outItem,
+      main: toStyle(f.out),
+      other: toStyle(f.inc),
+      otherItem: activeJoin.incItem,
+      mask: f.mask || null,
       tint: f.tint,
     };
   }, [activeJoin]);
@@ -3003,23 +3071,20 @@ export default function EditVideoScreen({ navigation }) {
               playing at once would double it. */}
           {joinLayers && joinLayers.otherItem && (
             <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-              {joinLayers.otherItem.type === 'video' ? (
-                <Video
-                  source={{ uri: joinLayers.otherItem.uri }}
-                  style={[styles.previewImage, flipTransform(joinLayers.otherItem), joinLayers.other]}
-                  resizeMode="cover"
-                  shouldPlay={isPlaying}
-                  isLooping={false}
-                  isMuted
-                  rate={joinLayers.otherItem.speed || 1}
-                  shouldCorrectPitch
-                />
+              {/* A masked transition puts the incoming clip inside a window with a
+                  HARD EDGE - overflow hidden on the container, and the clip inside
+                  offset by exactly the container's own position so it does not travel
+                  as the window grows. That standing-still is what makes it read as a
+                  wipe rather than as something sliding in. Unmasked families render
+                  the clip directly with a transform. */}
+              {joinLayers.mask ? (
+                <View style={maskContainerStyle(joinLayers.mask)}>
+                  <View style={maskInnerStyle(joinLayers.mask)}>
+                    <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} style={null} />
+                  </View>
+                </View>
               ) : (
-                <Image
-                  source={{ uri: joinLayers.otherItem.uri }}
-                  style={[styles.previewImage, flipTransform(joinLayers.otherItem), joinLayers.other]}
-                  resizeMode="cover"
-                />
+                <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} style={joinLayers.other} />
               )}
               {/* Fades that go THROUGH a colour rather than between the two frames. */}
               {joinLayers.tint && (
