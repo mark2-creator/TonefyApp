@@ -33,6 +33,8 @@ import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
 import StickerSheet, { stickerUri } from '../components/StickerPicker';
+import BackgroundSheet from '../components/BackgroundSheet';
+import { DEFAULT_BACKGROUND, normaliseBackground } from '../constants/background';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -1233,6 +1235,14 @@ export default function EditVideoScreen({ navigation }) {
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
   const [showStickerSheet, setShowStickerSheet] = useState(false);
+  const [showBackgroundSheet, setShowBackgroundSheet] = useState(false);
+  const [background, setBackground] = useState(DEFAULT_BACKGROUND);
+
+  // How the canvas draws a clip has to match how the export will frame it, or Fit is
+  // a setting the user cannot see the effect of until the file comes back.
+  const bg = useMemo(() => normaliseBackground(background), [background]);
+  const clipResize = bg.fit === 'fit' ? 'contain' : 'cover';
+  const canvasBg = bg.fit === 'fit' && bg.type === 'colour' ? bg.colour : '#111';
   const [aspectRatio, setAspectRatio] = useState(DEFAULT_ASPECT);
 
   // The frame the project is actually being composed in. Everything that positions an
@@ -1731,6 +1741,7 @@ export default function EditVideoScreen({ navigation }) {
     if (draft.masterVolume != null) setMasterVolume(draft.masterVolume);
     if (draft.captionStyle) setCaptionStyle(draft.captionStyle);
     if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
+    if (draft.background) setBackground(draft.background);
     setDraftOffer(null);
     setDraftChecked(true);
   }, []);
@@ -1769,10 +1780,10 @@ export default function EditVideoScreen({ navigation }) {
         clearDraft();
         return;
       }
-      saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio });
+      saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio, background });
     }, 900);
     return () => clearTimeout(t);
-  }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio]);
+  }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio, background]);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
@@ -2331,7 +2342,7 @@ export default function EditVideoScreen({ navigation }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          mediaItems, userId: user.uid, resolution, aspectRatio,
+          mediaItems, userId: user.uid, resolution, aspectRatio, background: bg,
           textOverlays: expandForExport(textOverlays).map(t => ({
             text: t.text, color: t.color, font: t.font,
             // A pinch scales every part of the overlay together, and every part is
@@ -3272,7 +3283,7 @@ export default function EditVideoScreen({ navigation }) {
     { name: 'Stickers', icon: 'emoji-emotions', built: true },
     { name: 'AI avatar', icon: 'smart-toy', built: false, premium: true },
     { name: 'Aspect ratio', icon: 'aspect-ratio', built: true },
-    { name: 'Background', icon: 'wallpaper', built: false },
+    { name: 'Background', icon: 'wallpaper', built: true },
   ];
 
   const [showImageDurationModal, setShowImageDurationModal] = useState(false);
@@ -3309,6 +3320,13 @@ export default function EditVideoScreen({ navigation }) {
           ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
+      case 'Background':
+        return [{
+          key: 'openbg', icon: 'wallpaper',
+          label: bg.fit === 'fit' ? `Fit · ${bg.type === 'colour' ? 'Colour' : 'Blur'}` : 'Fill',
+          color: bg.fit === 'fit' ? '#00d4d4' : undefined,
+          onPress: () => setShowBackgroundSheet(true),
+        }];
       case 'Stickers':
         return [{
           key: 'openstickers', icon: 'emoji-emotions', label: 'Add sticker',
@@ -3486,11 +3504,11 @@ export default function EditVideoScreen({ navigation }) {
 
       {/* VIDEO PREVIEW */}
       <View style={styles.previewContainer}>
-        <View style={[styles.previewFrame, { width: frame.w, height: frame.h }]}>
+        <View style={[styles.previewFrame, { width: frame.w, height: frame.h, backgroundColor: canvasBg }]}>
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
-                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode="cover"
+                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode={clipResize}
                 shouldPlay={isPlaying} isLooping={false}
                 // isMuted was here and volume was not, which is exactly why muting a
                 // clip worked and setting its level did nothing: there was no prop
@@ -3505,7 +3523,7 @@ export default function EditVideoScreen({ navigation }) {
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
             ) : (
               <Image source={{ uri: previewItem.uri }}
-                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode="cover" />
+                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode={clipResize} />
             )
           ) : (
             <View style={styles.previewEmpty}>
@@ -4590,6 +4608,13 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      <BackgroundSheet
+        visible={showBackgroundSheet}
+        value={background}
+        onChange={setBackground}
+        onClose={() => setShowBackgroundSheet(false)}
       />
 
       <StickerSheet
