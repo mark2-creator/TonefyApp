@@ -25,6 +25,8 @@ import ConfirmSheet from '../components/ConfirmSheet';
 import { saveDraft, loadDraft, clearDraft, describeAge } from '../utils/draft';
 import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
 import { persistMedia, newMediaId } from '../utils/mediaStore';
+import FilterSheet from '../components/FilterPicker';
+import { filterSpec, resolveFilter } from '../constants/filters';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -1202,6 +1204,7 @@ export default function EditVideoScreen({ navigation }) {
   // Transition picker
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   // Nothing may be written to the draft until the existing one has been read and
   // answered. Autosaving before that would immediately overwrite the saved project
   // with this screen's empty initial state - the draft would be destroyed by the very
@@ -2145,6 +2148,9 @@ export default function EditVideoScreen({ navigation }) {
         trimEnd: items[i].type === 'video' ? items[i].trimEnd : undefined,
         speed: items[i].speed || 1,
         filter: items[i].filter || 'None',
+        // The grade itself, so the catalogue lives in the app and a filter added there
+        // renders without a backend deploy. The name is still sent for older servers.
+        filterSpec: filterSpec(items[i].filter),
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
         // The clip's own audio. Neither of these was sent, and the server discarded
@@ -3188,12 +3194,15 @@ export default function EditVideoScreen({ navigation }) {
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
       case 'Filters':
-        // The same grades the Effects tab lists, on a tab of their own. Effects keeps
-        // showing them too rather than being quietly narrowed to speeds - that would
-        // be a change to a working tab nobody asked for.
-        return FILTERS.map(f => ({
-          key: 'flt-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f),
-        }));
+        // One button into the catalogue rather than seven chips. 77 grades cannot be
+        // chosen from a scrolling row of words - a filter is picked by looking at it.
+        return [{
+          key: 'openfilters',
+          icon: 'photo-filter',
+          label: resolveFilter(selectedItem?.filter).label,
+          color: '#00d4d4',
+          onPress: () => setShowFilterSheet(true),
+        }];
       case 'Overlay':
         return [
           { key: 'addoverlay', icon: 'add-photo-alternate', label: 'Add Overlay', onPress: pickOverlay },
@@ -3261,7 +3270,7 @@ export default function EditVideoScreen({ navigation }) {
     captions: openCaptionModal,
     speed: () => setChipPicker('speed'),
     transition: () => selectedKey && onPressClipTransition(selectedKey),
-    filters: () => setChipPicker('filter'),
+    filters: () => setShowFilterSheet(true),
     flip: () => setChipPicker('flip'),
     // Built rather than dimmed: both are operations on the item list, which this
     // screen already owns. Adding them greyed out alongside the model calls would
@@ -4433,6 +4442,16 @@ export default function EditVideoScreen({ navigation }) {
         destructive={!applyAllPrompt?.def?.base}
         onConfirm={() => applyTransitionEverywhere(applyAllPrompt.id)}
         onCancel={() => setApplyAllPrompt(null)}
+      />
+
+      <FilterSheet
+        visible={showFilterSheet}
+        value={selectedItem?.filter || 'None'}
+        backend={BACKEND}
+        isPremium={isPremium}
+        onSelect={(id) => { applyFilter(id); setShowFilterSheet(false); }}
+        onLocked={(f) => promptUpgrade(f.label)}
+        onClose={() => setShowFilterSheet(false)}
       />
 
       {/* Unfinished work from a previous session. */}
