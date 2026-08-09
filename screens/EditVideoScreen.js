@@ -72,6 +72,37 @@ async function apiFetch(path, options = {}) {
   if (token) headers.Authorization = 'Bearer ' + token;
   return fetch(BACKEND + path, { ...options, headers });
 }
+
+// Turns a fetch Response into JSON, or a message someone can actually act on.
+//
+// "JSON Parse error: Unexpected character: <" is what res.json() throws when the
+// server did not answer with JSON at all - and that character is always the start
+// of an HTML page. It is almost never this app's own code producing that page: it is
+// nginx, in front of it, rejecting the request before Express ever saw it - a body
+// over the 50MB proxy limit, or a slow upload outrunning the 60s it waits between
+// packets by default. On this connection that second one is the likely case: upload
+// speeds logged elsewhere in this session run from tens of bytes a second to a few
+// kilobytes. The raw parse error names none of that, so whoever hits it cannot tell
+// a slow connection from a bug in the app.
+async function readJson(res) {
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    const known = {
+      408: 'The upload took too long and the server gave up waiting. Try again on a faster connection.',
+      413: 'That file is too large for the server to accept.',
+      502: 'The server is not responding right now. Try again in a moment.',
+      504: 'The upload took too long and the connection timed out. Try again on a faster connection.',
+    };
+    throw new Error(known[res.status] || `Server error (${res.status}).${text ? ' ' + text.slice(0, 120) : ''}`);
+  }
+  try {
+    return await res.json();
+  } catch {
+    // A 200 that is not JSON should not happen, but a bare SyntaxError here is
+    // exactly as uninformative as the failure this function exists to replace.
+    throw new Error('The server sent back something unexpected. Try again.');
+  }
+}
 const { width: SW, height: SH } = Dimensions.get('window');
 const PIXELS_PER_SECOND = 40;
 // Where the playhead sits across the timeline viewport. Left of it is elapsed
@@ -2246,7 +2277,7 @@ export default function EditVideoScreen({ navigation }) {
       const uploadRes = await fetch(BACKEND + '/api/upload-media', {
         method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: formData,
       });
-      const uploadData = await uploadRes.json();
+      const uploadData = await readJson(uploadRes);
       if (uploadData.error) throw new Error(uploadData.error);
       const mediaItems = uploadData.items.map((uploaded, i) => ({
         url: uploaded.url, type: uploaded.type,
@@ -2300,7 +2331,7 @@ export default function EditVideoScreen({ navigation }) {
         const overlayRes = await fetch(BACKEND + '/api/upload-media', {
           method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: overlayForm,
         });
-        const overlayData = await overlayRes.json();
+        const overlayData = await readJson(overlayRes);
         if (overlayData.items) {
           uploadedOverlays = overlayData.items.map((u, i) => {
             const o = pickedOverlays[i];
@@ -2359,7 +2390,7 @@ export default function EditVideoScreen({ navigation }) {
             const audioRes = await fetch(BACKEND + '/api/upload-media', {
               method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: audioForm,
             });
-            const audioData = await audioRes.json();
+            const audioData = await readJson(audioRes);
             if (audioData.items?.[0]) {
               uploadedAudio.push({ url: audioData.items[0].url, ...audioPlacement(track) });
             }
@@ -2407,7 +2438,7 @@ export default function EditVideoScreen({ navigation }) {
           audioTracks: uploadedAudio,
         }),
       });
-      const { jobId, error } = await mergeRes.json();
+      const { jobId, error } = await readJson(mergeRes);
       if (!jobId) throw new Error(error || 'Failed to start job');
       pollJob(jobId);
     } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
@@ -2422,7 +2453,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: voiceoverScript, voiceId }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (data.error) throw new Error(data.error);
       const fullUrl = BACKEND + data.audioUrl;
       setVoiceoverTracks(prev => [...prev, {
@@ -2446,7 +2477,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: 'Hi, this is a quick preview of my voice.', voiceId: voice.id }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (data.error) throw new Error(data.error);
       const { sound } = await Audio.Sound.createAsync({ uri: BACKEND + data.audioUrl }, { shouldPlay: true });
       setVoiceoverPreviewSound(sound);
@@ -2490,7 +2521,7 @@ export default function EditVideoScreen({ navigation }) {
     setMusicLoading(true);
     try {
       const res = await apiFetch('/api/music-tracks');
-      const data = await res.json();
+      const data = await readJson(res);
       setMusicLibraryTracks(data.tracks || []);
     } catch (e) {
       Alert.alert('Error', 'Failed to load music library.');
@@ -2579,7 +2610,7 @@ export default function EditVideoScreen({ navigation }) {
         },
         body: JSON.stringify({ url, samples: 400 }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (data.peaks) {
         setWaveformCache(prev => ({ ...prev, [trackKey]: data.peaks }));
       }
@@ -2607,7 +2638,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: token ? { Authorization: 'Bearer ' + token } : {},
         body: form,
       });
-      const data = await res.json();
+      const data = await readJson(res);
       const remoteUrl = data.items?.[0]?.url;
       if (!remoteUrl) throw new Error(data.error || 'Upload failed');
       setAudioTracks(prev => prev.map(t => t.key === track.key ? { ...t, remoteUrl, uploadState: 'ready' } : t));
@@ -2942,7 +2973,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ url: voiceoverTrack.remoteUrl || voiceoverTrack.uri }),
       });
-      const data = await res.json();
+      const data = await readJson(res);
       if (!data.words || data.words.length === 0) throw new Error(data.error || 'No speech detected');
 
       const style = resolveCaptionStyle(captionStyle);
@@ -3040,17 +3071,23 @@ export default function EditVideoScreen({ navigation }) {
           userId: user.uid,
         }),
       });
-      const { jobId, error } = await res.json();
+      const { jobId, error } = await readJson(res);
       if (!jobId) throw new Error(error || 'Failed to start caption job');
       pollCaptionJob(jobId);
     } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
   }
 
   function pollCaptionJob(jobId) {
+    // Same shape as pollJob below: readJson can throw a message worth showing, and an
+    // empty catch here had the same failure mode pollJob's did before it was fixed -
+    // a job that could not be reached would poll forever with nothing on screen ever
+    // saying so.
+    let consecutiveFailures = 0;
     const interval = setInterval(async () => {
       try {
         const r = await apiFetch('/api/job/' + jobId);
-        const job = await r.json();
+        const job = await readJson(r);
+        consecutiveFailures = 0;
         setProgress(job.progress || 0); setMessage(job.message || '');
         if (job.status === 'done') {
           clearInterval(interval); setUploading(false);
@@ -3063,7 +3100,13 @@ export default function EditVideoScreen({ navigation }) {
           clearInterval(interval); setUploading(false);
           Alert.alert('Error', job.error || 'Caption generation failed');
         }
-      } catch (e) {}
+      } catch (e) {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 8) {
+          clearInterval(interval); setUploading(false);
+          Alert.alert('Lost track of the caption job', e.message);
+        }
+      }
     }, 2000);
   }
 
@@ -3077,7 +3120,7 @@ export default function EditVideoScreen({ navigation }) {
         // was already on disk.
         const r = await apiFetch('/api/job/' + jobId);
         if (!r.ok) throw new Error(`Job status ${r.status}`);
-        const job = await r.json();
+        const job = await readJson(r);
         consecutiveFailures = 0;
         setProgress(job.progress || 0); setMessage(job.message || '');
         if (job.status === 'done') {
