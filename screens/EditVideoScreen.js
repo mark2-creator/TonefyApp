@@ -210,29 +210,34 @@ function promptUpgrade(label) {
 }
 
 const CLIP_TOOLS = [
+  // Everything here works. The bar opens on them so the first thing met is a tool
+  // that does something, not a run of grey.
   [
     { key: 'replace', icon: 'swap-horiz', label: 'Replace' },
     { key: 'trim', icon: 'straighten', label: 'Trim' },
     { key: 'split', icon: 'content-cut', label: 'Split' },
-    { key: 'overlay', icon: 'picture-in-picture-alt', label: 'Overlay' },
-    { key: 'volume', icon: 'volume-up', label: 'Volume' },
+    { key: 'duplicate', icon: 'content-copy', label: 'Duplicate' },
+    { key: 'delete', icon: 'delete', label: 'Delete' },
   ],
   [
+    { key: 'volume', icon: 'volume-up', label: 'Volume' },
+    { key: 'speed', icon: 'speed', label: 'Speed' },
     { key: 'audio', icon: 'graphic-eq', label: 'Audio tools' },
     { key: 'captions', icon: 'closed-caption', label: 'Captions' },
-    { key: 'speed', icon: 'speed', label: 'Speed' },
-  ],
-  [
     { key: 'transition', icon: 'compare-arrows', label: 'Transition' },
+    { key: 'overlay', icon: 'picture-in-picture-alt', label: 'Overlay' },
+    { key: 'filters', icon: 'photo-filter', label: 'Filters' },
+    { key: 'flip', icon: 'flip', label: 'Flip' },
+  ],
+  // Beyond this point nothing is built yet. Grouped by what they would do, so the
+  // scroll reads as categories rather than as a wall.
+  [
     { key: 'transparency', icon: 'opacity', label: 'Transparency', premium: true },
     { key: 'layers', icon: 'layers', label: 'Layers', premium: true },
     // More is an overflow, not a feature, so it carries no diamond: there is nothing
     // behind it to sell.
     { key: 'more', icon: 'more-horiz', label: 'More' },
-  ],
-  [
     { key: 'crop', icon: 'crop', label: 'Crop', premium: true },
-    { key: 'flip', icon: 'flip', label: 'Flip' },
     { key: 'colour', icon: 'palette', label: 'Colour', premium: true },
     { key: 'animate', icon: 'animation', label: 'Animate', premium: true },
     { key: 'transform', icon: 'transform', label: 'Transform', premium: true },
@@ -241,19 +246,14 @@ const CLIP_TOOLS = [
     { key: 'adjust', icon: 'tune', label: 'Adjust', premium: true },
     { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover', premium: true },
     { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio', premium: true },
-    { key: 'filters', icon: 'photo-filter', label: 'Filters' },
     { key: 'effects', icon: 'movie-filter', label: 'Effects', premium: true },
     { key: 'retouch', icon: 'face-retouching-natural', label: 'Retouch', premium: true },
   ],
-  // Clip handling: the everyday operations on the clip as an object.
   [
-    { key: 'duplicate', icon: 'content-copy', label: 'Duplicate' },
     { key: 'freeze', icon: 'ac-unit', label: 'Freeze', premium: true },
     { key: 'reverse', icon: 'fast-rewind', label: 'Reverse', premium: true },
     { key: 'unlink', icon: 'link-off', label: 'Unlink', premium: true },
-    { key: 'delete', icon: 'delete', label: 'Delete' },
   ],
-  // Audio taken from the clip itself.
   [
     { key: 'extractaudio', icon: 'audiotrack', label: 'Extract audio', premium: true },
     { key: 'reducenoise', icon: 'noise-control-off', label: 'Reduce noise', premium: true },
@@ -262,7 +262,6 @@ const CLIP_TOOLS = [
     { key: 'enhancevoice', icon: 'record-voice-over', label: 'Enhance voice', premium: true },
     { key: 'beats', icon: 'av-timer', label: 'Beats', premium: true },
   ],
-  // Framing and motion.
   [
     { key: 'autoreframe', icon: 'crop-free', label: 'Auto reframe', premium: true },
     { key: 'stabilize', icon: 'vibration', label: 'Stabilize', premium: true },
@@ -270,9 +269,7 @@ const CLIP_TOOLS = [
     { key: 'mask', icon: 'masks', label: 'Mask', premium: true },
     { key: 'relight', icon: 'light-mode', label: 'Relight', premium: true },
   ],
-  // The generative set. Every one of these is a model call that does not exist yet,
-  // on this backend or any other - they are the furthest from being built of anything
-  // in this bar, and are grouped together so that is legible rather than scattered.
+  // The generative set: every one is a model call that exists on no backend yet.
   [
     { key: 'airemove', icon: 'healing', label: 'AI remove', premium: true },
     { key: 'aiexpand', icon: 'open-in-full', label: 'AI expand', premium: true },
