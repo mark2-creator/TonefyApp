@@ -3950,9 +3950,19 @@ export default function EditVideoScreen({ navigation }) {
             <SheetHeader title="Photo Duration" onClose={() => setShowImageDurationModal(false)} />
             {selectedItem && (
               <>
-                <Text style={{ color:'#aaa', fontSize:13, marginBottom:8 }}>Duration: {selectedItem.duration}s</Text>
+                {/* One decimal, because the slider can now set one. A whole-second
+                    readout under a continuous control just hides what it did. */}
+                <Text style={{ color:'#aaa', fontSize:13, marginBottom:8 }}>
+                  Duration: {Number(selectedItem.duration ?? 3).toFixed(1)}s
+                </Text>
+                {/* Same floor as the drag handles, and continuous like them. This read
+                    minimumValue 1 with step 1 while the handles go to MIN_CLIP_DUR and
+                    move freely - so merely opening this sheet on a 0.4s photo rewrote
+                    it to 1s, and any photo cut to a beat or a phrase was rounded away
+                    the moment the slider was touched. A control must not destroy a
+                    value just by being looked at. */}
                 <Slider style={{ width: '100%', height: 32 }}
-                  minimumValue={1} maximumValue={IMAGE_MAX_DUR} step={1}
+                  minimumValue={MIN_CLIP_DUR} maximumValue={IMAGE_MAX_DUR}
                   value={selectedItem.duration}
                   minimumTrackTintColor="#00d4d4"
                   maximumTrackTintColor="#333"
