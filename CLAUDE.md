@@ -735,6 +735,34 @@ after it and have never been through it, so re-run it over the full catalogue be
 trusting the export on those eight. What is also **not** verified is the app-side
 rendering — that needs a device.
 
+## Known nits, examined and deliberately left
+
+### The photo filmstrip's phantom slide (Aug 9 2026)
+
+`TimelineClip` passes `animOffset` to `FilmStrip` for stills as well as videos, and
+the image branch consumes it (`left: offset`), so during a left-handle drag a photo's
+strip really does slide. It just conveys nothing:
+
+- **The motion is imperceptible.** A still's strip is one image repeated at
+  `height * 0.75`, so the content is periodic and identical - shifting a row of
+  matching tiles looks the same as not shifting it, except at the clip's edges.
+- **It snaps back on release.** `baseOffset` is `-trimStart * PIXELS_PER_SECOND`, and
+  `applyClipTrimEdit` never writes `trimStart` for an image - it changes `duration`.
+  So `trimStart` stays 0, and the strip returns to phase zero the moment the finger
+  lifts.
+
+Not fixed on purpose. The one-line change - stop passing `offset` for images - trades
+an invisible slide that snaps back for no slide at all, which is a different
+invisible artefact, and adds a type branch to a component that currently has none.
+Investigated properly, so it should not be rediscovered as a bug.
+
+Worth separating from a question that was asked at the same time and is NOT a defect:
+a photo's left handle shortening the clip from the right is not backwards, because a
+video's does exactly the same. Clip position is the running sum of preceding lengths
+(`clipsComputed`), items carry no `startOffset` - only audio tracks do - so no clip's
+left edge can move. Video only *feels* different because its strip slides over real
+frames while a still has nothing to reveal.
+
 ## Known gaps vs. the original lost version (lower priority, not yet rebuilt)
 
 - No pinch-to-zoom on timeline.
