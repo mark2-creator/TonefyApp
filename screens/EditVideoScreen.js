@@ -150,21 +150,24 @@ const VOICES = [
 
 // One side of a join, drawn as a plain layer. Muted always - the main <Video> owns
 // the audio and the clock, and a second source playing aloud would double it.
-function JoinClipLayer({ item, isPlaying, style }) {
+function JoinClipLayer({ item, isPlaying, active, style }) {
   if (item.type === 'video') {
     return (
       <Video
         source={{ uri: item.uri }}
         // The frame that plays right after this join finishes is trimStart, not
-        // whatever the file's own beginning is - without this, the layer showed the
-        // start of the source file for the whole transition. On a clip trimmed well
-        // into its footage that is a completely different shot from the one the
-        // export actually cross-fades to, which is why this read as "poor" while the
-        // export - which seeks with -ss - looked right.
+        // whatever the file's own beginning is.
         positionMillis={(item.trimStart || 0) * 1000}
         style={[styles.previewImage, flipTransform(item), style]}
         resizeMode="cover"
-        shouldPlay={isPlaying}
+        // Paused until the blend actually starts. This layer mounts well before that
+        // - see LOOKAHEAD below - purely so its decoder has time to open the file and
+        // seek before it is needed. If it were also playing during that head start,
+        // it would run forward from trimStart the whole time, and by the moment the
+        // blend became visible it would already be showing footage seconds past the
+        // frame the export actually opens on. Held still keeps it sitting on the
+        // correct first frame until there is an audience for it.
+        shouldPlay={isPlaying && active}
         isLooping={false}
         isMuted
         rate={item.speed || 1}
@@ -1466,9 +1469,11 @@ export default function EditVideoScreen({ navigation }) {
         // drops to a frame, so the motion is drawn at the display's rate; everywhere
         // else it stays at 40ms, because a re-render of this screen is not cheap and
         // nothing outside a join needs more than 25 updates a second.
-        // Matches the preview join's own WINDOW, not the export's xfade duration - the
-        // frame budget has to cover however long the ON-CANVAS blend actually runs for.
-        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 0.3);
+        // 1.5s: matches LOOKAHEAD, not WINDOW. The mount itself does not need 60fps
+        // updates to happen promptly, but the animated blend inside the last 0.3s of
+        // it does, and this one radius has to cover both - the cheap way to guarantee
+        // that is to size it to the longer of the two.
+        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 1.5);
         if (ts - lastPlaybackPosUpdateRef.current >= (nearJoin ? 16 : 40)) {
           lastPlaybackPosUpdateRef.current = ts;
           setPosition(localPos);
@@ -3161,42 +3166,51 @@ export default function EditVideoScreen({ navigation }) {
 
   // The join the playhead is currently crossing, if any.
   //
-  // The canvas plays one clip at a time through a single <Video>, so a real
-  // two-source transition cannot be drawn here - there is nothing to cross-fade the
-  // outgoing clip WITH. What this does is mark the moment: the frame dips through the
-  // join, tinted the way the transition's own family would tint it, with the
-  // transition's name on it. It answers "is there a transition here and which one",
-  // which is the question that could not be answered at all before; it is not a
-  // faithful render of the effect, and the tile in the picker is still the place to
-  // see what one actually looks like.
+  // Two real layers: the outgoing clip in the main <Video>, the incoming one stacked
+  // on top, moved and masked exactly as transitionPreviewFrame says. What made that
+  // still look wrong on a device, even with the maths right and the seek fixed, is a
+  // cost that only exists on a device: opening a video file and seeking it takes real
+  // time - a hundred milliseconds at best, and on some files and phones a good deal
+  // more. WINDOW is short (0.3s) on purpose, because that is the span the blend
+  // itself should run over - but a decoder given only 0.3s to open, buffer and seek
+  // before it is expected to show a frame will often show nothing, or a stale one,
+  // for most of that time. The export never pays this cost: ffmpeg has the whole file
+  // already decoded on disk.
+  //
+  // LOOKAHEAD fixes the cause instead of the symptom. The incoming layer mounts up to
+  // a second and a half before the join - far more time than any file needs to open -
+  // and sits there paused on its correct first frame (see JoinClipLayer). Only once
+  // we are within WINDOW of the join does `p` leave zero and the blend actually start
+  // moving, the same instant it always did; the difference is the layer has had a
+  // long head start to be READY, instead of being asked to load and perform in the
+  // same 0.3 seconds.
+  const WINDOW = 0.3;
+  const LOOKAHEAD = 1.5;
   const activeJoin = useMemo(() => {
     if (items.length < 2) return null;
-    // Set at 0.3s directly. Shorter even than the export's own 0.5s xfade - the
-    // export duration is a separate number on the backend and is untouched by this
-    // either way.
-    const WINDOW = 0.3;
     let t = 0;
     for (let i = 0; i < items.length - 1; i += 1) {
       t += clipLength(items[i]);
-      // The window RUNS UP TO the join rather than straddling it. getPreviewItem
-      // swaps clips at the join's centre, so a straddling window meant the main
-      // <Video> became the incoming clip half way through - and a masked reveal has
-      // to draw the outgoing frame underneath for its whole length, which is
-      // impossible once the thing underneath has already changed. Ending at the join
-      // keeps the main layer on the outgoing clip throughout, so the second layer is
-      // always the incoming one and the mask always means the same thing.
-      if (position >= t - WINDOW && position < t) {
+      if (position >= t - LOOKAHEAD && position < t) {
         const def = resolveTransition(items[i].transition);
         if (!def?.base) return null;
+        // Clamped to 0 for the whole lookahead-but-not-blending span, which is
+        // exactly the state every transition already starts from - a dissolve at p=0
+        // is fully transparent, a slide at p=0 is fully off-frame, a mask at p=0 is
+        // fully closed. Mounting early and simply holding p at 0 is what keeps the
+        // layer invisible during the head start, with no second "warming" style to
+        // keep in sync with the real one.
+        const raw = (position - (t - WINDOW)) / WINDOW;
         return {
           def,
-          p: (position - (t - WINDOW)) / WINDOW,
+          p: Math.max(0, Math.min(1, raw)),
+          active: raw > 0,
           outItem: items[i],
           incItem: items[i + 1],
           fidelity: previewFidelity(items[i].transition),
         };
       }
-      if (t - position > WINDOW) break;
+      if (t - position > LOOKAHEAD) break;
     }
     return null;
   }, [items, position]);
@@ -3221,6 +3235,7 @@ export default function EditVideoScreen({ navigation }) {
       otherItem: activeJoin.incItem,
       mask: f.mask || null,
       tint: f.tint,
+      active: activeJoin.active,
     };
   // `frame` in the deps too: it is a NEW object whenever the aspect ratio changes,
   // and this used to recompute only when the playhead moved - so a join layer's
@@ -3619,11 +3634,11 @@ export default function EditVideoScreen({ navigation }) {
               {joinLayers.mask ? (
                 <View style={maskContainerStyle(joinLayers.mask, frame)}>
                   <View style={maskInnerStyle(joinLayers.mask, frame)}>
-                    <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} style={null} />
+                    <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} active={joinLayers.active} style={null} />
                   </View>
                 </View>
               ) : (
-                <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} style={joinLayers.other} />
+                <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} active={joinLayers.active} style={joinLayers.other} />
               )}
               {/* Fades that go THROUGH a colour rather than between the two frames. */}
               {joinLayers.tint && (
