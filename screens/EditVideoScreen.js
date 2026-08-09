@@ -3196,6 +3196,16 @@ export default function EditVideoScreen({ navigation }) {
     return null;
   }, [items, position]);
 
+  // How strongly to signal "a transition is happening", 0 at either edge of the
+  // window and 1 dead centre. The blend itself was already correct - trim-accurate
+  // content, the right motion, the right mask - but on a small preview embedded in a
+  // busy screen a 0.5s crossfade between similar-looking frames is easy to miss
+  // entirely, and export looked obviously different only because grain, glow and
+  // colour work stack on top of the same blend there. This is a second, LOUD signal
+  // that rides alongside the blend rather than replacing it: unmissable regardless of
+  // how subtle the underlying content change happens to be.
+  const joinStrength = activeJoin ? 1 - Math.abs(activeJoin.p * 2 - 1) : 0;
+
   // The two layers the join is drawn from, in screen units.
   const joinLayers = useMemo(() => {
     if (!activeJoin) return null;
@@ -3560,7 +3570,14 @@ export default function EditVideoScreen({ navigation }) {
 
       {/* VIDEO PREVIEW */}
       <View style={styles.previewContainer}>
-        <View style={[styles.previewFrame, { width: frame.w, height: frame.h, backgroundColor: canvasBg }]}>
+        <View style={[
+          styles.previewFrame,
+          { width: frame.w, height: frame.h, backgroundColor: canvasBg },
+          activeJoin && {
+            borderColor: '#00d4d4',
+            borderWidth: 1 + joinStrength * 3,
+          },
+        ]}>
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
@@ -3630,8 +3647,11 @@ export default function EditVideoScreen({ navigation }) {
               {/* Says which transition is running, and admits when the canvas is
                   standing in rather than reproducing it - a wipe shown as a dissolve
                   should not be mistaken for what the export will do. */}
-              <View style={styles.joinLabel}>
-                <MaterialIcons name="compare-arrows" size={12} color="#04211f" />
+              <View style={[
+                styles.joinLabel,
+                { transform: [{ scale: 0.85 + joinStrength * 0.25 }], opacity: 0.55 + joinStrength * 0.45 },
+              ]}>
+                <MaterialIcons name="compare-arrows" size={15} color="#04211f" />
                 <Text style={styles.joinLabelText}>
                   {activeJoin.def.label}{activeJoin.fidelity === 'approx' ? ' · approx' : ''}
                 </Text>
@@ -4979,11 +4999,14 @@ const styles = StyleSheet.create({
   sourceTabTextActive: { color: '#000' },
   sourceTabTextDim: { color: '#5a5a5a' },
   joinLabel: {
-    position: 'absolute', top: 8, alignSelf: 'center', flexDirection: 'row',
-    alignItems: 'center', gap: 4, backgroundColor: '#00d4d4',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    position: 'absolute', top: 10, alignSelf: 'center', flexDirection: 'row',
+    alignItems: 'center', gap: 5, backgroundColor: '#00d4d4',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+    // A shadow under a teal chip on top of moving video is the difference between
+    // "obviously a control" and "a label that blends into whatever is behind it".
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  joinLabelText: { color: '#04211f', fontSize: 10, fontWeight: '700' },
+  joinLabelText: { color: '#04211f', fontSize: 12, fontWeight: '800' },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   audioSheetName: { color: '#888', fontSize: 12, marginBottom: 14 },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
