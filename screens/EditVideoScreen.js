@@ -1466,10 +1466,9 @@ export default function EditVideoScreen({ navigation }) {
         // drops to a frame, so the motion is drawn at the display's rate; everywhere
         // else it stays at 40ms, because a re-render of this screen is not cheap and
         // nothing outside a join needs more than 25 updates a second.
-        // Matches the preview join's own WINDOW (1.4s), not the export's 0.5s xfade -
-        // the frame budget has to cover however long the ON-CANVAS blend actually
-        // runs for, which is now longer than the file's.
-        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 1.4);
+        // Matches the preview join's own WINDOW, not the export's xfade duration - the
+        // frame budget has to cover however long the ON-CANVAS blend actually runs for.
+        const nearJoin = joinTimesRef.current.some(j => Math.abs(localPos - j) <= 0.3);
         if (ts - lastPlaybackPosUpdateRef.current >= (nearJoin ? 16 : 40)) {
           lastPlaybackPosUpdateRef.current = ts;
           setPosition(localPos);
@@ -3172,16 +3171,10 @@ export default function EditVideoScreen({ navigation }) {
   // see what one actually looks like.
   const activeJoin = useMemo(() => {
     if (items.length < 2) return null;
-    // Longer than the export's own 0.5s xfade, ON PURPOSE. That duration is correct
-    // for the file - fast cuts are what most of these transitions are for - but a
-    // 0.5s blend glimpsed on a small preview, while attention is on the timeline and
-    // the scrubber, is exactly what was "too subtle to notice" - and that was true
-    // whether or not the blend itself was actually correct. Stretching the WINDOW
-    // slows down how `p` advances relative to real time, so the same motion or
-    // dissolve plays out over more than a second instead of half of one - enough to
-    // actually watch it happen rather than glimpse it. The export is unaffected: this
-    // number lives only in the preview's own join detection.
-    const WINDOW = 1.4;
+    // Set at 0.3s directly. Shorter even than the export's own 0.5s xfade - the
+    // export duration is a separate number on the backend and is untouched by this
+    // either way.
+    const WINDOW = 0.3;
     let t = 0;
     for (let i = 0; i < items.length - 1; i += 1) {
       t += clipLength(items[i]);
