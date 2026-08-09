@@ -31,6 +31,7 @@ import FilterSheet from '../components/FilterPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
+import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
   transitionSpec, resolveTransition, hasTransition, transitionPreviewFrame, previewFidelity,
@@ -76,6 +77,13 @@ const SCRUBBER_POS = 0.3;
 const SCRUBBER_LINE_W = 2;
 // Visible breathing room between the playhead and the first clip / aux chip.
 const SCRUBBER_GAP = 4;
+// The BOX the preview frame is fitted inside, not the frame itself. A 9:16 project
+// fills its height and comes out the same 50%-of-width it always was; a 16:9 one is
+// free to use the width instead of being squeezed into a portrait column.
+const PREVIEW_MAX_W = SW * 0.86;
+const PREVIEW_MAX_H = SH * 0.40;
+// The 9:16 frame, still a constant because a handful of module-level helpers need a
+// sensible default before the project's own aspect is known.
 const PREVIEW_W = SW * 0.5;
 // The fixed left rail of the timeline. Read by both the sidebar and the ruler that
 // has to line up past it.
@@ -83,7 +91,6 @@ const SIDEBAR_W = 72;
 // An overlay added at scale 1 covers this fraction of the frame's width. Read by
 // the canvas to draw it and by the export to reproduce it, so they cannot disagree.
 const OVERLAY_BASE_FRAC = 0.4;
-const PREVIEW_H = PREVIEW_W * (16/9);
 // A clip is as wide as the time it covers - see clipsComputed. CLIP_MIN_W only
 // keeps a very short clip selectable; below about 0.4s the strip stops being an
 // accurate ruler, which is the better trade against a clip too small to touch.
@@ -164,16 +171,17 @@ function JoinClipLayer({ item, isPlaying, style }) {
 }
 
 // The window a masked transition reveals through. Fractions become points here, which
-// is the only place that needs to know the canvas is PREVIEW_W x PREVIEW_H.
-function maskContainerStyle(mask) {
+// is the only place that turns them into points.
+function maskContainerStyle(mask, dims) {
+  const { w: PW, h: PH } = dims;
   if (mask.type === 'circle') {
     // A square with a full corner radius. Sized off the larger edge so the circle can
     // grow past the corners and clear the frame completely.
-    const side = 2 * mask.r * Math.max(PREVIEW_W, PREVIEW_H);
+    const side = 2 * mask.r * Math.max(PW, PH);
     return {
       position: 'absolute',
-      left: mask.cx * PREVIEW_W - side / 2,
-      top: mask.cy * PREVIEW_H - side / 2,
+      left: mask.cx * PW - side / 2,
+      top: mask.cy * PH - side / 2,
       width: side,
       height: side,
       borderRadius: side / 2,
@@ -182,10 +190,10 @@ function maskContainerStyle(mask) {
   }
   return {
     position: 'absolute',
-    left: mask.x * PREVIEW_W,
-    top: mask.y * PREVIEW_H,
-    width: mask.w * PREVIEW_W,
-    height: mask.h * PREVIEW_H,
+    left: mask.x * PW,
+    top: mask.y * PH,
+    width: mask.w * PW,
+    height: mask.h * PH,
     overflow: 'hidden',
   };
 }
@@ -193,14 +201,15 @@ function maskContainerStyle(mask) {
 // Cancels the container's offset, so the clip inside sits exactly where it would have
 // sat unmasked. Without this the picture slides along with the window and the whole
 // effect looks like a slide with a ragged edge.
-function maskInnerStyle(mask) {
+function maskInnerStyle(mask, dims) {
+  const { w: PW, h: PH } = dims;
   const left = mask.type === 'circle'
-    ? -(mask.cx * PREVIEW_W - (mask.r * Math.max(PREVIEW_W, PREVIEW_H)))
-    : -mask.x * PREVIEW_W;
+    ? -(mask.cx * PW - (mask.r * Math.max(PW, PH)))
+    : -mask.x * PW;
   const top = mask.type === 'circle'
-    ? -(mask.cy * PREVIEW_H - (mask.r * Math.max(PREVIEW_W, PREVIEW_H)))
-    : -mask.y * PREVIEW_H;
-  return { position: 'absolute', left, top, width: PREVIEW_W, height: PREVIEW_H };
+    ? -(mask.cy * PH - (mask.r * Math.max(PW, PH)))
+    : -mask.y * PH;
+  return { position: 'absolute', left, top, width: PW, height: PH };
 }
 
 // The row of sources at the top of Add Voiceover and Add Music.
@@ -496,8 +505,8 @@ function MediaOverlayVideo({ uri, width, height, isPlaying }) {
 
 // A media overlay on the canvas: a second video or photo sitting on top of the main
 // one, at whatever size and angle it has been put.
-const MediaOverlayContent = React.memo(function MediaOverlayContent({ overlay, isPlaying }) {
-  const w = PREVIEW_W * OVERLAY_BASE_FRAC;
+const MediaOverlayContent = React.memo(function MediaOverlayContent({ overlay, isPlaying, frameW }) {
+  const w = (frameW || PREVIEW_W) * OVERLAY_BASE_FRAC;
   // Its own proportions, not a guessed square. An asset that reported no size falls
   // back to square, which is wrong for the picture but right for the layout.
   const ratio = overlay.naturalW && overlay.naturalH ? overlay.naturalH / overlay.naturalW : 1;
@@ -1221,6 +1230,16 @@ export default function EditVideoScreen({ navigation }) {
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
+  const [showAspectSheet, setShowAspectSheet] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(DEFAULT_ASPECT);
+
+  // The frame the project is actually being composed in. Everything that positions an
+  // overlay works in percentages of THIS, so a caption stays where it was put when the
+  // shape changes rather than sliding off the new edge.
+  const frame = useMemo(
+    () => fitAspect(aspectRatio, PREVIEW_MAX_W, PREVIEW_MAX_H),
+    [aspectRatio]
+  );
   // Nothing may be written to the draft until the existing one has been read and
   // answered. Autosaving before that would immediately overwrite the saved project
   // with this screen's empty initial state - the draft would be destroyed by the very
@@ -1709,6 +1728,7 @@ export default function EditVideoScreen({ navigation }) {
     setOverlays(draft.overlays || []);
     if (draft.masterVolume != null) setMasterVolume(draft.masterVolume);
     if (draft.captionStyle) setCaptionStyle(draft.captionStyle);
+    if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
     setDraftOffer(null);
     setDraftChecked(true);
   }, []);
@@ -1747,10 +1767,10 @@ export default function EditVideoScreen({ navigation }) {
         clearDraft();
         return;
       }
-      saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle });
+      saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio });
     }, 900);
     return () => clearTimeout(t);
-  }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle]);
+  }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio]);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
@@ -2294,7 +2314,7 @@ export default function EditVideoScreen({ navigation }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          mediaItems, userId: user.uid, resolution,
+          mediaItems, userId: user.uid, resolution, aspectRatio,
           textOverlays: expandForExport(textOverlays).map(t => ({
             text: t.text, color: t.color, font: t.font,
             // A pinch scales every part of the overlay together, and every part is
@@ -2324,7 +2344,7 @@ export default function EditVideoScreen({ navigation }) {
           // fell back to 360 while the real canvas is half the screen - about 180 on
           // this phone. Every caption therefore exported at roughly half the size it
           // was set at, which is why they looked right here and shrank in the file.
-          previewWidth: PREVIEW_W,
+          previewWidth: frame.w,
           overlays: uploadedOverlays,
           audioTracks: uploadedAudio,
         }),
@@ -3082,8 +3102,8 @@ export default function EditVideoScreen({ navigation }) {
     const toStyle = (l) => ({
       opacity: l.opacity,
       transform: [
-        { translateX: l.tx * PREVIEW_W },
-        { translateY: l.ty * PREVIEW_H },
+        { translateX: l.tx * frame.w },
+        { translateY: l.ty * frame.h },
         { scale: l.scale },
       ],
     });
@@ -3112,15 +3132,15 @@ export default function EditVideoScreen({ navigation }) {
     <CanvasOverlay
       key={o.key}
       overlay={o}
-      containerW={PREVIEW_W}
-      containerH={PREVIEW_H}
+      containerW={frame.w}
+      containerH={frame.h}
       selected={selectedOverlayKey === o.key}
       onSelect={setSelectedOverlayKey}
       onTransform={applyMediaOverlayTransform}
       onTap={() => setSelectedOverlayKey(o.key)}
       onLongPress={() => confirmRemoveOverlay(o)}
     >
-      <MediaOverlayContent overlay={o} isPlaying={isPlaying} />
+      <MediaOverlayContent overlay={o} isPlaying={isPlaying} frameW={frame.w} />
     </CanvasOverlay>
   )), [overlays, selectedOverlayKey, isPlaying, applyMediaOverlayTransform, confirmRemoveOverlay]);
 
@@ -3212,7 +3232,7 @@ export default function EditVideoScreen({ navigation }) {
     { name: 'Adjust', icon: 'tune', built: true },
     { name: 'Stickers', icon: 'emoji-emotions', built: false },
     { name: 'AI avatar', icon: 'smart-toy', built: false, premium: true },
-    { name: 'Aspect ratio', icon: 'aspect-ratio', built: false },
+    { name: 'Aspect ratio', icon: 'aspect-ratio', built: true },
     { name: 'Background', icon: 'wallpaper', built: false },
   ];
 
@@ -3250,6 +3270,13 @@ export default function EditVideoScreen({ navigation }) {
           ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
           ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
         ];
+      case 'Aspect ratio':
+        return ASPECT_RATIOS.map(a => ({
+          key: 'ar-' + a.id,
+          label: a.label,
+          active: aspectRatio === a.id,
+          onPress: () => setAspectRatio(a.id),
+        }));
       case 'Adjust':
         return [{
           key: 'openadjust',
@@ -3415,7 +3442,7 @@ export default function EditVideoScreen({ navigation }) {
 
       {/* VIDEO PREVIEW */}
       <View style={styles.previewContainer}>
-        <View style={styles.previewFrame}>
+        <View style={[styles.previewFrame, { width: frame.w, height: frame.h }]}>
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
@@ -3467,8 +3494,8 @@ export default function EditVideoScreen({ navigation }) {
                   wipe rather than as something sliding in. Unmasked families render
                   the clip directly with a transform. */}
               {joinLayers.mask ? (
-                <View style={maskContainerStyle(joinLayers.mask)}>
-                  <View style={maskInnerStyle(joinLayers.mask)}>
+                <View style={maskContainerStyle(joinLayers.mask, frame)}>
+                  <View style={maskInnerStyle(joinLayers.mask, frame)}>
                     <JoinClipLayer item={joinLayers.otherItem} isPlaying={isPlaying} style={null} />
                   </View>
                 </View>
@@ -3514,8 +3541,8 @@ export default function EditVideoScreen({ navigation }) {
             <CanvasOverlay
               key={t.key}
               overlay={t}
-              containerW={PREVIEW_W}
-              containerH={PREVIEW_H}
+              containerW={frame.w}
+              containerH={frame.h}
               selected={selectedOverlayKey === t.key}
               onSelect={setSelectedOverlayKey}
               onTransform={applyOverlayTransform}
@@ -3525,7 +3552,7 @@ export default function EditVideoScreen({ navigation }) {
             >
               <TextOverlayContent
                 overlay={t}
-                maxWidth={PREVIEW_W * 0.8}
+                maxWidth={frame.w * 0.8}
                 playhead={position}
                 editing={inlineEditKey === t.key}
                 onChangeText={text => setOverlayText(t.key, text)}
@@ -4630,7 +4657,9 @@ const styles = StyleSheet.create({
   exportBtnText: { color: '#888', fontWeight: '700', fontSize: 14 },
 
   previewContainer: { alignItems: 'center', paddingVertical: 6, backgroundColor: '#000' },
-  previewFrame: { width: SW * 0.5, aspectRatio: 9/16, backgroundColor: '#111', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
+  // Size comes from the project's aspect at render time; the fixed 9/16 that used to
+  // be here is why every export was portrait whatever the picker said.
+  previewFrame: { backgroundColor: '#111', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
   previewImage: { width: '100%', height: '100%' },
   previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   previewEmptyText: { color: '#444', fontSize: 12 },
