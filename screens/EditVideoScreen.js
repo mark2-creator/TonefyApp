@@ -1806,30 +1806,17 @@ export default function EditVideoScreen({ navigation }) {
   // object, and only the phrase under the playhead is on screen - so dragging the
   // one you can see and leaving the other forty where they were would look like
   // the caption jumping back the moment the clip moves on.
-  // A chip that follows the spoken word cannot be drawn by one still: the phrase is
-  // on screen for its whole length while the chip moves along it. The server draws
-  // exactly one word chipped, chosen by `activeWord`, so the export needs one overlay
-  // per word - each carrying the same phrase and position, differing only in which
-  // word is lit and when it is shown.
+  // NOTE: exporting the moving highlight chip is NOT done here any more.
   //
-  // The canvas never needed this: it recomputes activeWord from the playhead on every
-  // frame. So the app computed it, drew it correctly, and sent nothing - which is why
-  // a highlight style exported as plain white text with no chip at all.
-  const expandForExport = useCallback((t) => {
-    const style = t.captionStyleId ? resolveCaptionStyle(t.captionStyleId) : null;
-    const hl = style ? captionHighlight(style) : null;
-    if (!hl || !Array.isArray(t.words) || t.words.length === 0) return [t];
-    return t.words.map((w, i) => ({
-      ...t,
-      key: `${t.key}__w${i}`,
-      activeWord: i,
-      // Each still covers only its own word's span. Together they tile the phrase's
-      // original window, so nothing is on screen for longer than it was.
-      startTime: w.start,
-      endTime: w.end,
-    }));
-  }, []);
-
+  // It was, briefly: one overlay per word, each with its own activeWord. It rendered
+  // correctly and was unusable - the server draws every overlay through about ten
+  // ImageMagick invocations, so a 27-second voiceover turned into 885 renders and the
+  // export wedged at "Adding text & overlays". Expanding on the client multiplies the
+  // single most expensive thing the server does.
+  //
+  // The work belongs on the server, where the phrase can be rendered ONCE and only the
+  // chip composited per word. Until that exists, a highlight style exports as its
+  // plain text - the same as before, and far better than an export that never finishes.
   const applyOverlayTransform = useCallback((key, next) => {
     setTextOverlays(prev => {
       const target = prev.find(t => t.key === key);
@@ -2009,7 +1996,7 @@ export default function EditVideoScreen({ navigation }) {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
           mediaItems, userId: user.uid, resolution,
-          textOverlays: textOverlays.flatMap(expandForExport).map(t => ({
+          textOverlays: textOverlays.map(t => ({
             text: t.text, color: t.color, font: t.font,
             // A pinch scales every part of the overlay together, and every part is
             // already a multiple of the size - stroke, padding, glow - so folding
@@ -2027,10 +2014,6 @@ export default function EditVideoScreen({ navigation }) {
             // Word timings, for the styles whose chip follows the voice. Absent on
             // every other overlay, which is most of them.
             words: t.words,
-            // Which word this still has chipped. The server reads exactly this to
-            // place the highlight, and treats a non-integer as "no chip" - so
-            // omitting it, as this did, silently produced plain text.
-            activeWord: Number.isInteger(t.activeWord) ? t.activeWord : undefined,
             startTime: t.startTime, endTime: t.endTime,
           })),
           // The width the overlay positions and sizes were chosen against. The
