@@ -824,6 +824,83 @@ nothing to aim at.
     separate, already-documented, not-yet-done teal/green rebrand — a task like this
     should touch *only* colors that differ between the two theme objects, nothing
     that was a fixed, unstyled value in both.
+12. **Tiered video retention — "your videos, saved" as a paid feature** (four
+    bisectable commits, Aug 10 2026, plus a crontab/system change with no commit of
+    its own). App repo: `95666dc4`, published as update group
+    `d8795acf-d750-43cb-bbcf-a5cf8283a67e`, runtime 1.1.0. Backend repo (`~/Tonefy-react`):
+    `aaa0f043`, `22769cc3` (cron removal has no commit — see below), deployed via
+    `pm2 restart tonefy-backend` at 15:46:59, confirmed postdating the last edit
+    (15:45) with a clean startup log and no unstable restarts.
+
+    **The prerequisite this whole feature was blocked on:** there was no plan/
+    subscription field anywhere — `constants/plan.js` was a device-local AsyncStorage
+    mock (explicitly documented as such in its own comment), the backend had zero
+    concept of plan/tier, and `ProfileScreen.js`'s "Free Plan" badge was hardcoded
+    text shown to every user. Now: `users/{uid}.plan` in Firestore, values `"free"` |
+    `"pro"` | `"creator"`, missing/absent = free. **No billing integration** — set by
+    hand in the Firestore console. To test paid retention or the Profile badge on a
+    real account: open Firestore console → `users/{uid}` → add/edit `plan` field.
+    `ProfileScreen.js` and the `EditVideoScreen.js:3514` premium gate both read this
+    live via `usePlan()` (`constants/plan.js`, rewritten to `onSnapshot` +
+    `onAuthStateChanged` instead of AsyncStorage) — a Firestore console edit should
+    show up in the app without a restart.
+
+    **Commit 1** (`aaa0f043`) — `txtrender-*.png` (the composited text-overlay image
+    burned into every export with text) was never unlinked anywhere: 1,764 files, 174MB
+    at time of fix, growing with every render that has text. Wrapped the overlay-burn
+    ffmpeg call in try/finally so cleanup happens whether it succeeds or fails. Same
+    fix shape for `wavesrc`/`wavepcm` in `/api/audio-waveform`, which only cleaned up
+    on the success path before. **Neither retroactively cleans the existing
+    accumulation** — that's Commit 3's uploads sweep.
+
+    **Commit 2** (no commit — not a git-tracked file) — `crontab -l` ran
+    `/home/ahumuza/cleanup_videos.sh` every 3 days: a blind `find -mmin +X -delete`
+    against `public/videos`/`public/audios` with **zero Firestore or plan awareness**.
+    It had deleted nothing since it was added (its own log shows "0 files" on every
+    run since June) purely because the in-process 10-minute sweep always won the race
+    and deleted first — invisible, silent redundancy that would have become an active
+    bug the moment the in-process sweep started skipping paid users' files. Removed
+    from crontab (verified via diff: exactly one line gone, nothing else touched).
+    Script file kept at its path but disabled — `exit 1` guard at the top, execute
+    bit stripped, header explains why and points at `cleanupOldFiles()` as the one
+    remaining mechanism. **Worth checking crontab again if disk cleanup ever looks
+    wrong** — this class of "a second thing was doing the same job" is exactly what
+    bit this feature before it shipped.
+
+    **Commit 3** (`22769cc3`) — `cleanupOldFiles()` now resolves a video's plan via
+    `userVideos.userId` → `users/{uid}.plan` before deleting: 72h if free (unchanged —
+    that promise was never broken), 30 days otherwise. Three states, handled on
+    purpose: no matching record/no plan field → `'free'` (nothing to protect); the
+    Firestore lookup itself throwing → **treated as paid, file held one more cycle**
+    (a lookup failure must never cost a paying user their video); a real plan value →
+    applied directly. `getOwnerPlan()` carries a comment marking where a future
+    subscription-lapse grace period hooks in — not built, since there's no billing yet
+    for a plan to lapse from, but the shape was designed so it fits without rework.
+    Also added `cleanupUploads()`, which never existed before: scratch-prefixed files
+    (`wavesrc-`, `wavepcm-`, `transcribesrc-`, `captionsrc-`, `txtrender-`) at 48h,
+    genuine uploads (random-hash filenames from `/api/upload-media`) at a flat,
+    **not plan-aware**, generous 30 days — uploads have no per-file owner record the
+    way `userVideos` does, and `utils/draft.js` drafts have no expiry of their own to
+    key a shorter window off safely without real risk of breaking an in-progress edit.
+
+    **Commit 4** (`95666dc4`) — `usePlan()` rewritten to read `users/{uid}.plan` live
+    (`onSnapshot`, following `onAuthStateChanged` so it resolves correctly regardless
+    of mount order relative to auth) instead of AsyncStorage. Tier constants aligned
+    to what the backend actually uses — `TIER_STANDARD` (`'standard'`) never
+    corresponded to a real value anywhere and is gone; added `TIER_CREATOR`.
+    `EditVideoScreen.js`'s premium gate needed zero changes — it only ever
+    destructured `isPremium`, confirmed by grep before touching anything, which is
+    the entire reason `usePlan()` was built as one hook in the first place.
+
+    **What's explicitly not built, on purpose:** cloud storage (Firebase Storage stays
+    initialized-but-unused; both retention tiers are VPS disk, a deliberate call per
+    "upgrading the promise is easy, downgrading one is not"), subscription-lapse
+    behavior (delete vs. read-only vs. grace period — a product decision with no
+    billing yet to trigger it), and billing itself. **Untested on device or against a
+    real paid account** — the retention logic has never actually held a video past
+    72h end-to-end; verifying that needs a real `users/{uid}.plan = "pro"` account,
+    a generated video older than 72h, and confirming it survives a cleanup cycle
+    rather than reading the code and trusting it.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
