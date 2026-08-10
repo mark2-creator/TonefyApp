@@ -743,6 +743,34 @@ nothing to aim at.
    marketing splash built on ambient glow effects tuned to sit against near-black, not
    a colour-swap job, for a screen most people see once before signing up. Extending
    further needs an explicit ask, same as before.
+9. **MyVideosScreen status-bar overlap + stacked back button** (commit `8d85d988`,
+   published Aug 10 2026 as update group `7579ca1f-58e1-4319-8c2e-f353a2a0a146`,
+   runtime 1.1.0). `MyVideosScreen.js` never consumed `useSafeAreaInsets` — same class
+   of bug as the App.js `SafeAreaProvider` fix, just a screen that hadn't been touched
+   yet; now uses the same `insets.top` pattern as `PostRecordingScreen.js`. Separately,
+   its back arrow + "Back" label were laid out as unstyled siblings inside a
+   `TouchableOpacity` with no `flexDirection`, so RN's default column layout stacked
+   the arrow above the text. `ConnectAccountsScreen.js` had the identical copy-pasted
+   bug, fixed alongside. **Same stacked-back-button pattern still exists** in
+   `IdeaToVideoScreen.js`, `UrlToVideoScreen.js`, `ScriptToVideoScreen.js`,
+   `EditPostVideoScreen.js` and `RecordToVideoScreen.js` (grepped, not fixed) — same
+   one-line fix (`style={{flexDirection:'row',alignItems:'center',gap:4}}` on the
+   TouchableOpacity) whenever one of those is touched next.
+10. **Notifications and Help & Support screens** (commit `137e46c9`, published Aug 10
+    2026 as update group `7b69b572-bd5a-40c7-a247-2c698bae15ea`, runtime 1.1.0). Both
+    Settings-sheet rows had no `onPress` — tapping did nothing. `NotificationsScreen.js`
+    surfaces the re-engagement reminder toggle that `utils/notifications.js` already
+    implemented (permission request, schedule, cancel) but that nothing in the UI had
+    ever exposed — it was only ever triggered from inside `EditVideoScreen` after an
+    export. When the installed build lacks the native notifications module, the toggle
+    disables itself with an explanation rather than looking broken (same OTA-safety
+    pattern the file already documents). Added `remindersEnabled()` to read the
+    scheduled-state back for the toggle's initial value. `HelpSupportScreen.js` is a
+    self-written FAQ plus a **Report an Issue** action that opens a prefilled `mailto:`
+    to the app owner's real address — deliberately not a fabricated support inbox or
+    help-center URL, since neither exists yet (checked both this repo and the live
+    site's page list before writing it). Both screens are new chrome, themed like the
+    rest of today's batch. **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
