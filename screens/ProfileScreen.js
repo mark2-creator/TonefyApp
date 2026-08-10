@@ -13,9 +13,18 @@ import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 
 const PLAN_LABELS = { [TIER_PRO]: 'Pro Plan', [TIER_CREATOR]: 'Creator Plan' };
 
+function formatResetDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return '—';
+  }
+}
+
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { tier } = usePlan();
+  const { tier, creditsRemaining, creditsResetAt, caps } = usePlan();
   const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
@@ -205,6 +214,26 @@ export default function ProfileScreen({ navigation }) {
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.total}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total Videos</Text></View>
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></View>
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.scheduled}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text></View>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Plan & Credits</Text>
+          <View style={[styles.row, { borderBottomColor: theme.border }]}>
+            <MaterialIcons name="bolt" size={18} color={theme.icon} style={styles.rowIcon} />
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Credits Remaining</Text>
+              <Text style={[styles.rowValue, { color: theme.subtext }]}>
+                {creditsRemaining === null ? '—' : `${creditsRemaining} of ${caps.creditsPerCycle} this month`}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <MaterialIcons name="event-repeat" size={18} color={theme.icon} style={styles.rowIcon} />
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Next Reset</Text>
+              <Text style={[styles.rowValue, { color: theme.subtext }]}>{formatResetDate(creditsResetAt)}</Text>
+            </View>
+          </View>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
