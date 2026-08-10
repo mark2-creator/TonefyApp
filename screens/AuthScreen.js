@@ -206,11 +206,25 @@ export default function AuthScreen({ navigation }) {
         // Firestore hiccup here must not cost the person the verification email that
         // is the one thing standing between them and actually being able to log in.
         try {
+          // Credits/plan fields written explicitly here rather than left to
+          // the backend's lazy-init (tiers.js's getUserPlanData, which only
+          // ever fires on a render attempt - a migration safety net for
+          // accounts that predate this feature, not meant to be the primary
+          // path). Without this, a brand new account would show no credits
+          // at all on the Profile screen until its first render request.
+          // 5 credits / 30-day window must match TIERS.free in
+          // ~/Tonefy-react/backend/tiers.js - duplicated across repos on
+          // purpose (no shared package between them), not a value to change
+          // in only one place.
           await setDoc(doc(db, 'users', userCred.user.uid), {
             fullName: fullName.trim(),
             email: email.trim(),
             country,
             createdAt: serverTimestamp(),
+            plan: 'free',
+            creditsRemaining: 5,
+            creditsResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            subscriptionStatus: null,
           });
         } catch (profileErr) {
           console.warn('[signup] could not write user profile:', profileErr.message);
