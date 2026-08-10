@@ -132,7 +132,7 @@ export default function DashboardScreen({ navigation }) {
 
             <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('Notifications'); }}>
               <View style={styles.settingLeft}>
                 <MaterialIcons name="notifications" size={22} color="#2ecc71" />
                 <View>
@@ -145,7 +145,7 @@ export default function DashboardScreen({ navigation }) {
 
             <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('HelpSupport'); }}>
               <View style={styles.settingLeft}>
                 <MaterialIcons name="help" size={22} color="#2ecc71" />
                 <View>

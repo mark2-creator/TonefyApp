@@ -128,6 +128,15 @@ export async function scheduleReminders() {
   }
 }
 
+/** Best-effort local read of whether reminders are currently scheduled - not a live permission check. */
+export async function remindersEnabled() {
+  try {
+    return !!(await AsyncStorage.getItem(SCHEDULED_KEY));
+  } catch {
+    return false;
+  }
+}
+
 /** Stop everything - used when the user turns reminders off. */
 export async function cancelReminders() {
   const N = mod();

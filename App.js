@@ -27,6 +27,8 @@ import ScriptToAudioScreen from './screens/ScriptToAudioScreen';
 import RecordToVideoScreen from './screens/RecordToVideoScreen';
 import RecordingScreen from './screens/RecordingScreen';
 import PostRecordingScreen from './screens/PostRecordingScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
+import HelpSupportScreen from './screens/HelpSupportScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 import { loadAppFonts } from './constants/fontLoader';
@@ -134,6 +136,8 @@ function App() {
             <Stack.Screen name="EditPostVideo" component={EditPostVideoScreen} />
             <Stack.Screen name="EditVideo" component={EditVideoScreen} />
             <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="IdeaToAudio" component={IdeaToAudioScreen} />
             <Stack.Screen name="GeneratingAudio" component={GeneratingAudioScreen} />
             <Stack.Screen name="AudioResult" component={AudioResultScreen} />
