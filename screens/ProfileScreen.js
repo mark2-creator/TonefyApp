@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { MaterialIcons } from '@expo/vector-icons';
-import * as Sentry from '@sentry/react-native';
+import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Image, Alert, ActivityIndicator, Modal
@@ -247,7 +246,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionHeader}>Connected Accounts</Text>
           <View style={styles.connRow}>
             <View style={[styles.connLogo, { backgroundColor: '#000' }]}>
-              <MaterialIcons name="music-note" size={18} color="#fff" />
+              <FontAwesome6 name="tiktok" size={17} color="#fff" />
             </View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>TikTok</Text>
@@ -262,7 +261,9 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.connRow}>
-            <View style={styles.connLogo}><MaterialIcons name="facebook" size={18} color="#fff" /></View>
+            <View style={[styles.connLogo, { backgroundColor: '#1877F2' }]}>
+              <FontAwesome6 name="facebook-f" size={16} color="#fff" />
+            </View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>Facebook</Text>
               <Text style={styles.connStatus}>Coming soon</Text>
@@ -270,7 +271,9 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.badgeSoon}><Text style={styles.badgeSoonText}>Soon</Text></View>
           </View>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.connLogo}><MaterialIcons name="camera-alt" size={18} color="#fff" /></View>
+            <View style={[styles.connLogo, { backgroundColor: '#E4405F' }]}>
+              <FontAwesome6 name="instagram" size={18} color="#fff" />
+            </View>
             <View style={styles.connInfo}>
               <Text style={styles.connName}>Instagram</Text>
               <Text style={styles.connStatus}>Coming soon</Text>
@@ -334,9 +337,6 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </Modal>
 
-        <TouchableOpacity style={[styles.btnLogout, { marginBottom: 10 }]} onPress={() => { Sentry.captureException(new Error('Test crash for Sentry verification')); alert('Sent to Sentry!'); }}>
-          <Text style={styles.btnLogoutText}>Test Crash (temporary)</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
           <Text style={styles.btnLogoutText}>Log Out</Text>
         </TouchableOpacity>
