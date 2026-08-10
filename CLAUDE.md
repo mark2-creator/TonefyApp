@@ -705,6 +705,25 @@ nothing to aim at.
    break — Firestore security rules actually permitting an unauthenticated-a-moment-ago
    user to write their own new doc right after `createUserWithEmailAndPassword`
    resolves.
+7. **Profile screen: real brand marks + Dark Mode now persists** (commits `44069a7b`,
+   `1e259396`, published Aug 10 2026 as update groups `2d273779-afa0-430c-99ff-c0afc58f8989`
+   and `f9c13a95-3a8f-40cf-872e-6019669af765`, runtime 1.1.0). TikTok/Facebook/Instagram
+   now use `FontAwesome6`'s brand glyphs (bundled with `@expo/vector-icons`, no new
+   native module) with each platform's real badge colour, replacing MaterialIcons
+   stand-ins that had no actual TikTok or Instagram glyph to draw from. Test Crash
+   (a Sentry-wiring check, not a real control) is gone.
+
+   Separately: `context/ThemeContext.js`'s `isDark` was plain `useState`, so the Dark
+   Mode switch on the Settings sheet reset to dark on every restart. Persisted to
+   AsyncStorage (`tonefy.darkMode`). While in there, the Settings sheet's own divider,
+   Close button and grabber handle were found hardcoded to the dark palette regardless
+   of `theme.*` — fixed, since shipping "the toggle now persists" while the sheet it
+   lives in still breaks in light mode would not actually be done. **Still explicitly
+   out of scope: every other screen.** `DashboardScreen.js` is the only one of 20
+   screens wired to `ThemeContext` — Profile, Edit Video, Auth, and everything else
+   hardcode the dark palette and will not respond to the toggle. That is a much larger
+   rewrite against the app's dark-only design identity (`tonefy-design` skill) and
+   needs an explicit ask, not an inference from "focus on dark/light mode."
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
