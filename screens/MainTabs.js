@@ -7,6 +7,7 @@ import DashboardScreen from './DashboardScreen';
 import MyVideosScreen from './MyVideosScreen';
 import CalendarScreen from './CalendarScreen';
 import ProfileScreen from './ProfileScreen';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,18 +17,19 @@ function EmptyScreen() {
 
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: '#2ecc71',
-        tabBarInactiveTintColor: '#888',
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.icon,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: {
-          backgroundColor: '#111',
-          borderTopColor: '#2a2a2a',
+          backgroundColor: theme.settingBg,
+          borderTopColor: theme.border,
           height: 60 + insets.bottom,
           paddingTop: 8,
           paddingBottom: insets.bottom || 8,
@@ -60,7 +62,7 @@ export default function MainTabs() {
         options={({ navigation }) => ({
           tabBarLabel: '',
           tabBarIcon: () => (
-            <Text style={{ fontSize: 26, color: '#2ecc71', fontWeight: '300', lineHeight: 30 }}>+</Text>
+            <Text style={{ fontSize: 26, color: theme.accent, fontWeight: '300', lineHeight: 30 }}>+</Text>
           ),
           tabBarButton: (props) => (
             <TouchableOpacity

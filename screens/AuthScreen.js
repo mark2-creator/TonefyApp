@@ -20,11 +20,13 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebase';
 import CountrySheet from '../components/CountryPicker';
+import { useTheme } from '../context/ThemeContext';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -259,27 +261,27 @@ export default function AuthScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.logo}>Tonefy AI</Text>
-      <Text style={styles.title}>{isLogin ? 'Login to Tonefy' : 'Create Account'}</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.logo, { color: theme.accent }]}>Tonefy AI</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{isLogin ? 'Login to Tonefy' : 'Create Account'}</Text>
 
       {isLockedOut() && (
-        <View style={styles.lockoutBanner}>
-          <Text style={styles.lockoutText}>Account locked. Try again in {getRemainingLockoutMinutes()} minute(s).</Text>
+        <View style={[styles.lockoutBanner, { backgroundColor: isDark ? '#3a0000' : '#ffe5e5' }]}>
+          <Text style={[styles.lockoutText, { color: isDark ? '#ff6666' : '#cc0000' }]}>Account locked. Try again in {getRemainingLockoutMinutes()} minute(s).</Text>
         </View>
       )}
 
       {failedAttempts > 0 && failedAttempts < MAX_ATTEMPTS && !isLockedOut() && (
-        <View style={styles.warningBanner}>
-          <Text style={styles.warningText}>{MAX_ATTEMPTS - failedAttempts} attempt(s) remaining before lockout</Text>
+        <View style={[styles.warningBanner, { backgroundColor: isDark ? '#2a1f00' : '#fff3cd' }]}>
+          <Text style={[styles.warningText, { color: isDark ? '#ffcc44' : '#8a6500' }]}>{MAX_ATTEMPTS - failedAttempts} attempt(s) remaining before lockout</Text>
         </View>
       )}
 
       {!isLogin && (
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
           placeholder="Full Name"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.subtext}
           value={fullName}
           onChangeText={setFullName}
           autoCapitalize="words"
@@ -287,43 +289,43 @@ export default function AuthScreen({ navigation }) {
         />
       )}
 
-      <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#666" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Email" placeholderTextColor={theme.subtext} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
       {!isLogin && (
-        <TouchableOpacity style={styles.countryRow} onPress={() => setShowCountrySheet(true)}>
-          <MaterialIcons name="public" size={20} color={country ? '#fff' : '#666'} />
-          <Text style={[styles.countryText, !country && styles.countryPlaceholder]}>
+        <TouchableOpacity style={[styles.countryRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowCountrySheet(true)}>
+          <MaterialIcons name="public" size={20} color={country ? theme.text : theme.subtext} />
+          <Text style={[styles.countryText, { color: country ? theme.text : theme.subtext }]}>
             {country || 'Country'}
           </Text>
-          <MaterialIcons name="expand-more" size={22} color="#888" />
+          <MaterialIcons name="expand-more" size={22} color={theme.icon} />
         </TouchableOpacity>
       )}
 
       <View style={styles.passwordRow}>
-        <TextInput style={[styles.input, { flex: 1 }]} placeholder="Password" placeholderTextColor="#666" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-          <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color="#888" />
+        <TextInput style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Password" placeholderTextColor={theme.subtext} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={[styles.eyeBtn, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+          <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={theme.icon} />
         </TouchableOpacity>
       </View>
 
       {!isLogin && (
-        <TextInput style={styles.input} placeholder="Confirm Password" placeholderTextColor="#666" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+        <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Confirm Password" placeholderTextColor={theme.subtext} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
       )}
 
       {isLogin && (
         <TouchableOpacity onPress={handleForgotPassword}>
-          <Text style={styles.forgotText}>Forgot Password?</Text>
+          <Text style={[styles.forgotText, { color: theme.accent }]}>Forgot Password?</Text>
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={[styles.submitBtn, isLockedOut() && styles.disabledBtn]} onPress={handleSubmit} disabled={loading || isLockedOut()}>
+      <TouchableOpacity style={[styles.submitBtn, { backgroundColor: theme.accent }, isLockedOut() && styles.disabledBtn]} onPress={handleSubmit} disabled={loading || isLockedOut()}>
         {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.submitText}>{isLogin ? 'Login' : 'Sign Up'}</Text>}
       </TouchableOpacity>
 
       <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.dividerLine} />
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+        <Text style={[styles.dividerText, { color: theme.subtext }]}>OR</Text>
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
       </View>
 
       <TouchableOpacity style={[styles.googleBtn, isLockedOut() && styles.disabledBtn]} onPress={handleGoogleSignIn} disabled={loading || isLockedOut()}>
@@ -332,37 +334,37 @@ export default function AuthScreen({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-        <Text style={styles.switchText}>
+        <Text style={[styles.switchText, { color: theme.subtext }]}>
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <Text style={styles.switchLink}>{isLogin ? 'Sign Up' : 'Login'}</Text>
+          <Text style={[styles.switchLink, { color: theme.accent }]}>{isLogin ? 'Sign Up' : 'Login'}</Text>
         </Text>
       </TouchableOpacity>
 
       <Modal visible={showMfaPrompt} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: '#1a1a1a', borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Two-Factor Authentication</Text>
-            <Text style={{ color: '#869486', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
+          <View style={{ backgroundColor: theme.settingBg, borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
+            <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Two-Factor Authentication</Text>
+            <Text style={{ color: theme.subtext, fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
               Enter the 6-digit code from your authenticator app.
             </Text>
             <TextInput
-              style={{ backgroundColor: '#111', color: '#fff', borderRadius: 12, padding: 14, width: '100%', fontSize: 22, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: '#2a2a2a' }}
+              style={{ backgroundColor: theme.inputBg, color: theme.text, borderRadius: 12, padding: 14, width: '100%', fontSize: 22, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: theme.inputBorder }}
               placeholder="000000"
-              placeholderTextColor="#444"
+              placeholderTextColor={theme.subtext}
               value={mfaLoginCode}
               onChangeText={setMfaLoginCode}
               keyboardType="number-pad"
               maxLength={6}
             />
             <TouchableOpacity
-              style={{ marginTop: 16, backgroundColor: '#2ecc71', borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
+              style={{ marginTop: 16, backgroundColor: theme.accent, borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
               onPress={handleVerifyMfaLogin}
               disabled={mfaLoading}
             >
               {mfaLoading ? <ActivityIndicator color="#000" /> : <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>Verify</Text>}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setShowMfaPrompt(false); setMfaLoginCode(''); setMfaResolver(null); }} style={{ marginTop: 12 }}>
-              <Text style={{ color: '#869486', fontSize: 13 }}>Cancel</Text>
+              <Text style={{ color: theme.subtext, fontSize: 13 }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

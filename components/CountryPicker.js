@@ -4,11 +4,13 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COUNTRIES } from '../constants/countries';
+import { useTheme } from '../context/ThemeContext';
 
 // A searchable list, not a free-text field. Three sign-ups typing "USA", "United
 // States" and "US" would leave three values with nothing that can group them later;
 // picking from one fixed list gives the same value every time.
 export default function CountrySheet({ visible, value, onSelect, onClose }) {
+  const { theme } = useTheme();
   const [query, setQuery] = useState('');
 
   const rows = useMemo(() => {
@@ -20,28 +22,28 @@ export default function CountrySheet({ visible, value, onSelect, onClose }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
+        <View style={[styles.sheet, { backgroundColor: theme.settingBg }]}>
+          <View style={[styles.grabber, { backgroundColor: theme.handle }]} />
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Country</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Country</Text>
             <TouchableOpacity onPress={onClose} hitSlop={10}>
-              <MaterialIcons name="close" size={22} color="#888" />
+              <MaterialIcons name="close" size={22} color={theme.icon} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchRow}>
-            <MaterialIcons name="search" size={20} color="#888" />
+          <View style={[styles.searchRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+            <MaterialIcons name="search" size={20} color={theme.icon} />
             <TextInput
-              style={styles.search}
+              style={[styles.search, { color: theme.text }]}
               placeholder="Search countries"
-              placeholderTextColor="#555"
+              placeholderTextColor={theme.subtext}
               value={query}
               onChangeText={setQuery}
               autoCorrect={false}
             />
             {query !== '' && (
               <TouchableOpacity onPress={() => setQuery('')}>
-                <MaterialIcons name="close" size={18} color="#888" />
+                <MaterialIcons name="close" size={18} color={theme.icon} />
               </TouchableOpacity>
             )}
           </View>
@@ -55,14 +57,14 @@ export default function CountrySheet({ visible, value, onSelect, onClose }) {
               const selected = item === value;
               return (
                 <TouchableOpacity
-                  style={styles.row}
+                  style={[styles.row, { borderBottomColor: theme.divider }]}
                   onPress={() => { onSelect(item); onClose(); }}>
-                  <Text style={[styles.rowText, selected && styles.rowTextSelected]}>{item}</Text>
+                  <Text style={[styles.rowText, { color: theme.text }, selected && styles.rowTextSelected]}>{item}</Text>
                   {selected && <MaterialIcons name="check" size={18} color="#2ECC71" />}
                 </TouchableOpacity>
               );
             }}
-            ListEmptyComponent={<Text style={styles.empty}>No matching country</Text>}
+            ListEmptyComponent={<Text style={[styles.empty, { color: theme.subtext }]}>No matching country</Text>}
           />
         </View>
       </View>

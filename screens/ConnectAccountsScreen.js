@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Linking, ActivityIndicator, Alert, Image
 } from 'react-native';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { useTheme } from '../context/ThemeContext';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
 
 export default function ConnectAccountsScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const [tiktok, setTiktok] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -58,57 +60,57 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color="#888" />
+          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
             <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Connect Accounts</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Connect Accounts</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <View style={styles.main}>
-        <Text style={styles.pageTitle}>Connect Accounts</Text>
-        <Text style={styles.pageSub}>Link your social platforms to post directly</Text>
+        <Text style={[styles.pageTitle, { color: theme.text }]}>Connect Accounts</Text>
+        <Text style={[styles.pageSub, { color: theme.subtext }]}>Link your social platforms to post directly</Text>
 
         {/* TikTok */}
-        <View style={styles.card}>
-          <View style={styles.cardLogo}>
-            <MaterialIcons name="music-note" size={40} color="#fff" />
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.cardLogoBadge}>
+            <FontAwesome6 name="tiktok" size={22} color="#fff" />
           </View>
-          <Text style={styles.cardTitle}>Connect TikTok</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Connect TikTok</Text>
           {loading ? (
             <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
           ) : tiktok ? (
             <>
-              <View style={styles.connectedBox}>
+              <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' }]}>
                 <View style={styles.connectedAvatar}>
                   {tiktok.avatar ? (
                     <Image source={{ uri: tiktok.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                   ) : (
-                    <MaterialIcons name="music-note" size={20} color="#fff" />
+                    <FontAwesome6 name="tiktok" size={18} color="#fff" />
                   )}
                 </View>
                 <View>
-                  <Text style={styles.connectedName}>{tiktok.displayName || 'TikTok User'}</Text>
-                  <Text style={styles.connectedSub}>TikTok · Connected</Text>
+                  <Text style={[styles.connectedName, { color: theme.text }]}>{tiktok.displayName || 'TikTok User'}</Text>
+                  <Text style={[styles.connectedSub, { color: theme.subtext }]}>TikTok · Connected</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.btnDisconnect} onPress={disconnectTikTok}>
+              <TouchableOpacity style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#5a2020' : '#f5b5b5' }]} onPress={disconnectTikTok}>
                 <Text style={styles.btnDisconnectText}>Disconnect TikTok</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.cardDesc}>To post videos to TikTok, connect your account below</Text>
+              <Text style={[styles.cardDesc, { color: theme.subtext }]}>To post videos to TikTok, connect your account below</Text>
               <View style={styles.perms}>
-                <Text style={styles.permsTitle}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
+                <Text style={[styles.permsTitle, { color: theme.subtext }]}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
                 {['Upload videos to your TikTok', 'View your basic profile info', 'Receive post notifications'].map((p, i) => (
                   <View key={i} style={styles.permRow}>
                     <MaterialIcons name="check" size={16} color="#2ecc71" />
-                    <Text style={styles.permText}>{p}</Text>
+                    <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
                   </View>
                 ))}
               </View>
@@ -121,9 +123,9 @@ export default function ConnectAccountsScreen({ navigation }) {
 
         {/* Coming soon platforms */}
         {['Facebook', 'Instagram', 'X (Twitter)'].map((p, i) => (
-          <View key={i} style={styles.comingSoonCard}>
-            <Text style={styles.comingSoonTitle}>{p} Coming Soon</Text>
-            <Text style={styles.comingSoonSub}>{p} integration is in development.</Text>
+          <View key={i} style={[styles.comingSoonCard, { backgroundColor: isDark ? '#1a1a2e' : '#eef0fa', borderColor: isDark ? '#2a2a4a' : '#d8dcf0' }]}>
+            <Text style={[styles.comingSoonTitle, { color: theme.text }]}>{p} Coming Soon</Text>
+            <Text style={[styles.comingSoonSub, { color: theme.subtext }]}>{p} integration is in development.</Text>
           </View>
         ))}
       </View>
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
   pageTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 4 },
   pageSub: { color: '#888', fontSize: 14, marginBottom: 24 },
   card: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, padding: 20, alignItems: 'center', marginBottom: 16 },
-  cardLogo: { marginBottom: 12 },
+  cardLogoBadge: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   cardTitle: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 8 },
   cardDesc: { color: '#888', fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
   perms: { width: '100%', marginBottom: 20 },

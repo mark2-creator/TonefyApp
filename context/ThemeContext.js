@@ -17,6 +17,8 @@ export const lightTheme = {
   settingBg: '#ffffff',
   divider: '#eeeeee',
   handle: '#cccccc',
+  inputBg: '#f2f2f2',
+  inputBorder: '#dddddd',
 };
 
 export const darkTheme = {
@@ -33,6 +35,8 @@ export const darkTheme = {
   settingBg: '#111111',
   divider: '#1a1a1a',
   handle: '#333333',
+  inputBg: '#1a1a1a',
+  inputBorder: '#333333',
 };
 
 const ThemeContext = createContext(null);

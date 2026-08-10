@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { useTheme } from '../context/ThemeContext';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
@@ -13,6 +14,7 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 export default function CalendarScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -82,44 +84,44 @@ export default function CalendarScreen({ navigation }) {
   }).length;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Content Calendar</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Content Calendar</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={styles.statNum}>{scheduled}</Text>
-            <Text style={styles.statLabel}>Scheduled</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={styles.statNum}>{posted}</Text>
-            <Text style={styles.statLabel}>Posted</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>Posted</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={styles.statNum}>{thisMonth}</Text>
-            <Text style={styles.statLabel}>This Month</Text>
+            <Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text>
           </View>
         </View>
 
         {/* Calendar */}
-        <View style={styles.calCard}>
+        <View style={[styles.calCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.calHeader}>
-            <TouchableOpacity onPress={prevMonth} style={styles.calNav}>
-              <Text style={styles.calNavText}>‹</Text>
+            <TouchableOpacity onPress={prevMonth} style={[styles.calNav, { borderColor: theme.border }]}>
+              <Text style={[styles.calNavText, { color: theme.text }]}>‹</Text>
             </TouchableOpacity>
-            <Text style={styles.calMonth}>{MONTHS[month]} {year}</Text>
-            <TouchableOpacity onPress={nextMonth} style={styles.calNav}>
-              <Text style={styles.calNavText}>›</Text>
+            <Text style={[styles.calMonth, { color: theme.text }]}>{MONTHS[month]} {year}</Text>
+            <TouchableOpacity onPress={nextMonth} style={[styles.calNav, { borderColor: theme.border }]}>
+              <Text style={[styles.calNavText, { color: theme.text }]}>›</Text>
             </TouchableOpacity>
           </View>
           {/* Day headers */}
           <View style={styles.calGrid}>
             {DAYS.map(d => (
-              <Text key={d} style={styles.calDow}>{d}</Text>
+              <Text key={d} style={[styles.calDow, { color: theme.subtext }]}>{d}</Text>
             ))}
           </View>
           {/* Days grid */}
@@ -133,7 +135,7 @@ export default function CalendarScreen({ navigation }) {
               const hasPost = postDays.has(day);
               return (
                 <View key={day} style={[styles.calDay, isToday && styles.calDayToday]}>
-                  <Text style={[styles.calDayText, isToday && styles.calDayTodayText]}>{day}</Text>
+                  <Text style={[styles.calDayText, { color: theme.text }, isToday && styles.calDayTodayText]}>{day}</Text>
                   {hasPost && <View style={[styles.calDot, isToday && styles.calDotToday]} />}
                 </View>
               );
@@ -146,10 +148,10 @@ export default function CalendarScreen({ navigation }) {
           {['all', 'scheduled', 'posted'].map(f => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterTab, filter === f && styles.filterTabActive]}
+              style={[styles.filterTab, { borderColor: theme.border }, filter === f && styles.filterTabActive]}
               onPress={() => setFilter(f)}
             >
-              <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>
+              <Text style={[styles.filterTabText, { color: theme.subtext }, filter === f && styles.filterTabTextActive]}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -161,30 +163,34 @@ export default function CalendarScreen({ navigation }) {
           <ActivityIndicator color="#2ecc71" style={{ marginTop: 20 }} />
         ) : filteredPosts.length === 0 ? (
           <View style={styles.empty}>
-            <MaterialIcons name="inbox" size={48} color="#333" style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>No posts here</Text>
-            <Text style={styles.emptySub}>Create a video and schedule it to get started</Text>
+            <MaterialIcons name="inbox" size={48} color={theme.border} style={styles.emptyIcon} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No posts here</Text>
+            <Text style={[styles.emptySub, { color: theme.subtext }]}>Create a video and schedule it to get started</Text>
             <TouchableOpacity style={styles.btnCreate} onPress={() => navigation.navigate('IdeaToVideo')}>
               <Text style={styles.btnCreateText}>Create Video</Text>
             </TouchableOpacity>
           </View>
         ) : filteredPosts.map(post => (
-          <View key={post.id} style={styles.postCard}>
+          <View key={post.id} style={[styles.postCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.postHeader}>
               <Text style={styles.postPlatform}>{(post.platforms || []).join(', ') || 'No platform'}</Text>
-              <Text style={styles.postTime}>{new Date(post.scheduledFor).toLocaleDateString()}</Text>
+              <Text style={[styles.postTime, { color: theme.subtext }]}>{new Date(post.scheduledFor).toLocaleDateString()}</Text>
             </View>
-            <Text style={styles.postCaption} numberOfLines={2}>{post.caption || 'Untitled'}</Text>
-            <View style={[styles.postStatus, post.status === 'posted' && styles.postStatusPosted]}>
+            <Text style={[styles.postCaption, { color: theme.text }]} numberOfLines={2}>{post.caption || 'Untitled'}</Text>
+            <View style={[
+              styles.postStatus,
+              { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' },
+              post.status === 'posted' && { backgroundColor: isDark ? '#1a2a0d' : '#eef8e0' },
+            ]}>
               <Text style={[styles.postStatusText, post.status === 'posted' && styles.postStatusPostedText]}>
                 {post.status === 'posted' ? 'Posted' : 'Scheduled'}
               </Text>
             </View>
             <View style={styles.postActions}>
-              <TouchableOpacity style={styles.btnEdit} onPress={() => editPost(post)}>
-                <Text style={styles.btnEditText}>Edit</Text>
+              <TouchableOpacity style={[styles.btnEdit, { borderColor: theme.border }]} onPress={() => editPost(post)}>
+                <Text style={[styles.btnEditText, { color: theme.text }]}>Edit</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnDelete} onPress={() => deletePost(post.id)}>
+              <TouchableOpacity style={[styles.btnDelete, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#5a2020' : '#f5b5b5' }]} onPress={() => deletePost(post.id)}>
                 <Text style={styles.btnDeleteText}>Delete</Text>
               </TouchableOpacity>
             </View>

@@ -8,8 +8,10 @@ import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerat
 import QRCode from 'react-native-qrcode-svg';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ProfileScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
   const [editing, setEditing] = useState(false);
@@ -177,9 +179,9 @@ export default function ProfileScreen({ navigation }) {
   const initial = (displayName || user?.email || '?')[0].toUpperCase();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.headerTitle}>My Profile</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>My Profile</Text>
 
         <View style={styles.hero}>
           <View style={styles.avatar}>
@@ -189,115 +191,115 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.avatarText}>{initial}</Text>
             )}
           </View>
-          <Text style={styles.profileName}>{displayName}</Text>
-          <Text style={styles.profileEmail}>{user?.email || ''}</Text>
+          <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
+          <Text style={[styles.profileEmail, { color: theme.subtext }]}>{user?.email || ''}</Text>
           <View style={styles.planBadge}><Text style={styles.planBadgeText}>Free Plan</Text></View>
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statCard}><Text style={styles.statNum}>{stats.total}</Text><Text style={styles.statLabel}>Total Videos</Text></View>
-          <View style={styles.statCard}><Text style={styles.statNum}>{stats.thisMonth}</Text><Text style={styles.statLabel}>This Month</Text></View>
-          <View style={styles.statCard}><Text style={styles.statNum}>{stats.scheduled}</Text><Text style={styles.statLabel}>Scheduled</Text></View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.total}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total Videos</Text></View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></View>
+          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.scheduled}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text></View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Account</Text>
-          <View style={styles.row}>
-            <MaterialIcons name="person" size={18} color="#888" style={styles.rowIcon} />
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Account</Text>
+          <View style={[styles.row, { borderBottomColor: theme.border }]}>
+            <MaterialIcons name="person" size={18} color={theme.icon} style={styles.rowIcon} />
             <View style={styles.rowContent}>
-              <Text style={styles.rowLabel}>Display Name</Text>
-              <Text style={styles.rowValue}>{displayName}</Text>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Display Name</Text>
+              <Text style={[styles.rowValue, { color: theme.subtext }]}>{displayName}</Text>
             </View>
             <TouchableOpacity onPress={() => setEditing(!editing)}>
-              <Text style={styles.rowAction}>Edit</Text>
+              <Text style={[styles.rowAction, { color: theme.accent }]}>Edit</Text>
             </TouchableOpacity>
           </View>
           {editing && (
-            <View style={styles.editWrap}>
+            <View style={[styles.editWrap, { borderTopColor: theme.border }]}>
               <TextInput
-                style={styles.editInput}
+                style={[styles.editInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
                 value={nameInput}
                 onChangeText={setNameInput}
                 placeholder="Your name"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.subtext}
               />
               <TouchableOpacity style={styles.btnSave} onPress={handleSaveName} disabled={saving}>
                 {saving ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.btnSaveText}>Save</Text>}
               </TouchableOpacity>
             </View>
           )}
-          <View style={styles.row}>
-            <MaterialIcons name="email" size={18} color="#888" style={styles.rowIcon} />
+          <View style={[styles.row, { borderBottomColor: theme.border }]}>
+            <MaterialIcons name="email" size={18} color={theme.icon} style={styles.rowIcon} />
             <View style={styles.rowContent}>
-              <Text style={styles.rowLabel}>Email</Text>
-              <Text style={styles.rowValue}>{user?.email || '—'}</Text>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Email</Text>
+              <Text style={[styles.rowValue, { color: theme.subtext }]}>{user?.email || '—'}</Text>
             </View>
           </View>
           <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <MaterialIcons name="calendar-today" size={18} color="#888" style={styles.rowIcon} />
+            <MaterialIcons name="calendar-today" size={18} color={theme.icon} style={styles.rowIcon} />
             <View style={styles.rowContent}>
-              <Text style={styles.rowLabel}>Member Since</Text>
-              <Text style={styles.rowValue}>{joined}</Text>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Member Since</Text>
+              <Text style={[styles.rowValue, { color: theme.subtext }]}>{joined}</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Connected Accounts</Text>
-          <View style={styles.connRow}>
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Connected Accounts</Text>
+          <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: '#000' }]}>
               <FontAwesome6 name="tiktok" size={17} color="#fff" />
             </View>
             <View style={styles.connInfo}>
-              <Text style={styles.connName}>TikTok</Text>
-              <Text style={[styles.connStatus, tiktok.connected && styles.connStatusOk]}>{tiktok.label}</Text>
+              <Text style={[styles.connName, { color: theme.text }]}>TikTok</Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }, tiktok.connected && styles.connStatusOk]}>{tiktok.label}</Text>
             </View>
             <TouchableOpacity onPress={handleTikTokPress}>
-              <View style={tiktok.connected ? styles.badgeConnected : styles.badgeSoon}>
-                <Text style={tiktok.connected ? styles.badgeConnectedText : styles.badgeSoonText}>
+              <View style={tiktok.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                <Text style={tiktok.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
                   {tiktok.connected ? 'Connected' : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>
           </View>
-          <View style={styles.connRow}>
+          <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: '#1877F2' }]}>
               <FontAwesome6 name="facebook-f" size={16} color="#fff" />
             </View>
             <View style={styles.connInfo}>
-              <Text style={styles.connName}>Facebook</Text>
-              <Text style={styles.connStatus}>Coming soon</Text>
+              <Text style={[styles.connName, { color: theme.text }]}>Facebook</Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }]}>Coming soon</Text>
             </View>
-            <View style={styles.badgeSoon}><Text style={styles.badgeSoonText}>Soon</Text></View>
+            <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}><Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Soon</Text></View>
           </View>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
             <View style={[styles.connLogo, { backgroundColor: '#E4405F' }]}>
               <FontAwesome6 name="instagram" size={18} color="#fff" />
             </View>
             <View style={styles.connInfo}>
-              <Text style={styles.connName}>Instagram</Text>
-              <Text style={styles.connStatus}>Coming soon</Text>
+              <Text style={[styles.connName, { color: theme.text }]}>Instagram</Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }]}>Coming soon</Text>
             </View>
-            <View style={styles.badgeSoon}><Text style={styles.badgeSoonText}>Soon</Text></View>
+            <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}><Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Soon</Text></View>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Security</Text>
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Security</Text>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#1a2a1e' }]}>
-              <MaterialIcons name="lock" size={18} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: isDark ? '#1a2a1e' : '#e0f5e9' }]}>
+              <MaterialIcons name="lock" size={18} color={isDark ? '#fff' : '#1a7a41'} />
             </View>
             <View style={styles.connInfo}>
-              <Text style={styles.connName}>Two-Factor Auth</Text>
-              <Text style={[styles.connStatus, mfaEnabled && styles.connStatusOk]}>
+              <Text style={[styles.connName, { color: theme.text }]}>Two-Factor Auth</Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }, mfaEnabled && styles.connStatusOk]}>
                 {mfaEnabled ? 'Enabled' : 'Not enabled'}
               </Text>
             </View>
             {mfaLoading ? <ActivityIndicator color="#54e98a" /> : (
               <TouchableOpacity onPress={mfaEnabled ? handleDisableMfa : handleEnableMfa}>
-                <View style={mfaEnabled ? styles.badgeConnected : styles.badgeSoon}>
-                  <Text style={mfaEnabled ? styles.badgeConnectedText : styles.badgeSoonText}>
+                <View style={mfaEnabled ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                  <Text style={mfaEnabled ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
                     {mfaEnabled ? 'Disable' : 'Enable'}
                   </Text>
                 </View>
@@ -308,45 +310,45 @@ export default function ProfileScreen({ navigation }) {
 
         <Modal visible={showMfaSetup} transparent animationType="slide">
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-            <View style={{ backgroundColor: '#1a1a1a', borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Setup Authenticator</Text>
-              <Text style={{ color: '#869486', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
+            <View style={{ backgroundColor: theme.settingBg, borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
+              <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Setup Authenticator</Text>
+              <Text style={{ color: theme.subtext, fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
                 Scan this QR code with Google Authenticator or Authy, then enter the 6-digit code below.
               </Text>
               {qrUri && <QRCode value={qrUri} size={180} backgroundColor="#fff" />}
               <TextInput
-                style={{ marginTop: 24, backgroundColor: '#111', color: '#fff', borderRadius: 12, padding: 14, width: '100%', fontSize: 22, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: '#2a2a2a' }}
+                style={{ marginTop: 24, backgroundColor: theme.inputBg, color: theme.text, borderRadius: 12, padding: 14, width: '100%', fontSize: 22, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: theme.inputBorder }}
                 placeholder="000000"
-                placeholderTextColor="#444"
+                placeholderTextColor={theme.subtext}
                 value={mfaCode}
                 onChangeText={setMfaCode}
                 keyboardType="number-pad"
                 maxLength={6}
               />
               <TouchableOpacity
-                style={{ marginTop: 16, backgroundColor: '#2ecc71', borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
+                style={{ marginTop: 16, backgroundColor: theme.accent, borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
                 onPress={handleVerifyMfa}
                 disabled={mfaLoading}
               >
                 {mfaLoading ? <ActivityIndicator color="#003919" /> : <Text style={{ color: '#003919', fontWeight: '700', fontSize: 15 }}>Verify & Enable 2FA</Text>}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setShowMfaSetup(false); setMfaCode(''); }} style={{ marginTop: 12 }}>
-                <Text style={{ color: '#869486', fontSize: 13 }}>Cancel</Text>
+                <Text style={{ color: theme.subtext, fontSize: 13 }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        <TouchableOpacity style={styles.btnLogout} onPress={handleLogout}>
+        <TouchableOpacity style={[styles.btnLogout, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#5a2020' : '#f5b5b5' }]} onPress={handleLogout}>
           <Text style={styles.btnLogoutText}>Log Out</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnDelete} onPress={handleDelete}>
+        <TouchableOpacity style={[styles.btnDelete, { borderColor: isDark ? '#3a1515' : '#f0c0c0' }]} onPress={handleDelete}>
           <Text style={styles.btnDeleteText}>Delete Account</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {toastMsg && (
-        <View style={styles.toast}>
+        <View style={[styles.toast, { backgroundColor: isDark ? '#1a3a1a' : '#e0f5e9' }]}>
           <Text style={styles.toastText}>{toastMsg}</Text>
         </View>
       )}

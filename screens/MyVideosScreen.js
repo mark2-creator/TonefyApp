@@ -7,6 +7,7 @@ import {
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { auth, db } from '../firebase';
+import { useTheme } from '../context/ThemeContext';
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -24,6 +25,7 @@ function formatDate(iso) {
 }
 
 function VideoCard({ video, onPress, onUse, onDownload }) {
+  const { theme } = useTheme();
   const url = video.downloadUrl || video.localUrl || '';
   const player = useVideoPlayer(url, (p) => {
     p.muted = true;
@@ -31,7 +33,7 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
   });
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(video)} activeOpacity={0.85}>
+    <TouchableOpacity style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => onPress(video)} activeOpacity={0.85}>
       <View style={styles.thumbWrap}>
         <VideoView
           player={player}
@@ -43,15 +45,15 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
         <MaterialIcons name="play-arrow" size={28} color="#fff" style={styles.playIcon} />
       </View>
       <View style={styles.info}>
-        <Text style={styles.date}>{formatDate(video.createdAt)}</Text>
-        <Text style={styles.prompt} numberOfLines={1}>{video.prompt || 'Generated video'}</Text>
+        <Text style={[styles.date, { color: theme.subtext }]}>{formatDate(video.createdAt)}</Text>
+        <Text style={[styles.prompt, { color: theme.text }]} numberOfLines={1}>{video.prompt || 'Generated video'}</Text>
       </View>
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)}>
           <Text style={styles.btnUseText}>Use</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnDl} onPress={() => onDownload(video)}>
-          <MaterialIcons name="file-download" size={18} color="#fff" />
+        <TouchableOpacity style={[styles.btnDl, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => onDownload(video)}>
+          <MaterialIcons name="file-download" size={18} color={theme.icon} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -59,6 +61,7 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
 }
 
 export default function MyVideosScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const [allVideos, setAllVideos] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -141,42 +144,42 @@ export default function MyVideosScreen({ navigation }) {
   }).length;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color="#888" />
+          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
             <Text style={styles.backBtn}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Videos</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>My Videos</Text>
         <Text style={styles.totalCount}>{allVideos.length} videos</Text>
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statCard}><Text style={styles.statNum}>{allVideos.length}</Text><Text style={styles.statLabel}>Total</Text></View>
-        <View style={styles.statCard}><Text style={styles.statNum}>{thisMonth}</Text><Text style={styles.statLabel}>This Month</Text></View>
-        <View style={styles.statCard}><Text style={styles.statNum}>{totalMB}MB</Text><Text style={styles.statLabel}>Stored</Text></View>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{allVideos.length}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total</Text></View>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></View>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Stored</Text></View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
-            style={[styles.filterBtn, activeFilter === f.key && styles.filterBtnActive]}
+            style={[styles.filterBtn, { borderColor: theme.border }, activeFilter === f.key && styles.filterBtnActive]}
             onPress={() => handleFilterPress(f.key)}
           >
-            <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
+            <Text style={[styles.filterText, { color: theme.subtext }, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {loading ? (
-        <Text style={styles.emptyText}>Loading your videos...</Text>
+        <Text style={[styles.emptyText, { color: theme.subtext }]}>Loading your videos...</Text>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <MaterialIcons name="movie" size={48} color="#333" style={styles.emptyIcon} />
-          <Text style={styles.emptyTitle}>No videos yet</Text>
-          <Text style={styles.emptySub}>Generate your first AI video</Text>
+          <MaterialIcons name="movie" size={48} color={theme.border} style={styles.emptyIcon} />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No videos yet</Text>
+          <Text style={[styles.emptySub, { color: theme.subtext }]}>Generate your first AI video</Text>
           <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('IdeaToVideo')}>
             <Text style={styles.createBtnText}>Create Video</Text>
           </TouchableOpacity>
@@ -197,22 +200,22 @@ export default function MyVideosScreen({ navigation }) {
 
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             {selected && (
               <VideoView player={modalPlayer} style={styles.modalVideo} nativeControls contentFit="contain" />
             )}
-            <Text style={styles.modalInfo}>
+            <Text style={[styles.modalInfo, { color: theme.subtext }]}>
               {(selected?.prompt || 'Generated video')} · {selected?.aspectRatio || ''} · {formatDate(selected?.createdAt)}
             </Text>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBtnOutline} onPress={closeModal}>
-                <Text style={styles.modalBtnOutlineText}>Close</Text>
+              <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={closeModal}>
+                <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Close</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalBtnGreen} onPress={() => selected && handleUse(selected)}>
                 <Text style={styles.modalBtnGreenText}>Use This</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtnOutline} onPress={() => selected && handleDownload(selected)}>
-                <Text style={styles.modalBtnOutlineText}>Download</Text>
+              <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={() => selected && handleDownload(selected)}>
+                <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Download</Text>
               </TouchableOpacity>
             </View>
           </View>
