@@ -9,23 +9,29 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   sendEmailVerification,
+  updateProfile,
   GoogleAuthProvider,
   signInWithCredential,
   getMultiFactorResolver,
   TotpMultiFactorGenerator,
 } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import CountrySheet from '../components/CountryPicker';
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [country, setCountry] = useState('');
+  const [showCountrySheet, setShowCountrySheet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -162,6 +168,9 @@ export default function AuthScreen({ navigation }) {
       return Alert.alert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
     }
     if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
+    if (!isLogin && (!fullName.trim() || !country)) {
+      return Alert.alert('Error', 'Please enter your full name and select your country');
+    }
     setLoading(true);
     try {
       if (isLogin) {
@@ -184,12 +193,34 @@ export default function AuthScreen({ navigation }) {
           return Alert.alert('Error', 'Passwords do not match');
         }
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        // The app's own convention: ProfileScreen reads and writes the name through
+        // Firebase Auth's built-in displayName, not a custom field, so sign-up feeds
+        // the same one rather than starting a second, disconnected copy of it.
+        await updateProfile(userCred.user, { displayName: fullName.trim() });
+        // displayName has nowhere to put a country. This is the one field that needs
+        // its own record, kept minimal - just what was asked for, not a profile
+        // schema nothing yet reads. Its own try/catch, and deliberately not fatal:
+        // the account and its display name already exist by this point, and a
+        // Firestore hiccup here must not cost the person the verification email that
+        // is the one thing standing between them and actually being able to log in.
+        try {
+          await setDoc(doc(db, 'users', userCred.user.uid), {
+            fullName: fullName.trim(),
+            email: email.trim(),
+            country,
+            createdAt: serverTimestamp(),
+          });
+        } catch (profileErr) {
+          console.warn('[signup] could not write user profile:', profileErr.message);
+        }
         await sendEmailVerification(userCred.user);
         await auth.signOut();
         Alert.alert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
         setIsLogin(true);
+        setFullName('');
         setPassword('');
         setConfirmPassword('');
+        setCountry('');
       }
     } catch (error) {
       if (error.code === 'auth/multi-factor-auth-required') {
@@ -244,7 +275,29 @@ export default function AuthScreen({ navigation }) {
         </View>
       )}
 
+      {!isLogin && (
+        <TextInput
+          style={styles.input}
+          placeholder="Full Name"
+          placeholderTextColor="#666"
+          value={fullName}
+          onChangeText={setFullName}
+          autoCapitalize="words"
+          textContentType="name"
+        />
+      )}
+
       <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#666" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+
+      {!isLogin && (
+        <TouchableOpacity style={styles.countryRow} onPress={() => setShowCountrySheet(true)}>
+          <MaterialIcons name="public" size={20} color={country ? '#fff' : '#666'} />
+          <Text style={[styles.countryText, !country && styles.countryPlaceholder]}>
+            {country || 'Country'}
+          </Text>
+          <MaterialIcons name="expand-more" size={22} color="#888" />
+        </TouchableOpacity>
+      )}
 
       <View style={styles.passwordRow}>
         <TextInput style={[styles.input, { flex: 1 }]} placeholder="Password" placeholderTextColor="#666" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
@@ -314,6 +367,13 @@ export default function AuthScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <CountrySheet
+        visible={showCountrySheet}
+        value={country}
+        onSelect={setCountry}
+        onClose={() => setShowCountrySheet(false)}
+      />
     </ScrollView>
   );
 }
@@ -338,6 +398,13 @@ const styles = StyleSheet.create({
   googleText: { color: '#333', fontWeight: 'bold', fontSize: 15 },
   switchText: { color: '#aaa', fontSize: 14, textAlign: 'center' },
   switchLink: { color: '#2ecc71', fontWeight: 'bold' },
+  countryRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#1a1a1a',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, width: '100%',
+    marginBottom: 14, borderWidth: 1, borderColor: '#333',
+  },
+  countryText: { flex: 1, color: '#fff', fontSize: 15 },
+  countryPlaceholder: { color: '#666' },
   lockoutBanner: { backgroundColor: '#3a0000', borderRadius: 10, padding: 12, width: '100%', marginBottom: 16, borderWidth: 1, borderColor: '#ff4444' },
   lockoutText: { color: '#ff6666', fontSize: 13, textAlign: 'center', fontWeight: '600' },
   warningBanner: { backgroundColor: '#2a1f00', borderRadius: 10, padding: 12, width: '100%', marginBottom: 16, borderWidth: 1, borderColor: '#ffaa00' },
