@@ -6,10 +6,12 @@ import {
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 const INFLECTIONS = ['Soft', 'Natural', 'Intense', 'Dramatic'];
 
 export default function ScriptToAudioScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [script, setScript] = useState('');
   const [pace, setPace] = useState(1.0);
@@ -26,19 +28,19 @@ export default function ScriptToAudioScreen({ navigation }) {
   const pitchLabel = pitch === 0 ? 'Default' : pitch > 0 ? `+${pitch}` : `${pitch}`;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#131313" />
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <MaterialIcons name="arrow-back-ios" size={20} color="#bbcbbb" />
+            <MaterialIcons name="arrow-back-ios" size={20} color={theme.icon} />
           </TouchableOpacity>
           <Text style={styles.logo}>Tonefy AI</Text>
         </View>
         <View style={styles.headerRight}>
-          <MaterialIcons name="settings" size={22} color="#bbcbbb" />
+          <MaterialIcons name="settings" size={22} color={theme.icon} />
         </View>
       </View>
 
@@ -50,63 +52,63 @@ export default function ScriptToAudioScreen({ navigation }) {
             <MaterialIcons name="description" size={26} color="#2ecc71" />
           </View>
           <View>
-            <Text style={styles.title}>Script to Audio</Text>
-            <Text style={styles.titleSub}>Transform your text into professional voiceovers</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Script to Audio</Text>
+            <Text style={[styles.titleSub, { color: theme.subtext }]}>Transform your text into professional voiceovers</Text>
           </View>
         </View>
 
         {/* Script Input */}
-        <View style={styles.inputBox}>
+        <View style={[styles.inputBox, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: theme.text }]}
             placeholder="Paste or write your script here..."
-            placeholderTextColor="#444"
+            placeholderTextColor={theme.subtext}
             multiline
             value={script}
             onChangeText={setScript}
           />
-          <View style={styles.inputToolbar}>
+          <View style={[styles.inputToolbar, { borderTopColor: theme.border, backgroundColor: isDark ? 'rgba(14,14,14,0.5)' : 'rgba(0,0,0,0.03)' }]}>
             <View style={styles.inputBtns}>
-              <TouchableOpacity style={styles.inputBtn}>
-                <MaterialIcons name="content-paste" size={16} color="#e5e2e1" />
-                <Text style={styles.inputBtnText}>Paste</Text>
+              <TouchableOpacity style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
+                <MaterialIcons name="content-paste" size={16} color={theme.text} />
+                <Text style={[styles.inputBtnText, { color: theme.text }]}>Paste</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.inputBtn}>
-                <MaterialIcons name="upload-file" size={16} color="#e5e2e1" />
-                <Text style={styles.inputBtnText}>Upload</Text>
+              <TouchableOpacity style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
+                <MaterialIcons name="upload-file" size={16} color={theme.text} />
+                <Text style={[styles.inputBtnText, { color: theme.text }]}>Upload</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.charCount}>{script.length} / 5000 chars</Text>
+            <Text style={[styles.charCount, { color: theme.subtext }]}>{script.length} / 5000 chars</Text>
           </View>
         </View>
 
         {/* Voice Selection */}
-        <Text style={styles.sectionLabel}>VOICE SELECTION</Text>
-        <TouchableOpacity style={styles.voiceBtn}>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>VOICE SELECTION</Text>
+        <TouchableOpacity style={[styles.voiceBtn, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <View style={styles.voiceLeft}>
             <View style={styles.voiceAvatar}>
               <MaterialIcons name="record-voice-over" size={22} color="#3398db" />
             </View>
             <View>
-              <Text style={styles.voiceName}>Marcus</Text>
+              <Text style={[styles.voiceName, { color: theme.text }]}>Marcus</Text>
               <View style={styles.voiceMeta}>
-                <Text style={styles.voiceType}>Professional Male</Text>
+                <Text style={[styles.voiceType, { color: theme.subtext }]}>Professional Male</Text>
                 <View style={styles.premiumBadge}>
                   <Text style={styles.premiumText}>PREMIUM</Text>
                 </View>
               </View>
             </View>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#bbcbbb" />
+          <MaterialIcons name="chevron-right" size={22} color={theme.icon} />
         </TouchableOpacity>
 
         {/* Audio Customization */}
-        <Text style={styles.sectionLabel}>AUDIO CUSTOMIZATION</Text>
-        <View style={styles.customCard}>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>AUDIO CUSTOMIZATION</Text>
+        <View style={[styles.customCard, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           {/* Pace */}
           <View style={styles.sliderRow}>
             <View style={styles.sliderLabelRow}>
-              <Text style={styles.sliderLabel}>Pace</Text>
+              <Text style={[styles.sliderLabel, { color: theme.text }]}>Pace</Text>
               <Text style={styles.sliderValue}>{pace.toFixed(1)}x</Text>
             </View>
             <Slider
@@ -116,7 +118,7 @@ export default function ScriptToAudioScreen({ navigation }) {
               step={0.1}
               value={pace}
               minimumTrackTintColor="#2ecc71"
-              maximumTrackTintColor="#353534"
+              maximumTrackTintColor={theme.border}
               thumbTintColor="#2ecc71"
               onValueChange={setPace}
             />
@@ -125,7 +127,7 @@ export default function ScriptToAudioScreen({ navigation }) {
           {/* Pitch */}
           <View style={styles.sliderRow}>
             <View style={styles.sliderLabelRow}>
-              <Text style={styles.sliderLabel}>Pitch</Text>
+              <Text style={[styles.sliderLabel, { color: theme.text }]}>Pitch</Text>
               <Text style={styles.sliderValue}>{pitchLabel}</Text>
             </View>
             <Slider
@@ -135,34 +137,34 @@ export default function ScriptToAudioScreen({ navigation }) {
               step={1}
               value={pitch}
               minimumTrackTintColor="#2ecc71"
-              maximumTrackTintColor="#353534"
+              maximumTrackTintColor={theme.border}
               thumbTintColor="#2ecc71"
               onValueChange={v => setPitch(Math.round(v))}
             />
           </View>
 
           {/* Inflection */}
-          <Text style={styles.sliderLabel}>Emotional Inflection</Text>
+          <Text style={[styles.sliderLabel, { color: theme.text }]}>Emotional Inflection</Text>
           <View style={styles.chips}>
             {INFLECTIONS.map(inf => (
               <TouchableOpacity
                 key={inf}
-                style={[styles.chip, inflection === inf && styles.chipActive]}
+                style={[styles.chip, { backgroundColor: theme.divider, borderColor: theme.border }, inflection === inf && styles.chipActive]}
                 onPress={() => setInflection(inf)}
               >
-                <Text style={[styles.chipText, inflection === inf && styles.chipTextActive]}>{inf}</Text>
+                <Text style={[styles.chipText, { color: theme.subtext }, inflection === inf && styles.chipTextActive]}>{inf}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Advanced Options */}
-        <Text style={styles.sectionLabel}>ADVANCED OPTIONS</Text>
-        <View style={styles.advancedCard}>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>ADVANCED OPTIONS</Text>
+        <View style={[styles.advancedCard, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <View style={styles.toggleRow}>
             <View style={styles.toggleLeft}>
               <MaterialIcons name="music-note" size={20} color="#92ccff" />
-              <Text style={styles.toggleLabel}>Background Music</Text>
+              <Text style={[styles.toggleLabel, { color: theme.text }]}>Background Music</Text>
             </View>
             <Switch
               value={bgMusic}
@@ -171,10 +173,10 @@ export default function ScriptToAudioScreen({ navigation }) {
               thumbColor="#fff"
             />
           </View>
-          <View style={[styles.toggleRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]}>
+          <View style={[styles.toggleRow, { borderTopWidth: 1, borderTopColor: theme.border }]}>
             <View style={styles.toggleLeft}>
               <MaterialIcons name="air" size={20} color="#58e5c2" />
-              <Text style={styles.toggleLabel}>Auto-Breaths</Text>
+              <Text style={[styles.toggleLabel, { color: theme.text }]}>Auto-Breaths</Text>
             </View>
             <Switch
               value={autoBreaths}
@@ -189,9 +191,9 @@ export default function ScriptToAudioScreen({ navigation }) {
       </ScrollView>
 
       {/* Generate Button */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 16 }]}>
+      <View style={[styles.bottomBar, { borderTopColor: theme.border, backgroundColor: theme.bg, paddingBottom: insets.bottom || 16 }]}>
         <TouchableOpacity
-          style={[styles.generateBtn, !script.trim() && styles.generateBtnDisabled]}
+          style={[styles.generateBtn, !script.trim() && { backgroundColor: theme.card }]}
           onPress={generate}
           disabled={!script.trim()}
         >

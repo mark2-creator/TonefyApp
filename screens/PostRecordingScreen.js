@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 export default function PostRecordingScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [noiseReduction, setNoiseReduction] = useState(true);
   const [faceRetouch, setFaceRetouch] = useState(false);
@@ -15,18 +17,18 @@ export default function PostRecordingScreen({ navigation }) {
   const [refinement, setRefinement] = useState('');
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color="#888" />
+          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
         </TouchableOpacity>
-        <Text style={styles.logo}>Tonefy AI</Text>
+        <Text style={[styles.logo, { color: theme.text }]}>Tonefy AI</Text>
         <View style={{ width: 20 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Video Preview */}
-        <View style={styles.videoCard}>
+        <View style={[styles.videoCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.videoPlaceholder}>
             <View style={styles.rawBadge}>
               <View style={styles.rawDot} />
@@ -38,26 +40,26 @@ export default function PostRecordingScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.timeline}>
-            <View style={styles.timelineTrack}>
+            <View style={[styles.timelineTrack, { backgroundColor: theme.border }]}>
               <View style={styles.timelineFill} />
             </View>
           </View>
           <View style={styles.playRow}>
             <View style={styles.playLeft}>
-              <TouchableOpacity><MaterialIcons name="play-arrow" size={24} color="#fff" /></TouchableOpacity>
-              <Text style={styles.timeCode}>0:12 / 0:45</Text>
+              <TouchableOpacity><MaterialIcons name="play-arrow" size={24} color={theme.text} /></TouchableOpacity>
+              <Text style={[styles.timeCode, { color: theme.subtext }]}>0:12 / 0:45</Text>
             </View>
             <View style={styles.playRight}>
-              <TouchableOpacity><MaterialIcons name="volume-up" size={20} color="#888" /></TouchableOpacity>
-              <TouchableOpacity><MaterialIcons name="settings" size={20} color="#888" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="volume-up" size={20} color={theme.icon} /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="settings" size={20} color={theme.icon} /></TouchableOpacity>
             </View>
           </View>
         </View>
 
         {/* Quick Edit Toggles */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>QUICK EDITS</Text>
-          <View style={styles.toggleGrid}>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUICK EDITS</Text>
+          <View style={[styles.toggleGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {[
               { label: 'Noise Reduction', value: noiseReduction, set: setNoiseReduction },
               { label: 'Face Retouch', value: faceRetouch, set: setFaceRetouch },
@@ -65,7 +67,7 @@ export default function PostRecordingScreen({ navigation }) {
               { label: 'Eye Contact Fix', value: eyeContact, set: setEyeContact },
             ].map(item => (
               <View key={item.label} style={styles.toggleItem}>
-                <Text style={styles.toggleItemLabel}>{item.label}</Text>
+                <Text style={[styles.toggleItemLabel, { color: theme.text }]}>{item.label}</Text>
                 <Switch value={item.value} onValueChange={item.set} trackColor={{ false: '#333', true: '#2ECC71' }} thumbColor="#fff" />
               </View>
             ))}
@@ -74,23 +76,23 @@ export default function PostRecordingScreen({ navigation }) {
 
         {/* AI Suggestions */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>AI SUGGESTIONS</Text>
-          <View style={styles.aiCard}>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>AI SUGGESTIONS</Text>
+          <View style={[styles.aiCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.aiCardHeader}>
-              <MaterialIcons name="auto-awesome" size={20} color="#888" />
-              <Text style={styles.aiCardTitle}>AI Suggestions</Text>
+              <MaterialIcons name="auto-awesome" size={20} color={theme.icon} />
+              <Text style={[styles.aiCardTitle, { color: theme.text }]}>AI Suggestions</Text>
             </View>
-            <Text style={styles.aiCardSub}>Based on your content, we recommend these high-impact edits:</Text>
+            <Text style={[styles.aiCardSub, { color: theme.subtext }]}>Based on your content, we recommend these high-impact edits:</Text>
             {[
               { icon: 'bolt', label: 'Turn into motivational video' },
               { icon: 'movie', label: 'Add cinematic B-roll' },
             ].map(s => (
-              <TouchableOpacity key={s.label} style={styles.suggestionBtn}>
+              <TouchableOpacity key={s.label} style={[styles.suggestionBtn, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <View style={styles.suggestionLeft}>
-                  <MaterialIcons name={s.icon} size={20} color="#e6e6e6" />
-                  <Text style={styles.suggestionText}>{s.label}</Text>
+                  <MaterialIcons name={s.icon} size={20} color={theme.text} />
+                  <Text style={[styles.suggestionText, { color: theme.text }]}>{s.label}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color="#555" />
+                <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
               </TouchableOpacity>
             ))}
           </View>
@@ -98,12 +100,12 @@ export default function PostRecordingScreen({ navigation }) {
 
         {/* Refine */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>REFINE WITH AI</Text>
-          <View style={styles.refineCard}>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>REFINE WITH AI</Text>
+          <View style={[styles.refineCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TextInput
-              style={styles.refineInput}
+              style={[styles.refineInput, { color: theme.text, borderBottomColor: theme.border }]}
               placeholder="e.g. Make the colors warmer and add more film grain..."
-              placeholderTextColor="#555"
+              placeholderTextColor={theme.subtext}
               multiline
               value={refinement}
               onChangeText={setRefinement}
@@ -113,8 +115,8 @@ export default function PostRecordingScreen({ navigation }) {
             </TouchableOpacity>
             <View style={styles.promptChips}>
               {['Enhance Blue Tones', 'Reduce Noise', 'Add Slow-mo'].map(p => (
-                <TouchableOpacity key={p} style={styles.promptChip}>
-                  <Text style={styles.promptChipText}>{p}</Text>
+                <TouchableOpacity key={p} style={[styles.promptChip, { borderColor: theme.border }]}>
+                  <Text style={[styles.promptChipText, { color: theme.subtext }]}>{p}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -128,27 +130,27 @@ export default function PostRecordingScreen({ navigation }) {
             <Text style={styles.enhanceBtnText}>Enhance with AI</Text>
           </TouchableOpacity>
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.actionBtn}>
-              <MaterialIcons name="refresh" size={20} color="#fff" />
-              <Text style={styles.actionBtnText}>Retake</Text>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <MaterialIcons name="refresh" size={20} color={theme.text} />
+              <Text style={[styles.actionBtnText, { color: theme.text }]}>Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionBtn}>
-              <MaterialIcons name="download" size={20} color="#fff" />
-              <Text style={styles.actionBtnText}>Save Raw</Text>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <MaterialIcons name="download" size={20} color={theme.text} />
+              <Text style={[styles.actionBtnText, { color: theme.text }]}>Save Raw</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Stats */}
         <View style={[styles.section, { marginBottom: 40 }]}>
-          <View style={styles.statsCard}>
+          <View style={[styles.statsCard, { backgroundColor: theme.card, borderLeftColor: theme.border }]}>
             <View>
-              <Text style={styles.statsLabel}>RESOLUTION</Text>
-              <Text style={styles.statsValue}>4K (2160p)</Text>
+              <Text style={[styles.statsLabel, { color: theme.subtext }]}>RESOLUTION</Text>
+              <Text style={[styles.statsValue, { color: theme.text }]}>4K (2160p)</Text>
             </View>
             <View>
-              <Text style={styles.statsLabel}>FRAME RATE</Text>
-              <Text style={styles.statsValue}>60 FPS</Text>
+              <Text style={[styles.statsLabel, { color: theme.subtext }]}>FRAME RATE</Text>
+              <Text style={[styles.statsValue, { color: theme.text }]}>60 FPS</Text>
             </View>
           </View>
         </View>

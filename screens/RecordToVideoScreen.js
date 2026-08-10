@@ -5,11 +5,13 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 const QUALITIES = ['4K 60', '1080p 60', '720p 30'];
 const DURATIONS = ['15s', '60s', '3m'];
 
 export default function RecordToVideoScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [quality, setQuality] = useState('4K 60');
   const [duration, setDuration] = useState('60s');
@@ -20,11 +22,11 @@ export default function RecordToVideoScreen({ navigation }) {
   const [voiceover, setVoiceover] = useState(false);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={22} color="#888" />
+          <MaterialIcons name="arrow-back" size={22} color={theme.icon} />
         </TouchableOpacity>
         <Text style={styles.logo}>Tonefy AI</Text>
         <View style={{ width: 22 }} />
@@ -35,25 +37,25 @@ export default function RecordToVideoScreen({ navigation }) {
             <MaterialIcons name="mic" size={22} color="#2ecc71" />
             <MaterialIcons name="videocam" size={22} color="#2ecc71" />
           </View>
-          <Text style={styles.title}>Record to Video</Text>
-          <Text style={styles.titleSub}>Turn recordings into polished videos with subtitles</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Record to Video</Text>
+          <Text style={[styles.titleSub, { color: theme.subtext }]}>Turn recordings into polished videos with subtitles</Text>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>QUALITY</Text>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUALITY</Text>
           <View style={styles.chips}>
             {QUALITIES.map(q => (
-              <TouchableOpacity key={q} style={[styles.chip, quality === q && styles.chipActive]} onPress={() => setQuality(q)}>
-                <Text style={[styles.chipText, quality === q && styles.chipTextActive]}>{q}</Text>
+              <TouchableOpacity key={q} style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, quality === q && styles.chipActive]} onPress={() => setQuality(q)}>
+                <Text style={[styles.chipText, { color: theme.subtext }, quality === q && styles.chipTextActive]}>{q}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>DURATION</Text>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>DURATION</Text>
           <View style={styles.chips}>
             {DURATIONS.map(d => (
-              <TouchableOpacity key={d} style={[styles.chip, duration === d && styles.chipActive]} onPress={() => setDuration(d)}>
-                <Text style={[styles.chipText, duration === d && styles.chipTextActive]}>{d}</Text>
+              <TouchableOpacity key={d} style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, duration === d && styles.chipActive]} onPress={() => setDuration(d)}>
+                <Text style={[styles.chipText, { color: theme.subtext }, duration === d && styles.chipTextActive]}>{d}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -79,11 +81,11 @@ export default function RecordToVideoScreen({ navigation }) {
           <TouchableOpacity style={styles.recordBtn} onPress={() => navigation.navigate('Recording')}>
             <View style={styles.recordInner} />
           </TouchableOpacity>
-          <Text style={styles.recordHint}>Tap to start recording</Text>
+          <Text style={[styles.recordHint, { color: theme.subtext }]}>Tap to start recording</Text>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>AI ENHANCEMENTS</Text>
-          <View style={styles.toggleCard}>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>AI ENHANCEMENTS</Text>
+          <View style={[styles.toggleCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {[
               { label: 'Auto-subtitles', icon: 'subtitles', value: subtitles, set: setSubtitles },
               { label: 'Music', icon: 'music-note', value: music, set: setMusic },
@@ -91,10 +93,10 @@ export default function RecordToVideoScreen({ navigation }) {
               { label: 'B-roll', icon: 'layers', value: broll, set: setBroll },
               { label: 'Voiceover', icon: 'keyboard-voice', value: voiceover, set: setVoiceover },
             ].map((item, i, arr) => (
-              <View key={item.label} style={[styles.toggleRow, i < arr.length - 1 && styles.toggleBorder]}>
+              <View key={item.label} style={[styles.toggleRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
                 <View style={styles.toggleLeft}>
                   <MaterialIcons name={item.icon} size={20} color="#2ecc71" />
-                  <Text style={styles.toggleLabel}>{item.label}</Text>
+                  <Text style={[styles.toggleLabel, { color: theme.text }]}>{item.label}</Text>
                 </View>
                 <Switch value={item.value} onValueChange={item.set} trackColor={{ false: '#333', true: '#2ecc71' }} thumbColor="#fff" />
               </View>

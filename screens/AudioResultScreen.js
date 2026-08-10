@@ -5,41 +5,43 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 const BARS = 60;
 const barHeights = [...Array(BARS)].map(() => Math.floor(Math.random() * 70) + 15);
 
 export default function AudioResultScreen({ navigation, route }) {
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [playing, setPlaying] = useState(false);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#131313" />
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Text style={styles.logo}>Tonefy AI</Text>
-        <MaterialIcons name="settings" size={22} color="#bbcbbb" />
+        <MaterialIcons name="settings" size={22} color={theme.icon} />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Title */}
-        <Text style={styles.title}>Audio Result</Text>
-        <Text style={styles.subtitle}>Your high-fidelity AI track is ready.</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Audio Result</Text>
+        <Text style={[styles.subtitle, { color: theme.subtext }]}>Your high-fidelity AI track is ready.</Text>
 
         {/* Audio Card */}
-        <View style={styles.audioCard}>
+        <View style={[styles.audioCard, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <View style={styles.trackInfo}>
             <View>
-              <Text style={styles.trackName}>Marcus - Motivational</Text>
+              <Text style={[styles.trackName, { color: theme.text }]}>Marcus - Motivational</Text>
               <View style={styles.trackMeta}>
                 <View style={styles.aiBadge}><Text style={styles.aiBadgeText}>AI GENERATED</Text></View>
-                <Text style={styles.trackDuration}>1:20</Text>
+                <Text style={[styles.trackDuration, { color: theme.subtext }]}>1:20</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.moreBtn}>
-              <MaterialIcons name="more-vert" size={22} color="#bbcbbb" />
+            <TouchableOpacity style={[styles.moreBtn, { backgroundColor: theme.divider }]}>
+              <MaterialIcons name="more-vert" size={22} color={theme.icon} />
             </TouchableOpacity>
           </View>
 
@@ -52,22 +54,22 @@ export default function AudioResultScreen({ navigation, route }) {
 
           {/* Scrubber */}
           <View style={styles.scrubber}>
-            <View style={styles.scrubberTrack}>
+            <View style={[styles.scrubberTrack, { backgroundColor: theme.border }]}>
               <View style={styles.scrubberFill} />
             </View>
           </View>
 
           {/* Controls */}
           <View style={styles.controls}>
-            <Text style={styles.timeLabel}>0:28</Text>
+            <Text style={[styles.timeLabel, { color: theme.subtext }]}>0:28</Text>
             <View style={styles.playerBtns}>
-              <TouchableOpacity><MaterialIcons name="skip-previous" size={28} color="#e5e2e1" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="skip-previous" size={28} color={theme.text} /></TouchableOpacity>
               <TouchableOpacity style={styles.playBtn} onPress={() => setPlaying(!playing)}>
                 <MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={36} color="#003919" />
               </TouchableOpacity>
-              <TouchableOpacity><MaterialIcons name="skip-next" size={28} color="#e5e2e1" /></TouchableOpacity>
+              <TouchableOpacity><MaterialIcons name="skip-next" size={28} color={theme.text} /></TouchableOpacity>
             </View>
-            <Text style={styles.timeLabel}>1:20</Text>
+            <Text style={[styles.timeLabel, { color: theme.subtext }]}>1:20</Text>
           </View>
         </View>
 
@@ -84,26 +86,26 @@ export default function AudioResultScreen({ navigation, route }) {
             { icon: 'download', label: 'Download' },
             { icon: 'share', label: 'Share' },
           ].map(a => (
-            <TouchableOpacity key={a.label} style={styles.actionBtn}>
-              <MaterialIcons name={a.icon} size={22} color="#bbcbbb" />
-              <Text style={styles.actionLabel}>{a.label}</Text>
+            <TouchableOpacity key={a.label} style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <MaterialIcons name={a.icon} size={22} color={theme.icon} />
+              <Text style={[styles.actionLabel, { color: theme.subtext }]}>{a.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Transcript */}
         <View style={styles.transcriptHeader}>
-          <Text style={styles.transcriptTitle}>Generated Transcript</Text>
+          <Text style={[styles.transcriptTitle, { color: theme.text }]}>Generated Transcript</Text>
           <TouchableOpacity><Text style={styles.copyAll}>COPY ALL</Text></TouchableOpacity>
         </View>
-        <View style={styles.transcriptCard}>
+        <View style={[styles.transcriptCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.transcriptRow}>
             <Text style={styles.timestamp}>0:00</Text>
-            <Text style={styles.transcriptText}>Success isn't about being the best. It's about being better than you were yesterday. The journey of a thousand miles begins with a single, intentional step.</Text>
+            <Text style={[styles.transcriptText, { color: theme.text }]}>Success isn't about being the best. It's about being better than you were yesterday. The journey of a thousand miles begins with a single, intentional step.</Text>
           </View>
           <View style={styles.transcriptRow}>
-            <Text style={[styles.timestamp, { color: '#555' }]}>0:12</Text>
-            <Text style={[styles.transcriptText, { opacity: 0.5 }]}>Every challenge you face is an opportunity to grow, to refine your craft, and to define your purpose in this digital studio of life.</Text>
+            <Text style={[styles.timestamp, { color: theme.subtext }]}>0:12</Text>
+            <Text style={[styles.transcriptText, { color: theme.subtext }]}>Every challenge you face is an opportunity to grow, to refine your craft, and to define your purpose in this digital studio of life.</Text>
           </View>
         </View>
 

@@ -5,11 +5,13 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth } from '../firebase';
+import { useTheme } from '../context/ThemeContext';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const BARS = 8;
 
 export default function GeneratingAudioScreen({ navigation, route }) {
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { idea, duration, tags } = route.params || {};
   const [progress, setProgress] = useState(0);
@@ -50,25 +52,25 @@ export default function GeneratingAudioScreen({ navigation, route }) {
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#131313" />
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Text style={styles.logo}>Tonefy AI</Text>
-        <MaterialIcons name="settings" size={22} color="#bbcbbb" />
+        <MaterialIcons name="settings" size={22} color={theme.icon} />
       </View>
 
       <View style={styles.content}>
         {/* Circular Progress */}
-        <View style={styles.circleWrapper}>
+        <View style={[styles.circleWrapper, { borderColor: theme.border }]}>
           <View style={styles.circleBg} />
           <Text style={styles.progressNum}>{progress}%</Text>
-          <Text style={styles.progressLabel}>PROCESSING</Text>
+          <Text style={[styles.progressLabel, { color: theme.subtext }]}>PROCESSING</Text>
         </View>
 
         {/* Status */}
-        <Text style={styles.statusText}>{status}</Text>
+        <Text style={[styles.statusText, { color: theme.text }]}>{status}</Text>
 
         {/* Waveform */}
         <View style={styles.waveform}>
@@ -78,20 +80,20 @@ export default function GeneratingAudioScreen({ navigation, route }) {
         </View>
 
         {/* Tip card */}
-        <View style={styles.tipCard}>
+        <View style={[styles.tipCard, { backgroundColor: isDark ? 'rgba(26,26,26,0.6)' : 'rgba(0,0,0,0.04)', borderColor: theme.border }]}>
           <View style={styles.tipHeader}>
             <MaterialIcons name="lightbulb" size={18} color="#92ccff" />
             <Text style={styles.tipLabel}>PRO TIP</Text>
           </View>
-          <Text style={styles.tipText}>
+          <Text style={[styles.tipText, { color: theme.subtext }]}>
             Adding <Text style={styles.tipHighlight}>"passionate"</Text> or <Text style={styles.tipHighlight}>"softly"</Text> in your prompt helps the AI adjust its emotional tone for a more human experience.
           </Text>
         </View>
       </View>
 
       {/* Cancel */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom || 16 }]}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+      <View style={[styles.bottomBar, { borderTopColor: theme.border, paddingBottom: insets.bottom || 16 }]}>
+        <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => navigation.goBack()}>
           <MaterialIcons name="close" size={16} color="#ffb4ab" />
           <Text style={styles.cancelText}>Cancel Generation</Text>
         </TouchableOpacity>
@@ -101,23 +103,23 @@ export default function GeneratingAudioScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#131313' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   logo: { fontSize: 20, fontWeight: '800', color: '#54e98a' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, gap: 24 },
-  circleWrapper: { width: 200, height: 200, borderRadius: 100, borderWidth: 10, borderColor: '#2a2a2a', alignItems: 'center', justifyContent: 'center', borderTopColor: '#54e98a', borderRightColor: '#54e98a' },
+  circleWrapper: { width: 200, height: 200, borderRadius: 100, borderWidth: 10, alignItems: 'center', justifyContent: 'center', borderTopColor: '#54e98a', borderRightColor: '#54e98a' },
   circleBg: { position: 'absolute' },
   progressNum: { fontSize: 44, fontWeight: '700', color: '#54e98a' },
-  progressLabel: { fontSize: 10, fontWeight: '600', color: '#bbcbbb', letterSpacing: 2 },
-  statusText: { fontSize: 18, fontWeight: '600', color: '#e5e2e1' },
+  progressLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 2 },
+  statusText: { fontSize: 18, fontWeight: '600' },
   waveform: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 40 },
   bar: { width: 3, backgroundColor: '#54e98a', borderRadius: 4 },
-  tipCard: { backgroundColor: 'rgba(26,26,26,0.6)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', width: '100%', gap: 8 },
+  tipCard: { borderRadius: 12, padding: 16, borderWidth: 1, width: '100%', gap: 8 },
   tipHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tipLabel: { fontSize: 10, fontWeight: '700', color: '#92ccff', letterSpacing: 2 },
-  tipText: { fontSize: 13, color: '#bbcbbb', lineHeight: 20 },
+  tipText: { fontSize: 13, lineHeight: 20 },
   tipHighlight: { color: '#54e98a', fontWeight: '600' },
-  bottomBar: { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
-  cancelBtn: { height: 52, borderRadius: 999, backgroundColor: '#1c1b1b', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  bottomBar: { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
+  cancelBtn: { height: 52, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   cancelText: { color: '#ffb4ab', fontSize: 12, fontWeight: '600' },
 });
