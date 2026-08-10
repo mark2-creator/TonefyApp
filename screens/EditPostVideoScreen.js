@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { useTheme } from '../context/ThemeContext';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -52,6 +53,7 @@ function VideoPreview({ url }) {
 }
 
 export default function EditPostVideoScreen({ navigation, route }) {
+  const { theme, isDark } = useTheme();
   const { videoUrl, videoPath } = route.params || {};
   const [caption, setCaption] = useState('');
   const [tiktokConnected, setTiktokConnected] = useState(false);
@@ -167,25 +169,25 @@ export default function EditPostVideoScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color="#888" />
-            <Text style={styles.back}>Back</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
+          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
+          <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Edit & Post Video</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Edit & Post Video</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Video Preview */}
-        <Text style={styles.sectionLabel}>VIDEO PREVIEW</Text>
-        <View style={styles.videoWrap}>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>VIDEO PREVIEW</Text>
+        <View style={[styles.videoWrap, { backgroundColor: theme.card }]}>
           {fullUrl ? <VideoPreview url={fullUrl} /> : (
             <View style={styles.noVideo}>
-              <MaterialIcons name="movie" size={36} color="#333" style={styles.noVideoIcon} />
-              <Text style={styles.noVideoText}>No video selected</Text>
+              <MaterialIcons name="movie" size={36} color={theme.border} style={styles.noVideoIcon} />
+              <Text style={[styles.noVideoText, { color: theme.text }]}>No video selected</Text>
               <TouchableOpacity onPress={() => navigation.navigate('IdeaToVideo')}>
                 <Text style={styles.noVideoLink}>Create a video</Text>
               </TouchableOpacity>
@@ -205,37 +207,37 @@ export default function EditPostVideoScreen({ navigation, route }) {
         )}
 
         {/* Caption */}
-        <Text style={styles.sectionLabel}>CAPTION</Text>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>CAPTION</Text>
         <TextInput
-          style={styles.captionInput}
+          style={[styles.captionInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
           value={caption}
           onChangeText={setCaption}
           placeholder="Enter your video caption... #TonefyAI"
-          placeholderTextColor="#555"
+          placeholderTextColor={theme.subtext}
           multiline
           numberOfLines={3}
         />
 
         {/* Post To */}
-        <Text style={styles.sectionLabel}>POST TO</Text>
-        <View style={styles.platformsCard}>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>POST TO</Text>
+        <View style={[styles.platformsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
-            <Text style={styles.platformName}>Facebook</Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
-            <View style={styles.toggleOff} />
+            <Text style={[styles.platformName, { color: theme.text }]}>Facebook</Text>
+            <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
+            <View style={[styles.toggleOff, { backgroundColor: theme.divider }]} />
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
-            <Text style={styles.platformName}>Instagram</Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
-            <View style={styles.toggleOff} />
+            <Text style={[styles.platformName, { color: theme.text }]}>Instagram</Text>
+            <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
+            <View style={[styles.toggleOff, { backgroundColor: theme.divider }]} />
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><TikTokLogo size={22} /></View>
-            <Text style={styles.platformName}>TikTok</Text>
+            <Text style={[styles.platformName, { color: theme.text }]}>TikTok</Text>
             {tiktokConnected ? (
               <Text style={styles.connectedText}>Connected</Text>
             ) : (
@@ -244,27 +246,27 @@ export default function EditPostVideoScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.toggle, ttOn && tiktokConnected && styles.toggleOn]}
+              style={[styles.toggle, { backgroundColor: theme.border }, ttOn && tiktokConnected && styles.toggleOn]}
               onPress={() => tiktokConnected ? setTtOn(!ttOn) : navigation.navigate('ConnectAccounts')}
             >
               <View style={[styles.toggleThumb, ttOn && tiktokConnected && styles.toggleThumbOn]} />
             </TouchableOpacity>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
-            <MaterialIcons name="close" size={22} color="#fff" style={styles.platformIcon} />
-            <Text style={styles.platformName}>X (Twitter)</Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
-            <View style={styles.toggleOff} />
+            <MaterialIcons name="close" size={22} color={theme.text} style={styles.platformIcon} />
+            <Text style={[styles.platformName, { color: theme.text }]}>X (Twitter)</Text>
+            <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
+            <View style={[styles.toggleOff, { backgroundColor: theme.divider }]} />
           </View>
         </View>
 
         {/* AI Tip */}
-        <View style={styles.aiTip}>
+        <View style={[styles.aiTip, { backgroundColor: isDark ? '#0d1a2e' : '#e8f2ff', borderColor: isDark ? '#1a3a5a' : '#b8d4f5' }]}>
           <MaterialIcons name="smart-toy" size={22} color="#2ecc71" style={styles.aiTipIcon} />
           <View style={{ flex: 1 }}>
             <Text style={styles.aiTipTitle}>AI Tip</Text>
-            <Text style={styles.aiTipText}>Best time to post on TikTok is between 7–9 PM for maximum reach.</Text>
+            <Text style={[styles.aiTipText, { color: theme.subtext }]}>Best time to post on TikTok is between 7–9 PM for maximum reach.</Text>
           </View>
         </View>
 
@@ -279,15 +281,15 @@ export default function EditPostVideoScreen({ navigation, route }) {
         </View>
 
         {/* Recently Queued */}
-        <Text style={styles.sectionLabel}>RECENTLY QUEUED</Text>
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>RECENTLY QUEUED</Text>
         {queue.length === 0 ? (
-          <Text style={styles.emptyQueue}>No queued posts yet</Text>
+          <Text style={[styles.emptyQueue, { color: theme.subtext }]}>No queued posts yet</Text>
         ) : queue.map(p => (
-          <View key={p.id} style={styles.queueItem}>
-            <MaterialIcons name="movie" size={24} color="#888" style={styles.queueIcon} />
+          <View key={p.id} style={[styles.queueItem, { backgroundColor: theme.card }]}>
+            <MaterialIcons name="movie" size={24} color={theme.icon} style={styles.queueIcon} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.queueCaption} numberOfLines={1}>{p.caption || 'Untitled'}</Text>
-              <Text style={styles.queueMeta}>{new Date(p.scheduledFor).toLocaleDateString()} · {p.status}</Text>
+              <Text style={[styles.queueCaption, { color: theme.text }]} numberOfLines={1}>{p.caption || 'Untitled'}</Text>
+              <Text style={[styles.queueMeta, { color: theme.subtext }]}>{new Date(p.scheduledFor).toLocaleDateString()} · {p.status}</Text>
               <Text style={styles.queuePlat}>{(p.platforms || []).join(', ') || 'No platform'}</Text>
             </View>
           </View>
@@ -301,6 +303,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   back: { color: '#2ecc71', fontSize: 15, fontWeight: '600' },
   title: { color: '#fff', fontSize: 16, fontWeight: '700' },
   scroll: { flex: 1, padding: 16 },

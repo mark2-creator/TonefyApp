@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -17,6 +18,7 @@ const features = [
 ];
 
 export default function LandingScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -37,11 +39,11 @@ export default function LandingScreen({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.logoRow}>
           <MaterialIcons name="graphic-eq" size={26} color="#00e38d" />
           <Text style={styles.logo}>Tonefy AI</Text>
@@ -64,10 +66,10 @@ export default function LandingScreen({ navigation }) {
             <Text style={styles.badgeText}>NEW: AI STUDIO 2.0</Text>
           </View>
 
-          <Text style={styles.heroTitle}>Turn Ideas Into</Text>
+          <Text style={[styles.heroTitle, { color: theme.text }]}>Turn Ideas Into</Text>
           <Text style={styles.heroTitleGradient}>Videos with AI</Text>
 
-          <Text style={styles.heroSub}>
+          <Text style={[styles.heroSub, { color: theme.subtext }]}>
             AI voiceovers, video clips, scripts, and more — in seconds. The ultimate creative suite.
           </Text>
 
@@ -80,14 +82,14 @@ export default function LandingScreen({ navigation }) {
             <MaterialIcons name="arrow-forward" size={18} color="#00391f" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
-            <MaterialIcons name="play-circle" size={16} color="#b9cbbc" />
-            <Text style={styles.secondaryBtnText}>Watch Demo</Text>
+          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} activeOpacity={0.85}>
+            <MaterialIcons name="play-circle" size={16} color={theme.subtext} />
+            <Text style={[styles.secondaryBtnText, { color: theme.subtext }]}>Watch Demo</Text>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Preview card */}
-        <View style={styles.previewCard}>
+        <View style={[styles.previewCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.previewInner}>
             <View style={styles.previewGlow} />
             <View style={styles.previewContent}>
@@ -96,10 +98,10 @@ export default function LandingScreen({ navigation }) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.previewTitle}>Space Documentary</Text>
-                <Text style={styles.previewSub}>RENDERING AI CONTENT...</Text>
+                <Text style={[styles.previewSub, { color: theme.subtext }]}>RENDERING AI CONTENT...</Text>
               </View>
             </View>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
               <View style={styles.progressFill} />
             </View>
           </View>
@@ -108,15 +110,15 @@ export default function LandingScreen({ navigation }) {
         {/* Features */}
         <View style={styles.section}>
           <Text style={styles.sectionEyebrow}>CORE CAPABILITIES</Text>
-          <Text style={styles.sectionTitle}>Powerful Toolset for{'\n'}Modern Creators</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Powerful Toolset for{'\n'}Modern Creators</Text>
           <View style={styles.featuresGrid}>
             {features.map((f, i) => (
-              <View key={i} style={styles.featureCard}>
+              <View key={i} style={[styles.featureCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <View style={[styles.featureIconWrap, { backgroundColor: f.color + '18' }]}>
                   <MaterialIcons name={f.icon} size={22} color={f.color} />
                 </View>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
+                <Text style={[styles.featureTitle, { color: theme.text }]}>{f.title}</Text>
+                <Text style={[styles.featureDesc, { color: theme.subtext }]}>{f.desc}</Text>
               </View>
             ))}
           </View>
@@ -129,18 +131,18 @@ export default function LandingScreen({ navigation }) {
             { value: '50K+', label: 'Creators' },
             { value: '99%', label: 'Cost Reduction' },
           ].map((s, i) => (
-            <View key={i} style={styles.statCard}>
+            <View key={i} style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
+              <Text style={[styles.statLabel, { color: theme.subtext }]}>{s.label}</Text>
             </View>
           ))}
         </View>
 
         {/* CTA Banner */}
-        <View style={styles.ctaBanner}>
+        <View style={[styles.ctaBanner, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.ctaBannerGlow} />
-          <Text style={styles.ctaBannerTitle}>Ready to amplify{'\n'}your creativity?</Text>
-          <Text style={styles.ctaBannerSub}>
+          <Text style={[styles.ctaBannerTitle, { color: theme.text }]}>Ready to amplify{'\n'}your creativity?</Text>
+          <Text style={[styles.ctaBannerSub, { color: theme.subtext }]}>
             Join 50,000+ creators redefining the industry standard with Tonefy AI.
           </Text>
           <TouchableOpacity
@@ -150,14 +152,14 @@ export default function LandingScreen({ navigation }) {
           >
             <Text style={styles.ctaBannerBtnText}>Get Started — It's Free</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.ctaBannerSecondary} activeOpacity={0.85}>
-            <Text style={styles.ctaBannerSecondaryText}>Book a Demo</Text>
+          <TouchableOpacity style={[styles.ctaBannerSecondary, { borderColor: theme.border }]} activeOpacity={0.85}>
+            <Text style={[styles.ctaBannerSecondaryText, { color: theme.text }]}>Book a Demo</Text>
           </TouchableOpacity>
-          <Text style={styles.ctaBannerNote}>No credit card required. Cancel anytime.</Text>
+          <Text style={[styles.ctaBannerNote, { color: theme.subtext }]}>No credit card required. Cancel anytime.</Text>
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: theme.border }]}>
           <View style={styles.logoRow}>
             <MaterialIcons name="graphic-eq" size={16} color="#00e38d" />
             <Text style={styles.footerLogo}>Tonefy AI</Text>
@@ -170,11 +172,11 @@ export default function LandingScreen({ navigation }) {
               { label: 'YouTube', url: 'https://youtube.com/@tonefyai' },
             ].map((l, i) => (
               <TouchableOpacity key={i} onPress={() => Linking.openURL(l.url)}>
-                <Text style={styles.footerLink}>{l.label}</Text>
+                <Text style={[styles.footerLink, { color: theme.subtext }]}>{l.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={styles.footerCopy}>© 2025 Tonefy AI. All rights reserved.</Text>
+          <Text style={[styles.footerCopy, { color: theme.subtext }]}>© 2025 Tonefy AI. All rights reserved.</Text>
         </View>
 
         <View style={{ height: 20 }} />
