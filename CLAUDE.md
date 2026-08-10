@@ -901,6 +901,160 @@ nothing to aim at.
     72h end-to-end; verifying that needs a real `users/{uid}.plan = "pro"` account,
     a generated video older than 72h, and confirming it survives a cleanup cycle
     rather than reading the code and trusting it.
+13. **Subscription pricing, Phase 1 (Aug 10 2026) — credits, per-tier caps, no billing yet.**
+    Nine backend commits (`~/Tonefy-react`, `1a1084de`..`0a9bc0dc`) plus four app commits
+    (`4e683f4d`..`a0dab42c`, published as update group `3c5211c5-9666-4d8b-9345-7082643d1ede`,
+    runtime 1.1.0). Payment provider is **Google Play Billing, not Stripe** — a mid-planning
+    pivot (the original proposal below item 12 assumed Stripe; that's superseded). Play
+    Console is still under identity verification, so this phase is deliberately scoped to
+    everything that doesn't depend on it: credit tracking, tier caps, enforcement,
+    UI — no purchase flow, no `react-native-iap`, no native build.
+
+    **Tiers** (`~/Tonefy-react/backend/tiers.js`, new module — kept separate from the
+    ~2900-line `server.js` since three endpoints sharing this logic inline would drift
+    the first time one got a fix the others didn't): free (5 credits/mo, 1 min/export,
+    720p, watermark, 12 legacy caption styles, 3 gTTS voices), pro (60 credits, 15 min,
+    1080p, no watermark, everything), creator (300 credits, 40 min, 1080p, no watermark,
+    everything, jumps the render queue). **`FREE_CAPTION_STYLES`/`FREE_VOICES` are stated
+    defaults, not a confirmed product decision** — the 12 legacy styles and 3 gTTS voices
+    are the most defensible lines available without guessing at one (both already-existing
+    boundaries in the app's own history, not invented here). One array each to edit once
+    the real answer is known. `constants/plan.js` on the app side mirrors these as
+    `TIER_CAPS`, UI-only — the backend is what actually enforces every cap.
+
+    **A real security gap found and fixed first, before anything else** (`aaa0f043`... no,
+    `1a1084de`/`975e73a3`): `/api/media-to-video` and `/api/edit-video` both derived the
+    Firestore-record owner from `req.body.userId` — a client-supplied value — instead of
+    `req.user.uid` from the verified token. Harmless before credits existed (just
+    misattributed a record); would have made credit enforcement trivially bypassable
+    (claim any uid, render for free or drain someone else's balance) had it shipped
+    unfixed. **The first commit's message claimed this was already fine everywhere else,
+    based on checking one endpoint (`idea-to-video-v2`) — it wasn't; `edit-video` had the
+    identical bug, caught and fixed in a follow-up commit.** Worth remembering: "every
+    other endpoint already does X" is a claim to verify per-endpoint, not infer from one.
+
+    **Per-endpoint reality, not force-fitted uniformly** — each of the three render
+    endpoints got exactly the checks its own parameters support, confirmed by reading
+    actual request bodies rather than assuming symmetry:
+    - `/api/media-to-video` (timeline editor export) — full synchronous check before
+      `createJob()` (duration estimable up front from `mediaItems`' trim/speed data).
+      Gained watermarking, which it had **zero** of before this — idea-to-video/v2
+      already burned one in unconditionally, but the editor's own export path had none
+      at all, which would have made "no watermark" a Pro benefit only for AI-generated
+      videos. No caption-style/voice gating — this endpoint doesn't accept either param.
+    - `/api/idea-to-video-v2` — credits/caption-style checked synchronously up front; a
+      rough word-count duration estimate (~150 wpm) catches obviously-oversized requests
+      before spending anything on TTS/Pexels, with a **precise** recheck once real audio
+      duration is known, before the expensive per-segment work starts (fails the *job*
+      at that point, not the HTTP request, since a jobId was already returned — still
+      surfaces clearly via job status). Gained **real 1080p output** — it had no
+      resolution parameter at all before, a fixed ~720p `scaleFilter` regardless of
+      plan; now driven by the same `frameSize()`/`SHORT_EDGE` helper `media-to-video`
+      already used. Watermark made conditional (was unconditional). No voice param here
+      at all — it consumes audio `/api/generate-audio` already generated, so **voice
+      gating lives on `/api/generate-audio` instead**, which also covers the standalone
+      Idea/Script-to-Audio screens correctly (voice access is a plan property regardless
+      of whether the audio ends up in a video).
+    - `/api/edit-video` (caption burn-in onto an existing video) — full synchronous
+      check like media-to-video (duration cheaply known via one ffprobe on the source,
+      moved earlier in the handler). **No resolution cap** — this endpoint doesn't scale
+      or re-encode to a chosen resolution at all, it burns captions at whatever
+      resolution the input already is; adding a cap would mean adding a re-encode step
+      that isn't otherwise part of the job. Gained watermarking (had none), folded into
+      the same filter chain as caption burn-in so a watermark-only export still gets a
+      real encode instead of the original `-c copy` fast path (which can't add a filter).
+
+    **Credits deducted once, after success, from `ffprobe` on the real output — never
+    the pre-flight estimate**, via a new shared `probeDurationSeconds()` helper (the
+    same `ffprobe -show_entries format=duration` line already existed inline three
+    times elsewhere for audio; not retrofitted there, out of scope, just reused for the
+    new call sites). `deductCredits()` uses `FieldValue.increment`, not read-modify-
+    write, so two renders finishing close together for one account can't clobber each
+    other's deduction. **Deliberately allowed to go negative** — a render that already
+    finished slightly over budget is real compute already spent; discarding finished
+    work to keep a counter non-negative wastes more than it protects. Deduction is
+    non-fatal on its own (wrapped separately, logs rather than fails the job) since the
+    video is already done and saved by that point — a Firestore hiccup must not turn a
+    successful render into a failed one.
+
+    **Fail-safe direction, explicit and tested**: if the plan lookup itself throws (not
+    "no record" — a genuine Firestore error), `checkRenderAllowed` treats the account as
+    paid and holds the render rather than risk rejecting or undercharging a real
+    subscriber over a transient blip.
+
+    **Priority render queue** — only `idea-to-video-v2` ever called
+    `acquireVideoSlot()`/`releaseVideoSlot()`; `media-to-video`/`edit-video` have no
+    concurrency limiter at all (confirmed by grep, not assumed) — scoped to what
+    exists rather than adding a limiter to two endpoints that never had one. Two queues
+    now: Creator-tier requests drain first once a slot frees up, but this only changes
+    which *waiter* gets the next slot — never touches `activeVideoJobs` or preempts
+    anything already running.
+
+    **Monthly credit reset — a deliberate deviation from the original Stripe-era
+    design.** That design was free-only-via-cron, paid-driven-by-webhooks-on-the-real-
+    billing-period (correct once Play Billing/Phase 2 exists — a generic sweep drifting
+    from the actual renewal date is exactly the mismatch a subscriber notices). Since
+    Phase 2 is deferred, the sweep applies to **every** plan for now — a paid-only-via-
+    webhook design today would mean a hand-set Pro/Creator test account never resets via
+    *any* mechanism. Commented clearly for narrowing to `plan == 'free'` once Play's
+    RTDN/purchase-verification flow exists.
+
+    **App side**: `usePlan()` (`constants/plan.js`) extended, not replaced, with
+    `creditsRemaining`/`creditsResetAt`/`caps` off the same `onSnapshot` listener — no
+    new subscription. `EditVideoScreen.js`'s premium gate (`isPremium`) needed zero
+    changes both times this session it could have broken, confirmed by grep before
+    touching anything — the whole point of building it as one hook. Signup
+    (`AuthScreen.js`) now seeds `plan`/`creditsRemaining`/`creditsResetAt`/
+    `subscriptionStatus` explicitly rather than relying on the backend's lazy-init
+    (`getUserPlanData`), which is a migration safety net for pre-existing accounts, not
+    meant to be the primary path — without this a brand-new account showed no credits
+    at all until its first render attempt. **5 credits / 30-day window is duplicated
+    across both repos on purpose** (no shared package) — flagged in comments on both
+    sides so it can't drift silently.
+
+    **Soft paywall**: extended the *existing* `promptUpgrade()` in `EditVideoScreen.js`
+    rather than building a parallel mechanism — it already had the right honest framing
+    ("plans aren't on sale yet," no fake checkout link) and just needed its stale
+    "Standard and Pro" copy fixed (`TIER_STANDARD` was removed earlier this session; this
+    reference was missed) and a way to show the backend's specific rejection reason.
+    Wired into all three places that can now receive a 402/403. **The original ask's
+    "deep-link to the web pricing page for checkout" is explicitly not implemented** —
+    written for the Stripe assumption; Play Billing checkout happens entirely inside the
+    Android app via `react-native-iap`, not on a website, and no pricing page exists
+    regardless. Also gated the resolution picker UI itself (grey out 1080p/4K, lock icon,
+    tap prompts upgrade) using the same rank comparison the backend clamps with — UI-only,
+    the server-side clamp was already the real enforcement. **Known minor gap, not
+    fixed**: the picker's default state is `'1080p'` regardless of plan, so a free
+    account that never opens it sees "1080p" as selected even though every export is
+    still correctly clamped to 720p server-side — cosmetic only, left alone rather than
+    risk auto-overriding a paid user's own deliberate lower-resolution choice.
+
+    **Verification, matching the retention work's discipline — every backend commit
+    tested against the live server, not just read through**: real Firebase ID tokens via
+    custom-token exchange against disposable test accounts, real HTTP requests. Every
+    rejection path confirmed (zero credits → 402, over-cap → 403, locked caption
+    style/voice → 403, all with no `jobId` issued). **One full success-path run** on
+    `edit-video`: real 5s render completed, credits correctly deducted 5→4
+    (`ceil(5/60)=1`), a real `userVideos` record written with the right duration — the
+    render→deduct→record chain confirmed working end to end, not just individually
+    plausible (not repeated for the other two endpoints, which share the identical
+    `tiers.js` functions — diminishing returns past the first full proof). The priority
+    queue verified via an isolated reproduction of the exact algorithm (pure logic, no
+    I/O — legitimate here unlike everything else, which needed the real deployed server
+    because it involved external state). The credit reset sweep verified against a real
+    ~10-minute wait for the actual scheduled `setInterval` tick, not a manual trigger —
+    three fixtures (overdue free, overdue pro, not-yet-due), all three outcomes correct.
+    All test accounts, Firestore fixtures and rendered files removed after each check.
+
+    **What's still not built, on purpose**: everything Play-Billing-specific (Phase 2,
+    blocked on Play Console identity verification) — `react-native-iap`, the purchase
+    flow, server-side purchase verification, Real-time Developer Notifications, the
+    native build that adding a native module requires. iOS monetization — explicitly
+    out of scope per direct instruction (Android-only for now). The web pricing/account
+    page from the original ask — superseded by the Play Billing pivot; a website can't
+    process a Play Billing purchase, so it would be marketing copy at most, not built.
+    Subscription-lapse behavior (delete vs. read-only vs. grace period) — still a
+    product decision with no billing yet to trigger it, same as noted in item 12.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
