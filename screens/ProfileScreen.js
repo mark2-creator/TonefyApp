@@ -9,9 +9,14 @@ import QRCode from 'react-native-qrcode-svg';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
+import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
+
+const PLAN_LABELS = { [TIER_PRO]: 'Pro Plan', [TIER_CREATOR]: 'Creator Plan' };
 
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { tier } = usePlan();
+  const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
   const [editing, setEditing] = useState(false);
@@ -193,7 +198,7 @@ export default function ProfileScreen({ navigation }) {
           </View>
           <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
           <Text style={[styles.profileEmail, { color: theme.subtext }]}>{user?.email || ''}</Text>
-          <View style={styles.planBadge}><Text style={styles.planBadgeText}>Free Plan</Text></View>
+          <View style={styles.planBadge}><Text style={styles.planBadgeText}>{planLabel}</Text></View>
         </View>
 
         <View style={styles.statsRow}>
