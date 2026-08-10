@@ -97,7 +97,7 @@ export default function DashboardScreen({ navigation }) {
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowSettings(false)}>
           <View style={[styles.modalSheet, { backgroundColor: theme.settingBg }, sheetInset]}>
-            <View style={styles.modalHandle} />
+            <View style={[styles.modalHandle, { backgroundColor: theme.handle }]} />
             <SheetHeader title="Settings" onClose={() => setShowSettings(false)}
               titleColor={theme.text} titleStyle={styles.sheetTitle} style={styles.sheetHeaderPad} />
 
@@ -117,7 +117,7 @@ export default function DashboardScreen({ navigation }) {
               />
             </View>
 
-            <View style={styles.settingDivider} />
+            <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
             <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('Profile'); }}>
               <View style={styles.settingLeft}>
@@ -130,7 +130,7 @@ export default function DashboardScreen({ navigation }) {
               <MaterialIcons name="chevron-right" size={22} color="#555" />
             </TouchableOpacity>
 
-            <View style={styles.settingDivider} />
+            <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
@@ -143,7 +143,7 @@ export default function DashboardScreen({ navigation }) {
               <MaterialIcons name="chevron-right" size={22} color="#555" />
             </TouchableOpacity>
 
-            <View style={styles.settingDivider} />
+            <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
@@ -156,8 +156,8 @@ export default function DashboardScreen({ navigation }) {
               <MaterialIcons name="chevron-right" size={22} color="#555" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSettings(false)}>
-              <Text style={styles.closeBtnText}>Close</Text>
+            <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.divider }]} onPress={() => setShowSettings(false)}>
+              <Text style={[styles.closeBtnText, { color: theme.subtext }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
