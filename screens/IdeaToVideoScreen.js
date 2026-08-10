@@ -16,6 +16,7 @@ import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
 } from '../constants/captionStyles';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -129,55 +130,58 @@ async function fetchWithTimeout(url, options, timeoutMs = 300000) {
   }
 }
 
-const ProgressBar = ({ progress, label }) => (
+const ProgressBar = ({ progress, label, theme }) => (
   <View style={styles.progressBarContainer}>
-    <View style={styles.progressBarBg}>
+    <View style={[styles.progressBarBg, theme && { backgroundColor: theme.border }]}>
       <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
     </View>
     <Text style={styles.progressText}>{label} {Math.round(progress)}%</Text>
   </View>
 );
 
-const StepDots = ({ current, total }) => (
+const StepDots = ({ current, total, theme }) => (
   <View style={styles.dotsRow}>
     {Array.from({ length: total }).map((_, i) => (
-      <View key={i} style={[styles.dot, i < current && styles.dotActive]} />
+      <View key={i} style={[styles.dot, theme && { backgroundColor: theme.border }, i < current && styles.dotActive]} />
     ))}
   </View>
 );
 
 function SettingCard({ icon, label, value, onPress, iconColor = "#54e98a", iconBg = "#1a2a1e" }) {
+  const { theme } = useTheme();
   return (
-    <TouchableOpacity style={styles.settingCard} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.settingCard, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.settingCardLeft}>
         <View style={[styles.settingCardIcon, { backgroundColor: iconBg }]}>
           <MaterialIcons name={icon} size={22} color={iconColor} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.settingCardLabel}>{label}</Text>
+          <Text style={[styles.settingCardLabel, { color: theme.subtext }]}>{label}</Text>
           <Text style={styles.settingCardValue} numberOfLines={1}>{value}</Text>
         </View>
       </View>
-      <MaterialIcons name="chevron-right" size={22} color="#4a5a4a" />
+      <MaterialIcons name="chevron-right" size={22} color={theme.icon} />
     </TouchableOpacity>
   );
 }
 
 
 function CaptionOptionRow({ item, selectedId, onSelect, onClose }) {
+  const { theme, isDark } = useTheme();
+  const active = selectedId === item.id;
   return (
     <TouchableOpacity
-      style={[styles.optionRow, selectedId === item.id && styles.optionRowActive]}
+      style={[styles.optionRow, active && { backgroundColor: isDark ? '#0d2b1a' : '#e0f5e9' }]}
       onPress={() => { onSelect(item.id); onClose(); }}
     >
       {item.icon
-        ? <MaterialIcons name={item.icon} size={22} color="#cfcfcf" style={styles.optionIcon} />
+        ? <MaterialIcons name={item.icon} size={22} color={theme.icon} style={styles.optionIcon} />
         : <Text style={styles.optionIcon}>{item.preview}</Text>}
       <View style={styles.optionText}>
-        <Text style={[styles.optionLabel, selectedId === item.id && styles.optionLabelActive]}>{item.label}</Text>
-        <Text style={styles.optionDesc}>{item.accent || item.desc}</Text>
+        <Text style={[styles.optionLabel, { color: theme.text }, active && styles.optionLabelActive]}>{item.label}</Text>
+        <Text style={[styles.optionDesc, { color: theme.subtext }]}>{item.accent || item.desc}</Text>
       </View>
-      {selectedId === item.id && <MaterialIcons name="check" size={20} color="#2ecc71" />}
+      {active && <MaterialIcons name="check" size={20} color="#2ecc71" />}
     </TouchableOpacity>
   );
 }
@@ -364,14 +368,15 @@ function TransitionPreview({ item }) {
 }
 
 function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
+  const { theme, isDark } = useTheme();
   const groups = ['Basic', 'Trendy', 'Cinematic'];
   const sheetInset = useSheetInset();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
-          <View style={styles.modalHandle} />
-          <SheetHeader title="Transition Style" onClose={onClose} style={styles.sheetHeaderPad} />
+        <View style={[styles.modalSheet, { backgroundColor: theme.settingBg, maxHeight: '85%' }, sheetInset]}>
+          <View style={[styles.modalHandle, { backgroundColor: theme.handle }]} />
+          <SheetHeader title="Transition Style" onClose={onClose} style={styles.sheetHeaderPad} titleColor={theme.text} closeColor={theme.icon} />
           <FlatList
             data={groups}
             keyExtractor={g => g}
@@ -380,7 +385,7 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
               if (!items.length) return null;
               return (
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={{ color: '#888', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>{group.toUpperCase()}</Text>
+                  <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>{group.toUpperCase()}</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {items.map(item => (
                       <TouchableOpacity
@@ -388,16 +393,16 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
                         onPress={() => { onSelect(item.id); onClose(); }}
                         style={{
                           width: '30%',
-                          backgroundColor: selectedId === item.id ? '#1a3a1a' : '#1a1a1a',
+                          backgroundColor: selectedId === item.id ? (isDark ? '#1a3a1a' : '#e0f5e9') : theme.card,
                           borderWidth: 1.5,
-                          borderColor: selectedId === item.id ? '#2ecc71' : '#333',
+                          borderColor: selectedId === item.id ? '#2ecc71' : theme.border,
                           borderRadius: 12,
                           padding: 8,
                           alignItems: 'center',
                         }}
                       >
                         <TransitionPreview item={item} />
-                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : '#fff', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
+                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : theme.text, fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -412,6 +417,7 @@ function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
 }
 
 function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onTogglePlay }) {
+  const { theme, isDark } = useTheme();
   const isSelected = selectedId === item.id;
   const isPlaying = playingId === item.id;
   return (
@@ -419,9 +425,9 @@ function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onToggl
       onPress={() => { onSelect({ id: item.id, name: item.name }); onClose(); }}
       style={{
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: isSelected ? '#1a3a1a' : '#1a1a1a',
+        backgroundColor: isSelected ? (isDark ? '#1a3a1a' : '#e0f5e9') : theme.card,
         borderWidth: 1.5,
-        borderColor: isSelected ? '#2ecc71' : '#333',
+        borderColor: isSelected ? '#2ecc71' : theme.border,
         borderRadius: 12, padding: 12, marginBottom: 8,
       }}
     >
@@ -429,19 +435,20 @@ function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onToggl
         onPress={() => onTogglePlay(item)}
         style={{
           width: 36, height: 36, borderRadius: 18,
-          backgroundColor: isPlaying ? '#2ecc71' : '#333',
+          backgroundColor: isPlaying ? '#2ecc71' : theme.border,
           justifyContent: 'center', alignItems: 'center', marginRight: 12,
         }}
       >
         <MaterialIcons name={isPlaying ? 'pause' : 'play-arrow'} size={16} color="#fff" />
       </TouchableOpacity>
-      <Text style={{ color: isSelected ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>{item.name}</Text>
+      <Text style={{ color: isSelected ? '#2ecc71' : theme.text, fontSize: 13, fontWeight: '600', flex: 1 }}>{item.name}</Text>
       {isSelected && <MaterialIcons name="check" size={18} color="#2ecc71" />}
     </TouchableOpacity>
   );
 }
 
 function MusicModal({ visible, selectedId, onSelect, onClose }) {
+  const { theme, isDark } = useTheme();
   const sheetInset = useSheetInset();
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -502,21 +509,21 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, { maxHeight: '85%' }, sheetInset]}>
-          <View style={styles.modalHandle} />
-          <SheetHeader title="Background Music" onClose={onClose} style={styles.sheetHeaderPad} />
+        <View style={[styles.modalSheet, { backgroundColor: theme.settingBg, maxHeight: '85%' }, sheetInset]}>
+          <View style={[styles.modalHandle, { backgroundColor: theme.handle }]} />
+          <SheetHeader title="Background Music" onClose={onClose} style={styles.sheetHeaderPad} titleColor={theme.text} closeColor={theme.icon} />
           <TouchableOpacity
             onPress={() => { onSelect({ id: 'none', name: 'No Music' }); onClose(); }}
             style={{
               flexDirection: 'row', alignItems: 'center',
-              backgroundColor: selectedId === 'none' ? '#1a3a1a' : '#1a1a1a',
+              backgroundColor: selectedId === 'none' ? (isDark ? '#1a3a1a' : '#e0f5e9') : theme.card,
               borderWidth: 1.5,
-              borderColor: selectedId === 'none' ? '#2ecc71' : '#333',
+              borderColor: selectedId === 'none' ? '#2ecc71' : theme.border,
               borderRadius: 12, padding: 12, marginBottom: 8,
             }}
           >
-            <MaterialIcons name="volume-off" size={18} color="#888" style={{ marginRight: 12 }} />
-            <Text style={{ color: selectedId === 'none' ? '#2ecc71' : '#fff', fontSize: 13, fontWeight: '600', flex: 1 }}>No Music</Text>
+            <MaterialIcons name="volume-off" size={18} color={theme.icon} style={{ marginRight: 12 }} />
+            <Text style={{ color: selectedId === 'none' ? '#2ecc71' : theme.text, fontSize: 13, fontWeight: '600', flex: 1 }}>No Music</Text>
             {selectedId === 'none' && <MaterialIcons name="check" size={18} color="#2ecc71" />}
           </TouchableOpacity>
           {loading ? (
@@ -537,13 +544,14 @@ function MusicModal({ visible, selectedId, onSelect, onClose }) {
 }
 
 function OptionModal({ visible, title, options, selectedId, onSelect, onClose }) {
+  const { theme } = useTheme();
   const sheetInset = useSheetInset();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, sheetInset]}>
-          <View style={styles.modalHandle} />
-          <SheetHeader title={title} onClose={onClose} style={styles.sheetHeaderPad} />
+        <View style={[styles.modalSheet, { backgroundColor: theme.settingBg }, sheetInset]}>
+          <View style={[styles.modalHandle, { backgroundColor: theme.handle }]} />
+          <SheetHeader title={title} onClose={onClose} style={styles.sheetHeaderPad} titleColor={theme.text} closeColor={theme.icon} />
           <FlatList
             data={options}
             keyExtractor={item => item.id}
@@ -561,6 +569,7 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 }
 
 export default function IdeaToVideoScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
   const [step, setStep] = useState(1);
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('9:16');
@@ -747,17 +756,17 @@ export default function IdeaToVideoScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color="#888" />
-            <Text style={styles.back}>Back</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
+          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
+          <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Idea to Video</Text>
-        <Text style={styles.stepCount}>{step}/4</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Idea to Video</Text>
+        <Text style={[styles.stepCount, { color: theme.subtext }]}>{step}/4</Text>
       </View>
-      <StepDots current={step} total={4} />
+      <StepDots current={step} total={4} theme={theme} />
 
       {/* STEP 1 */}
       {step === 1 && (
@@ -769,32 +778,32 @@ export default function IdeaToVideoScreen({ navigation }) {
             keyboardShouldPersistTaps="handled"
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#1a2a1e', borderWidth: 1, borderColor: '#2a3a2e', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: isDark ? '#1a2a1e' : '#e0f5e9', borderWidth: 1, borderColor: isDark ? '#2a3a2e' : '#a8e6c1', alignItems: 'center', justifyContent: 'center' }}>
                 <MaterialIcons name="lightbulb" size={22} color="#54e98a" />
               </View>
-              <Text style={styles.stepTitle}>Your Idea</Text>
+              <Text style={[styles.stepTitle, { color: theme.text }]}>Your Idea</Text>
             </View>
-            <View style={{ backgroundColor: '#111a12', borderRadius: 20, borderWidth: 1, borderColor: '#1e2e20', padding: 16, marginBottom: 8 }}>
+            <View style={{ backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 16, marginBottom: 8 }}>
               <TextInput
-                style={{ color: '#e3e2e2', fontSize: 16, lineHeight: 24, minHeight: 120, textAlignVertical: 'top' }}
+                style={{ color: theme.text, fontSize: 16, lineHeight: 24, minHeight: 120, textAlignVertical: 'top' }}
                 placeholder="Describe your video idea in detail..."
-                placeholderTextColor="#3a5a3e"
+                placeholderTextColor={theme.subtext}
                 value={prompt}
                 onChangeText={setPrompt}
                 multiline
                 numberOfLines={5}
               />
             </View>
-            <Text style={{ color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 4 }}>PRODUCTION SETTINGS</Text>
+            <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 4 }}>PRODUCTION SETTINGS</Text>
             <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
             <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <SettingCard icon="subtitles" iconColor="#34d399" iconBg="#0a2a1a" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
             <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
             <SettingCard icon="speed" iconColor="#fb923c" iconBg="#2a1500" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
             <SettingCard icon="music-note" iconColor="#facc15" iconBg="#2a2000" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
-            {loading && <ProgressBar progress={progress} label={loadingMsg} />}
+            {loading && <ProgressBar progress={progress} label={loadingMsg} theme={theme} />}
           </ScrollView>
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80, backgroundColor: '#121414' }}>
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80, backgroundColor: theme.bg }}>
             <TouchableOpacity
               style={[{
                 backgroundColor: '#2ecc71',
@@ -825,10 +834,10 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 2 */}
       {step === 2 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Your Script</Text>
-          <Text style={styles.stepSub}>Edit your AI-generated script below.</Text>
-          <TextInput style={[styles.textArea, { flex: 1, color: '#fff' }]} value={script} onChangeText={setScript} multiline />
-          {loading && <ProgressBar progress={progress} label={loadingMsg} />}
+          <Text style={[styles.stepTitle, { color: theme.text }]}>Your Script</Text>
+          <Text style={[styles.stepSub, { color: theme.subtext }]}>Edit your AI-generated script below.</Text>
+          <TextInput style={[styles.textArea, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={script} onChangeText={setScript} multiline />
+          {loading && <ProgressBar progress={progress} label={loadingMsg} theme={theme} />}
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVoiceover} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Voiceover</Text>}
@@ -839,16 +848,16 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 3 */}
       {step === 3 && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Voiceover Ready!</Text>
-          <Text style={styles.stepSub}>Your AI voiceover has been generated successfully.</Text>
-          <View style={styles.successBox}>
+          <Text style={[styles.stepTitle, { color: theme.text }]}>Voiceover Ready!</Text>
+          <Text style={[styles.stepSub, { color: theme.subtext }]}>Your AI voiceover has been generated successfully.</Text>
+          <View style={[styles.successBox, { backgroundColor: isDark ? '#0d2b1a' : '#e0f5e9' }]}>
             <Text style={styles.successText}>Audio generated successfully</Text>
-            <Text style={styles.successSub}>Now we'll find matching video clips and merge everything together.</Text>
+            <Text style={[styles.successSub, { color: theme.subtext }]}>Now we'll find matching video clips and merge everything together.</Text>
           </View>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#2ecc71' }]} onPress={toggleVoiceoverPreview}>
-            <Text style={styles.btnText}>{voiceoverPlaying ? 'Pause Preview' : 'Preview Voiceover'}</Text>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: isDark ? '#1a1a2e' : '#eef0fa', borderWidth: 1, borderColor: '#2ecc71' }]} onPress={toggleVoiceoverPreview}>
+            <Text style={[styles.btnText, { color: theme.text }]}>{voiceoverPlaying ? 'Pause Preview' : 'Preview Voiceover'}</Text>
           </TouchableOpacity>
-          {loading && <ProgressBar progress={progress} label={loadingMsg} />}
+          {loading && <ProgressBar progress={progress} label={loadingMsg} theme={theme} />}
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Video</Text>}
@@ -859,7 +868,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       {/* STEP 4 */}
       {step === 4 && fullVideoUrl && (
         <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>Your Video is Ready!</Text>
+          <Text style={[styles.stepTitle, { color: theme.text }]}>Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
           <TouchableOpacity style={[styles.btn, { backgroundColor: '#2ecc71' }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
             <Text style={styles.btnText}>Post / Schedule</Text>
@@ -890,6 +899,7 @@ export default function IdeaToVideoScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121414', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1e2020' },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   back: { color: '#54e98a', fontSize: 16 },
   title: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   stepCount: { color: '#555', fontSize: 14 },
