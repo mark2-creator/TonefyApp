@@ -691,6 +691,20 @@ nothing to aim at.
    copy is the sole working source (git history is now the real safety net).
 5. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
    item, low priority, not urgent).
+6. **Sign-up now asks for full name and country** (commit `7b6d26e7`, published Aug 10
+   2026 as update group `c29281a5-c78d-4a01-9bf6-cfe6f30aacb8`, runtime 1.1.0) — new
+   `components/CountryPicker.js` (searchable sheet) and `constants/countries.js` (194
+   names, no flag emoji, per the no-emoji rule). `fullName` goes through
+   `updateProfile` the same way `ProfileScreen.js` already reads `displayName`; country
+   has nowhere in Auth to live, so it gets its own minimal Firestore doc at
+   `users/{uid}`, written while still authenticated and wrapped in its own try/catch so
+   a Firestore failure can't block the verification email. **Untested on device** —
+   this is a new sign-up path, not a hot-reloadable screen tweak, so the discriminating
+   test is a real signup: full name saved as `displayName` (check via ProfileScreen),
+   country saved to Firestore `users/{uid}`, and — the case most likely to actually
+   break — Firestore security rules actually permitting an unauthenticated-a-moment-ago
+   user to write their own new doc right after `createUserWithEmailAndPassword`
+   resolves.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
