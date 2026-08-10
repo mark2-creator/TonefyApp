@@ -63,9 +63,9 @@ export default function ConnectAccountsScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
           <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
-            <Text style={styles.back}>Back</Text>
+          <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: theme.text }]}>Connect Accounts</Text>
         <View style={{ width: 60 }} />
@@ -136,6 +136,7 @@ export default function ConnectAccountsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   back: { color: '#2ecc71', fontSize: 15, fontWeight: '600' },
   title: { color: '#fff', fontSize: 16, fontWeight: '700' },
   main: { flex: 1, padding: 20 },

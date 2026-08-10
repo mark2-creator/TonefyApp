@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 
@@ -62,6 +63,7 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
 
 export default function MyVideosScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [allVideos, setAllVideos] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -144,12 +146,12 @@ export default function MyVideosScreen({ navigation }) {
   }).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
           <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
-            <Text style={styles.backBtn}>Back</Text>
+          <Text style={styles.backBtn}>Back</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Videos</Text>
         <Text style={styles.totalCount}>{allVideos.length} videos</Text>
@@ -228,6 +230,7 @@ export default function MyVideosScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#2a2a2a' },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   backBtn: { color: '#2ecc71', fontSize: 15, fontWeight: '600' },
   headerTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
   totalCount: { color: '#2ecc71', fontSize: 12 },
