@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
@@ -108,7 +109,17 @@ function App() {
     return null; // native splash screen stays visible during this gap
   }
 
+  // Nearly every screen in this app calls useSafeAreaInsets() - the header
+  // overlapping the status bar is that hook returning zero because nothing was
+  // ever providing it real values to return. SafeAreaProvider is the thing that
+  // measures the device's actual insets and makes them available; without it here,
+  // every screen's insets.top read as 0 and every screen's top bar sat flush
+  // against whatever the OS drew over it - the clock, the battery, the signal
+  // bars. One provider at the root fixes it for all of them at once, rather than
+  // hardcoding a padding number per screen that would only be right for the one
+  // device it was measured on.
   return (
+    <SafeAreaProvider>
     <ThemeProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
@@ -141,6 +152,7 @@ function App() {
     </NavigationContainer>
     </GestureHandlerRootView>
     </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
