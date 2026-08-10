@@ -771,6 +771,59 @@ nothing to aim at.
     help-center URL, since neither exists yet (checked both this repo and the live
     site's page list before writing it). Both screens are new chrome, themed like the
     rest of today's batch. **Untested on device.**
+11. **Dark Mode now covers the whole app except EditVideoScreen** (commits `6daa7e16`,
+    `a517f2f4`, `e29fa27b`, `d557f2f4`, `22d1e38c`, published Aug 10 2026 as update
+    group `9c1916cd-6358-4ae7-b116-8240e0d020fb`, runtime 1.1.0). Direct instruction,
+    overriding the earlier scoped-rollout call: theme everything, explicitly excluding
+    only the editor. Twelve more screens converted on top of the seven from item 8 —
+    `GeneratingAudioScreen`, `IdeaToAudioScreen`, `RecordToVideoScreen`,
+    `AudioResultScreen`, `PostRecordingScreen`, `ScriptToAudioScreen`, `LandingScreen`,
+    `EditPostVideoScreen`, `UrlToVideoScreen`, `ScriptToVideoScreen`,
+    `IdeaToVideoScreen`, plus `RecordingScreen` assessed and left dark on purpose.
+
+    **Three screens stayed dark despite the "theme everything" instruction, each
+    flagged to the user rather than silently decided:**
+    - `RecordingScreen.js` — a live camera viewfinder. Every element is a translucent
+      dark chip meant to float over unpredictable camera footage (the same convention
+      every camera app uses), not chrome sitting on a background color. There is no
+      "screen background" to theme; the camera feed is the background.
+    - `LandingScreen.js` — themed for surfaces/text, but its ambient glow blobs
+      (translucent color circles tuned to sit against near-black) were left at their
+      existing low opacity rather than redesigned. In light mode they read as a
+      subtle tint rather than a glow — a cosmetic softening, not a break.
+    - Media/camera-preview surfaces *within* otherwise-themed screens stay dark by
+      established convention (first set in item 8's MyVideosScreen pass): video
+      canvases, `RecordToVideoScreen`'s camera-preview placeholder and its overlay
+      chips, `PostRecordingScreen`'s raw-preview box, `TransitionPreview`'s animated
+      demo thumbnails. A surface standing in for camera/video content isn't chrome.
+
+    `UrlToVideoScreen`, `ScriptToVideoScreen` and `IdeaToVideoScreen` share a near-
+    identical wizard template (`SelectorRow`/`SettingCard`, `CaptionOptionRow`,
+    `TransitionModal`, `OptionModal`, `StepDots`, `ProgressBar` as separate function
+    components declared in each file) — each needed its own `useTheme()` call or a
+    `theme` prop, since none of them inherit it automatically. `IdeaToVideoScreen`
+    additionally has `SettingCard` (icon-badge rows) and `MusicTrackRow`/`MusicModal`
+    (background-music picker with audition playback), unique to that screen.
+
+    **The same stacked-back-button bug (icon and label as unstyled siblings, no
+    `flexDirection`, RN's default column layout stacking them) turned up in six of
+    these screens** — `EditPostVideoScreen`, `UrlToVideoScreen`, `ScriptToVideoScreen`,
+    `IdeaToVideoScreen`, on top of the `MyVideosScreen`/`ConnectAccountsScreen` pair
+    from item 9 — and was fixed in all of them alongside the theming, since they were
+    already open. One incidental correctness fix along the way:
+    `IdeaToVideoScreen`'s Preview Voiceover button used black text
+    (`styles.btnText`'s default) on a dark navy background, already near-invisible
+    before any theming; the new `theme.text` override fixes it in both modes.
+
+    One overreach caught before committing, worth remembering as a class of mistake:
+    while theming `UrlToVideoScreen`'s Copy Link button, its background was changed
+    from green to neutral gray. Copy Link had never had an explicit color override —
+    it inherited the shared green `.btn` style, same as Post/Schedule — so recoloring
+    it to "neutral" was a button-hierarchy change smuggled in under a theming task,
+    not a light/dark difference. Reverted before commit. Green vs. neutral is the
+    separate, already-documented, not-yet-done teal/green rebrand — a task like this
+    should touch *only* colors that differ between the two theme objects, nothing
+    that was a fixed, unstyled value in both.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
