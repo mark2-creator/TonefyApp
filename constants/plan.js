@@ -33,26 +33,61 @@ export function tierUnlocksPremium(tier) {
   return PAID.includes(tier);
 }
 
-/** The current account's plan and whether it unlocks premium. */
+// Mirrors TIERS in ~/Tonefy-react/backend/tiers.js - duplicated across
+// repos on purpose (no shared package between them). UI-only: what to show,
+// what to gray out, what number to put in an upgrade prompt. The backend is
+// what actually enforces every one of these; nothing here is a security
+// boundary, only a description of one that lives server-side.
+export const TIER_CAPS = {
+  [TIER_FREE]: { creditsPerCycle: 5, maxExportSeconds: 60, maxResolution: '720p', watermark: true },
+  [TIER_PRO]: { creditsPerCycle: 60, maxExportSeconds: 15 * 60, maxResolution: '1080p', watermark: false },
+  [TIER_CREATOR]: { creditsPerCycle: 300, maxExportSeconds: 40 * 60, maxResolution: '1080p', watermark: false },
+};
+
+/**
+ * The current account's plan, credit balance and whether it unlocks premium.
+ *
+ * creditsRemaining/creditsResetAt are null until a real value has loaded
+ * (no user, still loading, or a read failure) - kept distinct from 0, which
+ * is a real "no credits left" balance, so a screen can tell "unknown yet"
+ * from "genuinely empty" rather than flashing 0 before the real value loads.
+ */
 export function usePlan() {
   const [tier, setTier] = useState(TIER_FREE);
+  const [creditsRemaining, setCreditsRemaining] = useState(null);
+  const [creditsResetAt, setCreditsResetAt] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let unsubDoc = null;
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubDoc) { unsubDoc(); unsubDoc = null; }
-      if (!user) { setTier(TIER_FREE); setLoaded(true); return; }
+      if (!user) {
+        setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null); setLoaded(true);
+        return;
+      }
       unsubDoc = onSnapshot(
         doc(db, 'users', user.uid),
-        (snap) => { setTier(snap.data()?.plan || TIER_FREE); setLoaded(true); },
+        (snap) => {
+          const data = snap.data() || {};
+          setTier(data.plan || TIER_FREE);
+          setCreditsRemaining(typeof data.creditsRemaining === 'number' ? data.creditsRemaining : null);
+          setCreditsResetAt(data.creditsResetAt || null);
+          setLoaded(true);
+        },
         // A read failure (offline, permission error) must not get stuck
         // showing nothing forever - fall back to free rather than hang.
-        () => { setTier(TIER_FREE); setLoaded(true); }
+        () => {
+          setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null); setLoaded(true);
+        }
       );
     });
     return () => { unsubAuth(); if (unsubDoc) unsubDoc(); };
   }, []);
 
-  return { tier, isPremium: tierUnlocksPremium(tier), loaded };
+  return {
+    tier, isPremium: tierUnlocksPremium(tier), loaded,
+    creditsRemaining, creditsResetAt,
+    caps: TIER_CAPS[tier] || TIER_CAPS[TIER_FREE],
+  };
 }
