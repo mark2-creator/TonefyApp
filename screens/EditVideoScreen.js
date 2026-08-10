@@ -323,10 +323,23 @@ const MUSIC_SOURCES = [
 // "upgrade now" and then going nowhere is worse than saying plainly that the feature
 // is on the paid plans - and when billing lands, this is the one function that has to
 // learn how to open it.
-function promptUpgrade(label) {
+// message, when given, is the backend's own rejection reason (credits
+// exhausted, a per-video duration cap, a locked caption style or voice) -
+// shown verbatim rather than restated, since the backend already knows
+// exactly which cap was hit and by how much. Falls back to the generic
+// "this is a paid feature" copy for the tool-locking call sites that have
+// no specific reason to report, only a feature name.
+//
+// No link to a pricing page or checkout: there is no purchase flow yet.
+// Play Billing (not Stripe) is the plan, entirely inside the Android app
+// via react-native-iap - not a website checkout - and it's still blocked on
+// Play Console identity verification. A "See Plans" button pointing at a
+// web pricing page would be dishonest twice over: that page doesn't exist,
+// and even once it does, it won't be where checkout happens.
+function promptUpgrade(label, message) {
   Alert.alert(
-    label,
-    `${label} is on the Standard and Pro plans.\n\nPlans are not on sale in the app yet - this feature unlocks as soon as they are.`,
+    'Upgrade to Continue',
+    message || `${label} is on the Pro and Creator plans.\n\nPlans are not on sale in the app yet - this feature unlocks as soon as they are.`,
     [{ text: 'OK' }]
   );
 }
@@ -2439,7 +2452,18 @@ export default function EditVideoScreen({ navigation }) {
         }),
       });
       const { jobId, error } = await readJson(mergeRes);
-      if (!jobId) throw new Error(error || 'Failed to start job');
+      if (!jobId) {
+        // 402 (no credits) / 403 (over a plan's cap) are the tier-enforcement
+        // rejections added on the backend - shown as an upgrade prompt with
+        // the server's own specific reason, not a generic red error alert.
+        if (mergeRes.status === 402 || mergeRes.status === 403) {
+          promptUpgrade(null, error);
+        } else {
+          Alert.alert('Error', error || 'Failed to start job');
+        }
+        setUploading(false);
+        return;
+      }
       pollJob(jobId);
     } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
   }
@@ -2454,7 +2478,12 @@ export default function EditVideoScreen({ navigation }) {
         body: JSON.stringify({ text: voiceoverScript, voiceId }),
       });
       const data = await readJson(res);
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        // 403 here means the chosen voice needs Pro/Creator - the backend's
+        // own message names which voice, so it's shown as-is.
+        if (res.status === 403) { promptUpgrade(null, data.error); return; }
+        throw new Error(data.error);
+      }
       const fullUrl = BACKEND + data.audioUrl;
       setVoiceoverTracks(prev => [...prev, {
         key: String(Date.now()), uri: fullUrl,
@@ -3072,7 +3101,15 @@ export default function EditVideoScreen({ navigation }) {
         }),
       });
       const { jobId, error } = await readJson(res);
-      if (!jobId) throw new Error(error || 'Failed to start caption job');
+      if (!jobId) {
+        if (res.status === 402 || res.status === 403) {
+          promptUpgrade(null, error);
+        } else {
+          Alert.alert('Error', error || 'Failed to start caption job');
+        }
+        setUploading(false);
+        return;
+      }
       pollCaptionJob(jobId);
     } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
   }
@@ -3511,7 +3548,7 @@ export default function EditVideoScreen({ navigation }) {
   // What each clip tool does. Only the ones already built are here; anything absent
   // falls through to a "coming soon" below rather than being silently inert, so the
   // bar is honest about which of its buttons are wired.
-  const { isPremium } = usePlan();
+  const { isPremium, caps } = usePlan();
 
   // Whether a paid plan would actually change anything about this tool right now.
   // A diamond on something UNBUILT marks it as a planned tier, not as something an
@@ -4459,13 +4496,26 @@ export default function EditVideoScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, sheetInset]}>
             <SheetHeader title="Export Resolution" onClose={() => setShowResModal(false)} />
-            {['720p','1080p','4K'].map(r => (
-              <TouchableOpacity key={r} style={[styles.resRow, resolution === r && styles.resRowActive]}
-                onPress={() => { setResolution(r); setShowResModal(false); }}>
-                <Text style={[styles.resText, resolution === r && { color: '#2ECC71' }]}>{r}</Text>
-                {resolution === r && <MaterialIcons name="check" size={18} color="#2ECC71" />}
-              </TouchableOpacity>
-            ))}
+            {['720p','1080p','4K'].map(r => {
+              // Same rank comparison the backend clamps with (tiers.js's
+              // RESOLUTION_RANK) - kept here only to grey out and prompt
+              // upgrade before a request is even sent, not as the real
+              // enforcement, which stays server-side either way.
+              const RANK = { '720p': 0, '1080p': 1, '4K': 2 };
+              const locked = RANK[r] > (RANK[caps.maxResolution] ?? 0);
+              return (
+                <TouchableOpacity key={r} style={[styles.resRow, resolution === r && styles.resRowActive]}
+                  onPress={() => {
+                    if (locked) { promptUpgrade(`${r} export`); return; }
+                    setResolution(r); setShowResModal(false);
+                  }}>
+                  <Text style={[styles.resText, resolution === r && { color: '#2ECC71' }, locked && { color: '#555' }]}>{r}</Text>
+                  {locked
+                    ? <MaterialIcons name="lock" size={16} color="#555" />
+                    : resolution === r && <MaterialIcons name="check" size={18} color="#2ECC71" />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </Modal>
