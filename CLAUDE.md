@@ -718,12 +718,31 @@ nothing to aim at.
    AsyncStorage (`tonefy.darkMode`). While in there, the Settings sheet's own divider,
    Close button and grabber handle were found hardcoded to the dark palette regardless
    of `theme.*` — fixed, since shipping "the toggle now persists" while the sheet it
-   lives in still breaks in light mode would not actually be done. **Still explicitly
-   out of scope: every other screen.** `DashboardScreen.js` is the only one of 20
-   screens wired to `ThemeContext` — Profile, Edit Video, Auth, and everything else
-   hardcode the dark palette and will not respond to the toggle. That is a much larger
-   rewrite against the app's dark-only design identity (`tonefy-design` skill) and
-   needs an explicit ask, not an inference from "focus on dark/light mode."
+   lives in still breaks in light mode would not actually be done.
+8. **Dark Mode extended to the app's chrome screens** (commit `d1df1ffa`, published
+   Aug 10 2026 as update group `bc60b6f4-5d39-4607-9ed2-7e3769f2c662`, runtime 1.1.0).
+   `AuthScreen.js`, `ProfileScreen.js`, `MyVideosScreen.js`, `CalendarScreen.js`,
+   `ConnectAccountsScreen.js`, `components/CountryPicker.js` and the bottom tab bar
+   (`MainTabs.js`) now pull from `ThemeContext` instead of hardcoding the dark palette.
+   Added `inputBg`/`inputBorder`/`handle` tokens for form fields and sheet grabbers
+   that had no prior token. Semantic status chips (connected/soon badges, danger
+   buttons, the 2FA lock badge) get their own light-mode tint inline per screen rather
+   than new shared tokens, since each is a one-off state colour, not a reusable surface
+   — worth checking those specifically on a real light-mode pass, since they're the
+   most likely spot for a missed hardcoded value the build check can't catch (wrong
+   colors compile fine).
+
+   **Deliberately still dark-only, on purpose, not by omission:** the editor
+   (`EditVideoScreen.js`) and everything in its family — `EditPostVideoScreen.js`,
+   `RecordingScreen.js`, `RecordToVideoScreen.js`, `PostRecordingScreen.js`, the three
+   `*ToVideoScreen.js` generation screens, and the audio generation/result screens
+   (`IdeaToAudioScreen.js`, `ScriptToAudioScreen.js`, `GeneratingAudioScreen.js`,
+   `AudioResultScreen.js`) — matching every serious competitor (CapCut, Canva,
+   Lightroom mobile keep the editing canvas dark regardless of system theme) and this
+   app's own dark-first identity. `LandingScreen.js` is also excluded: a pre-auth
+   marketing splash built on ambient glow effects tuned to sit against near-black, not
+   a colour-swap job, for a screen most people see once before signing up. Extending
+   further needs an explicit ask, same as before.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
