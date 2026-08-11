@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import ReanimatedAnimated, {
   useSharedValue, useAnimatedStyle, runOnJS, withTiming,
@@ -57,7 +58,7 @@ function normaliseAngle(deg) {
 
 export default function CanvasOverlay({
   overlay, containerW, containerH, selected, onSelect, onTransform, onTap, onLongPress,
-  editing = false, children,
+  onEditDone, editing = false, children,
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -270,6 +271,36 @@ export default function CanvasOverlay({
                 </ReanimatedAnimated.View>
               </GestureDetector>
             )}
+            {/* Editing has no handle of its own to reach the caret's controls with -
+                the resize/rotate handle above is hidden for exactly the same reason
+                every other gesture is off while typing. Without an explicit way out,
+                the only exits are tapping elsewhere on the canvas (easy to miss) or
+                the keyboard's own back action. Counter-scaled like the handle, or a
+                caption pinched to 4x would carry a button the size of a thumb. */}
+            {editing && size.w > 0 && (
+              <>
+                <ReanimatedAnimated.View style={[styles.editBtnHit, styles.editBtnTopRight, handleStyle]}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={onEditDone}
+                    accessibilityLabel="Done editing text">
+                    <MaterialIcons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </ReanimatedAnimated.View>
+                {onLongPress && (
+                  <ReanimatedAnimated.View style={[styles.editBtnHit, styles.editBtnBottomRight, handleStyle]}>
+                    <TouchableOpacity
+                      style={styles.editBtn}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={() => onLongPress(overlay)}
+                      accessibilityLabel="Text style settings">
+                      <MaterialIcons name="tune" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </ReanimatedAnimated.View>
+                )}
+              </>
+            )}
           </ReanimatedAnimated.View>
         </GestureDetector>
       </View>
@@ -290,5 +321,19 @@ const styles = StyleSheet.create({
   handle: {
     width: 14, height: 14, borderRadius: 7,
     backgroundColor: '#2ECC71', borderWidth: 2, borderColor: '#0b0b0b',
+  },
+  // Sized and positioned the same as handleHit, one at each remaining free
+  // corner - the resize handle's own corner (bottom-right, unselected) is left
+  // clear since HANDLE already claims it whenever editing turns back off.
+  editBtnHit: {
+    position: 'absolute', width: HANDLE + 8, height: HANDLE + 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editBtnTopRight: { right: -(HANDLE + 8) / 2, top: -(HANDLE + 8) / 2 },
+  editBtnBottomRight: { right: -(HANDLE + 8) / 2, bottom: -(HANDLE + 8) / 2 },
+  editBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.75)', borderWidth: 1, borderColor: '#2a2a2a',
+    alignItems: 'center', justifyContent: 'center',
   },
 });

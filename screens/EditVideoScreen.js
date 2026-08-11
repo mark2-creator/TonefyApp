@@ -3766,6 +3766,7 @@ export default function EditVideoScreen({ navigation }) {
               onTransform={applyOverlayTransform}
               onTap={openOverlayEditor}
               onLongPress={openOverlayStyleSheet}
+              onEditDone={endInlineEdit}
               editing={inlineEditKey === t.key}
             >
               <TextOverlayContent
