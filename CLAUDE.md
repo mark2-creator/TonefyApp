@@ -1544,6 +1544,44 @@ nothing to aim at.
     margin, but is a real architecture change - a new dependency or a long-lived
     ImageMagick process to manage - not attempted here. Worth a dedicated look if
     export speed is still a priority after this.
+25. **`readJson()` threw before its own callers' 402/403 branches could ever run -
+    every rejection showed a raw JSON dump instead of the branded upgrade prompt**
+    (app commit `61d552eb`, published as update group
+    `6e711407-fe92-490b-afe0-494daa0225aa`, runtime 1.1.0; backend wording change
+    `Tonefy-react@c2e95557`). Reported from a device screenshot: the credit-limit
+    rejection showed `Server error (402). {"error":"No credits remaining..."}` inside a
+    plain "Error" alert, not `promptUpgrade`'s branded sheet - a feature this app
+    already has, that never fired.
+
+    **The actual bug**: `readJson()` threw immediately on any non-ok response, but
+    nearly every one of its ~13 call sites in `EditVideoScreen.js` was written
+    expecting it to *return* the parsed body instead - `const data = await
+    readJson(res); if (data.error) throw new Error(data.error)` is the dominant
+    pattern in this file, and the three call sites with explicit 402/403 handling for
+    `promptUpgrade` follow the identical shape. Since `readJson` threw before any of
+    those lines ever ran, every one of those branches was dead code - every
+    rejection, credit-limit included, fell through to the generic catch block showing
+    whatever `readJson`'s own raw-text fallback produced. That fallback is what put
+    unparsed JSON on screen.
+
+    **Fixed at the source** rather than patching each call site: a non-ok response now
+    returns its parsed JSON body (matching what almost every caller already assumed)
+    as long as the body is real JSON - only a response with nothing parseable at all
+    (an nginx error page, a timeout) still throws a translated message, since there is
+    nothing structured to hand back in that case. Verified against a real 402 from the
+    live backend, not by reading: minted a token for a 0-credit test account, hit
+    `/api/media-to-video` for real, confirmed `readJson` now returns `{jobId:
+    undefined, error: "..."}` instead of throwing - exactly the shape the export
+    flow's `if (!jobId) { promptUpgrade(...) }` needs to finally run.
+
+    **Also softened the wording** of all five plan-limit rejections while in there (a
+    second, separate part of the same request) - credits exhausted, export-too-long
+    (x2, the sync check and the async-job-failure check), voice/caption-style locked
+    (x2) - to read as an explanation rather than a command: "You've used all your
+    credits... they'll refresh automatically" instead of "No credits remaining...
+    Upgrade or wait", "is available on the Pro and Creator plans" instead of "needs a
+    Pro or Creator plan". No change to when these fire or their status codes.
+    **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
