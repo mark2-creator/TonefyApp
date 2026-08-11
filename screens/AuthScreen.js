@@ -22,6 +22,7 @@ import { auth, db } from '../firebase';
 import CountrySheet from '../components/CountryPicker';
 import { useTheme } from '../context/ThemeContext';
 
+const BACKEND = 'https://api.fitlifesolutions.site';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
@@ -229,7 +230,24 @@ export default function AuthScreen({ navigation }) {
         } catch (profileErr) {
           console.warn('[signup] could not write user profile:', profileErr.message);
         }
-        await sendEmailVerification(userCred.user);
+        // The Tonefy-branded email (real logo/green button, not a raw link) from
+        // the backend's own SMTP account, replacing Firebase's default template -
+        // that template turned out not to be editable once CUSTOM_SMTP is
+        // configured for this project (confirmed against the live Identity
+        // Platform config, not assumed). Falls back to Firebase's own default
+        // verification email if the backend call fails for any reason - the
+        // one thing worse than an unbranded email is no email at all.
+        try {
+          const idToken = await userCred.user.getIdToken();
+          const res = await fetch(BACKEND + '/api/send-verification-email', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + idToken },
+          });
+          if (!res.ok) throw new Error('backend send failed: ' + res.status);
+        } catch (mailErr) {
+          console.warn('[signup] branded verification email failed, falling back:', mailErr.message);
+          await sendEmailVerification(userCred.user);
+        }
         await auth.signOut();
         Alert.alert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
         setIsLogin(true);
