@@ -707,8 +707,13 @@ nothing to aim at.
    without one they're low-contrast against a dark background in this fallback path. Worse
    than the chip version, better than rendering no differently from a plain stroke style.
 
-4. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
-   copy is the sole working source (git history is now the real safety net).
+4. ~~Remove the `/tmp/tonefy-build` backup copy~~ — **done Aug 11 2026.** Checked before
+   deleting: its last commit (`b2ea9216`) was already present in `~/tonefy-build`'s
+   history, and the one non-trivial uncommitted diff on top of it (766 lines in
+   `EditVideoScreen.js`) introduced identifiers - `AudioTrackRow`, `ClipsRow`,
+   `TextRow`, `CaptionsRow`, `applyAudioTrimEdit`, `captionPreviewGroups` - that exactly
+   match Phase 2-4 features already documented complete above. An earlier draft of
+   already-shipped work, not anything unique. Removed with `rm -rf`.
 5. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
    item, low priority, not urgent).
 6. **Sign-up now asks for full name and country** (commit `7b6d26e7`, published Aug 10
