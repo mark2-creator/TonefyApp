@@ -240,6 +240,12 @@ export default function CanvasOverlay({
   const widthHandleGesture = (sign) => Gesture.Pan()
     .enabled(!editing && resizableWidth)
     .blocksExternalGesture(panGesture, tapGesture, longPressGesture)
+    // hitSlop is the gesture's OWN recognised region, independent of how big
+    // the visible bar is drawn - RNGH still has to resolve the touch against
+    // whatever else is under it, but a generous slop gives this gesture a
+    // real claim on a wider area than its small bar alone would, rather than
+    // relying on pixel-perfect aim at an 8pt-wide target.
+    .hitSlop({ left: 16, right: 16, top: 20, bottom: 20 })
     .onStart(() => {
       startBoxHalfW.value = (size.w / 2) * scale.value;
       dragWidth.value = startBoxHalfW.value * 2;
@@ -442,14 +448,25 @@ const styles = StyleSheet.create({
   // A bar rather than a dot, so it reads as "drag to resize the width" and
   // not "drag to move/rotate" - the same shape language Canva and Figma use
   // for a side (as opposed to corner) handle.
+  //
+  // The corner handle sits at an actual corner - offset in BOTH x and y, so
+  // only a small sliver of its hit box overlaps the element's own draggable
+  // area. A side handle offset in x only (vertically centred on the edge)
+  // overlapped the element far more: on a single-line overlay, its hit box's
+  // whole height sits inside the box's own bounds, and (at the old -HANDLE/2
+  // offset) half its width did too. That overlap is what let the element's
+  // own pan win the touch instead of the handle - not blocksExternalGesture
+  // failing, just a much larger contested area for the same mechanism to
+  // arbitrate. Pushed almost entirely outside the box now, matching the
+  // corner handle's own near-zero overlap.
   sideHandleHit: {
     position: 'absolute', top: '50%', marginTop: -HANDLE / 2,
     width: HANDLE, height: HANDLE, alignItems: 'center', justifyContent: 'center',
   },
-  sideHandleLeft: { left: -HANDLE / 2 },
-  sideHandleRight: { right: -HANDLE / 2 },
+  sideHandleLeft: { left: -HANDLE * 0.9 },
+  sideHandleRight: { right: -HANDLE * 0.9 },
   sideHandle: {
-    width: 6, height: 20, borderRadius: 3,
+    width: 8, height: 26, borderRadius: 4,
     backgroundColor: '#2ECC71', borderWidth: 2, borderColor: '#0b0b0b',
   },
 });
