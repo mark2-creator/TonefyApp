@@ -645,6 +645,17 @@ function TextOverlayContent({
           selectionColor="#2ECC71"
           cursorColor="#2ECC71"
           underlineColorAndroid="transparent"
+          // A transparent value doesn't stay invisible while a word is still
+          // "composing" - some Android keyboards paint their own composing-
+          // span highlight over the buffer regardless of the app's own text
+          // colour, and on at least one device that highlight covered the
+          // whole uncommitted paragraph, not just the current word, in a
+          // colour this file never set. Turning composing off (autocorrect,
+          // spellcheck) commits every character immediately instead of
+          // holding it in that state, so there's nothing left for the
+          // keyboard to paint a highlight on.
+          autoCorrect={false}
+          spellCheck={false}
           accessibilityLabel="Edit overlay text"
         />
       </View>
