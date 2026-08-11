@@ -1270,6 +1270,50 @@ nothing to aim at.
     `-HANDLE` (fully outside, zero base overlap, not just mostly). Between the two
     there is no hit-region overlap with the box's own content left at all, whether
     that content is bare text or an opaque chip. **Untested on device** past this fix.
+17. **Firestore rules had no entry at all for `users/{userId}` — every account's plan/
+    credits read and write had been silently failing since the rules were last deployed
+    (Jun 19 2026).** Found Aug 11 2026 while checking a fresh signup's Firestore write
+    for item 6 (country capture) - `users/{uid}` simply didn't exist after signup, with
+    no error surfaced anywhere (the write is deliberately non-fatal, per item 6's own
+    design, so a Firestore failure can't cost someone their verification email). The
+    real cause was one level up: the deployed rules had `match` blocks for
+    `scheduledPosts`, `connectedAccounts` and `userVideos`, but nothing for `users` at
+    all - Firestore denies by default when no rule matches a path, so this was never a
+    timing race (the risk item 6 flagged when it was built), it was a flat permission
+    denial for every account, on every read and write, the entire time the credits
+    feature has existed. This is also what the "—" on the Plan & Credits section earlier
+    in this same testing session actually was - not a lazy-init delay, a rules bug.
+
+    **Fixed by deploying the missing rule**, matching the exact pattern already proven
+    safe for `connectedAccounts`:
+    ```
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    ```
+    No `firestore.rules` file exists in either repo - rules here are Console/Admin-SDK-
+    managed only, so this is the only record of them outside Firebase itself; worth a
+    real `firestore.rules` file + deploy tooling at some point, not done now.
+
+    **Verified with real client-authenticated requests, not admin access and not just
+    trusting the deploy**: minted a real ID token, confirmed a real REST write to
+    `users/{uid}` returned 403 *before* the fix (proving the bug, not assuming it),
+    deployed the corrected rules, confirmed the identical write returned 200 immediately
+    after, and confirmed a *different* uid was still correctly denied (the fix isn't
+    permissive beyond each user's own doc). A separate real GET request (same
+    client-auth path `usePlan()`'s own `onSnapshot` listener uses) confirmed reads work
+    too.
+
+    **Backfilled the two accounts this bug had already caught**, since the app has no
+    retroactive sweep and both were missing data an actual user would need:
+    `mumberemike4@gmail.com` (today's fresh signup - now has `country: 'Uganda'`,
+    confirmed with the user rather than guessed, plus the same free/5-credit/30-day
+    defaults signup already writes) and `ahumuzamark21213@gmail.com` (the project's own
+    main account, which predates the credits feature entirely and so was never seeded at
+    signup - given the same free-tier defaults, `country` deliberately left unset since
+    it was never asked for at that account's signup and there's no real value to write).
+    Every other pre-existing account, if any, remains unbackfilled - would need a real
+    migration sweep rather than a one-off script if that turns out to matter.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
