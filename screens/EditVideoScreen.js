@@ -85,9 +85,25 @@ async function apiFetch(path, options = {}) {
 // speeds logged elsewhere in this session run from tens of bytes a second to a few
 // kilobytes. The raw parse error names none of that, so whoever hits it cannot tell
 // a slow connection from a bug in the app.
+//
+// Every real error the backend sends is a real JSON body - {"error": "..."} - and
+// almost every call site already assumed this function hands that back rather than
+// throwing on it (`const data = await readJson(res); if (data.error) ...`, or a
+// 402/403 branch reading `error` off the return value to show promptUpgrade). It
+// didn't: a non-ok response threw immediately, before any of those checks ever ran,
+// so every one of those branches was dead code - every rejection, credit-limit
+// included, fell through to a generic catch block showing whatever raw text this
+// function's own fallback produced. That's what put an unparsed `{"error":"..."}`
+// straight on screen for a 402. Only a response with no real JSON body at all - the
+// nginx-page case above, where there is nothing structured to hand back - still
+// throws a translated message here.
 async function readJson(res) {
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
     const known = {
       408: 'The upload took too long and the server gave up waiting. Try again on a faster connection.',
       413: 'That file is too large for the server to accept.',
