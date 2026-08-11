@@ -1163,13 +1163,26 @@ nothing to aim at.
       keyboards paint the still-uncommitted word (on at least this device, evidently the
       whole uncommitted buffer) in their own colour, as a system-drawn decoration that
       `color:'transparent'` has no authority over, since RN's `color` style only sets the
-      base text paint, not the keyboard's own composing overlay. Fixed (commit `28f32b2f`,
-      update group `2ab73009-6dd9-45bb-ac87-425fef57f264`) by turning `autoCorrect`/
-      `spellCheck` off on the caret `TextInput`, which commits each character immediately
-      instead of holding it in composing state - nothing left for the keyboard to paint a
-      highlight on. Both the plain and caption-styled overlay paths share the one
-      `withCaret()` function, so one change covers both. **Untested on device** - the
-      mechanism fits every reported symptom, but not yet confirmed closed.
+      base text paint, not the keyboard's own composing overlay. First attempt (commit
+      `28f32b2f`, update group `2ab73009-6dd9-45bb-ac87-425fef57f264`) turned `autoCorrect`/
+      `spellCheck` off on the caret `TextInput`, betting that committing each character
+      immediately would leave nothing for the keyboard to paint a highlight on.
+
+      **Confirmed on-device (same day, latest build) that this did not hold** - same bug,
+      now showing black instead of the user's selected red, still tracking keystrokes live,
+      still correcting the instant editing ended. Whichever keyboard this device runs
+      apparently paints its composing highlight regardless of `autoCorrect`/`spellCheck`.
+      Rather than chase that OEM by OEM, `withCaret()` (commit `4ae5a661`, update group
+      `ee7bacd4-0140-4530-8741-a8bbd081ff77`) now takes an optional `caretColor`. Left
+      `null` (the caption-styled call site, unchanged), it is the original trick - content
+      stays visible, the input sits on top fully transparent - which a stroked/glowing
+      style still needs, since a plain `TextInput` cannot reproduce those layers and this
+      app already tested that they survive editing. Given a real colour (the plain-overlay
+      call site, wired to `overlay.color`), it flips the trick instead of fighting the
+      keyboard: content is hidden (`opacity: 0`, not unmounted, so it still sizes the box
+      exactly as before) and the `TextInput` itself becomes the one visible copy, already
+      in the right colour - there is no wrong colour left for any keyboard to paint over.
+      **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
