@@ -1361,6 +1361,40 @@ nothing to aim at.
     bug). **Password-reset and change-email templates were left exactly as Firebase's
     defaults** - only the signup-blocking verification email was in scope; the same
     branding treatment could extend to those later using the same pattern.
+19. **Every popup in the app is now Tonefy-branded** (Aug 11 2026, commit `d8570d98`,
+    published as update group `17363fc2-4e7a-4497-8e27-8732c80cf56a`, runtime 1.1.0).
+    Direct request following the verification-email work above. Native `Alert.alert`
+    renders the OS's own dialog - nothing in RN can style it - so every popup in the
+    app had looked like stock Android regardless of how the rest of the screen was
+    themed.
+
+    **`components/BrandedAlert.js`** is a drop-in replacement: identical signature
+    (`title, message, buttons, options`), identical `{text, style, onPress}` button
+    shape, so every call site converts with a literal token swap
+    (`Alert.alert(` → `showAlert(`) rather than a rewrite. Renders the same bottom-sheet
+    chrome every other modal in the app already uses - `#111` sheet, rounded top
+    corners only, green `#2ECC71` for the default/commit button (matching the
+    established brand rule - see "Design/brand note" above), red-bordered destructive,
+    neutral cancel. Imperative by design, like the thing it replaces: a module-level
+    ref to the mounted host's own `setState`, set once by `<BrandedAlertHost />` in
+    `App.js` (inside `GestureHandlerRootView`, alongside `NavigationContainer`, so it
+    survives every screen) rather than each of ~114 call sites needing its own modal
+    state.
+
+    **All 114 real `Alert.alert(...)` calls across 10 screens converted mechanically**
+    (`ConnectAccountsScreen`, `UrlToVideoScreen`, `AuthScreen`, `CalendarScreen`,
+    `EditVideoScreen`, `EditPostVideoScreen`, `ProfileScreen`, `IdeaToVideoScreen`,
+    `NotificationsScreen`, `ScriptToVideoScreen`) - a scripted replace verified 1:1 by
+    count per file (before-count of `Alert.alert(` matched after-count of `showAlert(`
+    for every file, not just eyeballed), plus the matching import added to each. The
+    `.bak_*` recovery snapshots were correctly left alone - grepped and confirmed not
+    part of the live build. Every button pattern already in use (single-button info,
+    cancel/destructive pairs, 3-button) maps onto the new component with no call-site
+    rewrite beyond the token swap, confirmed by spot-checking a converted
+    destructive-delete call site to make sure its button array survived intact.
+
+    Verified: `expo export` clean, `scratchpad/jsxrefs.py` clean (the new
+    `BrandedAlertHost` tag resolves). **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
