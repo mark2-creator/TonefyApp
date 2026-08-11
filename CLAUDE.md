@@ -1237,8 +1237,22 @@ nothing to aim at.
     target, the long-single-word edge case landing correctly on its own line), `expo
     export` clean, and `check-gesture-composition.py` clean (two new leaf
     `Gesture.Pan` instances - `.enabled()`/`.blocksExternalGesture()` only ever called
-    on those, never on a composition). **Untested on device** - both halves of this
-    feature shipped together, neither has been tried on a real phone yet.
+    on those, never on a composition).
+
+    **First on-device pass found the handles unreliable** (commit `2b40d386`, update
+    group `a934f15d-76b0-46c5-8aa5-69584f89d9b2`) - dragging either side handle moved
+    the whole overlay instead of resizing it. Not `blocksExternalGesture` failing (the
+    same mechanism the corner handle already relies on) but how much of each handle's
+    hit box overlapped the element's own draggable area: the corner handle sits at an
+    actual corner, offset in both x *and* y, so only a small sliver overlaps; a side
+    handle offset in x only (vertically centred on the edge) had its hit box's whole
+    *height* already inside the box's own bounds on a single-line overlay, and at the
+    original `-HANDLE/2` offset half its *width* too - a much larger contested area for
+    the same arbitration to get right, and evidently enough for the element's pan to
+    win often. Fixed by pushing the hit box to sit almost entirely outside the box
+    (`-HANDLE*0.9`, matching the corner handle's own near-zero overlap) and adding an
+    explicit `hitSlop` to the gesture itself, so its actual catch area is meaningfully
+    larger than its 8pt visible bar. **Untested on device** past this specific fix.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
