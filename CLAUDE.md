@@ -1516,6 +1516,34 @@ nothing to aim at.
     user was actively waiting and the reasoning is solid, but this is the piece most
     worth double-checking (word timing, which word is highlighted, chip position) on
     the next real export if anything looks even slightly different.
+24. **Overlay render concurrency tuned from 4 to 6, measured not guessed**
+    (`~/Tonefy-react/backend@cb8fc8b1`). Direct request - "make it faster, check before
+    implementing" - after item 23's fix confirmed working. Benchmarked the actual
+    mask/alpha/dilate/composite chain this loop runs (the real four `convert` calls,
+    not a synthetic stand-in) at concurrency 1/4/6/8/12, live, with this VPS's other
+    pm2 processes already running: 208/41/29/36/29 ms/overlay. 6 - this box's real
+    core count, confirmed via `nproc`, not assumed - beat the previous setting of 4 by
+    ~30%; 8 was worse than 6 (contention past the real core count, exactly as expected
+    for CPU-bound work); 12 matched 6 with no further gain. 6 is the measured ceiling
+    for this specific hardware, not a round number picked by feel - revisit if this
+    VPS's core count or its other workload changes.
+
+    Checked the rest of the export pipeline for the same class of opportunity before
+    stopping: the clip-combining/transition stage builds one ffmpeg `filter_complex`
+    graph and runs it as a single process, not a loop of shell-outs, so there is
+    nothing to parallelize there the same way - its speed is bounded by ffmpeg's own
+    internal threading. The one per-clip loop there (duration probing) is unlikely to
+    matter in practice, since real projects have a handful of clips, not the hundreds a
+    highlight-caption's one-overlay-per-word count reaches.
+
+    **A bigger, unexplored option**: this benchmark's own sequential number (208ms for
+    an operation ImageMagick itself completes in a few ms) says most of that cost is
+    process-spawn overhead, not image work - `convert` is invoked as a fresh OS process
+    per call, four times per overlay. A persistent-worker or native-binding approach
+    (avoiding the spawn entirely) could plausibly beat even concurrency=6 by a wide
+    margin, but is a real architecture change - a new dependency or a long-lived
+    ImageMagick process to manage - not attempted here. Worth a dedicated look if
+    export speed is still a priority after this.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
