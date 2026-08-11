@@ -240,12 +240,17 @@ export default function CanvasOverlay({
   const widthHandleGesture = (sign) => Gesture.Pan()
     .enabled(!editing && resizableWidth)
     .blocksExternalGesture(panGesture, tapGesture, longPressGesture)
-    // hitSlop is the gesture's OWN recognised region, independent of how big
-    // the visible bar is drawn - RNGH still has to resolve the touch against
-    // whatever else is under it, but a generous slop gives this gesture a
-    // real claim on a wider area than its small bar alone would, rather than
-    // relying on pixel-perfect aim at an 8pt-wide target.
-    .hitSlop({ left: 16, right: 16, top: 20, bottom: 20 })
+    // hitSlop only grows AWAY from the box (vertically, and outward in x) -
+    // never inward. A text overlay's own touchable area used to be sparse
+    // (just the glyphs), so growing the handle's region a little way back
+    // toward the box barely competed with anything. A background chip turns
+    // that same area into one solid, fully opaque View the main pan gesture
+    // hits reliably everywhere inside it - the exact case reported broken -
+    // and any inward slop was directly handing part of the handle's own
+    // catch area over to that now much more competitive surface.
+    .hitSlop(sign < 0
+      ? { left: 20, right: 0, top: 20, bottom: 20 }
+      : { left: 0, right: 20, top: 20, bottom: 20 })
     .onStart(() => {
       startBoxHalfW.value = (size.w / 2) * scale.value;
       dragWidth.value = startBoxHalfW.value * 2;
@@ -463,8 +468,11 @@ const styles = StyleSheet.create({
     position: 'absolute', top: '50%', marginTop: -HANDLE / 2,
     width: HANDLE, height: HANDLE, alignItems: 'center', justifyContent: 'center',
   },
-  sideHandleLeft: { left: -HANDLE * 0.9 },
-  sideHandleRight: { right: -HANDLE * 0.9 },
+  // Fully outside now, not just mostly - zero base overlap with the box, so
+  // whatever the box is rendering (bare text or an opaque background chip)
+  // there is nothing left for the handle's own resting hit box to contest.
+  sideHandleLeft: { left: -HANDLE },
+  sideHandleRight: { right: -HANDLE },
   sideHandle: {
     width: 8, height: 26, borderRadius: 4,
     backgroundColor: '#2ECC71', borderWidth: 2, borderColor: '#0b0b0b',
