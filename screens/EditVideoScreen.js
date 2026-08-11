@@ -590,7 +590,7 @@ const MediaOverlayContent = React.memo(function MediaOverlayContent({ overlay, i
 // so the caret lands between the right two letters - the one thing this approach
 // can get wrong, and the reason there is a single definition of those metrics.
 function TextOverlayContent({
-  overlay, maxWidth, playhead = 0, editing = false, onChangeText, onEndEditing,
+  overlay, maxWidth, boxWidth, playhead = 0, editing = false, onChangeText, onEndEditing,
 }) {
   // An auto-caption is drawn by the shared caption renderer from its style spec;
   // a manual text overlay has no style and keeps the plain path. The overlay's own
@@ -723,6 +723,10 @@ function TextOverlayContent({
       ? (
         <View style={{
           alignSelf: 'center',
+          // A dragged box width caps the chip the same way it already hugs
+          // short text - maxWidth, not width, so one short word still sits
+          // in a chip sized to itself rather than stretched to the box.
+          ...(boxWidth ? { maxWidth: boxWidth } : null),
           backgroundColor: withAlpha(bg.color, bg.opacity),
           borderRadius: bg.radius * bgScale,
           paddingHorizontal: bg.padX * bgScale,
@@ -731,7 +735,10 @@ function TextOverlayContent({
           {plain}
         </View>
       )
-      : plain,
+      // No chip to hug - an exact width, not a cap, so the text block stays
+      // centred within the full box a side-handle drag set rather than
+      // shrinking back to whatever its shortest line happens to need.
+      : (boxWidth ? <View style={{ width: boxWidth }}>{plain}</View> : plain),
     plainMetrics,
     overlay.color
   );
@@ -2450,6 +2457,13 @@ export default function EditVideoScreen({ navigation }) {
             // the server needs no idea that one came from a catalogue and the
             // other from four sliders.
             captionSpec: overlayExportSpec(t),
+            // A side-handle drag on the canvas, at scale 1 (same reason size folds
+            // scale in above - a pinch afterwards should widen the box exactly as
+            // much as it grows the font, so the effective fraction of the frame is
+            // this times the same scale). Absent for a caption or an overlay never
+            // width-resized, which is most of them - the server falls back to its
+            // existing word-count wrap for those, unchanged.
+            boxWidthPercent: t.boxWidthPercent != null ? t.boxWidthPercent * (t.scale ?? 1) : undefined,
             // Word timings, for the styles whose chip follows the voice. Absent on
             // every other overlay, which is most of them.
             words: t.words,
@@ -3786,10 +3800,16 @@ export default function EditVideoScreen({ navigation }) {
               onLongPress={openOverlayStyleSheet}
               onEditDone={endInlineEdit}
               editing={inlineEditKey === t.key}
+              // Side-handle width resize is Canva's move for a text block, not
+              // a caption's - a caption style has no independent box-width
+              // concept, and the export only knows how to wrap by width for
+              // this one kind of overlay (see boxWidthPercent in server.js).
+              resizableWidth={!t.captionStyleId && !t.isAutoCaption}
             >
               <TextOverlayContent
                 overlay={t}
                 maxWidth={frame.w * 0.8}
+                boxWidth={t.boxWidthPercent ? (t.boxWidthPercent / 100) * frame.w * (t.scale ?? 1) : null}
                 playhead={position}
                 editing={inlineEditKey === t.key}
                 onChangeText={text => setOverlayText(t.key, text)}

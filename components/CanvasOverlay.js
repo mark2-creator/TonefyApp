@@ -35,6 +35,10 @@ const MAX_SCALE = 6;
 
 const HANDLE = 28;
 
+// A box can't collapse to nothing - there would be no handle left to grab to
+// widen it back out. In the same px space as size.w (pre-scale layout size).
+const MIN_BOX_WIDTH = 40;
+
 function clamp(v, lo, hi) {
   'worklet';
   return Math.min(hi, Math.max(lo, v));
@@ -58,7 +62,7 @@ function normaliseAngle(deg) {
 
 export default function CanvasOverlay({
   overlay, containerW, containerH, selected, onSelect, onTransform, onTap, onLongPress,
-  onEditDone, editing = false, children,
+  onEditDone, editing = false, resizableWidth = false, children,
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -73,6 +77,10 @@ export default function CanvasOverlay({
   const startRotation = useSharedValue(0);
   const handleLen = useSharedValue(0);
   const handleAngle = useSharedValue(0);
+  // -1 is the sentinel for "no side-handle drag in progress" - a real width is
+  // never negative, so it doubles as the ghost box's own visibility flag.
+  const dragWidth = useSharedValue(-1);
+  const startBoxHalfW = useSharedValue(0);
 
   // The overlay can also be moved from outside the canvas - a reset, an undo, a
   // value typed in a sheet - and the gesture state has to follow, or the next
@@ -92,6 +100,13 @@ export default function CanvasOverlay({
       rotation: nrotation,
     });
   }, [overlay.key, containerW, containerH, onTransform]);
+
+  // Stored at scale 1, like size.w itself - a pinch (scale) and a dragged box
+  // width are two independent multipliers on the same base, and folding the
+  // live scale in here would double-count it the next time scale changes.
+  const commitBoxWidth = useCallback((widthAtScale1) => {
+    onTransform(overlay.key, { boxWidthPercent: (widthAtScale1 / containerW) * 100 });
+  }, [overlay.key, containerW, onTransform]);
 
   const select = useCallback(() => onSelect(overlay.key), [overlay.key, onSelect]);
   const tap = useCallback(() => onTap(overlay), [overlay, onTap]);
@@ -202,6 +217,47 @@ export default function CanvasOverlay({
       runOnJS(commit)(x.value, y.value, scale.value, snapAngle(rotation.value));
     });
 
+  // Side handles change the box's WIDTH only - font size and everything else
+  // stays put, and the text rewraps to fit (Canva's side-handle behaviour,
+  // distinct from the corner handle's uniform scale-everything). Manual text
+  // overlays only: a caption style has no independent box-width concept, and
+  // the export has to agree on the wrap for whichever styles opt in, which
+  // pins this to the one kind of overlay where that was built (see the
+  // server-side wrapTextLinesByWidth in server.js).
+  //
+  // Resizes symmetrically about the centre - x/y never change here - rather
+  // than pinning the opposite edge, which would mean also moving x/y in a
+  // way that stays correct under rotation. That is solvable (project the
+  // fixed edge's own position through the same rotation) but is meaningfully
+  // more state to get right for a first version; centred resize needs only
+  // the one number this already tracks.
+  //
+  // The rotation-aware projection is the same idea as the corner handle's
+  // vector maths: a handle's own drag direction is only "rightward" in the
+  // overlay's own (rotated) frame, so the finger's screen-space translation
+  // is projected onto that rotated axis via a dot product before it is
+  // allowed to change the width.
+  const widthHandleGesture = (sign) => Gesture.Pan()
+    .enabled(!editing && resizableWidth)
+    .blocksExternalGesture(panGesture, tapGesture, longPressGesture)
+    .onStart(() => {
+      startBoxHalfW.value = (size.w / 2) * scale.value;
+      dragWidth.value = startBoxHalfW.value * 2;
+      runOnJS(select)();
+    })
+    .onUpdate(e => {
+      const rad = (rotation.value * Math.PI) / 180;
+      const localDx = e.translationX * Math.cos(rad) + e.translationY * Math.sin(rad);
+      const newHalfW = startBoxHalfW.value + sign * localDx;
+      dragWidth.value = clamp(newHalfW * 2, MIN_BOX_WIDTH, containerW - 2 * EDGE_MARGIN);
+    })
+    .onEnd(() => {
+      runOnJS(commitBoxWidth)(dragWidth.value / scale.value);
+      dragWidth.value = -1;
+    });
+  const leftHandleGesture = widthHandleGesture(-1);
+  const rightHandleGesture = widthHandleGesture(1);
+
   // Pan, pinch and rotate run together so a two-finger gesture can move, resize and
   // turn in one motion. The tap races them: it only wins if nothing moved.
   //
@@ -242,6 +298,23 @@ export default function CanvasOverlay({
     transform: [{ scale: 1 / scale.value }],
   }));
 
+  // Live preview of a side-handle drag before the text itself reflows. Real
+  // reflow needs an actual layout pass (Yoga re-measuring wrapped lines),
+  // which only happens from a committed React state update - doing that on
+  // every onUpdate frame would mean a full text re-layout at gesture speed,
+  // not a cheap UI-thread transform. The outline is the cheap part: it moves
+  // at 60fps, and the text catches up to it the instant the finger lifts.
+  const ghostBoxStyle = useAnimatedStyle(() => {
+    const w = dragWidth.value < 0 ? 0 : dragWidth.value;
+    const h = size.h * scale.value;
+    return {
+      opacity: dragWidth.value < 0 ? 0 : 1,
+      width: w,
+      height: h,
+      transform: [{ translateX: -w / 2 }, { translateY: -h / 2 }],
+    };
+  });
+
   const onLayout = useCallback(e => {
     const { width, height } = e.nativeEvent.layout;
     setSize(prev => (prev.w === width && prev.h === height ? prev : { w: width, h: height }));
@@ -270,6 +343,24 @@ export default function CanvasOverlay({
                   <View style={styles.handle} />
                 </ReanimatedAnimated.View>
               </GestureDetector>
+            )}
+            {resizableWidth && selected && !editing && size.w > 0 && (
+              <>
+                <ReanimatedAnimated.View
+                  pointerEvents="none"
+                  style={[styles.ghostBox, ghostBoxStyle]}
+                />
+                <GestureDetector gesture={leftHandleGesture}>
+                  <ReanimatedAnimated.View style={[styles.sideHandleHit, styles.sideHandleLeft, handleStyle]}>
+                    <View style={styles.sideHandle} />
+                  </ReanimatedAnimated.View>
+                </GestureDetector>
+                <GestureDetector gesture={rightHandleGesture}>
+                  <ReanimatedAnimated.View style={[styles.sideHandleHit, styles.sideHandleRight, handleStyle]}>
+                    <View style={styles.sideHandle} />
+                  </ReanimatedAnimated.View>
+                </GestureDetector>
+              </>
             )}
             {/* Editing has no handle of its own to reach the caret's controls with -
                 the resize/rotate handle above is hidden for exactly the same reason
@@ -338,5 +429,27 @@ const styles = StyleSheet.create({
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.75)', borderWidth: 1, borderColor: '#2a2a2a',
     alignItems: 'center', justifyContent: 'center',
+  },
+  // width/height/opacity/transform all come from ghostBoxStyle - left/top:'50%'
+  // plus a -w/2,-h/2 translate is what centres a dynamically-sized box without
+  // knowing its size ahead of time, the same trick centreWrap uses for the
+  // whole overlay, just done by hand since this box's size changes every frame.
+  ghostBox: {
+    position: 'absolute', left: '50%', top: '50%',
+    borderWidth: 1.5, borderColor: '#2ECC71', borderStyle: 'dashed', borderRadius: 2,
+    backgroundColor: 'rgba(46,204,113,0.08)',
+  },
+  // A bar rather than a dot, so it reads as "drag to resize the width" and
+  // not "drag to move/rotate" - the same shape language Canva and Figma use
+  // for a side (as opposed to corner) handle.
+  sideHandleHit: {
+    position: 'absolute', top: '50%', marginTop: -HANDLE / 2,
+    width: HANDLE, height: HANDLE, alignItems: 'center', justifyContent: 'center',
+  },
+  sideHandleLeft: { left: -HANDLE / 2 },
+  sideHandleRight: { right: -HANDLE / 2 },
+  sideHandle: {
+    width: 6, height: 20, borderRadius: 3,
+    backgroundColor: '#2ECC71', borderWidth: 2, borderColor: '#0b0b0b',
   },
 });
