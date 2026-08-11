@@ -650,7 +650,11 @@ function TextOverlayContent({
             { color: caretColor || 'transparent', padding: 0, margin: 0, textAlignVertical: 'top' },
           ]}
           value={overlay.text}
-          onChangeText={onChangeText}
+          // onChangeText is the stable setOverlayText(key, text) itself now
+          // (not a per-render closure over this overlay's key), so the key
+          // has to be supplied here instead - RN's TextInput only ever
+          // passes the new text string.
+          onChangeText={text => onChangeText(overlay.key, text)}
           onBlur={onEndEditing}
           onSubmitEditing={onEndEditing}
           autoFocus
@@ -3382,6 +3386,50 @@ export default function EditVideoScreen({ navigation }) {
     </CanvasOverlay>
   )), [overlays, selectedOverlayKey, isPlaying, applyMediaOverlayTransform, confirmRemoveOverlay]);
 
+  // Same reasoning as mediaOverlayViews above, for text. position is a real
+  // dependency (auto-captions gate on it, and playhead drives which word a
+  // highlight style chips) so this still recomputes during playback - the
+  // point is only to stop recomputing for state this list has nothing to do
+  // with, like export progress.
+  const textOverlayViews = useMemo(
+    () => textOverlays
+      .filter(t => !t.isAutoCaption || (position >= t.startTime && position <= t.endTime))
+      .map(t => (
+        <CanvasOverlay
+          key={t.key}
+          overlay={t}
+          containerW={frame.w}
+          containerH={frame.h}
+          selected={selectedOverlayKey === t.key}
+          onSelect={setSelectedOverlayKey}
+          onTransform={applyOverlayTransform}
+          onTap={openOverlayEditor}
+          onLongPress={openOverlayStyleSheet}
+          onEditDone={endInlineEdit}
+          editing={inlineEditKey === t.key}
+          // Side-handle width resize is Canva's move for a text block, not
+          // a caption's - a caption style has no independent box-width
+          // concept, and the export only knows how to wrap by width for
+          // this one kind of overlay (see boxWidthPercent in server.js).
+          resizableWidth={!t.captionStyleId && !t.isAutoCaption}
+        >
+          <TextOverlayContent
+            overlay={t}
+            maxWidth={frame.w * 0.8}
+            boxWidth={t.boxWidthPercent ? (t.boxWidthPercent / 100) * frame.w * (t.scale ?? 1) : null}
+            playhead={position}
+            editing={inlineEditKey === t.key}
+            onChangeText={setOverlayText}
+            onEndEditing={endInlineEdit}
+          />
+        </CanvasOverlay>
+      )),
+    [
+      textOverlays, position, frame.w, frame.h, selectedOverlayKey, inlineEditKey,
+      applyOverlayTransform, openOverlayEditor, openOverlayStyleSheet, endInlineEdit, setOverlayText,
+    ]
+  );
+
   // Put the canvas on the frame a given timeline second points at. Every path
   // that moves the playhead somewhere the decoder is not already heading goes
   // through here, so the clock is invalidated in one place too.
@@ -3787,37 +3835,17 @@ export default function EditVideoScreen({ navigation }) {
           {mediaOverlayViews}
 
           {/* Text overlays on preview - drag, pinch and turn. Auto-captions are
-              time-gated to the playhead position; manual overlays always show. */}
-          {textOverlays.filter(t => !t.isAutoCaption || (position >= t.startTime && position <= t.endTime)).map(t => (
-            <CanvasOverlay
-              key={t.key}
-              overlay={t}
-              containerW={frame.w}
-              containerH={frame.h}
-              selected={selectedOverlayKey === t.key}
-              onSelect={setSelectedOverlayKey}
-              onTransform={applyOverlayTransform}
-              onTap={openOverlayEditor}
-              onLongPress={openOverlayStyleSheet}
-              onEditDone={endInlineEdit}
-              editing={inlineEditKey === t.key}
-              // Side-handle width resize is Canva's move for a text block, not
-              // a caption's - a caption style has no independent box-width
-              // concept, and the export only knows how to wrap by width for
-              // this one kind of overlay (see boxWidthPercent in server.js).
-              resizableWidth={!t.captionStyleId && !t.isAutoCaption}
-            >
-              <TextOverlayContent
-                overlay={t}
-                maxWidth={frame.w * 0.8}
-                boxWidth={t.boxWidthPercent ? (t.boxWidthPercent / 100) * frame.w * (t.scale ?? 1) : null}
-                playhead={position}
-                editing={inlineEditKey === t.key}
-                onChangeText={text => setOverlayText(t.key, text)}
-                onEndEditing={endInlineEdit}
-              />
-            </CanvasOverlay>
-          ))}
+              time-gated to the playhead position; manual overlays always show.
+              Memoized like mediaOverlayViews below - without this, every
+              unrelated re-render (an export progress tick, a poll message
+              update, neither of which this list depends on) rebuilt every
+              overlay's CanvasOverlay from scratch, including seven fresh
+              Gesture.Pan objects each. With enough overlays accumulated in a
+              project that adds up to a real per-tick cost, and enough ticks
+              in a row froze the JS thread - the export polling loop is a
+              setInterval on that same thread, so it stopped firing too,
+              which is what made a slow export look like a stuck one. */}
+          {textOverlayViews}
         </View>
 
         {/* Playback controls */}
