@@ -619,19 +619,34 @@ function TextOverlayContent({
   // tapped - so there would be no way back to the caret you were just using.
   const editingBox = editing ? { minWidth: overlay.size * 4, minHeight: overlay.size } : null;
 
-  function withCaret(content, metrics) {
+  // caretColor null (the default) is the original trick: content stays fully
+  // visible and the TextInput sits on top with color:'transparent', so a
+  // stroked/glowing caption style keeps every layer while being typed into -
+  // there is no way for a plain TextInput to reproduce those layers, so for
+  // a styled caption the alternative below is not an option.
+  //
+  // A real caretColor switches to the opposite trick: hide `content` (opacity
+  // 0, not unmounted, so it still sizes editingBox exactly as before) and let
+  // the TextInput itself be the one visible copy, in the real colour. This is
+  // for plain overlays only, which have no stroke/glow/box to lose - turning
+  // autoCorrect/spellCheck off (still on below) was meant to stop a keyboard's
+  // own composing-span highlight from painting over a transparent value in
+  // its own colour, but at least one Android keyboard kept doing it anyway.
+  // Rather than chase every OEM keyboard's composing behaviour, this sidesteps
+  // it: there is no wrong colour for the keyboard to paint over a value that
+  // is already showing in the right one.
+  function withCaret(content, metrics, caretColor = null) {
     if (!editing) return content;
     return (
       <View style={editingBox}>
-        {content}
+        <View style={caretColor ? { opacity: 0 } : null}>{content}</View>
         <TextInput
           style={[
             StyleSheet.absoluteFill,
             metrics,
-            // The glyphs are already on screen underneath; drawing them twice would
-            // double every stroke. Android puts padding on an input and none on a
-            // Text, which would offset the caret by that padding on every line.
-            { color: 'transparent', padding: 0, margin: 0, textAlignVertical: 'top' },
+            // Android puts padding on an input and none on a Text, which
+            // would offset the caret from the glyphs it is meant to sit on.
+            { color: caretColor || 'transparent', padding: 0, margin: 0, textAlignVertical: 'top' },
           ]}
           value={overlay.text}
           onChangeText={onChangeText}
@@ -645,15 +660,6 @@ function TextOverlayContent({
           selectionColor="#2ECC71"
           cursorColor="#2ECC71"
           underlineColorAndroid="transparent"
-          // A transparent value doesn't stay invisible while a word is still
-          // "composing" - some Android keyboards paint their own composing-
-          // span highlight over the buffer regardless of the app's own text
-          // colour, and on at least one device that highlight covered the
-          // whole uncommitted paragraph, not just the current word, in a
-          // colour this file never set. Turning composing off (autocorrect,
-          // spellcheck) commits every character immediately instead of
-          // holding it in that state, so there's nothing left for the
-          // keyboard to paint a highlight on.
           autoCorrect={false}
           spellCheck={false}
           accessibilityLabel="Edit overlay text"
@@ -726,7 +732,8 @@ function TextOverlayContent({
         </View>
       )
       : plain,
-    plainMetrics
+    plainMetrics,
+    overlay.color
   );
 }
 
