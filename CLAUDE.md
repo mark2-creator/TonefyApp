@@ -1314,6 +1314,53 @@ nothing to aim at.
     it was never asked for at that account's signup and there's no real value to write).
     Every other pre-existing account, if any, remains unbackfilled - would need a real
     migration sweep rather than a one-off script if that turns out to matter.
+18. **Verification email is now genuinely Tonefy-branded** (Aug 11 2026, app commit
+    `23a65afd`, published as update group `5a627f61-7fa0-445a-a211-a1527cf64dc3`, runtime
+    1.1.0; backend `Tonefy-react@469216cc`, deployed via `pm2 restart`). Direct request
+    after seeing the old email's raw unstyled link during item 6's signup test.
+
+    **Editing Firebase's own template turned out not to work for this project.** Tried
+    first, since it needed no new infrastructure: PATCHing
+    `notification.sendEmail.verifyEmailTemplate.body` via the Identity Platform admin
+    API (`identitytoolkit.googleapis.com/v2/projects/{id}/config`), authenticated with
+    the existing service account via `google-auth-library`. Every attempt - a
+    parent-object mask, a full leaf-level mask naming all five sub-fields, a body-only
+    mask with a trivially small test value - returned HTTP 200, and every single time a
+    **fresh, separate GET** (never trusting the write response) showed the body
+    completely unchanged. Nothing was damaged in the process - the other templates
+    (password reset, change-email, 2FA-added) were re-checked intact after every
+    attempt. The likely cause, not fully confirmed: this project's `notification.
+    sendEmail.method` is `CUSTOM_SMTP` (already routed through `ahumuzamark21213@
+    gmail.com`'s Gmail SMTP, not Firebase's default mailer), and the template-body
+    field may simply be inert once that's active - Console UI editing was not tried,
+    since it does not gate signup on that test.
+
+    **Fixed by bypassing Firebase's template system entirely.** New backend endpoint
+    `POST /api/send-verification-email` (`~/Tonefy-react/backend/server.js`) generates
+    the real link via `generateEmailVerificationLink()` and sends a genuinely branded
+    HTML email (Tonefy AI header, a real green `#2ECC71` "Verify Email" button, not a
+    raw link) through **the same Gmail SMTP account already configured for this
+    project**, via `nodemailer` with a new Gmail App Password
+    (`EMAIL_USER`/`EMAIL_APP_PASSWORD` in `~/Tonefy-react/backend/.env`, gitignored,
+    confirmed before committing). uid/email are read from the verified token
+    (`req.user`, via `getAuth().getUser()`), never the request body - the same lesson
+    the `media-to-video`/`edit-video` `userId` bug already taught this file (item 13):
+    a client-supplied email here would let anyone request a verification link for an
+    address that isn't theirs. `AuthScreen.js` calls this new endpoint in place of the
+    direct `sendEmailVerification()` call, and **falls back to Firebase's own default**
+    if the backend call fails for any reason - a plainer email beats no email at all.
+
+    **Verified for real, twice, not by reading**: a live test send to a real inbox,
+    visually confirmed by the user as correctly branded and rendering properly; then a
+    full run of the app's *actual* signup sequence from Node against the live backend -
+    create user, update profile, the Firestore write (confirming item 17's rules fix in
+    the real flow, not just in isolation), this new endpoint, a doc readback - all
+    succeeding together. Test account and its Firestore doc fully removed via Admin SDK
+    afterward (the client-side delete attempt correctly failed with permission-denied,
+    since it ran after signing out - confirming the rules are doing their job, not a
+    bug). **Password-reset and change-email templates were left exactly as Firebase's
+    defaults** - only the signup-blocking verification email was in scope; the same
+    branding treatment could extend to those later using the same pattern.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
