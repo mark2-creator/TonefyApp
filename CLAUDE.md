@@ -1582,6 +1582,19 @@ nothing to aim at.
     Upgrade or wait", "is available on the Pro and Creator plans" instead of "needs a
     Pro or Creator plan". No change to when these fire or their status codes.
     **Untested on device.**
+26. **"This cycle" replaced with the actual reset date** (`~/Tonefy-react/backend@
+    4fa04238`). Direct follow-up question - "cycle" didn't say whether that meant
+    daily, weekly or monthly. Checked against the code rather than assumed:
+    `FREE_RESET_MS` is a rolling **30 days** from whenever an account's credits were
+    last set, not a calendar month - so "monthly" would have been a real, and
+    inaccurate, claim. `checkRenderAllowed` already had `creditsResetAt` sitting on
+    the same account record it was already reading `plan`/`creditsRemaining` from -
+    just never destructured it. Now formats it directly into the message ("They
+    refresh every 30 days - yours reset on August 23") instead of making someone open
+    Profile to find out when "later" actually is, with a plain "every 30 days"
+    fallback for the should-be-impossible case where the field is missing. Verified
+    against a real 402 from the live backend with a test account 12 days from reset.
+    Backend-only, already live - no app update needed.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
