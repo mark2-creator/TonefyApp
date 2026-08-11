@@ -1450,6 +1450,35 @@ nothing to aim at.
     before anything was happening on screen. **Preview-only** - the export's own
     transition rendering (ffmpeg `xfade`) is a separate mechanism from this RN-side
     approximation and was not in scope of what was reported. **Untested on device.**
+22. **"Stuck at 60%" was real the second time, not the same bug as item 20** (Aug 11
+    2026, `~/Tonefy-react/backend@38549dfc`, deployed via `pm2 restart`). After item 20
+    shipped, a fresh export attempt still reported the same symptom. Checked
+    `jobs.json` directly rather than assuming the fix hadn't landed: this time the job
+    itself genuinely showed `status:"pending", progress:60` for **over six minutes**,
+    re-checked later and confirmed it had eventually reached `status:"done"` - a real,
+    multi-minute stretch of the export doing something with zero progress reported,
+    not the client losing track of an already-finished job like item 20 was.
+
+    **The gap**: `/api/media-to-video`'s own progress markers jump straight from 60%
+    ("Adding text & overlays...") to 80% ("Mixing audio...") with nothing reported in
+    between, regardless of how many overlays there are or how long the mask/alpha/
+    fill/composite chain (several `convert` shell-outs per overlay) takes for each one.
+    A project with several overlays - especially a long one, which pays per-word for
+    `wrapTextLinesByWidth`'s real measurement when `boxWidthPercent` is set (item 16) -
+    could sit on that one frozen message for minutes with no visible sign anything was
+    happening.
+
+    **Fixed by reporting progress after every overlay finishes**, scaled across the
+    same 60-80% band the two existing markers already bracket, with a running count in
+    the message (`"Adding text & overlays... (3/7)"`). Does not make the loop faster -
+    the underlying per-overlay cost is unchanged - only makes the number the client
+    polls actually move instead of sitting frozen for the whole span, which is what
+    read as hung. Whether `wrapTextLinesByWidth`'s per-word cost is itself worth
+    optimizing (e.g. a smarter search instead of linear word-by-word measurement) is a
+    real open question this did not attempt to answer - flagged, not fixed, since
+    changing that measurement's actual algorithm risks a correctness regression under
+    time pressure and the progress-reporting fix already addresses the reported
+    symptom. **Untested on device** past a real completed job confirmed via `jobs.json`.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
