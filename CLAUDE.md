@@ -1595,6 +1595,34 @@ nothing to aim at.
     fallback for the should-be-impossible case where the field is missing. Verified
     against a real 402 from the live backend with a test account 12 days from reset.
     Backend-only, already live - no app update needed.
+27. **Video/audio/uploads/music static routes had no cache headers at all** -
+    `~/Tonefy-react/backend@3e28e8d2`. Reported symptom: restoring a saved draft (and,
+    separately, adding a music track or voiceover) took a very long time. Checked
+    before touching anything, per direct instruction: `/videos` and `/audios`'
+    `express.static` config had no `maxAge` set, unlike `/stickers`/`/filters`/
+    `/transitions` a few lines below, which already had `maxAge: "30d"`. `/music` and
+    `/uploads` were missing it too - four of the routes this app depends on most were
+    the ones with no caching at all.
+
+    Every filename under these routes is unique per render or upload (`uniqueName()`
+    bakes in a timestamp and a UUID) - a URL's content can never change under this
+    app, exactly the "safe to cache forever" case the sticker/filter/transition routes
+    already covered. Without `Cache-Control`, the device had no reason to believe a
+    repeat request for the same clip or voiceover could be served from its own cache -
+    restoring a draft, reopening the editor, even re-selecting a track already played
+    once this session, was a full re-download from zero every time.
+
+    Verified against a real request, not by reading: `curl` against `/music` before
+    was missing `Cache-Control` entirely; after, it sends `public, max-age=2592000` -
+    byte-identical in shape to `/stickers`' own header, confirming the same
+    `express.static` mechanism applies correctly. **Known limit of this fix, stated
+    plainly**: it helps *repeat* loads of a file already fetched this device has ever
+    fetched before within the 30-day window - the very first download of any file is
+    unchanged, still a full fetch. Also unverified: whether `expo-av`'s audio playback
+    layer (as opposed to plain `fetch`/`Image` requests, more standard territory)
+    actually honours this header on-device - a real, not just a plausible, remaining
+    question, since native media player HTTP caching behaviour varies by platform and
+    wasn't checked directly. Backend-only, already live.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
