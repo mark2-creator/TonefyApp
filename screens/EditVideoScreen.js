@@ -3845,7 +3845,14 @@ export default function EditVideoScreen({ navigation }) {
               in a row froze the JS thread - the export polling loop is a
               setInterval on that same thread, so it stopped firing too,
               which is what made a slow export look like a stuck one. */}
-          {textOverlayViews}
+          {/* Hidden for the span a transition is actually blending (not the
+              longer lookahead mount window before it - joinLayers.active is
+              specifically the 0.3s the two clips are visibly crossing). A
+              caption or manual overlay has no transition of its own, so it
+              was just sitting flat on top of a moving/masked/scaled clip
+              blend, reading as broken rather than as a deliberate effect -
+              this is a device-reported request to simply not show it there. */}
+          {!joinLayers?.active && textOverlayViews}
         </View>
 
         {/* Playback controls */}
