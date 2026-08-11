@@ -1183,6 +1183,62 @@ nothing to aim at.
       exactly as before) and the `TextInput` itself becomes the one visible copy, already
       in the right colour - there is no wrong colour left for any keyboard to paint over.
       **Untested on device.**
+16. **Canva-style side-handle box-width resize for manual text overlays** (commit
+    `0d215089`, published Aug 11 2026 as update group
+    `7b22455d-f32b-4895-a001-e319aa9afeca`, runtime 1.1.0; backend half
+    `Tonefy-react@7c22d107`, deployed same day via `pm2 restart`). Direct request,
+    following a design discussion: the existing corner handle scales an overlay
+    uniformly, font size included - Canva instead gives a text box two *independent*
+    controls, a width (side handles) and a font size (corner), so a side-drag
+    rewraps the text into more or fewer lines without touching how big it reads.
+    Scoped to manual text overlays only, on purpose - a caption style has no
+    independent box-width concept, and captions are short/style-driven in a way
+    that doesn't benefit from it; the corner handle stays the only control there,
+    unchanged.
+
+    - **`CanvasOverlay.js`** — two new `Gesture.Pan` handles at the left/right-middle
+      edges (`resizableWidth` prop, gated to `!captionStyleId && !isAutoCaption` at the
+      call site), reusing the corner handle's own rotation-aware projection trick: a
+      handle's "outward" direction is only meaningful in the overlay's own rotated
+      frame, so the finger's screen-space translation is projected onto that axis via
+      a dot product before it's allowed to change anything. Resizes **symmetrically
+      about the centre** rather than pinning the opposite edge - the latter would also
+      need x/y to move in a way that stays correct under rotation, solvable but
+      meaningfully more state for a first version.
+    - **Live drag shows a dashed ghost-box outline**, not a live text reflow - the
+      outline is a pure Reanimated transform (`useSharedValue`/`useAnimatedStyle`,
+      60fps, UI-thread only), while actual text reflow needs a real Yoga layout pass
+      from committed React state. The text catches up to the outline the instant the
+      finger lifts rather than continuously during the drag. A disclosed
+      simplification, not a limitation of the interaction model - live reflow is
+      buildable later if wanted.
+    - **New overlay field `boxWidthPercent`** — width at scale 1, as a percentage of
+      the frame, matching how `x`/`y` are already stored (resolution-independent,
+      composes correctly with a later corner-handle pinch: `scale` multiplies both
+      font size and box width the same way, so the two stay proportionally
+      consistent). `undefined` by default - every existing overlay, and every overlay
+      nobody has dragged, renders exactly as it did before this shipped.
+    - **The export side needed real work, not just plumbing.** The existing
+      `wrapTextLinesServer` wraps by a fixed word count (4/line), with zero knowledge
+      of font, size or frame width - fine as an approximation for auto-captions, which
+      never carry a box width, but would have silently disagreed with whatever the
+      user actually dragged on screen for a manual overlay, the exact "ships clean,
+      wrong on screen" shape this file's own history keeps warning about. New
+      `wrapTextLinesByWidth()` measures real candidate-line widths with the same
+      `labelWidth()` the highlight chip's word-boxing already uses, breaking only when
+      the next word would push a line past the target; a single word wider than the
+      target still gets its own line rather than splitting mid-word, matching what the
+      app's own `Text` component does at that same edge. Wired in only when
+      `boxWidthPercent` is present - every auto-caption and every un-resized overlay
+      keeps the unchanged word-count wrap, zero behaviour change for them.
+
+    Verified directly, not by reading: the wrap function against real ImageMagick
+    across three target widths (every multi-word line measured at or under its
+    target, the long-single-word edge case landing correctly on its own line), `expo
+    export` clean, and `check-gesture-composition.py` clean (two new leaf
+    `Gesture.Pan` instances - `.enabled()`/`.blocksExternalGesture()` only ever called
+    on those, never on a composition). **Untested on device** - both halves of this
+    feature shipped together, neither has been tried on a real phone yet.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
