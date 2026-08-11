@@ -1252,7 +1252,24 @@ nothing to aim at.
     win often. Fixed by pushing the hit box to sit almost entirely outside the box
     (`-HANDLE*0.9`, matching the corner handle's own near-zero overlap) and adding an
     explicit `hitSlop` to the gesture itself, so its actual catch area is meaningfully
-    larger than its 8pt visible bar. **Untested on device** past this specific fix.
+    larger than its 8pt visible bar.
+
+    **Second on-device pass found that fix real but incomplete** (commit `082d5a59`,
+    update group `d2f6e472-23a7-4289-a50b-2f5f2b812ff2`) - narrowed down together with
+    the user to a precise, reproducible split: works fine with no background on the
+    overlay, still very hard to drag with one. The actual mechanism: a plain text
+    overlay's own touchable area is sparse (just the glyphs), so a handle's hitSlop
+    reaching a little way back toward the box barely competed with anything real. A
+    background chip turns that same area into one solid, fully opaque `View` the main
+    pan gesture hits reliably everywhere inside it - and the first fix's `hitSlop`
+    (`{left:16,right:16,top:20,bottom:20}` on *both* handles) was extending 16-20px
+    **inward**, directly handing part of the handle's own catch area to that now much
+    more competitive surface. Two changes closed it: `hitSlop` is now asymmetric per
+    handle and never grows inward (left handle `{left:20,right:0,...}`, right handle
+    `{left:0,right:20,...}`), and the resting position moved from `-HANDLE*0.9` to
+    `-HANDLE` (fully outside, zero base overlap, not just mostly). Between the two
+    there is no hit-region overlap with the box's own content left at all, whether
+    that content is bare text or an opaque chip. **Untested on device** past this fix.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
