@@ -1146,7 +1146,30 @@ nothing to aim at.
     `scripts/check-gesture-composition.py` run clean after, since this touched the same
     file the gesture-composition bug pattern lives in - no `.enabled()` was added to a
     composition, only two plain `TouchableOpacity`s as siblings of the existing gestures.
-    **Untested on device** - published, not yet confirmed.
+
+    **First on-device pass (same day) found two follow-ups, both fixed:**
+    - The buttons themselves were too loud at 28px/20px icon sitting over caption-sized
+      text - shrunk to a 20px circle / 13px icon (commit `6c58771b`, update group
+      `849c864a-b34b-4a06-ad32-35c9a3702f8f`). Hit area held steady via the existing
+      10px `hitSlop`, so the smaller circle didn't also shrink what you actually have to
+      hit.
+    - **A second, differently-coloured copy of the text appeared while typing**, offset
+      from and wrapped differently than the real one, tracking every keystroke live, then
+      vanishing the instant editing ended. Diagnosed with two questions rather than
+      guessed: it updated with live typing (had to be the caret's own `TextInput`, not a
+      stale render of something else) and disappeared the moment editing ended (so not a
+      second persisted overlay - ruled out `textOverlays` holding a duplicate object).
+      That combination points at Android's own IME **composing-span highlight** - some
+      keyboards paint the still-uncommitted word (on at least this device, evidently the
+      whole uncommitted buffer) in their own colour, as a system-drawn decoration that
+      `color:'transparent'` has no authority over, since RN's `color` style only sets the
+      base text paint, not the keyboard's own composing overlay. Fixed (commit `28f32b2f`,
+      update group `2ab73009-6dd9-45bb-ac87-425fef57f264`) by turning `autoCorrect`/
+      `spellCheck` off on the caret `TextInput`, which commits each character immediately
+      instead of holding it in composing state - nothing left for the keyboard to paint a
+      highlight on. Both the plain and caption-styled overlay paths share the one
+      `withCaret()` function, so one change covers both. **Untested on device** - the
+      mechanism fits every reported symptom, but not yet confirmed closed.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
