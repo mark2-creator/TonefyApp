@@ -671,21 +671,41 @@ nothing to aim at.
    Push backend work as normal.
 
    Once confirmed on device, open a PR into `main` and merge.
-3. **Eight caption styles have never been verified against the export.** The pass
-   described under "Backend caption rendering" below rendered all **130** specs through
-   the ImageMagick chain and checked all 130 produced valid ASS. The catalogue grew to
-   **138** in `33b4ef33`, after that pass, and those eight have never been through it.
+3. ~~Eight caption styles have never been verified against the export.~~ — **closed
+   Aug 11 2026.** The eight `hl-*` (Highlight) styles added in `33b4ef33` are the only
+   styles in the catalogue carrying a `highlight` field, so neither export path had ever
+   actually exercised it. Verified against both real renderers, not by reading the code:
 
-   This is an untested export path, not a documentation gap: a spec that the app draws
-   correctly can still fail server-side, and both of the traps already found there were
-   invisible until something was actually rendered — `roundrectangle` with radius 0
-   draws *nothing*, and dilating an alpha cropped to the glyphs squares the stroke into
-   a slab behind the word. Either would ship silently.
+   - **ImageMagick path (`/api/media-to-video`, voiceover-driven auto-captions) — all
+     eight correct.** Ran the actual extracted `labelWidth`/`labelPad`/`wordBoxInLabel`
+     functions against the real font files and real `convert`/`identify` binaries: the
+     spoken word's box lands inside the canvas for all eight, and a pixel-histogram check
+     of the composited PNG confirms the recoloured word takes exactly `highlight.textColor`
+     while its neighbour keeps the base fill colour, for every style tested.
+   - **ASS path (`/api/edit-video`, the no-voiceover route `handleAutoCaption()` in
+     `EditVideoScreen.js` actually calls) — all eight were broken, silently.**
+     `assStyleFromSpec`/`buildAssFile` never read `spec.highlight` anywhere. Confirmed by
+     extracting the exact deployed function and running it against real specs: one flat
+     Dialogue line per chunk, zero per-word emphasis, no trace of the highlight colour in
+     the output. Not a crash, not an error — a Highlight-category style picked with no
+     voiceover rendered indistinguishable from a plain stroke style, which is the "ships
+     clean, wrong on screen" failure shape this file keeps flagging as the dangerous kind.
 
-   To close it: re-run the verification over the full 138 rather than only the new
-   eight, so the check stays one command instead of a list of exceptions, and burn
-   samples into frames — the geometry numbers alone did not catch either trap above.
-   Until then, treat any of the eight as unproven in the burned-in export.
+   **Fixed in `036aad9f`** (`~/Tonefy-react/backend`, pushed, deployed via `pm2 restart`
+   Aug 11 2026). Not a chip — a real chip needs the same glyph-offset measurement the
+   ImageMagick path gets from ImageMagick's own `identify`, which this string-only ASS
+   builder has no equivalent of. What it does instead: inline `\1c` colour-override tags
+   recolour just the active word within the phrase (the phrase itself stays fully visible
+   throughout, matching the "chip follows the voice" intent minus the chip), using real
+   per-word whisper timing when available and an even split of the chunk's own window
+   otherwise — the only case actually reachable today, since `handleAutoCaption` never
+   sends `voiceoverUrl` to this endpoint. Verified by burning the generated `.ass` into a
+   real frame with the exact `ass=...:fontsdir=...` filter this file already uses: libass
+   parses the new tags without error, and the frame's colour histogram shows two distinct
+   colours landing on the right words. Known, accepted limitation: some `highlight.textColor`
+   values (e.g. `hl-yellow`, `hl-mono`'s `#1A1400`) were designed to sit on a bright chip:
+   without one they're low-contrast against a dark background in this fallback path. Worse
+   than the chip version, better than rendering no differently from a plain stroke style.
 
 4. Remove the `/tmp/tonefy-build` backup copy once confident the `~/tonefy-build`
    copy is the sole working source (git history is now the real safety net).
@@ -1094,10 +1114,13 @@ reported geometry matching the files on disk, and all 130 produce valid ASS with
 field counts, colours, border styles and cadence. Samples burned into video frames to
 confirm the fonts and boxes actually land.
 
-**That pass covered 130 — the catalogue is 138 now.** The eight added in `33b4ef33` came
-after it and have never been through it, so re-run it over the full catalogue before
-trusting the export on those eight. What is also **not** verified is the app-side
-rendering — that needs a device.
+**That pass covered 130; the remaining eight (`33b4ef33`'s Highlight styles) were verified
+separately Aug 11 2026** — see item 3 under "IMMEDIATE NEXT STEPS". They needed a different
+check than the other 130: none of the 130 use the `highlight` spec field, so the pass above
+never exercised it. Result: the ImageMagick path (voiceover route) was already correct; the
+ASS path (`handleAutoCaption`'s no-voiceover route) silently ignored `highlight` entirely,
+fixed in `036aad9f`. What is still **not** verified is the app-side rendering — that needs
+a device.
 
 ## Known nits, examined and deliberately left
 
