@@ -1075,6 +1075,54 @@ nothing to aim at.
     process a Play Billing purchase, so it would be marketing copy at most, not built.
     Subscription-lapse behavior (delete vs. read-only vs. grace period) — still a
     product decision with no billing yet to trigger it, same as noted in item 12.
+14. **Captions/overlays could render partially or fully outside the exported frame**
+    (Aug 11 2026, `~/Tonefy-react/backend@e410f2e9`, deployed via `pm2 restart`) — two
+    independent, unclamped mechanisms, both closed:
+
+    - **ImageMagick path (`/api/media-to-video`)** — the composite position was computed
+      straight from the overlay's centre x/y with no check against the frame, and the
+      rendered PNG's own size was never capped either. `CanvasOverlay.js`'s pan/pinch
+      clamps only bound the centre point and the scale factor (`[0.25, 6]`) independently
+      — never the overlay's actual rendered bounding box — so a drag near an edge, a 6x
+      pinch, or a caption whose wrapped lines simply ran wide at that font/size all
+      produced a PNG that ffmpeg's `overlay` filter draws at whatever raw x/y it's given,
+      with anything past `[0,W]x[0,H]` silently cut off by the frame boundary. Fixed by
+      shrinking an oversized overlay to fit a safe zone (margin matches `CanvasOverlay`'s
+      own `EDGE_MARGIN=8`, scaled to the export resolution, so the safe zone agrees with
+      what the drag gesture already respects on-screen) before placement, then clamping
+      `placeX`/`placeY` so the box can never leave the frame. The resize always leaves
+      room for a valid clamp by construction (checked algebraically, not just tested).
+    - **ASS path (`buildAssFile`, all 3 call sites)** — `PlayResX`/`PlayResY` were
+      hardcoded to `720`/`1280` regardless of the real output frame. libass maps that
+      virtual canvas onto the actual encoded resolution, stretching it non-uniformly
+      whenever the two disagree, so `MarginL`/`MarginR`'s promised safe zone stopped
+      corresponding to the real edges for any source that wasn't 720×1280. Confirmed by
+      burning a real caption onto a 1280×720 (16:9) frame with the old hardcoded values
+      vs. the real dimensions: measured rendered width differed by **1.776x**, matching
+      the predicted `1280/720 = 1.778` distortion almost exactly — the exact mechanism
+      that pushes a caption from safely inside the margin to past the real edge for
+      longer/wider text. Fixed by threading the real output width/height through to
+      `buildAssFile` at all three call sites: `frameSize()`'s own `scaleW`/`scaleH` where
+      already computed, and a new `probeVideoDimensions()` ffprobe helper for
+      `/api/edit-video`, which has no prior scale step to borrow dimensions from.
+
+    Verified directly, not by reading: the ImageMagick clamp math against edge-drag,
+    pinch-6x, long-word and normal-caption cases (all land fully inside the frame, the
+    normal case unaffected — no change in behaviour for a caption that was already fine),
+    and the ASS fix by burning real `.ass` output through the exact `ffmpeg`+`libass`
+    filter this file already uses. **Not fixed on the app side** — `CanvasOverlay.js`'s
+    pan/pinch clamps still only bound the centre point and scale independently, so a user
+    can still drag/pinch an overlay into a state that looks off-frame in the live preview
+    (`previewFrame` has `overflow:hidden`, so preview and the old export agreed — a user
+    saw the crop coming). The export fix means the finished file no longer matches that
+    preview in this situation: instead of a clipped fragment, the overlay now shrinks to
+    fit and stays fully visible, smaller than it was dragged/pinched to. Extending the
+    same bounding-box-aware clamp to `CanvasOverlay.js`'s own pan/pinch handlers (lines
+    116-119, 131, 195 — it already measures the real box via `onLayout`, at `size.w`/
+    `size.h`, just never consults it there) would make the preview match again, but
+    touching gesture composition code carries its own established landmine risk in this
+    file (see "Known bug pattern: gesture composition + config methods") and wasn't
+    asked for — flagged rather than done.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
