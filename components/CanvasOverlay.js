@@ -285,7 +285,7 @@ export default function CanvasOverlay({
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={onEditDone}
                     accessibilityLabel="Done editing text">
-                    <MaterialIcons name="close" size={20} color="#fff" />
+                    <MaterialIcons name="close" size={13} color="#fff" />
                   </TouchableOpacity>
                 </ReanimatedAnimated.View>
                 {onLongPress && (
@@ -295,7 +295,7 @@ export default function CanvasOverlay({
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       onPress={() => onLongPress(overlay)}
                       accessibilityLabel="Text style settings">
-                      <MaterialIcons name="tune" size={20} color="#fff" />
+                      <MaterialIcons name="tune" size={13} color="#fff" />
                     </TouchableOpacity>
                   </ReanimatedAnimated.View>
                 )}
@@ -322,17 +322,20 @@ const styles = StyleSheet.create({
     width: 14, height: 14, borderRadius: 7,
     backgroundColor: '#2ECC71', borderWidth: 2, borderColor: '#0b0b0b',
   },
-  // Sized and positioned the same as handleHit, one at each remaining free
-  // corner - the resize handle's own corner (bottom-right, unselected) is left
-  // clear since HANDLE already claims it whenever editing turns back off.
+  // Positioned the same as handleHit, one at each remaining free corner - the
+  // resize handle's own corner (bottom-right, unselected) is left clear since
+  // HANDLE already claims it whenever editing turns back off. The hit area
+  // stays generous (hitSlop below adds another 10 on top of this) even though
+  // the visible circle itself is small - a bigger circle read as loud sitting
+  // on top of small caption text.
   editBtnHit: {
-    position: 'absolute', width: HANDLE + 8, height: HANDLE + 8,
+    position: 'absolute', width: HANDLE, height: HANDLE,
     alignItems: 'center', justifyContent: 'center',
   },
-  editBtnTopRight: { right: -(HANDLE + 8) / 2, top: -(HANDLE + 8) / 2 },
-  editBtnBottomRight: { right: -(HANDLE + 8) / 2, bottom: -(HANDLE + 8) / 2 },
+  editBtnTopRight: { right: -HANDLE / 2, top: -HANDLE / 2 },
+  editBtnBottomRight: { right: -HANDLE / 2, bottom: -HANDLE / 2 },
   editBtn: {
-    width: 28, height: 28, borderRadius: 14,
+    width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.75)', borderWidth: 1, borderColor: '#2a2a2a',
     alignItems: 'center', justifyContent: 'center',
   },
