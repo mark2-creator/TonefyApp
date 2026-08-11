@@ -12,6 +12,7 @@ import {
   scheduleReminders,
   cancelReminders,
 } from '../utils/notifications';
+import { showAlert } from '../components/BrandedAlert';
 
 export default function NotificationsScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -31,7 +32,7 @@ export default function NotificationsScreen({ navigation }) {
     if (next) {
       const granted = await requestNotificationPermission();
       if (!granted) {
-        Alert.alert(
+        showAlert(
           'Notifications Off',
           'Tonefy AI needs notification permission to send reminders. You can allow it in your phone\'s system settings.'
         );

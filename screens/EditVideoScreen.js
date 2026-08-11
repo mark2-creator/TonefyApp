@@ -53,6 +53,7 @@ import {
 import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { showAlert } from '../components/BrandedAlert';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -278,7 +279,7 @@ function SourceTabs({ tabs, value, isPremium, onSelect }) {
           return (
             <TouchableOpacity
               key={t.key}
-              onPress={() => (t.built ? onSelect(t) : Alert.alert(
+              onPress={() => (t.built ? onSelect(t) : showAlert(
                 t.label,
                 t.premium ? 'Coming soon on the paid plans.' : 'Coming soon.'
               ))}
@@ -337,7 +338,7 @@ const MUSIC_SOURCES = [
 // web pricing page would be dishonest twice over: that page doesn't exist,
 // and even once it does, it won't be where checkout happens.
 function promptUpgrade(label, message) {
-  Alert.alert(
+  showAlert(
     'Upgrade to Continue',
     message || `${label} is on the Pro and Creator plans.\n\nPlans are not on sale in the app yet - this feature unlocks as soon as they are.`,
     [{ text: 'OK' }]
@@ -1895,7 +1896,7 @@ export default function EditVideoScreen({ navigation }) {
 
   const pickMedia = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
+    if (!perm.granted) { showAlert('Permission needed','Allow access to photos/videos.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true, quality: 0.8, selectionLimit: 20,
@@ -1937,7 +1938,7 @@ export default function EditVideoScreen({ navigation }) {
   const replaceSelectedClip = useCallback(async () => {
     if (!selectedKey) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permission needed','Allow access to photos/videos.'); return; }
+    if (!perm.granted) { showAlert('Permission needed','Allow access to photos/videos.'); return; }
     let result;
     try {
       result = await ImagePicker.launchImageLibraryAsync({
@@ -1945,7 +1946,7 @@ export default function EditVideoScreen({ navigation }) {
       });
     } catch (err) {
       // A picker that throws used to reject into nothing, so the tool looked inert.
-      Alert.alert('Could not open your library', String(err?.message || err));
+      showAlert('Could not open your library', String(err?.message || err));
       return;
     }
     if (result.canceled || !result.assets?.length) return;
@@ -2028,7 +2029,7 @@ export default function EditVideoScreen({ navigation }) {
 
   const confirmDeleteSelectedClip = useCallback(() => {
     if (!selectedKey) return;
-    Alert.alert('Delete clip?', 'It will be removed from the timeline.', [
+    showAlert('Delete clip?', 'It will be removed from the timeline.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -2048,7 +2049,7 @@ export default function EditVideoScreen({ navigation }) {
   }, []);
 
   function splitAtPlayhead() {
-    if (!selectedItem) { Alert.alert('Split', 'Select a clip first.'); return; }
+    if (!selectedItem) { showAlert('Split', 'Select a clip first.'); return; }
     const idx = items.findIndex(i => i.key === selectedKey);
     if (idx < 0) return;
     // Where this clip starts on the timeline. That is what turns the playhead's
@@ -2060,7 +2061,7 @@ export default function EditVideoScreen({ navigation }) {
     const len = clipLength(selectedItem);
     const into = positionRef.current - clipStart;
     if (!(into > MIN_CLIP_DUR && into < len - MIN_CLIP_DUR)) {
-      Alert.alert('Split', 'Move the playhead inside this clip first.');
+      showAlert('Split', 'Move the playhead inside this clip first.');
       return;
     }
 
@@ -2301,7 +2302,7 @@ export default function EditVideoScreen({ navigation }) {
       }]);
     }
   }async function processVideo() {
-    if (items.length === 0) { Alert.alert('No media','Add at least one photo or video.'); return; }
+    if (items.length === 0) { showAlert('No media','Add at least one photo or video.'); return; }
     setUploading(true); setMessage('Uploading media...');
     try {
       const formData = new FormData();
@@ -2491,17 +2492,17 @@ export default function EditVideoScreen({ navigation }) {
         if (mergeRes.status === 402 || mergeRes.status === 403) {
           promptUpgrade(null, error);
         } else {
-          Alert.alert('Error', error || 'Failed to start job');
+          showAlert('Error', error || 'Failed to start job');
         }
         setUploading(false);
         return;
       }
       pollJob(jobId);
-    } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
+    } catch (e) { showAlert('Error', e.message); setUploading(false); }
   }
 
   async function generateVoiceover() {
-    if (!voiceoverScript.trim()) { Alert.alert('Script required', 'Enter text to generate voiceover.'); return; }
+    if (!voiceoverScript.trim()) { showAlert('Script required', 'Enter text to generate voiceover.'); return; }
     setGeneratingVoiceover(true);
     try {
       const res = await apiFetch('/api/generate-audio', {
@@ -2523,7 +2524,7 @@ export default function EditVideoScreen({ navigation }) {
       }]);
       setVoiceoverScript('');
     } catch (e) {
-      Alert.alert('Error', e.message);
+      showAlert('Error', e.message);
     } finally {
       setGeneratingVoiceover(false);
     }
@@ -2547,7 +2548,7 @@ export default function EditVideoScreen({ navigation }) {
         if (status.didJustFinish) setVoiceoverPreviewPlaying(false);
       });
     } catch (e) {
-      Alert.alert('Error', e.message);
+      showAlert('Error', e.message);
     } finally {
       setGeneratingVoiceover(false);
     }
@@ -2585,7 +2586,7 @@ export default function EditVideoScreen({ navigation }) {
       const data = await readJson(res);
       setMusicLibraryTracks(data.tracks || []);
     } catch (e) {
-      Alert.alert('Error', 'Failed to load music library.');
+      showAlert('Error', 'Failed to load music library.');
     } finally {
       setMusicLoading(false);
     }
@@ -2824,7 +2825,7 @@ export default function EditVideoScreen({ navigation }) {
     // is the trim's origin plus however far into the track the playhead has reached.
     const cut = ts + (positionRef.current - start);
     if (!(cut > ts + MIN_CLIP_DUR && cut < te - MIN_CLIP_DUR)) {
-      Alert.alert('Split', 'Move the playhead inside this track first.');
+      showAlert('Split', 'Move the playhead inside this track first.');
       return;
     }
     setAudioTracks(prev => prev.flatMap(x => (x.key !== t.key ? [x] : [
@@ -2835,10 +2836,10 @@ export default function EditVideoScreen({ navigation }) {
   }, [audioTracks, selectedAudioTrackKey]);
 
   const onLongPressVoiceoverTrack = useCallback((key) => {
-    Alert.alert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
+    showAlert('Delete voiceover?', 'This will remove this voiceover track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
   }, []);
   const onLongPressMusicTrack = useCallback((key) => {
-    Alert.alert('Delete music?', 'This will remove this music track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
+    showAlert('Delete music?', 'This will remove this music track.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => setAudioTracks(prev => prev.filter(t => t.key !== key)) }]);
   }, []);
   const onPressAddVoiceover = useCallback(() => {
     setShowVoiceoverModal(true); setVoiceoverTab('generate');
@@ -2917,7 +2918,7 @@ export default function EditVideoScreen({ navigation }) {
 
   async function pickOverlay() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permission needed', 'Allow access to photos/videos.'); return; }
+    if (!perm.granted) { showAlert('Permission needed', 'Allow access to photos/videos.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: false, quality: 0.8,
@@ -3005,7 +3006,7 @@ export default function EditVideoScreen({ navigation }) {
   }, [selectedItem]);
 
   const confirmRemoveOverlay = useCallback((o) => {
-    Alert.alert('Remove overlay?', 'It will be taken off the video.', [
+    showAlert('Remove overlay?', 'It will be taken off the video.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -3095,16 +3096,16 @@ export default function EditVideoScreen({ navigation }) {
       setTextOverlays(prev => [...prev.filter(t => !t.isAutoCaption), ...newOverlays]);
       clearInterval(progressInterval); setProgress(100);
       setUploading(false);
-      Alert.alert('Done', 'Captions generated from your voiceover!');
-    } catch (e) { clearInterval(progressInterval); Alert.alert('Error', e.message); setUploading(false); }
+      showAlert('Done', 'Captions generated from your voiceover!');
+    } catch (e) { clearInterval(progressInterval); showAlert('Error', e.message); setUploading(false); }
   }
 
   async function handleAutoCaption() {
     const voiceoverTrack = audioTracks.find(t => t.isVoiceover);
     if (voiceoverTrack) { generateCaptionsFromVoiceover(voiceoverTrack); return; }
-    if (items.length === 0) { Alert.alert('No media', 'Add a video clip first.'); return; }
+    if (items.length === 0) { showAlert('No media', 'Add a video clip first.'); return; }
     const videoItem = items.find(i => i.type === 'video');
-    if (!videoItem) { Alert.alert('No video', 'Auto Captions requires at least one video clip.'); return; }
+    if (!videoItem) { showAlert('No video', 'Auto Captions requires at least one video clip.'); return; }
     setShowCaptionModal(false);
     setUploading(true); setMessage('Generating captions...');
     const style = resolveCaptionStyle(captionStyle);
@@ -3137,13 +3138,13 @@ export default function EditVideoScreen({ navigation }) {
         if (res.status === 402 || res.status === 403) {
           promptUpgrade(null, error);
         } else {
-          Alert.alert('Error', error || 'Failed to start caption job');
+          showAlert('Error', error || 'Failed to start caption job');
         }
         setUploading(false);
         return;
       }
       pollCaptionJob(jobId);
-    } catch (e) { Alert.alert('Error', e.message); setUploading(false); }
+    } catch (e) { showAlert('Error', e.message); setUploading(false); }
   }
 
   function pollCaptionJob(jobId) {
@@ -3164,16 +3165,16 @@ export default function EditVideoScreen({ navigation }) {
           setItems(prev => prev.map((item, i) =>
             i === 0 ? { ...item, uri: captionedUrl, type: 'video' } : item
           ));
-          Alert.alert('Done', 'Captions added to your first clip!');
+          showAlert('Done', 'Captions added to your first clip!');
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);
-          Alert.alert('Error', job.error || 'Caption generation failed');
+          showAlert('Error', job.error || 'Caption generation failed');
         }
       } catch (e) {
         consecutiveFailures += 1;
         if (consecutiveFailures >= 8) {
           clearInterval(interval); setUploading(false);
-          Alert.alert('Lost track of the caption job', e.message);
+          showAlert('Lost track of the caption job', e.message);
         }
       }
     }, 2000);
@@ -3205,7 +3206,7 @@ export default function EditVideoScreen({ navigation }) {
           navigation.navigate('EditPostVideo', { videoUrl: job.videoUrl, videoPath: job.videoUrl });
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);
-          Alert.alert('Export failed', job.error || 'Video creation failed');
+          showAlert('Export failed', job.error || 'Video creation failed');
         }
       } catch (e) {
         // A dropped packet on mobile data is normal and not worth reporting; a poll
@@ -3214,7 +3215,7 @@ export default function EditVideoScreen({ navigation }) {
         consecutiveFailures += 1;
         if (consecutiveFailures >= 8) {
           clearInterval(interval); setUploading(false);
-          Alert.alert(
+          showAlert(
             'Lost track of the export',
             `The video may still be rendering. ${e.message}`,
           );
@@ -3590,7 +3591,7 @@ export default function EditVideoScreen({ navigation }) {
   const toolTapAction = useCallback((t, actions) => {
     const action = actions[t.key];
     if (!action) {
-      return () => Alert.alert(
+      return () => showAlert(
         t.label,
         t.premium
           ? 'Coming soon on the paid plans.'
@@ -3872,7 +3873,7 @@ export default function EditVideoScreen({ navigation }) {
                 beats live-looking and inert. */}
             <TouchableOpacity
               style={styles.coverThumbWrap}
-              onPress={() => Alert.alert('Cover', 'Choosing a cover frame is coming soon.')}>
+              onPress={() => showAlert('Cover', 'Choosing a cover frame is coming soon.')}>
               {items.length > 0
                 ? <Image source={{ uri: items[0].uri }} style={styles.coverThumbImg} resizeMode="cover" />
                 : <View style={styles.coverThumbEmpty} />}
@@ -4064,7 +4065,7 @@ export default function EditVideoScreen({ navigation }) {
                 style={[styles.tabBtn, active && styles.tabBtnActive]}
                 onPress={() => (tab.built
                   ? setActiveTab(tab.name)
-                  : Alert.alert(tab.name, tab.premium ? 'Coming soon on the paid plans.' : 'Coming soon.'))}>
+                  : showAlert(tab.name, tab.premium ? 'Coming soon on the paid plans.' : 'Coming soon.'))}>
                 <View>
                   <MaterialIcons
                     name={tab.icon}

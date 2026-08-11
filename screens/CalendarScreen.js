@@ -7,6 +7,7 @@ import {
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
@@ -36,7 +37,7 @@ export default function CalendarScreen({ navigation }) {
   }
 
   async function deletePost(id) {
-    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+    showAlert('Delete Post', 'Are you sure you want to delete this post?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
@@ -44,7 +45,7 @@ export default function CalendarScreen({ navigation }) {
           try {
             await deleteDoc(doc(db, 'scheduledPosts', id));
             setPosts(posts.filter(p => p.id !== id));
-          } catch (e) { Alert.alert('Error', e.message); }
+          } catch (e) { showAlert('Error', e.message); }
         }
       }
     ]);

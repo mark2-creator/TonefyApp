@@ -10,6 +10,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
+import { showAlert } from '../components/BrandedAlert';
 
 const PLAN_LABELS = { [TIER_PRO]: 'Pro Plan', [TIER_CREATOR]: 'Creator Plan' };
 
@@ -114,7 +115,7 @@ export default function ProfileScreen({ navigation }) {
   }
 
   function handleDelete() {
-    Alert.alert(
+    showAlert(
       'Delete Account',
       'Are you sure you want to delete your account? This cannot be undone.',
       [
@@ -143,14 +144,14 @@ export default function ProfileScreen({ navigation }) {
       setQrUri(totpUri.generateQrCodeUrl(user.email, 'Tonefy AI'));
       setShowMfaSetup(true);
     } catch (e) {
-      Alert.alert('Error', 'Could not start 2FA setup. Try again.');
+      showAlert('Error', 'Could not start 2FA setup. Try again.');
     } finally {
       setMfaLoading(false);
     }
   }
 
   async function handleVerifyMfa() {
-    if (mfaCode.length !== 6) { Alert.alert('Error', 'Enter the 6-digit code from your authenticator app.'); return; }
+    if (mfaCode.length !== 6) { showAlert('Error', 'Enter the 6-digit code from your authenticator app.'); return; }
     try {
       setMfaLoading(true);
       const cred = TotpMultiFactorGenerator.assertionForEnrollment(mfaSession, mfaCode);
@@ -160,14 +161,14 @@ export default function ProfileScreen({ navigation }) {
       setMfaCode('');
       showToast('2FA enabled successfully!');
     } catch (e) {
-      Alert.alert('Invalid Code', 'The code is incorrect or expired. Try again.');
+      showAlert('Invalid Code', 'The code is incorrect or expired. Try again.');
     } finally {
       setMfaLoading(false);
     }
   }
 
   async function handleDisableMfa() {
-    Alert.alert('Disable 2FA', 'Are you sure you want to disable two-factor authentication?', [
+    showAlert('Disable 2FA', 'Are you sure you want to disable two-factor authentication?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Disable', style: 'destructive', onPress: async () => {
         try {
@@ -177,7 +178,7 @@ export default function ProfileScreen({ navigation }) {
           setMfaEnabled(false);
           showToast('2FA disabled.');
         } catch (e) {
-          Alert.alert('Error', 'Could not disable 2FA. You may need to re-login first.');
+          showAlert('Error', 'Could not disable 2FA. You may need to re-login first.');
         } finally {
           setMfaLoading(false);
         }
@@ -187,7 +188,7 @@ export default function ProfileScreen({ navigation }) {
 
   function handleTikTokPress() {
     if (tiktok.connected) return;
-    Alert.alert('Connect TikTok', 'TikTok connection in the app is coming soon — you can connect it on the website for now.');
+    showAlert('Connect TikTok', 'TikTok connection in the app is coming soon — you can connect it on the website for now.');
   }
 
   const initial = (displayName || user?.email || '?')[0].toUpperCase();

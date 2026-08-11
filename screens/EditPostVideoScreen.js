@@ -11,6 +11,7 @@ import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogo
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -95,9 +96,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
   }
 
   async function postNow() {
-    if (!videoPath) { Alert.alert('Error', 'No video to post'); return; }
-    if (!ttOn) { Alert.alert('Error', 'Enable at least one platform'); return; }
-    if (!tiktokOpenId) { Alert.alert('Error', 'Connect TikTok first'); return; }
+    if (!videoPath) { showAlert('Error', 'No video to post'); return; }
+    if (!ttOn) { showAlert('Error', 'Enable at least one platform'); return; }
+    if (!tiktokOpenId) { showAlert('Error', 'Connect TikTok first'); return; }
     setPosting(true);
     try {
       const token = await user.getIdToken();
@@ -113,8 +114,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
         platforms: ['tiktok'], scheduledFor: new Date().toISOString(),
         scheduleMode: 'immediate', status: 'posted', createdAt: new Date().toISOString()
       });
-      Alert.alert('Success', 'Posted to TikTok!', [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
-    } catch (e) { Alert.alert('Error', e.message); }
+      showAlert('Success', 'Posted to TikTok!', [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+    } catch (e) { showAlert('Error', e.message); }
     setPosting(false);
   }
 
@@ -128,8 +129,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
         scheduleMode: 'queued', status: 'queued', createdAt: new Date().toISOString()
       });
       await loadQueue();
-      Alert.alert('Saved', 'Added to queue!');
-    } catch (e) { Alert.alert('Error', e.message); }
+      showAlert('Saved', 'Added to queue!');
+    } catch (e) { showAlert('Error', e.message); }
     setSaving(false);
   }
 
@@ -153,7 +154,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       try { if (target.exists) target.delete(); } catch {}
       const file = await File.downloadFileAsync(fullUrl, target);
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Saved', `Downloaded to the app's storage as ${name}.`);
+        showAlert('Saved', `Downloaded to the app's storage as ${name}.`);
         return;
       }
       await Sharing.shareAsync(file.uri, {
@@ -162,7 +163,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         UTI: 'public.movie',
       });
     } catch (e) {
-      Alert.alert('Download failed', e?.message || 'Could not download the video.');
+      showAlert('Download failed', e?.message || 'Could not download the video.');
     } finally {
       setDownloading(false);
     }

@@ -12,6 +12,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
 import { configureForegroundBehaviour } from './utils/notifications';
+import BrandedAlertHost from './components/BrandedAlert';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
@@ -154,6 +155,7 @@ function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    <BrandedAlertHost />
     </GestureHandlerRootView>
     </ThemeProvider>
     </SafeAreaProvider>

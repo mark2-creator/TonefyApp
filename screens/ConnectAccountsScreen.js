@@ -7,6 +7,7 @@ import {
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -39,13 +40,13 @@ export default function ConnectAccountsScreen({ navigation }) {
     try {
       await Linking.openURL(`${BACKEND}/tiktok/auth`);
     } catch (e) {
-      Alert.alert('Error', 'Could not open TikTok auth page');
+      showAlert('Error', 'Could not open TikTok auth page');
     }
     setConnecting(false);
   }
 
   async function disconnectTikTok() {
-    Alert.alert('Disconnect TikTok', 'Are you sure?', [
+    showAlert('Disconnect TikTok', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
@@ -53,7 +54,7 @@ export default function ConnectAccountsScreen({ navigation }) {
           try {
             await updateDoc(doc(db, 'connectedAccounts', user.uid), { tiktok: deleteField() });
             setTiktok(null);
-          } catch (e) { Alert.alert('Error', e.message); }
+          } catch (e) { showAlert('Error', e.message); }
         }
       }
     ]);

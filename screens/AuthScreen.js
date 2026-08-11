@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebase';
 import CountrySheet from '../components/CountryPicker';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const MAX_ATTEMPTS = 5;
@@ -94,7 +95,7 @@ export default function AuthScreen({ navigation }) {
     if (newCount >= MAX_ATTEMPTS) {
       lockUntil = Date.now() + LOCKOUT_MINUTES * 60 * 1000;
       setLockedUntil(lockUntil);
-      Alert.alert('Account Locked', `Too many failed attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`);
+      showAlert('Account Locked', `Too many failed attempts. Please try again in ${LOCKOUT_MINUTES} minutes.`);
     }
     if (email) {
       AsyncStorage.setItem(
@@ -106,7 +107,7 @@ export default function AuthScreen({ navigation }) {
 
   const handleVerifyMfaLogin = async () => {
     if (mfaLoginCode.length !== 6) {
-      return Alert.alert('Error', 'Enter the 6-digit code from your authenticator app.');
+      return showAlert('Error', 'Enter the 6-digit code from your authenticator app.');
     }
     try {
       setMfaLoading(true);
@@ -120,7 +121,7 @@ export default function AuthScreen({ navigation }) {
       setLockedUntil(null);
       if (email) AsyncStorage.removeItem(`lockout_${email.toLowerCase()}`).catch(() => {});
     } catch (e) {
-      Alert.alert('Invalid Code', 'The code is incorrect or expired. Try again.');
+      showAlert('Invalid Code', 'The code is incorrect or expired. Try again.');
     } finally {
       setMfaLoading(false);
     }
@@ -128,7 +129,7 @@ export default function AuthScreen({ navigation }) {
 
   const handleGoogleSignIn = async () => {
     if (isLockedOut()) {
-      return Alert.alert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
+      return showAlert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
     }
     try {
       setLoading(true);
@@ -141,7 +142,7 @@ export default function AuthScreen({ navigation }) {
       setLockedUntil(null);
     } catch (error) {
       handleFailedAttempt();
-      Alert.alert('Google Sign-In Error', error.message);
+      showAlert('Google Sign-In Error', error.message);
     } finally {
       setLoading(false);
     }
@@ -168,11 +169,11 @@ export default function AuthScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (isLockedOut()) {
-      return Alert.alert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
+      return showAlert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
     }
-    if (!email || !password) return Alert.alert('Error', 'Please fill all fields');
+    if (!email || !password) return showAlert('Error', 'Please fill all fields');
     if (!isLogin && (!fullName.trim() || !country)) {
-      return Alert.alert('Error', 'Please enter your full name and select your country');
+      return showAlert('Error', 'Please enter your full name and select your country');
     }
     setLoading(true);
     try {
@@ -180,8 +181,8 @@ export default function AuthScreen({ navigation }) {
         const userCred = await signInWithEmailAndPassword(auth, email, password);
         if (!userCred.user.emailVerified) {
           await auth.signOut();
-          Alert.alert('Email Not Verified', 'Please verify your email before logging in.', [
-            { text: 'Resend Email', onPress: async () => { await sendEmailVerification(userCred.user); Alert.alert('Sent!', 'Verification email resent.'); }},
+          showAlert('Email Not Verified', 'Please verify your email before logging in.', [
+            { text: 'Resend Email', onPress: async () => { await sendEmailVerification(userCred.user); showAlert('Sent!', 'Verification email resent.'); }},
             { text: 'OK' },
           ]);
           setLoading(false);
@@ -193,7 +194,7 @@ export default function AuthScreen({ navigation }) {
       } else {
         if (password !== confirmPassword) {
           setLoading(false);
-          return Alert.alert('Error', 'Passwords do not match');
+          return showAlert('Error', 'Passwords do not match');
         }
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         // The app's own convention: ProfileScreen reads and writes the name through
@@ -249,7 +250,7 @@ export default function AuthScreen({ navigation }) {
           await sendEmailVerification(userCred.user);
         }
         await auth.signOut();
-        Alert.alert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
+        showAlert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
         setIsLogin(true);
         setFullName('');
         setPassword('');
@@ -263,7 +264,7 @@ export default function AuthScreen({ navigation }) {
         setShowMfaPrompt(true);
       } else {
         handleFailedAttempt();
-        Alert.alert('Error', getFriendlyError(error));
+        showAlert('Error', getFriendlyError(error));
       }
     }
     setLoading(false);
@@ -272,7 +273,7 @@ export default function AuthScreen({ navigation }) {
   const RESET_COOLDOWN_SECONDS = 60;
 
   const handleForgotPassword = async () => {
-    if (!email) return Alert.alert('Error', 'Enter your email first');
+    if (!email) return showAlert('Error', 'Enter your email first');
     const key = `reset_cooldown_${email.toLowerCase()}`;
     try {
       const lastSentRaw = await AsyncStorage.getItem(key);
@@ -281,14 +282,14 @@ export default function AuthScreen({ navigation }) {
         const elapsed = (Date.now() - lastSent) / 1000;
         if (elapsed < RESET_COOLDOWN_SECONDS) {
           const remaining = Math.ceil(RESET_COOLDOWN_SECONDS - elapsed);
-          return Alert.alert('Please Wait', `You can request another reset email in ${remaining} second(s).`);
+          return showAlert('Please Wait', `You can request another reset email in ${remaining} second(s).`);
         }
       }
       await sendPasswordResetEmail(auth, email);
       await AsyncStorage.setItem(key, Date.now().toString());
-      Alert.alert('Success', 'Password reset email sent!');
+      showAlert('Success', 'Password reset email sent!');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showAlert('Error', error.message);
     }
   };
 

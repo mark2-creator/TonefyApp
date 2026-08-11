@@ -16,6 +16,7 @@ import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
 } from '../constants/captionStyles';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -477,7 +478,7 @@ export default function ScriptToVideoScreen({ navigation }) {
   const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); };
 
   const proceedWithScript = async () => {
-    if (!scriptInput.trim()) return Alert.alert('Error', 'Please enter your script first');
+    if (!scriptInput.trim()) return showAlert('Error', 'Please enter your script first');
     setScript(scriptInput);
     // Go straight to voiceover generation
     setLoading(true); setLoadingMsg('Generating AI voiceover...');
@@ -490,13 +491,13 @@ export default function ScriptToVideoScreen({ navigation }) {
       const data = await res.json();
       stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(2); }
-      else Alert.alert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) { Alert.alert('Error', err.message); }
+      else showAlert('Error', data.error || 'Failed to generate voiceover');
+    } catch (err) { showAlert('Error', err.message); }
     resetLoading();
   };
 
   const generateVoiceover = async () => {
-    if (!script.trim()) return Alert.alert('Error', 'Script is empty');
+    if (!script.trim()) return showAlert('Error', 'Script is empty');
     setLoading(true); setLoadingMsg('Generating AI voiceover...');
     startProgress(0, 90, 20000);
     try {
@@ -507,8 +508,8 @@ export default function ScriptToVideoScreen({ navigation }) {
       const data = await res.json();
       stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
-      else Alert.alert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) { Alert.alert('Error', err.message); }
+      else showAlert('Error', data.error || 'Failed to generate voiceover');
+    } catch (err) { showAlert('Error', err.message); }
     resetLoading();
   };
 
@@ -522,7 +523,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       }, 30000);
       const segData = await segRes.json();
       const segments = segData.segments;
-      if (!segments?.length) { Alert.alert('Error', segData.error || 'Failed to analyze script'); resetLoading(); return; }
+      if (!segments?.length) { showAlert('Error', segData.error || 'Failed to analyze script'); resetLoading(); return; }
 
       setLoadingMsg('Starting video generation...'); startProgress(20, 35, 3000);
       const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video-v2`, {
@@ -543,7 +544,7 @@ export default function ScriptToVideoScreen({ navigation }) {
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
-      if (!jobId) { Alert.alert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
+      if (!jobId) { showAlert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
 
       // Poll for job completion
       setLoadingMsg('Generating your video...'); startProgress(40, 95, 120000);
@@ -563,8 +564,8 @@ export default function ScriptToVideoScreen({ navigation }) {
 
       stopProgress(100);
       if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(3); }
-      else Alert.alert('Error', 'Failed to generate video');
-    } catch (err) { stopProgress(0); Alert.alert('Error', err.message); }
+      else showAlert('Error', 'Failed to generate video');
+    } catch (err) { stopProgress(0); showAlert('Error', err.message); }
     resetLoading();
   };
 
@@ -572,7 +573,7 @@ export default function ScriptToVideoScreen({ navigation }) {
 
   const copyLink = async () => {
     await Clipboard.setStringAsync(fullVideoUrl);
-    Alert.alert('Copied!', 'Video link copied to clipboard.');
+    showAlert('Copied!', 'Video link copied to clipboard.');
   };
 
   const downloadVideo = async () => {
@@ -586,9 +587,9 @@ export default function ScriptToVideoScreen({ navigation }) {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'video/mp4', dialogTitle: 'Save or share your video' });
       } else {
-        Alert.alert('Saved', `Video saved to: ${uri}`);
+        showAlert('Saved', `Video saved to: ${uri}`);
       }
-    } catch (err) { setDownloading(false); Alert.alert('Error', 'Download failed: ' + err.message); }
+    } catch (err) { setDownloading(false); showAlert('Error', 'Download failed: ' + err.message); }
   };
 
   const resetAll = () => {

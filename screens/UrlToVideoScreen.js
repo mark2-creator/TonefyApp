@@ -16,6 +16,7 @@ import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
 } from '../constants/captionStyles';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -478,9 +479,9 @@ export default function UrlToVideoScreen({ navigation }) {
   const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); };
 
   const fetchUrlAndGenerate = async () => {
-    if (!urlInput.trim()) return Alert.alert('Error', 'Please enter a URL first');
+    if (!urlInput.trim()) return showAlert('Error', 'Please enter a URL first');
     // Validate URL format
-    try { new URL(urlInput.trim()); } catch(e) { return Alert.alert('Error', 'Please enter a valid URL (e.g. https://example.com)'); }
+    try { new URL(urlInput.trim()); } catch(e) { return showAlert('Error', 'Please enter a valid URL (e.g. https://example.com)'); }
 
     setLoading(true); setLoadingMsg('Extracting content from URL...');
     startProgress(0, 40, 8000);
@@ -490,7 +491,7 @@ export default function UrlToVideoScreen({ navigation }) {
         body: JSON.stringify({ url: urlInput.trim() }),
       }, 30000);
       const data = await res.json();
-      if (!data.script) { Alert.alert('Error', data.error || 'Failed to extract content'); resetLoading(); return; }
+      if (!data.script) { showAlert('Error', data.error || 'Failed to extract content'); resetLoading(); return; }
       setPageTitle(data.title || '');
       setScript(data.script);
 
@@ -503,13 +504,13 @@ export default function UrlToVideoScreen({ navigation }) {
       const audioData = await audioRes.json();
       stopProgress(100);
       if (audioData.audioUrl) { setAudioUrl(audioData.audioUrl); setStep(2); }
-      else Alert.alert('Error', audioData.error || 'Failed to generate voiceover');
-    } catch (err) { Alert.alert('Error', err.message); }
+      else showAlert('Error', audioData.error || 'Failed to generate voiceover');
+    } catch (err) { showAlert('Error', err.message); }
     resetLoading();
   };
 
   const generateVoiceover = async () => {
-    if (!script.trim()) return Alert.alert('Error', 'Script is empty');
+    if (!script.trim()) return showAlert('Error', 'Script is empty');
     setLoading(true); setLoadingMsg('Generating AI voiceover...');
     startProgress(0, 90, 20000);
     try {
@@ -520,8 +521,8 @@ export default function UrlToVideoScreen({ navigation }) {
       const data = await res.json();
       stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
-      else Alert.alert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) { Alert.alert('Error', err.message); }
+      else showAlert('Error', data.error || 'Failed to generate voiceover');
+    } catch (err) { showAlert('Error', err.message); }
     resetLoading();
   };
 
@@ -535,7 +536,7 @@ export default function UrlToVideoScreen({ navigation }) {
       }, 30000);
       const segData = await segRes.json();
       const segments = segData.segments;
-      if (!segments?.length) { Alert.alert('Error', segData.error || 'Failed to analyze script'); resetLoading(); return; }
+      if (!segments?.length) { showAlert('Error', segData.error || 'Failed to analyze script'); resetLoading(); return; }
 
       setLoadingMsg('Starting video generation...'); startProgress(20, 35, 3000);
       const mergeRes = await fetchWithTimeout(`${BACKEND}/api/idea-to-video-v2`, {
@@ -556,7 +557,7 @@ export default function UrlToVideoScreen({ navigation }) {
         }),
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
-      if (!jobId) { Alert.alert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
+      if (!jobId) { showAlert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
 
       // Poll for job completion
       setLoadingMsg('Generating your video...'); startProgress(40, 95, 120000);
@@ -576,8 +577,8 @@ export default function UrlToVideoScreen({ navigation }) {
 
       stopProgress(100);
       if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(3); }
-      else Alert.alert('Error', 'Failed to generate video');
-    } catch (err) { stopProgress(0); Alert.alert('Error', err.message); }
+      else showAlert('Error', 'Failed to generate video');
+    } catch (err) { stopProgress(0); showAlert('Error', err.message); }
     resetLoading();
   };
 
@@ -585,7 +586,7 @@ export default function UrlToVideoScreen({ navigation }) {
 
   const copyLink = async () => {
     await Clipboard.setStringAsync(fullVideoUrl);
-    Alert.alert('Copied!', 'Video link copied to clipboard.');
+    showAlert('Copied!', 'Video link copied to clipboard.');
   };
 
   const downloadVideo = async () => {
@@ -599,9 +600,9 @@ export default function UrlToVideoScreen({ navigation }) {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'video/mp4', dialogTitle: 'Save or share your video' });
       } else {
-        Alert.alert('Saved', `Video saved to: ${uri}`);
+        showAlert('Saved', `Video saved to: ${uri}`);
       }
-    } catch (err) { setDownloading(false); Alert.alert('Error', 'Download failed: ' + err.message); }
+    } catch (err) { setDownloading(false); showAlert('Error', 'Download failed: ' + err.message); }
   };
 
   const resetAll = () => {
