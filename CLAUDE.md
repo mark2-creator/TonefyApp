@@ -1123,6 +1123,30 @@ nothing to aim at.
     touching gesture composition code carries its own established landmine risk in this
     file (see "Known bug pattern: gesture composition + config methods") and wasn't
     asked for — flagged rather than done.
+15. **On-canvas text editing had no explicit way out and no shortcut to its style
+    sheet** (commit `f6de3b07`, published Aug 11 2026 as update group
+    `98f66e39-a024-44d9-a9a4-2eb90bd6d339`, runtime 1.1.0) — direct feedback from an
+    on-device test of the on-canvas typing feature (item under Phase 3). Every gesture
+    on an overlay is switched off while typing into it (needed so a tap lands in the
+    text, not on the element - see "Type on the canvas" under Phase 3), which also hides
+    the corner resize handle. That left editing with no visible exit besides tapping
+    elsewhere on the canvas or the keyboard's own back action, and no route to
+    font/colour/background without first leaving edit mode, deselecting, then
+    long-pressing to find the gesture existed at all.
+
+    Two small buttons now sit at the same corners the resize handle already uses when
+    selected (its own bottom-right corner is free during editing regardless, since the
+    handle is hidden then) - both counter-scaled the same way the handle already is, or
+    a caption pinched to 4x would carry a button the size of a thumb: a close (`X`)
+    button wired to the existing `endInlineEdit` (commit-or-delete-if-empty, unchanged),
+    and a `tune` button wired to the existing `openOverlayStyleSheet` - the same callback
+    the long-press gesture already calls, now also reachable without knowing long-press
+    is the way in. `CanvasOverlay` gained one new prop (`onEditDone`) and reuses the
+    existing `onLongPress` prop for the second button rather than adding another.
+    `scripts/check-gesture-composition.py` run clean after, since this touched the same
+    file the gesture-composition bug pattern lives in - no `.enabled()` was added to a
+    composition, only two plain `TouchableOpacity`s as siblings of the existing gestures.
+    **Untested on device** - published, not yet confirmed.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
