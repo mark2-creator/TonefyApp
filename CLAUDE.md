@@ -1479,6 +1479,43 @@ nothing to aim at.
     changing that measurement's actual algorithm risks a correctness regression under
     time pressure and the progress-reporting fix already addresses the reported
     symptom. **Untested on device** past a real completed job confirmed via `jobs.json`.
+23. **The real cause of item 22's slowness: 391 overlays, rendered fully sequentially**
+    (Aug 11 2026, `~/Tonefy-react/backend@9f2e9ca9`, deployed via `pm2 restart` once
+    confirmed no render was in-flight). The count came straight from the device's own
+    progress message once item 22 made it visible (`"Adding text & overlays...
+    (353/391)"`) - a highlight-style caption sends one overlay per spoken word (the
+    phrase stays on screen, only which word is chipped changes - see "Type on the
+    canvas" above), so a normal-length voiceover means hundreds of these, each paying
+    several real `convert` process-spawns on top of its own image work, fully
+    sequentially.
+
+    **New `mapWithConcurrency`** runs 4 at a time instead of one, overlapping that
+    spawn overhead. Kept modest rather than higher - this VPS runs other pm2 processes
+    too, and a mask/alpha/fill/composite chain is real CPU work (dilate, blur), not I/O
+    wait that more workers would help hide.
+
+    **Naively parallelizing would have undercut `phraseLayerCache` itself** - that
+    cache only writes the shared shadow/glow/stroke layers back once a word finishes
+    (the single most expensive call in the whole caption path, 380ms, identical for
+    every word of a phrase per its own comment), so two words of the *same* phrase
+    running at once would both miss the cache and both pay that cost redundantly - not
+    wrong output, but exactly the wasted work that cache exists to avoid, potentially
+    offsetting whatever concurrency gained. Fixed by grouping `textOverlays` by
+    `(text, font, size, captionSpec)` before anything runs - every word of one phrase
+    carries the identical tuple - so each phrase's own words stay together and run
+    sequentially (the cache still helps exactly as before), while different
+    phrases/overlays run concurrently with each other.
+
+    Verified: `node -c` clean, and the grouping logic checked in isolation against a
+    realistic three-phrase input (one 3-word and one 2-word highlight-style phrase,
+    plus an ordinary singleton overlay) - correctly formed three groups with each
+    phrase's words kept together in original `activeWord` order. The per-overlay
+    rendering logic itself is completely unchanged, only the outer iteration structure.
+    **Not independently verified end-to-end against a real 391-overlay render or
+    compared byte-for-byte against the old sequential output** - deployed given the
+    user was actively waiting and the reasoning is solid, but this is the piece most
+    worth double-checking (word timing, which word is highlighted, chip position) on
+    the next real export if anything looks even slightly different.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
