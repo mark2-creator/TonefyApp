@@ -1400,6 +1400,56 @@ nothing to aim at.
 
     Verified: `expo export` clean, `scratchpad/jsxrefs.py` clean (the new
     `BrandedAlertHost` tag resolves). **Untested on device.**
+20. **Export ANR on projects with many overlays — fixed** (Aug 11 2026, commit
+    `22dae4d0`, update group `89dcde4c-c720-4387-98e1-b01f61b94744`, runtime 1.1.0).
+    Reported from a device test: export looked stuck at 60% ("Adding text &
+    overlays..."), then Android showed "Tonefy AI isn't responding." Checked the
+    backend's own `jobs.json` directly rather than trusting the symptom - the job had
+    actually finished (`status:"done", progress:100`) several minutes after the app's
+    poll log showed its last request. The server was never the problem.
+
+    **Root cause: the text-overlay render loop had no memoization at all**, unlike
+    `mediaOverlayViews` right above it, which already solved this exact problem with
+    `useMemo`. Every unrelated re-render - an export progress tick from `pollJob`'s
+    `setProgress`/`setMessage`, firing every 2s and having nothing to do with overlay
+    content - rebuilt every `CanvasOverlay` from scratch for every overlay in the
+    project, each one constructing seven `Gesture.Pan` objects (five pre-existing, two
+    added by item 16's box-width resize). On a project with enough overlays
+    accumulated - this session's test project had several, including one long
+    paragraph duplicated across multiple clips - that per-tick cost was apparently
+    enough to eventually freeze the JS thread. Since `pollJob`'s own `setInterval` runs
+    on that same thread, the freeze stopped its own timer from firing too, which is
+    what turned a slow export into an apparently-stuck one and triggered the ANR.
+
+    Fixed by wrapping the render in `useMemo`, matching `mediaOverlayViews`' existing
+    pattern exactly (new `textOverlayViews`). `position` stays a real dependency -
+    auto-captions gate on it and a highlight style's active word depends on it - so it
+    still recomputes correctly during playback; only state this list has nothing to do
+    with (export progress, poll messages) no longer forces a recompute. One correctness
+    fix needed alongside it: `onChangeText` was an inline per-render closure over each
+    overlay's key, which would have defeated the memo for every overlay on every
+    render - replaced with the stable `setOverlayText(key, text)` callback itself, with
+    `TextOverlayContent`'s caret `TextInput` now supplying `overlay.key` at the call
+    site instead of the parent closing over it.
+
+    Verified: `expo export` clean, `scratchpad/jsxrefs.py` clean. **Untested on
+    device** - the mechanism fits every symptom reported, but not yet confirmed closed.
+21. **Text overlays hidden on canvas during an active transition blend** (Aug 11 2026,
+    commit `00c93e1d`, update group `c7c1c95b-944e-4b95-b34d-89e93bc34fba`, runtime
+    1.1.0). Same device-test session as item 20 - text/captions looked visually wrong
+    ("squeeze tall") while a transition was blending. Direct request rather than a
+    root-cause chase: a caption or manual overlay has no transition of its own, so it
+    was sitting flat on top of a clip that's moving/masked/scaled underneath it - not
+    shown for that span is the simplest correct behaviour.
+
+    Gated on `joinLayers.active` specifically, not `activeJoin` - the latter is true
+    for the whole 1.5s lookahead window the incoming clip pre-mounts during
+    (deliberately invisible prep, not yet blending, see the comment above `activeJoin`
+    itself), while `.active` is only the actual 0.3s the two clips are visibly
+    crossing. Gating on the longer window would have made text disappear noticeably
+    before anything was happening on screen. **Preview-only** - the export's own
+    transition rendering (ffmpeg `xfade`) is a separate mechanism from this RN-side
+    approximation and was not in scope of what was reported. **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
