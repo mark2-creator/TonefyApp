@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import QRCode from 'react-native-qrcode-svg';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
@@ -125,6 +125,11 @@ export default function ProfileScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
+              const uid = auth.currentUser.uid;
+              // Firestore rules require auth.uid == userId, so this must run
+              // before the Auth user is gone - deleting the Auth user first
+              // would leave this doc permanently unreachable.
+              await deleteDoc(doc(db, 'users', uid));
               await deleteUser(auth.currentUser);
             } catch (e) {
               showToast('Please log out and log back in before deleting.');
