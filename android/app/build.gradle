@@ -89,6 +89,7 @@ android {
 
     namespace 'com.ahumuza21213.TonefyApp'
     defaultConfig {
+        missingDimensionStrategy "store", "play"
         applicationId 'com.ahumuza21213.TonefyApp'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
