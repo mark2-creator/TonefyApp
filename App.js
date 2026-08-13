@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import * as Updates from 'expo-updates';
 import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './utils/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
@@ -30,6 +31,7 @@ import RecordingScreen from './screens/RecordingScreen';
 import PostRecordingScreen from './screens/PostRecordingScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
+import SubscriptionScreen from './screens/SubscriptionScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 import { loadAppFonts } from './constants/fontLoader';
@@ -125,7 +127,7 @@ function App() {
     <SafeAreaProvider>
     <ThemeProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style="light" />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
@@ -138,6 +140,7 @@ function App() {
             <Stack.Screen name="EditVideo" component={EditVideoScreen} />
             <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="IdeaToAudio" component={IdeaToAudioScreen} />
             <Stack.Screen name="GeneratingAudio" component={GeneratingAudioScreen} />

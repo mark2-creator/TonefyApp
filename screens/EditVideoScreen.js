@@ -54,6 +54,7 @@ import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { showAlert } from '../components/BrandedAlert';
+import { navigationRef } from '../utils/navigationRef';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -347,17 +348,18 @@ const MUSIC_SOURCES = [
 // "this is a paid feature" copy for the tool-locking call sites that have
 // no specific reason to report, only a feature name.
 //
-// No link to a pricing page or checkout: there is no purchase flow yet.
-// Play Billing (not Stripe) is the plan, entirely inside the Android app
-// via react-native-iap - not a website checkout - and it's still blocked on
-// Play Console identity verification. A "See Plans" button pointing at a
-// web pricing page would be dishonest twice over: that page doesn't exist,
-// and even once it does, it won't be where checkout happens.
+// Routes into SubscriptionScreen via navigationRef rather than a web
+// pricing page: Play Billing (not Stripe) is the plan, entirely inside the
+// Android app via react-native-iap, not a website checkout - so the only
+// honest place to send someone is the in-app purchase screen itself.
 function promptUpgrade(label, message) {
   showAlert(
     'Upgrade to Continue',
-    message || `${label} is on the Pro and Creator plans.\n\nPlans are not on sale in the app yet - this feature unlocks as soon as they are.`,
-    [{ text: 'OK' }]
+    message || `${label} is on the Pro and Creator plans.`,
+    [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'See Plans', onPress: () => navigationRef.isReady() && navigationRef.navigate('Subscription') },
+    ]
   );
 }
 

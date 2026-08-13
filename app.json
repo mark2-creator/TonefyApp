@@ -61,7 +61,8 @@
           "project": "react-native"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "react-native-iap"
     ],
     "scheme": "tonefyai",
     "owner": "mumberemike4",

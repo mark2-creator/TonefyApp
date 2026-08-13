@@ -233,13 +233,22 @@ export default function ProfileScreen({ navigation }) {
               </Text>
             </View>
           </View>
-          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={[styles.row, { borderBottomColor: theme.border, borderBottomWidth: tier === TIER_CREATOR ? 0 : 1 }]}>
             <MaterialIcons name="event-repeat" size={18} color={theme.icon} style={styles.rowIcon} />
             <View style={styles.rowContent}>
               <Text style={[styles.rowLabel, { color: theme.text }]}>Next Reset</Text>
               <Text style={[styles.rowValue, { color: theme.subtext }]}>{formatResetDate(creditsResetAt)}</Text>
             </View>
           </View>
+          {tier !== TIER_CREATOR && (
+            <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]} onPress={() => navigation.navigate('Subscription')}>
+              <MaterialIcons name="workspace-premium" size={18} color="#2ECC71" style={styles.rowIcon} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: '#2ECC71' }]}>{tier === TIER_PRO ? 'Upgrade to Creator' : 'Upgrade Plan'}</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
