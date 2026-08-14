@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   initConnection,
   endConnection,
@@ -44,6 +45,7 @@ const PRODUCTS = {
 
 export default function SubscriptionScreen({ navigation }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { tier: currentTier } = usePlan();
   const [connected, setConnected] = useState(false);
   const [skuDetails, setSkuDetails] = useState({});
@@ -162,7 +164,7 @@ export default function SubscriptionScreen({ navigation }) {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <MaterialIcons name="close" size={24} color={theme.text} />
         </TouchableOpacity>
@@ -228,7 +230,7 @@ export default function SubscriptionScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 40 },
   cycleRow: { flexDirection: 'row', gap: 8, marginBottom: 20, alignSelf: 'center' },
