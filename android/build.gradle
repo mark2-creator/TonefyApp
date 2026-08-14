@@ -20,5 +20,15 @@ allprojects {
   }
 }
 
+ext {
+  // react-native-iap's own default (7.0.0, see node_modules/react-native-iap/
+  // android/gradle.properties) is below Google Play's new minimum of 8.0.0,
+  // required from 31 Aug 2026 or app updates get rejected. The library reads
+  // rootProject.ext.playBillingSdkVersion first if present (see its own
+  // build.gradle's getExtOrDefault), so this overrides it without needing an
+  // upstream release.
+  playBillingSdkVersion = "8.0.0"
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"

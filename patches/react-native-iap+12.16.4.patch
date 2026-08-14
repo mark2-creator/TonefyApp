@@ -1,8 +1,85 @@
 diff --git a/node_modules/react-native-iap/android/src/play/java/com/dooboolab/rniap/RNIapModule.kt b/node_modules/react-native-iap/android/src/play/java/com/dooboolab/rniap/RNIapModule.kt
-index 54ca696..3231f5b 100644
+index 54ca696..8bcc826 100644
 --- a/node_modules/react-native-iap/android/src/play/java/com/dooboolab/rniap/RNIapModule.kt
 +++ b/node_modules/react-native-iap/android/src/play/java/com/dooboolab/rniap/RNIapModule.kt
-@@ -461,7 +461,7 @@ class RNIapModule(
+@@ -15,10 +15,8 @@ import com.android.billingclient.api.GetBillingConfigParams
+ import com.android.billingclient.api.GetBillingConfigParams.Builder
+ import com.android.billingclient.api.ProductDetails
+ import com.android.billingclient.api.Purchase
+-import com.android.billingclient.api.PurchaseHistoryRecord
+ import com.android.billingclient.api.PurchasesUpdatedListener
+ import com.android.billingclient.api.QueryProductDetailsParams
+-import com.android.billingclient.api.QueryPurchaseHistoryParams
+ import com.android.billingclient.api.QueryPurchasesParams
+ import com.facebook.react.bridge.Arguments
+ import com.facebook.react.bridge.LifecycleEventListener
+@@ -37,12 +35,15 @@ import com.facebook.react.bridge.WritableNativeMap
+ import com.facebook.react.module.annotations.ReactModule
+ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
+ import com.google.android.gms.common.ConnectionResult
++import com.android.billingclient.api.PendingPurchasesParams
+ import com.google.android.gms.common.GoogleApiAvailability
+ 
+ @ReactModule(name = RNIapModule.TAG)
+ class RNIapModule(
+     private val reactContext: ReactApplicationContext,
+-    private val builder: BillingClient.Builder = BillingClient.newBuilder(reactContext).enablePendingPurchases(),
++    private val builder: BillingClient.Builder = BillingClient.newBuilder(reactContext).enablePendingPurchases(
++        PendingPurchasesParams.newBuilder().enableOneTimeProducts().build(),
++    ),
+     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
+ ) : ReactContextBaseJavaModule(reactContext),
+     PurchasesUpdatedListener {
+@@ -415,38 +416,16 @@ class RNIapModule(
+         type: String,
+         promise: Promise,
+     ) {
+-        ensureConnection(
+-            promise,
+-        ) { billingClient ->
+-            billingClient.queryPurchaseHistoryAsync(
+-                QueryPurchaseHistoryParams
+-                    .newBuilder()
+-                    .setProductType(
+-                        if (type == "subs") BillingClient.ProductType.SUBS else BillingClient.ProductType.INAPP,
+-                    ).build(),
+-            ) { billingResult: BillingResult, purchaseHistoryRecordList: MutableList<PurchaseHistoryRecord>? ->
+-
+-                if (!isValidResult(billingResult, promise)) return@queryPurchaseHistoryAsync
+-
+-                Log.d(TAG, purchaseHistoryRecordList.toString())
+-                val items = Arguments.createArray()
+-                purchaseHistoryRecordList?.forEach { purchase ->
+-                    val item = Arguments.createMap()
+-                    item.putString("productId", purchase.products[0])
+-                    val products = Arguments.createArray()
+-                    purchase.products.forEach { products.pushString(it) }
+-                    item.putArray("productIds", products)
+-                    item.putDouble("transactionDate", purchase.purchaseTime.toDouble())
+-                    item.putString("transactionReceipt", purchase.originalJson)
+-                    item.putString("purchaseToken", purchase.purchaseToken)
+-                    item.putString("dataAndroid", purchase.originalJson)
+-                    item.putString("signatureAndroid", purchase.signature)
+-                    item.putString("developerPayload", purchase.developerPayload.orEmpty())
+-                    items.pushMap(item)
+-                }
+-                promise.safeResolve(items)
+-            }
+-        }
++        // queryPurchaseHistoryAsync was removed outright in Play Billing Library
++        // 8.0.0 (no direct replacement - Google's own migration notes point at
++        // queryPurchasesAsync instead, which only covers current entitlements,
++        // not full history). Tonefy doesn't call getPurchaseHistory anywhere, so
++        // rather than guess at a lossy reimplementation for unused functionality,
++        // this rejects clearly instead of silently returning wrong data.
++        promise.safeReject(
++            PromiseUtils.E_SERVICE_ERROR,
++            "getPurchaseHistory is unavailable: Play Billing Library 8.0.0 removed queryPurchaseHistoryAsync with no direct replacement.",
++        )
+     }
+ 
+     @ReactMethod
+@@ -461,7 +440,7 @@ class RNIapModule(
          isOfferPersonalized: Boolean, // New parameter in V5
          promise: Promise,
      ) {
