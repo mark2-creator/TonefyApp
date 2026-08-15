@@ -62,7 +62,8 @@
         }
       ],
       "expo-font",
-      "react-native-iap"
+      "react-native-iap",
+      "expo-secure-store"
     ],
     "scheme": "tonefyai",
     "owner": "mumberemike4",

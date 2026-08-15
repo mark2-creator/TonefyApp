@@ -177,6 +177,18 @@ export default function AuthScreen({ navigation }) {
     }
   };
 
+  // Firebase Auth's own default is just a 6-character minimum with no
+  // complexity requirement at all, surfaced only as an error after the
+  // account creation call already ran. Checked client-side, before
+  // signup, so weak passwords are rejected up front instead of round-
+  // tripping to Firebase first.
+  const getPasswordStrengthError = (pw) => {
+    if (pw.length < 8) return 'Password must be at least 8 characters.';
+    if (!/[a-zA-Z]/.test(pw)) return 'Password must include at least one letter.';
+    if (!/[0-9]/.test(pw)) return 'Password must include at least one number.';
+    return null;
+  };
+
   const handleSubmit = async () => {
     if (isLockedOut()) {
       return showAlert('Too Many Attempts', `Please wait ${getRemainingLockoutMinutes()} more minute(s) before trying again.`);
@@ -184,6 +196,10 @@ export default function AuthScreen({ navigation }) {
     if (!email || !password) return showAlert('Error', 'Please fill all fields');
     if (!isLogin && (!fullName.trim() || !country)) {
       return showAlert('Error', 'Please enter your full name and select your country');
+    }
+    if (!isLogin) {
+      const strengthError = getPasswordStrengthError(password);
+      if (strengthError) return showAlert('Weak Password', strengthError);
     }
     setLoading(true);
     try {
