@@ -1894,6 +1894,71 @@ nothing to aim at.
     for, so no new credential was needed.
 
 
+30. **A real Play Billing purchase completed end to end — Pro granted, credits set,
+    purchase acknowledged** (Aug 15 2026; app `82518c5b`, `3e008f1c`; build 9 =
+    versionCode 9 from `07a3691a`, on both Play tracks). This is the first time the
+    subscription chain has ever run: `/api/verify-purchase` had **zero** entries in the
+    backend log before tonight, so every part of it downstream of Play was unproven
+    code. Confirmed on device and in Firestore, not inferred: `plan=pro`,
+    `creditsRemaining=60`, `subscriptionProductId=tonefy_pro_monthly`,
+    `processedPurchases=1`, with the app showing "You're upgraded!", the Pro card
+    switching to "Current Plan", and ProfileScreen moving to **Pro Plan / 60 of 60** with
+    no restart - which is `usePlan()`'s `onSnapshot` listener working as designed.
+
+    **The payments profile was never the blocker, and saying it was, was a mistake.**
+    Google's test sheet ("Test card, always approves", `US$8.25/5 min` - test
+    subscriptions renew every 5 minutes rather than monthly) processed fine with bank
+    verification still under review. The earlier `ITEM_UNAVAILABLE` had a second
+    candidate explanation all along - Play Billing refuses to sell to an app the Play
+    Store did not install, and that earlier attempt ran on a build installed straight
+    from EAS. The reasoning that picked the wrong one is worth naming because it
+    appeared **twice in one session**: *everything else checks out, therefore it must be
+    X*. Both times "everything else" had not actually been checked - the binary was
+    wrong (item 29) and the install path was wrong here. An elimination argument is only
+    as good as the enumeration behind it.
+
+    **The bug this exposed is the one that would have cost real money.**
+    `purchaseUpdatedListener` is registered in `SubscriptionScreen`'s effect and removed
+    on unmount, alongside `endConnection()`. Play delivers a purchase asynchronously,
+    after its own "require authentication for purchases?" prompt - by which point the
+    sheet was dismissed and the user was on Profile. The screen had unmounted, nothing
+    was listening, and the backend was never called. **Nothing picked it up afterwards
+    either**, because no code path ever asked Play what the account already owns.
+
+    That second half is the serious one: an unverified purchase is also an
+    **unacknowledged** purchase, and Google auto-refunds those after three days. A real
+    customer would pay, receive nothing, and be silently refunded, with no error
+    anywhere for anyone to notice. **A listener alone cannot close this** - it only fires
+    while one particular screen happens to be mounted.
+
+    Fixed in `82518c5b`: `getAvailablePurchases()` now runs once after
+    `initConnection()`, and anything still unacknowledged is verified. Silent on that
+    path, since on the ordinary route the listener has already handled it and the pass
+    finds nothing. Verification is one `useCallback` shared by both routes, so the
+    ordering that matters - **acknowledge only after the backend has recorded the
+    grant**, never before - cannot drift between them. Deliberately not moved to an
+    app-level listener: the restore pass covers that case *and* one an app-level
+    listener still would not, a purchase landing while the app is not running.
+
+    **`3e008f1c` is a follow-up to a defect introduced by the fix itself.** `82518c5b`
+    listed `verifyPurchase` in the setup effect's dependencies, so a change in its
+    identity re-ran the whole effect - repeating `initConnection`, both listener
+    registrations and the restore pass. The grant log shows the result: **four parallel
+    POSTs for one purchase token within 55ms**. Held in a ref instead, effect back to
+    empty deps.
+
+    **Which incidentally gave the replay protection its first real test, and it held.**
+    The atomic `.create()` claim on `users/{uid}/processedPurchases/{sha256(token)}`
+    (`Tonefy-react@d7881a63`) had never been exercised. Four genuinely *concurrent*
+    claims on one token is a sharper case than the sequential retry it was written for:
+    one `processedPurchases` doc, `creditsRemaining` exactly 60 rather than 240.
+
+    **Still not built:** subscription-lapse handling, Real-time Developer Notifications,
+    and any renewal path. Note the test subscription renews every 5 minutes, so a
+    lapse/renewal can now actually be observed on a real account rather than reasoned
+    about - that is the cheapest opportunity this setup offers and it has not been taken.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
