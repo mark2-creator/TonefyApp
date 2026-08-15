@@ -136,6 +136,16 @@ export default function AuthScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || userInfo.idToken;
+      if (!idToken) {
+        // Temporary diagnostic: idToken has been coming back empty even with
+        // correct webClientId/SHA-1 config verified on the Firebase/Cloud
+        // side. Surfacing the raw response here instead of letting Firebase
+        // throw its opaque auth/argument-error, so the actual shape Google
+        // returned can be read off the device instead of guessed at.
+        showAlert('Debug: no idToken in response', JSON.stringify(userInfo, null, 2).slice(0, 900));
+        setLoading(false);
+        return;
+      }
       const credential = GoogleAuthProvider.credential(idToken);
       await signInWithCredential(auth, credential);
       setFailedAttempts(0);
