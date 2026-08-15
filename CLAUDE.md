@@ -1775,6 +1775,82 @@ nothing to aim at.
     on the purchase flow, which waits on Google.
 
 
+29. **Upgrade Plan grey-screened; an ErrorBoundary now makes a render throw say what it
+    hit** (Aug 15 2026, commits `180425ff`, `980cdb22`, `07a3691a`). Three separate
+    things, in the order they were found, because the order is the lesson.
+
+    **`components/ErrorBoundary.js` is the durable part.** A render-time throw unmounts
+    the tree and leaves the bare window background - the grey screen this project has
+    now hit four times (`75198f47` gesture composition, `bf87b82e` useDragTracker,
+    a deleted component's surviving call site, and this). Every one passed
+    `expo export`, `node --check` and lint; every one cost a round trip to a device
+    just to learn the *name* of what failed. It prevents none of them. It only makes
+    the tree report the error and its component stack instead of vanishing. Wrapped
+    around `Stack.Navigator` from inside `NavigationContainer`, so `navigationRef` and
+    `BrandedAlertHost` survive and "Try again" re-renders the navigator rather than the
+    app. **Kept permanently, not as a temporary diagnostic** - the failures it covers
+    are reachable only on a device, so the moment it pays off is always in someone's
+    hands and never in front of a build check. It paid off on first use: the answer
+    came back as `E_IAP_NOT_AVAILABLE at SubscriptionScreen` on the very next launch,
+    after static inspection (route registered, every theme token present, jsxrefs
+    clean, `usePlan()` guarded on every path) had already been exhausted.
+
+    **The crash: `purchaseUpdatedListener`/`purchaseErrorListener` are not passive.**
+    Each constructs a `NativeEventEmitter` over the IAP native module, so each calls
+    `checkNativeAndroidAvailable()` and throws synchronously when the module is absent
+    (`react-native-iap/src/internal/platform.ts:23`). Both sat *outside* the try/catch
+    already wrapping `initConnection`/`getSubscriptions` - whose own comment says the
+    intent was to fall back to the hardcoded prices. The listeners defeated that
+    intent, and a throw in an unwrapped effect unmounts the tree. `endConnection()` in
+    the cleanup reaches the same module and needed the same wrapping. The screen now
+    degrades: fallback prices, an explicit notice, and Subscribe reporting why. Worth
+    keeping as a shape, not just a fix - **an `await x()` inside a try tells you
+    nothing about the un-awaited call two lines below it**.
+
+    **The mistake I made in the middle of this, which cost a publish cycle.**
+    `180425ff` was published to `production` while carrying `cefa6fed`, which had added
+    `expo-secure-store` *after* versionCode 8 was built. That module's JS calls
+    `requireNativeModule('ExpoSecureStore')` at import time and reads constants off the
+    result, so `import * as SecureStore` throws while the file is being evaluated -
+    and `firebase.js` imports it, and every screen imports `firebase.js`. That is not a
+    degraded feature, it is the app failing to launch. **CLAUDE.md already stated this
+    rule** under "Working conventions to keep"; it was published straight past without
+    checking. Fixed in `980cdb22` by requiring it lazily inside a `try` with a guard at
+    each of the three call sites, matching `utils/notifications.js`. Two things worth
+    carrying forward: it never reached the device (which is *also* why the ErrorBoundary
+    in that same update did not appear, and the user's "still grey" report was the old
+    bundle - a stale-bundle reading that could easily have been mistaken for the fix not
+    working); and `removeItem`'s existing `.catch(() => {})` was not protection, since a
+    missing method throws synchronously when called and a catch on the returned promise
+    never sees it. **Before any `eas update`, diff `package.json` against the commit the
+    installed build was cut from.** One line, and it would have caught this.
+
+    **Still unresolved: the device is running a binary older than any build that has
+    Play Billing in it.** The notice reports `Installed 1.0.0 (build ?)` with the
+    fallback prices `$6.99`/`$14.99` showing, so the module is genuinely absent rather
+    than misbehaving. Ruled out rather than assumed: `react-native-iap` is unchanged at
+    12.16.4 across every commit since the session where this same device *did* show real
+    converted Play prices ($8.25/$17.69, matching the Play Developer API for Uganda);
+    the APK published on the website has no billing classes at all but is on the
+    `preview` channel and so cannot take a `production` update; and both finished
+    production builds (versionCode 6 from `b42353e4`, versionCode 8 from `040879c0`)
+    post-date the react-native-iap commit, so both contain it. Build 8 certainly does -
+    `missingDimensionStrategy "store", "play"` was only *needed* because Gradle was
+    linking the module, and the Kotlin patch only mattered because it was being
+    compiled. The leading explanation is versionCode 2, still sitting on the internal
+    testing track, which predates the subscription work entirely. `Constants
+    .nativeBuildVersion` came back undefined and did not identify the binary; the
+    reliable device-side read is Settings -> Apps -> Tonefy AI.
+
+    **A new production build was cut at `07a3691a`** to settle this and to carry the
+    two fixes that cannot ship over the air (`utils/secureAuthPersistence.js`,
+    password strength). `eas.json` has `appVersionSource: remote` with `autoIncrement`
+    on the production profile, so the versionCode is assigned by EAS rather than by
+    `android/app/build.gradle` - which still reads `versionCode 1` and is not the
+    number that ships. `runtimeVersion` stays 1.1.0, so every update already published
+    applies to it.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
@@ -1880,6 +1956,22 @@ frames while a still has nothing to reveal.
   and lets the feature come alive when the new build lands. `utils/notifications.js`
   is the worked example. Leave `runtimeVersion` alone unless you intend to cut the
   current install off from updates.
+
+  **The check that enforces this, before every `eas update`:**
+
+  ```bash
+  # <commit> = the commit the installed build was cut from (eas build:list --json)
+  git diff <commit>..HEAD -- package.json
+  ```
+
+  Any new dependency in that diff is a candidate for this trap, and the rule is easy
+  to know and still walk past - it was, on Aug 15 2026, publishing `expo-secure-store`
+  to a build that did not have it (item 29). Note the failure is not confined to the
+  feature: `expo-secure-store` is imported by `firebase.js`, which every screen
+  imports, so a module that throws on import takes the whole app down at launch. Also
+  note that guarding the *calls* is not enough if the `import` itself is what throws,
+  and that `.catch()` on a returned promise does not catch a missing method, which
+  throws synchronously at the call.
 - **Push after every commit, not at the end of a session.** And never count an
   `eas update` publish as having saved the work: a published bundle is not
   recoverable source. On Aug 9 2026 this session published **21 updates while 38
