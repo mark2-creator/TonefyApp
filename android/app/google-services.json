@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "527163602306-o092di5noc8micp25bbgqk9ebov8ite4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ahumuza21213.TonefyApp",
+            "certificate_hash": "441012e0280de539a1e0466e7bc8f32eb1ee0034"
+          }
+        },
+        {
           "client_id": "527163602306-0md351bdfr597aa0s3jjd78tcku847t0.apps.googleusercontent.com",
           "client_type": 3
         }
