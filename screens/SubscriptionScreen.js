@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,6 +108,16 @@ export default function SubscriptionScreen({ navigation }) {
     }
   }, [navigation]);
 
+  // Held in a ref so the setup effect below can keep empty deps. Listing
+  // verifyPurchase as a dependency re-runs the whole effect whenever its
+  // identity changes, and each re-run repeats initConnection, the listener
+  // registration and the restore pass. That is what put four parallel
+  // /api/verify-purchase calls for one purchase token into the backend log
+  // within 55ms on the first successful grant - harmless only because the
+  // server claims each token atomically, which is not a thing to lean on.
+  const verifyRef = useRef(verifyPurchase);
+  useEffect(() => { verifyRef.current = verifyPurchase; }, [verifyPurchase]);
+
   useEffect(() => {
     let purchaseUpdateSub;
     let purchaseErrorSub;
@@ -142,7 +152,7 @@ export default function SubscriptionScreen({ navigation }) {
         const owned = await getAvailablePurchases();
         for (const purchase of owned || []) {
           if (purchase?.isAcknowledgedAndroid) continue;
-          await verifyPurchase(purchase, { silent: true });
+          await verifyRef.current(purchase, { silent: true });
         }
       } catch (e) {
         console.log('[IAP] restore failed:', e.message);
@@ -158,7 +168,7 @@ export default function SubscriptionScreen({ navigation }) {
     // below, which is what the catch above was already written to allow for.
     try {
     purchaseUpdateSub = purchaseUpdatedListener((purchase) => {
-      verifyPurchase(purchase);
+      verifyRef.current(purchase);
     });
 
     purchaseErrorSub = purchaseErrorListener((error) => {
@@ -178,7 +188,7 @@ export default function SubscriptionScreen({ navigation }) {
       // endConnection reaches the same native module and throws the same way.
       try { endConnection(); } catch (e) {}
     };
-  }, [verifyPurchase]);
+  }, []);
 
   const handleSubscribe = useCallback(async (tierKey) => {
     const plan = PRODUCTS[tierKey];
