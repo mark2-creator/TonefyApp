@@ -185,8 +185,17 @@ export default function SubscriptionScreen({ navigation }) {
     return () => {
       purchaseUpdateSub?.remove();
       purchaseErrorSub?.remove();
-      // endConnection reaches the same native module and throws the same way.
-      try { endConnection(); } catch (e) {}
+      // Two different failures, needing two different catches. A synchronous
+      // throw if the native module is absent entirely (the E_IAP_NOT_AVAILABLE
+      // case above), and a *rejected promise* - E_NOT_PREPARED, "Unable to
+      // auto-initialize connection" - when the billing client is simply already
+      // gone, which is ordinary on unmount. A try/catch around the call sees
+      // only the first; the second escapes it and lands as an unhandled
+      // rejection, which is what Sentry caught after the first working purchase.
+      try {
+        const ending = endConnection();
+        if (ending && typeof ending.catch === 'function') ending.catch(() => {});
+      } catch (e) {}
     };
   }, []);
 
