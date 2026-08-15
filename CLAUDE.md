@@ -1825,8 +1825,28 @@ nothing to aim at.
     never sees it. **Before any `eas update`, diff `package.json` against the commit the
     installed build was cut from.** One line, and it would have caught this.
 
-    **Still unresolved: the device is running a binary older than any build that has
-    Play Billing in it.** The notice reports `Installed 1.0.0 (build ?)` with the
+    **Resolved: Play served the internal-testing build, not the closed-testing one.**
+    Google Play ranks tracks - **internal > closed > open > production** - and serves a
+    tester the build from the highest-priority track they are opted into, regardless of
+    which link they installed from or how much newer another track is. This account was
+    on both, so every install had been quietly getting `internal`, which still held
+    **versionCode 2** from long before the subscription work existed, while `alpha`
+    moved from 6 to 8. The Play Store listing says so plainly once you know to look -
+    "Tonefy AI (Internal Early Access)". Fixed by promoting versionCode 9 to **both**
+    tracks; confirmed on device, with the notice gone and all four prices matching what
+    the Play Developer API reports for Uganda exactly ($8.25/$17.69 monthly,
+    $82.59/$176.99 yearly). **Keep the tracks in step from now on** - releasing to
+    closed testing alone does not reach a tester who is also an internal tester, and it
+    fails silently, looking exactly like an app bug rather than a distribution one.
+
+    The evidence that had looked contradictory resolves cleanly under this: the same
+    device really did show live converted prices in an earlier session, on a build
+    installed directly from EAS rather than through Play. Everything else followed -
+    Google Sign-In worked because those native modules are old and present, the
+    subscription screen appeared because it is JS delivered over the air, and Play
+    Billing was absent because it was never compiled into versionCode 2.
+
+    **How it was chased, since the same trap is easy to fall into again.** The notice reports `Installed 1.0.0 (build ?)` with the
     fallback prices `$6.99`/`$14.99` showing, so the module is genuinely absent rather
     than misbehaving. Ruled out rather than assumed: `react-native-iap` is unchanged at
     12.16.4 across every commit since the session where this same device *did* show real
@@ -1838,17 +1858,40 @@ nothing to aim at.
     `missingDimensionStrategy "store", "play"` was only *needed* because Gradle was
     linking the module, and the Kotlin patch only mattered because it was being
     compiled. The leading explanation is versionCode 2, still sitting on the internal
-    testing track, which predates the subscription work entirely. `Constants
-    .nativeBuildVersion` came back undefined and did not identify the binary; the
-    reliable device-side read is Settings -> Apps -> Tonefy AI.
+    testing track, which predates the subscription work entirely - which is what it
+    turned out to be. `Constants.nativeBuildVersion` came back undefined and did not
+    identify the binary; the reliable device-side reads are Settings -> Apps -> Tonefy
+    AI, and the Play Store listing's own title.
 
-    **A new production build was cut at `07a3691a`** to settle this and to carry the
+    **The one query that would have found it immediately** is the track listing, which
+    names the installed-build problem in two lines and needs no device:
+
+    ```
+    alpha:    versionCodes=["9"] completed
+    internal: versionCodes=["2"] completed   <- what the phone was actually being served
+    ```
+
+    Reachable via `edits.insert` -> `edits.tracks.list` -> `edits.delete` on the
+    Play Developer API. Worth running whenever a device's behaviour disagrees with what
+    was built, before anything else is suspected.
+
+    **Build 9 was cut at `07a3691a`** to settle this and to carry the
     two fixes that cannot ship over the air (`utils/secureAuthPersistence.js`,
     password strength). `eas.json` has `appVersionSource: remote` with `autoIncrement`
     on the production profile, so the versionCode is assigned by EAS rather than by
     `android/app/build.gradle` - which still reads `versionCode 1` and is not the
     number that ships. `runtimeVersion` stays 1.1.0, so every update already published
-    applies to it.
+    applies to it. Verified inside the artifact rather than trusting the green tick -
+    the AAB's dex carries 33 `RNIapModule` references plus `PendingPurchasesParams` and
+    `QueryProductDetailsResult` (so the Billing 8.0.0 patch really did apply on EAS's
+    machine, which is the part `patch-package` could silently skip) and
+    `com.android.vending.BILLING` is in the manifest.
+
+    **`eas submit` could not be used** - it wants a Google service account key set up
+    interactively and refuses in `--non-interactive`. Uploaded straight through the
+    Play Developer API instead (`edits.bundles.upload` -> `edits.tracks.update` ->
+    `edits.commit`), which the existing Firebase service account already had permission
+    for, so no new credential was needed.
 
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
