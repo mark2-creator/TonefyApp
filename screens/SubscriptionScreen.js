@@ -10,6 +10,7 @@ import {
   purchaseUpdatedListener,
   purchaseErrorListener,
   finishTransaction,
+  getAvailablePurchases,
 } from 'react-native-iap';
 import { useTheme } from '../context/ThemeContext';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
@@ -56,6 +57,57 @@ export default function SubscriptionScreen({ navigation }) {
   const [iapUnavailable, setIapUnavailable] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
 
+  // Shared by the live listener and the restore-on-mount pass below, so a
+  // purchase reaches the backend by whichever route gets to it first. Both
+  // are needed: Play delivers a purchase asynchronously and may do it while
+  // this screen is gone, and a purchase left unverified is also left
+  // unacknowledged, which Google auto-refunds after three days.
+  const verifyPurchase = useCallback(async (purchase, { silent = false } = {}) => {
+    const token = purchase?.purchaseToken;
+    if (!token) return false;
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const res = await fetch(`${BACKEND}/api/verify-purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ purchaseToken: token, productId: purchase.productId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        // Acknowledge only after the backend has recorded the grant. Doing it
+        // first would tell Google the entitlement was delivered when it might
+        // not have been.
+        await finishTransaction({ purchase, isConsumable: false });
+        setPurchasing(null);
+        showAlert(
+          "You're upgraded!",
+          `Welcome to ${data.plan === TIER_CREATOR ? 'Creator' : 'Pro'}. Your credits are ready.`,
+          [{ text: 'Great', onPress: () => navigation.goBack() }]
+        );
+        return true;
+      }
+      setPurchasing(null);
+      if (!silent) {
+        showAlert(
+          'Purchase not verified',
+          data.error || "Something went wrong confirming this purchase. If you were charged, contact support and we'll sort it out.",
+          [{ text: 'OK' }]
+        );
+      }
+      return false;
+    } catch (e) {
+      setPurchasing(null);
+      if (!silent) {
+        showAlert(
+          'Purchase not verified',
+          "Something went wrong confirming this purchase. If you were charged, contact support and we'll sort it out.",
+          [{ text: 'OK' }]
+        );
+      }
+      return false;
+    }
+  }, [navigation]);
+
   useEffect(() => {
     let purchaseUpdateSub;
     let purchaseErrorSub;
@@ -74,6 +126,26 @@ export default function SubscriptionScreen({ navigation }) {
         // Play Billing available (e.g. Expo Go) - screen still renders with
         // fallback prices below rather than crashing.
         console.log('[IAP] init/getSubscriptions failed:', e.message);
+        return;
+      }
+
+      // Restore pass. purchaseUpdatedListener only fires while this screen is
+      // mounted, and Play hands a purchase over asynchronously - after its own
+      // "require authentication?" prompt, and often after the user has already
+      // navigated away. That is exactly what happened on the first real test
+      // purchase: Play took the payment, the screen had unmounted, nothing was
+      // listening, and the backend was never called at all. Anything still
+      // unacknowledged here is a purchase that was paid for and never
+      // delivered, so it gets verified now. Silent, because on the ordinary
+      // path there is nothing to report.
+      try {
+        const owned = await getAvailablePurchases();
+        for (const purchase of owned || []) {
+          if (purchase?.isAcknowledgedAndroid) continue;
+          await verifyPurchase(purchase, { silent: true });
+        }
+      } catch (e) {
+        console.log('[IAP] restore failed:', e.message);
       }
     })();
 
@@ -85,41 +157,8 @@ export default function SubscriptionScreen({ navigation }) {
     // tree - the screen was going grey rather than falling back to the prices
     // below, which is what the catch above was already written to allow for.
     try {
-    purchaseUpdateSub = purchaseUpdatedListener(async (purchase) => {
-      try {
-        const token = purchase.purchaseToken;
-        if (!token) return;
-        const idToken = await auth.currentUser?.getIdToken();
-        const res = await fetch(`${BACKEND}/api/verify-purchase`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ purchaseToken: token, productId: purchase.productId }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.ok) {
-          await finishTransaction({ purchase, isConsumable: false });
-          setPurchasing(null);
-          showAlert(
-            "You're upgraded!",
-            `Welcome to ${data.plan === TIER_CREATOR ? 'Creator' : 'Pro'}. Your credits are ready.`,
-            [{ text: 'Great', onPress: () => navigation.goBack() }]
-          );
-        } else {
-          setPurchasing(null);
-          showAlert(
-            'Purchase not verified',
-            data.error || "Something went wrong confirming this purchase. If you were charged, contact support and we'll sort it out.",
-            [{ text: 'OK' }]
-          );
-        }
-      } catch (e) {
-        setPurchasing(null);
-        showAlert(
-          'Purchase not verified',
-          "Something went wrong confirming this purchase. If you were charged, contact support and we'll sort it out.",
-          [{ text: 'OK' }]
-        );
-      }
+    purchaseUpdateSub = purchaseUpdatedListener((purchase) => {
+      verifyPurchase(purchase);
     });
 
     purchaseErrorSub = purchaseErrorListener((error) => {
@@ -139,7 +178,7 @@ export default function SubscriptionScreen({ navigation }) {
       // endConnection reaches the same native module and throws the same way.
       try { endConnection(); } catch (e) {}
     };
-  }, []);
+  }, [verifyPurchase]);
 
   const handleSubscribe = useCallback(async (tierKey) => {
     const plan = PRODUCTS[tierKey];
