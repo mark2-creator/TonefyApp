@@ -180,6 +180,56 @@ upgrade).
 style sheet on text overlays were unreachable before this fix (crashed on mount).
 Confirmed working on-device as of this fix.
 
+## Known bug pattern: a signing certificate Google does not recognise
+
+**Symptom:** Google Sign-In fails on a real device with `DEVELOPER_ERROR`, or - more
+dangerously - with `{"type":"cancelled","data":null}` *after* the account picker has
+run and an account has been chosen. Email/password auth keeps working throughout.
+
+**Read a "cancelled" the user did not cause as a config rejection.** With the legacy
+`GoogleSignInClient` (which is what `@react-native-google-signin/google-signin@16.1.2`
+uses on Android - checked in `RNGoogleSigninModule.java`, not inferred from the README),
+an app whose certificate matches no OAuth client is refused, and that surfaces as either
+12501 `SIGN_IN_CANCELLED` or status 10 `DEVELOPER_ERROR` unpredictably. The same build
+produced both on different days here. Neither code is worth diagnosing from; what both
+mean is *package + signing certificate + webClientId does not resolve to a registered
+OAuth client*.
+
+**Count the certificates, don't match one number.** The trap is that verifying "the
+SHA-1 is registered in Firebase" passes while the app is presenting a *different*
+certificate. An app can legitimately have more than the usual two (upload key + app
+signing key):
+
+- **A rotated app signing key** adds one. Play Console → Test and release → Setup →
+  App integrity → App signing shows a **"Previous app signing keys"** table when this
+  has happened. Installs made before the rotation still present the old certificate,
+  and Play services APIs resolve identity through the rotation lineage rather than
+  switching to the newest key. Google's guidance is to register **both**.
+- **Play's Quantum-ready beta** adds another: the key gets a **"Post-quantum
+  cryptography key"** certificate with its own SHA-1 alongside the **"Classical key"**.
+
+This is exactly what bit here - see item 28 under IMMEDIATE NEXT STEPS for the full
+account, including why a session of correct-looking checks missed it.
+
+**Fixing it needs no build and no publish.** `google-services.json` is not read at
+runtime for this flow; Play services validates against Google's servers. Register the
+missing fingerprint and the fix is live immediately on the device already installed.
+Add it with the Firebase Management API rather than the Console, which also gives you a
+way to *read* the truth back:
+
+```js
+// list what is actually registered
+fb.projects.androidApps.sha.list({ parent })
+// add one (shaHash lowercase, no colons)
+fb.projects.androidApps.sha.create({ parent, requestBody: { shaHash, certType: "SHA_1" } })
+// re-pull google-services.json and confirm a new client_type=1 entry appeared
+fb.projects.androidApps.getConfig({ name: parent + "/config" })
+```
+
+Keep the committed `android/app/google-services.json` in sync afterwards. It changes
+nothing at runtime, but this project's committed `android/` folder means nothing
+regenerates it, so it silently rots from every SHA change otherwise.
+
 ## Skills (`.claude/skills/`)
 
 - **`tonefy-design`** — this app's visual conventions: the green/teal rule below, the
@@ -1623,6 +1673,107 @@ nothing to aim at.
     actually honours this header on-device - a real, not just a plausible, remaining
     question, since native media player HTTP caching behaviour varies by platform and
     wasn't checked directly. Backend-only, already live.
+
+28. **Google Sign-In was broken by a Play App Signing key rotation, not by any app
+    code** (Aug 15 2026, app commits `a0c2bbb0`, `52470e62`; nothing rebuilt, nothing
+    published - the whole fix was server side at Google). This had survived a full
+    prior session of troubleshooting that verified the right things and still missed
+    it, so the reasoning is worth keeping in full.
+
+    **Symptom history, which is itself the clue.** First `signIn()` returned
+    `{"type":"cancelled","data":null}` *after* the account picker had appeared and an
+    account had been chosen ("Checking info…", then silence). Later the same build,
+    untouched, started throwing `DEVELOPER_ERROR` instead. Both are the same
+    underlying rejection: with the legacy `GoogleSignInClient`, an app whose
+    certificate resolves to no OAuth client is refused, and whether that surfaces as
+    12501 `SIGN_IN_CANCELLED` or status 10 `DEVELOPER_ERROR` is not stable enough to
+    diagnose from. **A "cancelled" that the user did not cause is a config rejection**,
+    not a UI event - that is the reading that was missed the first time round.
+
+    **Root cause: the app signing key had been rotated on 11 Aug 2026, 19:45**, visible
+    in Play Console → Test and release → Setup → App integrity → App signing as a
+    "Previous app signing keys" row. Only the *current* key's fingerprint
+    (`441012e0…`) had ever been registered on the Firebase Android app. The
+    pre-rotation key, `afdd7e07…`, was registered nowhere - and the install on the test
+    device dated from around the rotation, so it still presented the old certificate.
+    Google's own guidance for Play App Signing key rotation is to register **both** the
+    old and the new fingerprint with every API provider: Play services APIs resolve app
+    identity through the rotation lineage rather than simply switching to the newest
+    key. Fixed by registering `afdd7e07…` via the Firebase Management API
+    (`projects.androidApps.sha.create`); Google auto-created a third `client_type=1`
+    OAuth client for it, confirmed by re-pulling the config. **Confirmed working on
+    device immediately after, with no rebuild and no `eas update`.**
+
+    **Why the earlier session's checks all passed and still missed it.** Every
+    individual thing it verified was true: both SHA-1s "registered in Firebase" (they
+    were - just not *all* the relevant ones), webClientId matching, OAuth consent
+    screen in production, Credential Manager ruled out. The gap was that "both SHA-1s"
+    meant *upload key + current app signing key* - the two a normal project has. A
+    rotated key means there are **three**, and nothing about the Firebase Console
+    prompts you to notice a fourth is possible. The device-state theory that session
+    landed on (Google anti-abuse restricting a churned device) was wrong, and it is
+    worth noting how plausible it looked: it explained the symptom, required no further
+    checking, and would have kept looking right forever.
+
+    **The check that would have found it in one step**, for next time: read the App
+    signing page for *how many* certificates exist, not for whether one number matches.
+    A rotated key shows a "Previous app signing keys" table; a Quantum-ready-beta
+    enrolment shows a second "Post-quantum cryptography key" fingerprint alongside the
+    Classical one. Both are extra certificates the app can present and both need
+    registering. **The post-quantum fingerprint is still unregistered** - it was queued
+    as the next thing to try and turned out not to be needed. If sign-in ever regresses
+    on a fresh install, that is the first thing to add.
+
+    **Also fixed along the way:** the committed `android/app/google-services.json` was
+    stale - it carried only the upload key's OAuth client, missing the current app
+    signing key's. Refreshed from `projects.androidApps.getConfig`. Worth being precise
+    about what this did and did not do: **that file is not read at runtime for this
+    flow** (Play services validates package + certificate against Google's servers, not
+    against the file), so refreshing it fixed nothing on device - it was fixed because
+    it was wrong. This is also why the whole repair needed no new build. Note the file
+    would have gone stale again on any future SHA change, since this project's
+    committed `android/` folder means nothing regenerates it automatically.
+
+    **Play Billing: the purchase failure is Google's, not ours - stop testing it.**
+    `requestSubscription()` returning "That item is unavailable" (`ITEM_UNAVAILABLE`,
+    Billing response code 4, from `launchBillingFlow`) was traced to the **payments
+    profile still being under review**. Play cannot process a subscription purchase
+    until the merchant account is active, and this is how that surfaces. Everything
+    else was verified correct against the Play Developer API rather than the Console:
+    both products Active, all four base plans Active with
+    `newSubscriberAvailability: true`, Uganda in the region list at the exact prices the
+    device displayed ($8.25 / $17.69 - which also **rules out propagation delay**, the
+    previous session's leading theory, since prices only render if `getSubscriptions`
+    found the products), versionCode 8 `completed` on the alpha track, and product /
+    base-plan ids matching `SubscriptionScreen.js` and `planFromBasePlanId` exactly. The
+    app-side and native purchase path was read end to end and is correct. Retest when
+    the bank verification clears; nothing to change before then.
+
+    **The Google Play Android Developer API was disabled in the Cloud project**
+    (`527163602306`) and was enabled during this session. This is not cosmetic:
+    `/api/verify-purchase` calls `purchases.subscriptionsv2.get`, so **every purchase
+    verification would have failed** with the generic "Could not verify this purchase",
+    granting nothing after a real payment. It had never been exercised because no
+    purchase had ever completed. The service account could not enable it itself
+    (`serviceusage.services.enable` denied) - this needs a project owner in the Console.
+
+    **`~/Tonefy-react` was tracking 7,034 files under `backend/node_modules`**
+    (`5571116f`). `node_modules/` had been in `.gitignore` all along, but gitignore has
+    no effect on files git already tracks. The concrete risk, not a theoretical one:
+    the previous session's `npm audit fix` showed up as hundreds of modified files
+    indistinguishable from real work, and a `git checkout`/`git stash` there would have
+    silently reverted the security fix to the vulnerable versions. Untracked with
+    `--cached` (working tree and the running pm2 process untouched), along with six
+    rendered test videos; `server.js.bak_*` snapshots now ignored.
+
+    **Still open from this session:** the temporary raw-response diagnostic in
+    `handleGoogleSignIn` (`57d29b2f`) is still shipped and can now be removed, since the
+    thing it was added to diagnose is understood. The security fixes committed last
+    session (`utils/secureAuthPersistence.js`, password strength) still need a native
+    build to reach a device - `expo-secure-store` is a native module. The 12-tester /
+    14-day production-eligibility window still has not been started, and now only waits
+    on the purchase flow, which waits on Google.
+
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
