@@ -1953,10 +1953,33 @@ nothing to aim at.
     claims on one token is a sharper case than the sequential retry it was written for:
     one `processedPurchases` doc, `creditsRemaining` exactly 60 rather than 240.
 
-    **Still not built:** subscription-lapse handling, Real-time Developer Notifications,
-    and any renewal path. Note the test subscription renews every 5 minutes, so a
-    lapse/renewal can now actually be observed on a real account rather than reasoned
-    about - that is the cheapest opportunity this setup offers and it has not been taken.
+    **A renewal was then observed for the first time** (order
+    `GPA.3399-...-22190..2`, ~30 min after the purchase, on the 5-minute test cycle) and
+    it changed **nothing** in Firestore: still `plan=pro`, `credits=60`,
+    `processedPurchases=1`. That is correct rather than broken, and worth understanding
+    before anyone "fixes" it - Play keeps the **same purchase token across renewals**, so
+    the sha256-keyed claim refuses to grant twice by design, and credits are refreshed by
+    the backend's own 30-day sweep instead (item 13). It works for a monthly plan,
+    approximately, and it means a renewal top-up is not a thing that exists.
+
+    **`1ece3bab` fixes a Sentry unhandled rejection - and it is my own earlier fix being
+    wrong about what it covered.** `E_NOT_PREPARED` / "Unable to auto-initialize
+    connection", `mechanism: onunhandledrejection`, on build 9 minutes after the grant.
+    `07a3691a` had wrapped `endConnection()` in a try/catch with a comment claiming it
+    "reaches the same native module and throws the same way". It does not. **Two
+    failures, two shapes:** a synchronous throw when the native module is absent
+    entirely, and a *rejected* `Promise<boolean>` when the billing client is merely
+    already gone - the ordinary state on unmount. A try/catch around the call sees the
+    first and never the second. The bare call it replaced had the same hole; what the
+    try/catch added was the *appearance* of being handled, which is why it shipped.
+    Generalise this: **wrapping a promise-returning call in try/catch does not catch its
+    rejection**, and a comment asserting it does is worse than no guard at all.
+
+    **Still not built:** subscription-lapse handling and Real-time Developer
+    Notifications. Nothing observes a cancellation or expiry, so a lapsed subscriber
+    stays on Pro indefinitely. The test subscription's 5-minute cycle makes this
+    unusually cheap to observe on a real account - cancel in Play and watch - and that is
+    the one part of this system nobody has ever seen behave.
 
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
