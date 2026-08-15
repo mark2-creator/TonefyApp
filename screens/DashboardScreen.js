@@ -7,6 +7,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
+import { showAlert } from '../components/BrandedAlert';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
@@ -39,8 +40,12 @@ const sections = [
     icon: 'palette',
     color: '#58e5c2',
     cards: [
-      { title: 'Thumbnail', desc: 'Create stunning thumbnails for your videos.', icon: 'image', color: '#2ecc71' },
-      { title: 'Social', desc: 'Create engaging social posts.', icon: 'people', color: '#92ccff' },
+      // No route exists for either of these yet. `soon` is what dims them and
+      // routes the tap to the "coming soon" alert, so wiring one up is a matter
+      // of adding its branch to handleCardPress and deleting this flag - the
+      // card cannot end up live-looking and inert again by accident.
+      { title: 'Thumbnail', desc: 'Create stunning thumbnails for your videos.', icon: 'image', color: '#2ecc71', soon: true },
+      { title: 'Social', desc: 'Create engaging social posts.', icon: 'people', color: '#92ccff', soon: true },
     ],
   },
 ];
@@ -58,17 +63,19 @@ export default function DashboardScreen({ navigation }) {
   const sheetInset = useSheetInset();
   const darkMode = isDark;
 
-  const handleCardPress = (title) => {
+  const handleCardPress = (card) => {
+    const title = typeof card === 'string' ? card : card.title;
+    if (typeof card === 'object' && card.soon) {
+      return showAlert(title, 'This one is still being built. It will appear here as soon as it is ready.');
+    }
     if (title === 'Idea to Video') navigation.navigate('IdeaToVideo');
     else if (title === 'Script to Video') navigation.navigate('ScriptToVideo');
     else if (title === 'URL to Video') navigation.navigate('UrlToVideo');
     else if (title === 'Edit Video') navigation.navigate('EditVideo');
-    else if (title === 'Auto Edit Video') navigation.navigate('EditVideo');
     else if (title === 'My Videos') navigation.navigate('MainTabs', { screen: 'Videos' });
     else if (title === 'Idea to Audio') navigation.navigate('IdeaToAudio');
     else if (title === 'Script to Audio') navigation.navigate('ScriptToAudio');
     else if (title === 'Record to Video') navigation.navigate('RecordToVideo');
-    else if (title === 'Empty Video') navigation.navigate('EditVideo');
     else if (title === 'Empty Audio') navigation.navigate('IdeaToAudio');
   };
 
@@ -181,15 +188,16 @@ export default function DashboardScreen({ navigation }) {
               {section.cards.map((card, j) => (
                 <TouchableOpacity
                   key={j}
-                  style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => handleCardPress(card.title)}
+                  style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }, card.soon && styles.cardSoon]}
+                  onPress={() => handleCardPress(card)}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.cardIconWrap, { backgroundColor: card.color + '18' }]}>
-                    <MaterialIcons name={card.icon} size={22} color={card.color} />
+                  <View style={[styles.cardIconWrap, { backgroundColor: (card.soon ? '#5a5a5a' : card.color) + '18' }]}>
+                    <MaterialIcons name={card.icon} size={22} color={card.soon ? '#5a5a5a' : card.color} />
                   </View>
-                  <Text style={[styles.cardTitle, { color: theme.text }]}>{card.title}</Text>
-                  <Text style={[styles.cardDesc, { color: theme.subtext }]}>{card.desc}</Text>
+                  <Text style={[styles.cardTitle, { color: card.soon ? '#5a5a5a' : theme.text }]}>{card.title}</Text>
+                  <Text style={[styles.cardDesc, { color: card.soon ? '#4a4a4a' : theme.subtext }]}>{card.desc}</Text>
+                  {card.soon && <Text style={styles.cardSoonTag}>Coming soon</Text>}
                 </TouchableOpacity>
               ))}
             </View>
@@ -244,6 +252,8 @@ const styles = StyleSheet.create({
   cardIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   cardTitle: { color: '#e5e2e1', fontWeight: '700', fontSize: 13, marginBottom: 4 },
   cardDesc: { color: '#555', fontSize: 11, lineHeight: 15 },
+  cardSoon: { opacity: 0.65 },
+  cardSoonTag: { color: '#5a5a5a', fontSize: 10, fontWeight: '600', marginTop: 6 },
 
   // Banner
   banner: { marginHorizontal: 16, marginTop: 28, borderRadius: 16, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1e1e1e', padding: 20, overflow: 'hidden', minHeight: 140 },
