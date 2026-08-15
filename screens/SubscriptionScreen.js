@@ -14,6 +14,7 @@ import {
 import { useTheme } from '../context/ThemeContext';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
+import Constants from 'expo-constants';
 import { auth } from '../firebase';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -50,6 +51,9 @@ export default function SubscriptionScreen({ navigation }) {
   const [connected, setConnected] = useState(false);
   const [skuDetails, setSkuDetails] = useState({});
   const [purchasing, setPurchasing] = useState(null);
+  // Set when the Play Billing native module is missing from the running
+  // binary. Distinct from `connected`, which is about reaching the store.
+  const [iapUnavailable, setIapUnavailable] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
 
   useEffect(() => {
@@ -73,6 +77,14 @@ export default function SubscriptionScreen({ navigation }) {
       }
     })();
 
+    // purchaseUpdatedListener/purchaseErrorListener are not passive
+    // subscriptions - each builds a NativeEventEmitter over the IAP native
+    // module and throws E_IAP_NOT_AVAILABLE synchronously if it is absent
+    // (checkNativeAndroidAvailable, react-native-iap/src/internal/platform.ts).
+    // Thrown from inside an effect that is not wrapped, that unmounts the whole
+    // tree - the screen was going grey rather than falling back to the prices
+    // below, which is what the catch above was already written to allow for.
+    try {
     purchaseUpdateSub = purchaseUpdatedListener(async (purchase) => {
       try {
         const token = purchase.purchaseToken;
@@ -116,11 +128,16 @@ export default function SubscriptionScreen({ navigation }) {
         showAlert('Purchase failed', error.message || 'Could not complete the purchase.', [{ text: 'OK' }]);
       }
     });
+    } catch (e) {
+      setIapUnavailable(e?.message || 'E_IAP_NOT_AVAILABLE');
+      console.log('[IAP] listeners unavailable:', e?.message);
+    }
 
     return () => {
       purchaseUpdateSub?.remove();
       purchaseErrorSub?.remove();
-      endConnection();
+      // endConnection reaches the same native module and throws the same way.
+      try { endConnection(); } catch (e) {}
     };
   }, []);
 
@@ -129,6 +146,15 @@ export default function SubscriptionScreen({ navigation }) {
     const basePlanId = billingCycle === 'yearly' ? plan.yearlyBasePlanId : plan.monthlyBasePlanId;
     const detail = skuDetails[plan.productId];
     const offer = detail?.subscriptionOfferDetails?.find((o) => o.basePlanId === basePlanId);
+
+    if (iapUnavailable) {
+      showAlert(
+        'Purchases need a newer version',
+        'This installed version was built without Google Play Billing, so it cannot start a purchase. Update Tonefy from the Play Store and try again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     if (!connected || !detail || !offer) {
       showAlert(
@@ -173,6 +199,21 @@ export default function SubscriptionScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {!!iapUnavailable && (
+          <View style={styles.notice}>
+            <View style={styles.noticeHead}>
+              <MaterialIcons name="info-outline" size={20} color="#f5c451" />
+              <Text style={styles.noticeTitle}>Purchases need a newer version</Text>
+            </View>
+            <Text style={styles.noticeBody}>
+              The prices below are the standard ones, not this store's converted prices, and Subscribe will not open Play. Update Tonefy from the Play Store to buy a plan.
+            </Text>
+            <Text style={styles.noticeMeta}>
+              {`Installed ${Constants.expoConfig?.version || '?'} (build ${Constants.nativeBuildVersion || '?'}) · ${iapUnavailable}`}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.cycleRow}>
           <TouchableOpacity
             style={[styles.cyclePill, billingCycle === 'monthly' && styles.cyclePillActive]}
@@ -247,4 +288,9 @@ const styles = StyleSheet.create({
   subscribeBtn: { marginTop: 12, backgroundColor: '#2ECC71', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   subscribeBtnText: { color: '#04211f', fontWeight: '700', fontSize: 15 },
   disclaimer: { fontSize: 12, textAlign: 'center', marginTop: 8, lineHeight: 18 },
+  notice: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, padding: 14, marginBottom: 20 },
+  noticeHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  noticeTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  noticeBody: { color: '#888', fontSize: 13, lineHeight: 19 },
+  noticeMeta: { color: '#555', fontSize: 11, marginTop: 8 },
 });
