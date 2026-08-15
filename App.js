@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
 import { configureForegroundBehaviour } from './utils/notifications';
 import BrandedAlertHost from './components/BrandedAlert';
+import ErrorBoundary from './components/ErrorBoundary';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
@@ -129,6 +130,7 @@ function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer ref={navigationRef}>
       <StatusBar style="light" />
+      <ErrorBoundary>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
@@ -157,6 +159,7 @@ function App() {
           </>
         )}
       </Stack.Navigator>
+      </ErrorBoundary>
     </NavigationContainer>
     <BrandedAlertHost />
     </GestureHandlerRootView>
