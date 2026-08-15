@@ -1,6 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import { getReactNativePersistence } from 'firebase/auth';
+
+// expo-secure-store is a native module, and a native module cannot ship over
+// the air. Its JS entry calls requireNativeModule('ExpoSecureStore') at
+// import time and then reads constants straight off the result, so a plain
+// top-level `import * as SecureStore` throws while this file is being
+// evaluated on any binary that predates the dependency. firebase.js imports
+// this module, and every screen imports firebase.js, so that throw is not a
+// broken feature - it is the whole app failing to launch.
+//
+// Required lazily inside a try instead, which is the pattern
+// utils/notifications.js already uses for the same reason: the current
+// install keeps working with the refresh token in AsyncStorage exactly as it
+// did before this file existed, and the Keystore-backed path comes alive by
+// itself once a build containing the module is installed. Nothing here needs
+// changing at that point.
+let SecureStore = null;
+try {
+  SecureStore = require('expo-secure-store');
+} catch (e) {
+  SecureStore = null;
+}
 
 // Firebase's own React Native persistence writes the whole signed-in user
 // (uid, email, displayName, provider data, AND stsTokenManager - the object
@@ -57,6 +77,7 @@ const secureBackedAsyncStorage = {
   async getItem(key) {
     const value = await AsyncStorage.getItem(key);
     if (!value) return value;
+    if (!SecureStore) return value;
     let token = null;
     try {
       token = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
@@ -71,7 +92,7 @@ const secureBackedAsyncStorage = {
   },
   async setItem(key, value) {
     const extracted = extractRefreshToken(value);
-    if (!extracted) {
+    if (!extracted || !SecureStore) {
       return AsyncStorage.setItem(key, value);
     }
     try {
@@ -84,7 +105,11 @@ const secureBackedAsyncStorage = {
     }
   },
   async removeItem(key) {
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
+    if (SecureStore) {
+      // A missing method would throw synchronously, which .catch() on the
+      // returned promise never sees.
+      try { await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY); } catch (e) {}
+    }
     return AsyncStorage.removeItem(key);
   },
 };
