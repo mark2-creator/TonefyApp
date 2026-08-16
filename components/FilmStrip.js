@@ -153,6 +153,28 @@ async function runExtraction(uri, count, interval, entry, key) {
  * deriving them from trimStart is what lets it do so at frame rate without this
  * component knowing a drag is in progress.
  */
+// React Native's Android draw path is O(children^2) per view group. drawChild runs
+// once per child, and each call asks BlendModeHelper.needsIsolatedLayer(this), which
+// iterates EVERY child calling getTag - a SparseArray binary search each time
+// (ReactViewGroup.kt:885, BlendModeHelper.kt:50). A strip of 160 tiles therefore costs
+// ~25,600 getTag calls per frame, per clip, and none of it does anything here: nothing
+// in this app sets mix-blend-mode, so the answer is always false.
+//
+// That is what an ANR on a Galaxy A23 turned out to be - captured by Sentry with
+// needsIsolatedLayer at the top of the main thread.
+//
+// Splitting the tiles into groups turns one N^2 into g^2 + g*k^2. At 160 tiles in
+// groups of 12 that is roughly 2,000 calls instead of 25,600 - about 12x less - and it
+// is invisible: the groups are plain rows in the same flex direction, so the tiles lay
+// out exactly as they did.
+const TILES_PER_GROUP = 12;
+
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 export default function FilmStrip({
   uri, type, sourceDuration, width, height, offset = 0, pixelsPerSecond,
   // Defaults to the uri, so a caller that has no stable id behaves exactly as before.
@@ -208,8 +230,12 @@ export default function FilmStrip({
     return (
       <Animated.View style={[styles.window, { width, height }]}>
         <Animated.View style={[styles.row, { left: offset }]}>
-          {Array.from({ length: repeats }, (_, i) => (
-            <Image key={i} source={{ uri }} style={{ width: tileW, height }} contentFit="cover" />
+          {chunk(Array.from({ length: repeats }, (_, i) => i), TILES_PER_GROUP).map((group, gi) => (
+            <View key={gi} style={styles.row}>
+              {group.map(i => (
+                <Image key={i} source={{ uri }} style={{ width: tileW, height }} contentFit="cover" />
+              ))}
+            </View>
           ))}
         </Animated.View>
       </Animated.View>
@@ -245,7 +271,9 @@ export default function FilmStrip({
   return (
     <Animated.View style={[styles.window, { width, height }]}>
       <Animated.View style={[styles.row, { left: offset }]}>
-        {Array.from({ length: layout.tiles }, (_, i) => {
+        {chunk(Array.from({ length: layout.tiles }, (_, i) => i), TILES_PER_GROUP).map((group, gi) => (
+        <View key={gi} style={styles.row}>
+        {group.map((i) => {
           // The decoded frame nearest the middle of this tile's span. Several tiles
           // share one frame whenever there are more tiles than frames, which is what
           // keeps them at their own size on a long clip instead of each being blown
@@ -268,6 +296,8 @@ export default function FilmStrip({
             <View key={i} style={[styles.gap, { width: layout.tileW, height }]} />
           );
         })}
+        </View>
+        ))}
       </Animated.View>
     </Animated.View>
   );
