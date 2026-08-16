@@ -158,9 +158,13 @@ export default function MyVideosScreen({ navigation }) {
       </View>
 
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{allVideos.length}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total</Text></View>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></View>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Stored</Text></View>
+        {/* numberOfLines + adjustsFontSizeToFit so a value shrinks rather than wrapping.
+            "26.5MB" was breaking across two lines as "26.5M" / "B" on a device with a
+            larger system font scale, which reads as a rendering fault rather than a
+            number. */}
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{allVideos.length}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Total</Text></View>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>This Month</Text></View>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Stored</Text></View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
@@ -238,7 +242,13 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, padding: 14, alignItems: 'center' },
   statNum: { color: '#2ecc71', fontSize: 22, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 4 },
-  filterRow: { paddingHorizontal: 16, marginTop: 16, marginBottom: 4, maxHeight: 44 },
+  // No maxHeight. A horizontal ScrollView takes its height from its content, and
+  // capping it at 44 clipped the chips through the middle on any device whose system
+  // font scale is above 1 - the chip is ~36px at the default scale, so it only needed
+  // a moderately larger setting to overflow. `flexGrow: 0` is what a horizontal
+  // ScrollView actually needs here: it stops the row expanding to fill the column,
+  // which is what the maxHeight was really guarding against.
+  filterRow: { paddingHorizontal: 16, marginTop: 16, marginBottom: 4, flexGrow: 0 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a', marginRight: 8 },
   filterBtnActive: { backgroundColor: '#2ecc71', borderColor: '#2ecc71' },
   filterText: { color: '#888', fontSize: 13, fontWeight: '600' },
