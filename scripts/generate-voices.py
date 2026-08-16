@@ -56,8 +56,20 @@ async def main():
     out = list(GTTS)
     seen = {v["id"] for v in out}
 
+    # edge-tts validates voice names against ^([a-z]{2,})-([A-Z]{2,})-(.+Neural)$ before
+    # it will speak them (edge_tts/data_classes.py). Four Inuktitut voices carry a script
+    # subtag - iu-Cans-CA, iu-Latn-CA - which that pattern rejects, so the library raises
+    # ValueError rather than producing audio. They are listed by Microsoft and unusable
+    # here, and a voice that always fails is worse than one that is absent: it fails in
+    # front of the user, at generation time, after they have chosen it.
+    speakable = re.compile(r"^([a-z]{2,})-([A-Z]{2,})-(.+Neural)$")
+
+    skipped_unspeakable = 0
     for v in sorted(voices, key=lambda x: (x["Locale"], x["ShortName"])):
         short = v["ShortName"]
+        if not speakable.match(short):
+            skipped_unspeakable += 1
+            continue
         locale = v["Locale"]
         country = locale.split("-")[1][:2].upper() if "-" in locale else "US"
         lang_tag = locale.split("-")[0]
@@ -114,6 +126,6 @@ async def main():
             backend[v["id"]] = {"engine": "edge", "name": v["name"], "label": v["label"], "free": v["free"]}
     (BACKEND / "voices.json").write_text(json.dumps(backend, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    print(f"voices: {len(out)}  free: {sum(1 for v in out if v['free'])}  languages: {len(set(v['lang'] for v in out))}")
+    print(f"voices: {len(out)}  free: {sum(1 for v in out if v['free'])}  languages: {len(set(v['lang'] for v in out))}  skipped (edge-tts cannot speak): {skipped_unspeakable}")
 
 asyncio.run(main())
