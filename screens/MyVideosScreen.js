@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
-import { saveVideoToDevice } from '../utils/saveVideo';
+import { saveVideoToDevice, downloadVideoToCache } from '../utils/saveVideo';
+import { measureVideoDuration } from '../utils/videoDuration';
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -27,7 +28,7 @@ function formatDate(iso) {
   }
 }
 
-function VideoCard({ video, onPress, onUse, onDownload, downloading }) {
+function VideoCard({ video, onPress, onUse, onDownload, downloading, preparing }) {
   const { theme } = useTheme();
   const url = video.downloadUrl || video.localUrl || '';
   const player = useVideoPlayer(url, (p) => {
@@ -52,8 +53,10 @@ function VideoCard({ video, onPress, onUse, onDownload, downloading }) {
         <Text style={[styles.prompt, { color: theme.text }]} numberOfLines={1}>{video.prompt || 'Generated video'}</Text>
       </View>
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)}>
-          <Text style={styles.btnUseText}>Use</Text>
+        <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)} disabled={preparing}>
+          {preparing
+            ? <ActivityIndicator size="small" color="#04211f" />
+            : <Text style={styles.btnUseText}>Use</Text>}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.btnDl, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -76,6 +79,8 @@ export default function MyVideosScreen({ navigation }) {
   const [filtered, setFiltered] = useState([]);
   // The id of the video being fetched, so only its own button shows a spinner.
   const [downloading, setDownloading] = useState(null);
+  // Fetching a finished video so the editor can open it as a clip.
+  const [preparing, setPreparing] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -136,11 +141,45 @@ export default function MyVideosScreen({ navigation }) {
     modalPlayer.pause();
   }
 
-  function handleUse(video) {
-    setModalVisible(false);
-    // NOTE: edit-post-video flow doesn't exist in the app yet —
-    // passing the video through to Idea-to-Video as a placeholder for now.
-    navigation.navigate('IdeaToVideo', { reuseVideoUrl: video.downloadUrl || video.localUrl });
+  // Opens the finished video in the editor as a clip, to be trimmed, captioned,
+  // cut against other footage or re-exported at a different aspect.
+  //
+  // It used to navigate to Idea-to-Video with a `reuseVideoUrl` param that NOTHING
+  // read - so the video was dropped and you landed on an empty generator screen. The
+  // button looked finished and did nothing.
+  //
+  // The file is fetched first rather than handing the editor a URL, because a clip
+  // has to be a real local file: processVideo builds its upload straight from
+  // `item.uri` for every item, and maps the server's replies back by position, so a
+  // remote uri in that list would upload nothing usable and shift everything after
+  // it.
+  async function handleUse(video) {
+    const url = video.downloadUrl || video.localUrl;
+    if (!url) return showAlert('Use video', 'This video has no file to open.');
+    if (preparing) return;
+    setPreparing(video.id);
+    try {
+      const uri = await downloadVideoToCache(url, video);
+      // The record carries durationSeconds only for videos made by the two newer
+      // export paths; anything from Idea-to-Video predates it. Measured on device
+      // when it is missing, because a clip whose length is unknown falls back to 3s
+      // everywhere it is drawn, played and exported.
+      const known = Number(video.durationSeconds) > 0 ? Number(video.durationSeconds) : null;
+      const seconds = known || (await measureVideoDuration(uri));
+      setModalVisible(false);
+      navigation.navigate('EditVideo', {
+        useVideo: {
+          uri,
+          seconds: seconds || null,
+          fileName: `tonefy_${video.id}.mp4`,
+          prompt: video.prompt || '',
+        },
+      });
+    } catch (e) {
+      showAlert('Use video', e.message || 'Could not open this video in the editor.');
+    } finally {
+      setPreparing(null);
+    }
   }
 
   // Was Linking.openURL(url), which handed the video to the phone's browser and left
@@ -233,7 +272,7 @@ export default function MyVideosScreen({ navigation }) {
           columnWrapperStyle={{ gap: 12 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ecc71" />}
           renderItem={({ item }) => (
-            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} />
+            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} preparing={preparing === item.id} />
           )}
         />
       )}
@@ -251,11 +290,15 @@ export default function MyVideosScreen({ navigation }) {
               <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={closeModal}>
                 <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Close</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtnGreen} onPress={() => selected && handleUse(selected)}>
-                <Text style={styles.modalBtnGreenText}>Use This</Text>
+              <TouchableOpacity style={styles.modalBtnGreen} onPress={() => selected && handleUse(selected)} disabled={!!preparing}>
+                {preparing
+                  ? <ActivityIndicator size="small" color="#04211f" />
+                  : <Text style={styles.modalBtnGreenText}>Use This</Text>}
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={() => selected && handleDownload(selected)}>
-                <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Download</Text>
+              <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={() => selected && handleDownload(selected)} disabled={!!downloading}>
+                {downloading
+                  ? <ActivityIndicator size="small" color="#2ecc71" />
+                  : <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Download</Text>}
               </TouchableOpacity>
             </View>
           </View>

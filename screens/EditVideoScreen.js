@@ -1201,7 +1201,7 @@ function clipLength(item) {
   return Math.max(0, end - (item.trimStart ?? 0)) / clipSpeed(item);
 }
 
-export default function EditVideoScreen({ navigation }) {
+export default function EditVideoScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const videoRef = useRef(null);
 
@@ -1894,6 +1894,57 @@ export default function EditVideoScreen({ navigation }) {
     }, 900);
     return () => clearTimeout(t);
   }, [draftChecked, items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio, background]);
+
+  // A finished video sent here by "Use" on My Videos. It arrives as a local file that
+  // MyVideosScreen has already fetched and measured, so it becomes an ordinary clip
+  // and everything downstream - filmstrip, playback, trim, export - treats it exactly
+  // like one picked from the gallery.
+  //
+  // Held until draftChecked, or it would be appended to an empty timeline and then
+  // wiped by the restore that follows. The ref is what stops it being added again on
+  // every re-render, since navigation params persist for the life of the screen.
+  const usedVideoRef = useRef(null);
+  useEffect(() => {
+    if (!draftChecked) return;
+    const incoming = route?.params?.useVideo;
+    if (!incoming?.uri) return;
+    if (usedVideoRef.current === incoming.uri) return;
+    usedVideoRef.current = incoming.uri;
+
+    const seconds = Number(incoming.seconds) > 0 ? Number(incoming.seconds) : null;
+    const key = String(Date.now()) + '_used';
+    const mediaId = newMediaId('clip');
+    const item = {
+      key,
+      mediaId,
+      naturalW: 0,
+      naturalH: 0,
+      uri: incoming.uri,
+      type: 'video',
+      fileName: incoming.fileName || ('tonefy_' + Date.now() + '.mp4'),
+      duration: 3,
+      sourceDuration: seconds,
+      trimStart: 0,
+      // Without a measured length this behaves like ImagePicker's no-duration case:
+      // 3 seconds, with a right handle that will not extend. Better than pretending
+      // to a length nothing has established.
+      trimEnd: seconds || 3,
+      volume: 1,
+      speed: 1,
+      filter: 'None',
+      transition: 'none',
+    };
+    setItems(prev => {
+      const next = [...prev, item];
+      pushHistory(next);
+      return next;
+    });
+    // Copies it out of cache into permanent storage, same as a picked clip - the OS
+    // reclaims cache whenever it likes, and a draft pointing into it comes back broken.
+    persistInto(setItems, key, mediaId, incoming.uri, 'mp4');
+    // Cleared so going back and forward does not re-add it.
+    navigation.setParams({ useVideo: undefined });
+  }, [draftChecked, route?.params?.useVideo]);
 
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);

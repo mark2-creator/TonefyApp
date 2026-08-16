@@ -48,16 +48,26 @@ function fileNameFor(video) {
  * happened - "Saved to your gallery" and "choose where to save it" are different
  * outcomes and should not share one message.
  */
-export async function saveVideoToDevice(url, video) {
+/**
+ * Fetches a finished video to a local file and returns its uri.
+ *
+ * Split out because two callers want the file and disagree about what happens next:
+ * Download wants it in the gallery, and Use wants it as a clip on the timeline. A
+ * remote https uri cannot be a clip - the export builds its upload straight from
+ * `item.uri` for every item, so a URL there would upload nothing usable.
+ */
+export async function downloadVideoToCache(url, video) {
   if (!url) throw new Error('This video has no file to download.');
-
-  // Into cache rather than documents: once it is in the gallery or has been shared,
-  // this copy is a duplicate, and the OS may reclaim cache on its own.
   const target = new File(Paths.cache, fileNameFor(video));
   try { if (target.exists) target.delete(); } catch (e) {}
-
   const downloaded = await File.downloadFileAsync(url, target);
-  const localUri = downloaded.uri;
+  return downloaded.uri;
+}
+
+export async function saveVideoToDevice(url, video) {
+  // Into cache rather than documents: once it is in the gallery or has been shared,
+  // this copy is a duplicate, and the OS may reclaim cache on its own.
+  const localUri = await downloadVideoToCache(url, video);
 
   const MediaLibrary = getMediaLibrary();
   if (MediaLibrary) {
