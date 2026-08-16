@@ -2,13 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  StatusBar, Modal, Linking, RefreshControl, ScrollView
+  StatusBar, Modal, ActivityIndicator, RefreshControl, ScrollView
 } from 'react-native';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
+import { saveVideoToDevice } from '../utils/saveVideo';
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -25,7 +27,7 @@ function formatDate(iso) {
   }
 }
 
-function VideoCard({ video, onPress, onUse, onDownload }) {
+function VideoCard({ video, onPress, onUse, onDownload, downloading }) {
   const { theme } = useTheme();
   const url = video.downloadUrl || video.localUrl || '';
   const player = useVideoPlayer(url, (p) => {
@@ -53,8 +55,14 @@ function VideoCard({ video, onPress, onUse, onDownload }) {
         <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)}>
           <Text style={styles.btnUseText}>Use</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btnDl, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => onDownload(video)}>
-          <MaterialIcons name="file-download" size={18} color={theme.icon} />
+        <TouchableOpacity
+          style={[styles.btnDl, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => onDownload(video)}
+          disabled={downloading}
+        >
+          {downloading
+            ? <ActivityIndicator size="small" color="#2ecc71" />
+            : <MaterialIcons name="file-download" size={18} color={theme.icon} />}
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -66,6 +74,8 @@ export default function MyVideosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [allVideos, setAllVideos] = useState([]);
   const [filtered, setFiltered] = useState([]);
+  // The id of the video being fetched, so only its own button shows a spinner.
+  const [downloading, setDownloading] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,9 +143,27 @@ export default function MyVideosScreen({ navigation }) {
     navigation.navigate('IdeaToVideo', { reuseVideoUrl: video.downloadUrl || video.localUrl });
   }
 
-  function handleDownload(video) {
+  // Was Linking.openURL(url), which handed the video to the phone's browser and left
+  // the user to download it from there - technically a download, and nothing like what
+  // the button says. Now fetches the file and either saves it straight to the gallery
+  // or offers the share sheet, depending on what the installed build can do.
+  async function handleDownload(video) {
     const url = video.downloadUrl || video.localUrl;
-    if (url) Linking.openURL(url);
+    if (!url) return showAlert('Download', 'This video has no file to download.');
+    if (downloading) return;
+    setDownloading(video.id);
+    try {
+      const { method } = await saveVideoToDevice(url, video);
+      if (method === 'gallery') {
+        showAlert('Saved', 'The video is in your gallery, in the Tonefy album.');
+      }
+      // The share sheet is its own confirmation: it opens, the user picks somewhere,
+      // it closes. An alert on top of that is a tap of pure noise.
+    } catch (e) {
+      showAlert('Download failed', e.message || 'Could not download this video.');
+    } finally {
+      setDownloading(null);
+    }
   }
 
   const totalMB = (allVideos.reduce((s, v) => s + (v.size || 0), 0) / 1024 / 1024).toFixed(1);
@@ -205,7 +233,7 @@ export default function MyVideosScreen({ navigation }) {
           columnWrapperStyle={{ gap: 12 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ecc71" />}
           renderItem={({ item }) => (
-            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} />
+            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} />
           )}
         />
       )}

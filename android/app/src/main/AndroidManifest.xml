@@ -4,6 +4,15 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <!-- expo-media-library. Its own library manifest merges in READ_EXTERNAL_STORAGE,
+       WRITE_EXTERNAL_STORAGE and READ_MEDIA_VISUAL_USER_SELECTED on its own, but
+       READ_MEDIA_VIDEO/READ_MEDIA_IMAGES come from its CONFIG PLUGIN - and this project
+       has a committed android/ folder, so EAS never runs prebuild and no config plugin
+       ever applies. They have to be written here by hand or saving to the gallery fails
+       on Android 13+, which is most devices. Same trap as the BILLING permission and the
+       react-native-iap Gradle flavour. -->
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="com.android.vending.BILLING"/>
   <queries>
     <intent>
