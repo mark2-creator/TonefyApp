@@ -1303,6 +1303,9 @@ export default function EditVideoScreen({ navigation, route }) {
 
   // Voiceover
   const [showVoiceoverModal, setShowVoiceoverModal] = useState(false);
+  // Beside the sheet it opens from, not beside the preview code it replaced - the
+  // declaration lived in that block and went with it when the block was deleted.
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [voiceoverTab, setVoiceoverTab] = useState('generate'); // 'generate' | 'file'
   const [voiceoverScript, setVoiceoverScript] = useState('');
   const [voiceId, setVoiceId] = useState('gtts-us');
