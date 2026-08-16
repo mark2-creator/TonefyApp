@@ -2032,14 +2032,43 @@ nothing to aim at.
     request carrying a different `X-Real-IP` still returns 200 while the first bucket is
     exhausted - the separation that did not exist before.
 
-    **Two findings left open, both needing root or a product call:**
-    - **nginx should send `X-Forwarded-For` anyway** (one line, or `include
-      proxy_params;`). The app no longer depends on it, but every future service behind
-      this vhost will hit the same trap.
-    - **`client_max_body_size 50M` in nginx versus multer's 500MB/file.** The app
-      believes it accepts 500MB; nginx rejects anything over 50MB with a 413 the app
-      never sees. For a video editor 50MB is roughly a minute of 1080p, so this is a
-      real user-facing ceiling that nothing in the app explains.
+    **Both nginx findings closed the same day** (owner ran the edits; no passwordless
+    sudo here). `/etc/nginx/sites-available/api.fitlifesolutions.site` now sends
+    `X-Forwarded-For` and `X-Forwarded-Proto` alongside `X-Real-IP`, and
+    `client_max_body_size` went 50M -> **1G**. 1G rather than 500M on purpose: multer
+    caps each *file* at 500MB while nginx caps the whole *request*, so at 1G a single
+    large clip always reaches multer - which returns a clear JSON error naming the cap -
+    instead of nginx answering with a bare 413 the app cannot explain.
+
+    Verified rather than assumed, because the first reload silently did not happen:
+    `sudo nginx -t && sudo systemctl reload nginx` typed as one line ran only the test,
+    and nginx kept serving two-day-old workers with the old config. **A passing
+    `nginx -t` is not a deployed config.** The checks that caught it and then confirmed
+    the fix: worker process start times (a reload spawns new ones), and a 60MB
+    unauthenticated POST to `/api/upload-media`, which returned 413 before the reload
+    and 401 after - 401 meaning the body got past nginx and the app rejected the auth.
+
+    **The rate-limit key cannot be forged**, which matters now that it reads a header:
+    `proxy_set_header X-Real-IP $remote_addr` *replaces* whatever a client sent with
+    nginx's own view of the socket, and `$proxy_add_x_forwarded_for` *appends* the real
+    address, so with `trust proxy: 1` Express reads the rightmost entry and a
+    client-supplied prefix is ignored.
+
+    **`0e1af968` — multer's own limits now get a real status code.** They are signalled
+    by `next(err)` before the handler runs, so `/api/upload-media`'s try/catch never saw
+    them: the global error handler knew `LIMIT_FILE_SIZE` and `LIMIT_UNEXPECTED_FILE`
+    but not the fileFilter rejection, so an unsupported file returned **500** and an
+    oversized one a 400 that never said what the limit was. Now 413 with the 500MB cap
+    stated, 400 naming the accepted types. Verified with a real ID token against a
+    booted instance, all three paths including the success case.
+
+    Worth recording how nearly that shipped unverified: the first run of that test
+    reported the *old* messages, which read exactly like the patch not taking. It was a
+    stale test server from an earlier boot still holding the port - `kill $BGPID` had
+    killed the wrapping shell, not node. **When a test reports pre-change behaviour,
+    establish which process answered before concluding anything about the code.** The
+    rate-limit verification above is unaffected; that instance postdated the limiter
+    work and did contain it.
 
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
