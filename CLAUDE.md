@@ -230,6 +230,58 @@ Keep the committed `android/app/google-services.json` in sync afterwards. It cha
 nothing at runtime, but this project's committed `android/` folder means nothing
 regenerates it, so it silently rots from every SHA change otherwise.
 
+## Known bug pattern: many sibling views is O(n²) on Android
+
+**Symptom:** the app freezes and Android offers "Tonefy AI isn't responding". Sentry
+reports `ApplicationNotResponding` with the **main thread** (not the JS thread) inside:
+
+```
+BlendModeHelper.needsIsolatedLayer -> View.getTag -> SparseArray.binarySearch
+```
+
+**Mechanism**, read out of the installed React Native source rather than inferred:
+`ReactViewGroup.drawChild` (`ReactViewGroup.kt:885`) runs **once per child**, and every
+call asks `needsIsolatedLayer(this)`, which is
+`view.children.any { it.getTag(R.id.mix_blend_mode) != null }` (`BlendModeHelper.kt:50`).
+**One view group with N children therefore costs N×N `getTag` calls per frame** - and
+none of them can ever matter in this app, because nothing here sets `mix-blend-mode`,
+so the answer is always false. It is pure waste that grows quadratically.
+
+**The rule this gives you: never render an unbounded number of siblings into one
+parent.** Two fixes, usually both:
+
+1. **Cap the count**, deriving size from the available width so the thing still fills
+   its box rather than stopping part way.
+2. **Nest them into groups**, which turns one N² into `g² + g·k²`. Purely structural -
+   plain views in the same flex direction lay out identically.
+
+**Found Aug 16 2026** on a Galaxy A23 (`device.class = 1`), build 9, with a project of
+just two 3-second clips - small, but with music on it. Fixed in `87c0479f`:
+
+- **`components/Waveform.js` was the killer.** Bar count was uncapped at `width / 3`,
+  and an audio block's width is its duration × 40px, so a three-minute track drew
+  ~2,400 bars: **~5.7 million `getTag` calls per frame**. Now `MAX_BARS = 500` with
+  pitch/width derived from the block, plus `<G>` groups of 16. **Under ~25s of audio
+  nothing changes.** That file also carried a wrong comment claiming one SVG meant "one
+  native view instead of a hundred and fifty" - **on Android `react-native-svg` gives
+  every `<Rect>` its own native view**; the saving is layout and prop plumbing, never
+  view count. Corrected in place, since that comment is what would mislead next time.
+- **`components/FilmStrip.js`** has the same shape smaller - up to `MAX_TILES = 160`
+  tiles as direct children - and got the same nesting.
+
+Measured: 3-min waveform 5,760,000 → 9,216 calls/frame (625×), 60s waveform 640,000 →
+9,216 (69×), filmstrip 25,600 → 2,212 (12×).
+
+**Not the same bug as the export ANR in item 20**, which was the *JS* thread freezing on
+unmemoized overlays. Same dialog, different thread, different fix. When an ANR appears,
+the first thing to establish is which thread the stack is on.
+
+**Places worth checking before adding one:** anything that maps over a duration, a
+sample array, or a catalogue into siblings. The caption style picker (138 tiles) is safe
+because it is a `FlatList` and virtualises; the timeline rows are safe because they hold
+one chip per item. Waveform and filmstrip were the two that scaled with *content length*
+rather than item count, which is the property to watch for.
+
 ## Skills (`.claude/skills/`)
 
 - **`tonefy-design`** — this app's visual conventions: the green/teal rule below, the
