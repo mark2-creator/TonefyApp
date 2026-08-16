@@ -2071,6 +2071,60 @@ nothing to aim at.
     work and did contain it.
 
 
+32. **Capacity: one VPS is the right size, and two scaling cliffs were fixed rather
+    than scaled around** (Aug 16 2026, `~/Tonefy-react/backend@8bb766a8`, deployed).
+
+    **The measurements**, so this is not re-derived: 6 cores, 11GB RAM (8.3GB free),
+    132GB disk free, load average ~1.3, sharing the box with five other pm2 processes
+    that sit at ~0% CPU. A caption-heavy export is ~390 overlay renders at ~29ms each
+    (item 24's own benchmark) plus the ffmpeg encode - call it **30-90s of nearly the
+    whole box per export**, so roughly **one export per minute sustained**. 100 users at
+    two exports a day is ~200/day against a ceiling near 1,400. **Volume is not the
+    constraint; simultaneity is.** No load balancer, second server or Kubernetes is
+    warranted at this size, and adding them would cost more than it buys.
+
+    **Cliff 1 - the editor's export path had no concurrency limit at all.**
+    `acquireVideoSlot` has capped renders at 4 since it was written, but from exactly
+    one call site: `idea-to-video-v2`. `media-to-video` and `edit-video` had none, so
+    ten simultaneous exports all started at once, each spawning ffmpeg plus up to 6
+    parallel ImageMagick processes on 6 cores - all ten running ~10x slower. Worse than
+    queuing in every respect: it degrades every user at once instead of making the last
+    arrival wait, and **a single slow export has already been mistaken for a hang here
+    and triggered an Android ANR** (item 20).
+
+    Acquired *after* `res.json`, so the caller already holds its jobId and polls
+    normally while queued, with the job message saying so. **Released in a `finally`,
+    which is the part that has to be right** - a throw or early return that skipped it
+    leaks a slot permanently, and four leaked slots stop every render on the server for
+    good. Verified by extracting the real algorithm and running 11 jobs through it, two
+    of which throw: never more than 4 concurrent, zero leaked, no stranded waiters, and
+    a Creator-tier job still jumps ahead of queued free ones.
+
+    **Cliff 2 - a blocking whole-file write per progress tick.** `saveJobsToDisk` was
+    `writeFileSync` of the entire job store on every `updateJob`, and `updateJob` runs
+    once per overlay since item 22 added per-overlay progress - so a 391-overlay render
+    performed **391 blocking rewrites of the whole store, on the single thread serving
+    every HTTP request for every user**. The cost is (jobs stored) x (ticks per render)
+    and grows on both axes at once.
+
+    Coalesced to at most one write per second, with an immediate flush for job creation
+    and terminal states, where losing a second to a crash would strand a caller polling
+    for a result the store no longer admits exists. **Note these handlers set status
+    `'error'`, not `'failed'`** - the flush condition covers all three. Now also writes
+    to a temp file and renames: the old version could leave truncated JSON on a crash
+    mid-write, and truncated JSON fails to parse, **losing every job rather than the one
+    in flight**. A pending write is flushed on SIGINT/SIGTERM so a pm2 restart cannot
+    drop it. Verified on a booted instance - auth still enforced, jobs.json valid, no
+    stray `.tmp`, all 37 jobs intact after a SIGKILL.
+
+    **What would actually justify more hardware**, when the time comes: sustained
+    queue depth on the 4 render slots, not user count. Watch how long jobs sit at
+    "Waiting for a free render slot..." - that message exists now and is the signal. The
+    first move then is a bigger box (renders are CPU-bound and scale with cores), not
+    more boxes: the job store is in-process memory and the rate limiters are in-process
+    counters, so a second instance would need both externalised before it helped.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
