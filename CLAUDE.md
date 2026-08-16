@@ -2152,6 +2152,70 @@ nothing to aim at.
     counters, so a second instance would need both externalised before it helped.
 
 
+33. **Five toolbar tools built, all zero running cost** (Aug 16 2026; app `f3500816`,
+    `8896a509`, `703bb0fa`; backend `2df35786`, `8646efba`, `12035a72`). First delivery
+    against the "free half of the toolbar first" order. All five are `premium: true`, so
+    building them turns them into real Pro/Creator benefits rather than free additions.
+
+    **Reverse, Reduce noise, Motion blur** are one property each on the media item,
+    consumed in the existing per-clip filter chain: `reverse`+`areverse`, `afftdn`,
+    `tmix=frames=3`. Chain order is deliberate - reverse before `setpts` so speed applies
+    to the reversed clip, `tmix` last so it blends the frames actually shown. Stills are
+    refused with a reason rather than silently no-op.
+
+    **Reverse needed a cap.** The filter holds every decoded frame in memory at once,
+    since the last frame must be written first - ~1.4MB/frame at 720x1280, so 15s at
+    30fps is ~620MB for one clip, with four renders able to run concurrently. Refused
+    past 15s, with the number in the message, on both sides. The per-clip `exec` timeout
+    was 60s (sized for a plain transcode) and goes to 180s for these.
+
+    **Stabilize is two passes**, and the trap is that `vidstabdetect`'s `.trf` is
+    **indexed by frame number**: the detect pass must read *exactly* the frames the
+    transform pass will - same `-ss`/`-t`, same source crop ahead of it. Mismatch them
+    and nothing fails, the corrections just land on the wrong frames. That is why `vf` is
+    now split into `vfHead`/`vfTail` - the transform has to splice in *before* the fit
+    into the output frame, or the pad moves around with the picture. `unsharp` after is
+    ffmpeg's own recommendation. The `.trf` is unlinked in a `finally` (the
+    `txtrender-*.png` leak of `aaa0f043` is the precedent). Timeout 300s.
+
+    **Video Translator** is whisper -> Groq -> edge-tts, all already on the box.
+    14 languages; **voice names were read from `edge_tts.list_voices()` on this machine,
+    not written from memory** - several are `Multilingual` variants whose obvious
+    per-locale names do not exist. LLM call is `temperature: 0.2`, `max_tokens: 2000`
+    against the helper's 0.8/400 defaults, and the system prompt insists on the
+    translation alone: an LLM told to "translate" adds a preamble, and the preamble then
+    gets spoken aloud as if it were the script.
+
+    **It returns a jobId, and that was a correction forced by measurement.** Written
+    synchronously first; then whisper was timed at **slower than realtime** - 74s of
+    audio did not finish inside two minutes - so a 5-minute clip is 10+ minutes, past
+    nginx's 600s `proxy_read_timeout`. Reuses the existing `/api/job/:jobId` polling. It
+    also takes one of the four render slots (released in a `finally`), since whisper is
+    as CPU-hungry as an export. Input capped at 5 minutes. Enforced Pro/Creator
+    server-side, not only by the toolbar's `premium: true`.
+
+    App side: the clip is uploaded on demand (clips live on the device until an export
+    uploads them) and the URL is remembered on the item so a second translate does not
+    re-send it. The result becomes a voiceover track **and the source clip is muted** -
+    without that the original narration plays under the translation, which is worse than
+    not translating. Its own poller rather than `pollJob`, which ends by handing an
+    exported video to the result screen.
+
+    **Verified against real inputs, not stubs.** Reverse proven to actually reverse (the
+    output's first frame matches the source's *last* at PSNR 28.3 vs 16.0 for the
+    source's first). Stabilize's exact two-command pair run composed with source crop,
+    frame fit, motion blur, speed and denoise. Translation run end to end producing real
+    Swahili and French from real English. Test account, Firestore doc, uploads and
+    generated audio all removed.
+
+    **What is not verified: vidstab's actual effectiveness on real shake.** Two attempts
+    to synthesise shaky footage produced clips that were not shaky - caught by measuring
+    rather than assuming, but not worth more scaffolding for a well-established ffmpeg
+    filter. **Real handheld footage on a device is the remaining check.** Also unverified
+    on device: all five tools, and whether Stabilize's "this takes longer" warning makes
+    the wait feel explained.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
