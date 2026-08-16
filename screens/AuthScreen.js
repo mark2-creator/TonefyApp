@@ -240,7 +240,7 @@ export default function AuthScreen({ navigation }) {
           // accounts that predate this feature, not meant to be the primary
           // path). Without this, a brand new account would show no credits
           // at all on the Profile screen until its first render request.
-          // 5 credits / 30-day window must match TIERS.free in
+          // 10 credits / 30-day window must match TIERS.free in
           // ~/Tonefy-react/backend/tiers.js - duplicated across repos on
           // purpose (no shared package between them), not a value to change
           // in only one place.
@@ -250,7 +250,7 @@ export default function AuthScreen({ navigation }) {
             country,
             createdAt: serverTimestamp(),
             plan: 'free',
-            creditsRemaining: 5,
+            creditsRemaining: 10,
             creditsResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             subscriptionStatus: null,
           });

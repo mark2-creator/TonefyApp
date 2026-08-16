@@ -42,7 +42,7 @@ export const TIER_CAPS = {
   // 2 minutes, matching tiers.js on the backend - at 1 minute a free account
   // could not export anything at all from Idea-to-Video, because the generated
   // script read aloud runs past a minute. Credits remain the real ceiling.
-  [TIER_FREE]: { creditsPerCycle: 5, maxExportSeconds: 2 * 60, maxResolution: '720p', watermark: true },
+  [TIER_FREE]: { creditsPerCycle: 10, maxExportSeconds: 2 * 60, maxResolution: '720p', watermark: true },
   [TIER_PRO]: { creditsPerCycle: 60, maxExportSeconds: 15 * 60, maxResolution: '1080p', watermark: false },
   [TIER_CREATOR]: { creditsPerCycle: 300, maxExportSeconds: 40 * 60, maxResolution: '1080p', watermark: false },
 };
