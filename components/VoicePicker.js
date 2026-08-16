@@ -45,23 +45,37 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
     setPlayingId(null);
   }
 
+  // Previews are pre-rendered, one file per voice, generated once by
+  // scripts/generate-voice-previews.py and served static from /previews. Tapping play
+  // used to mean a round trip through /api/generate-audio: several seconds of silence,
+  // CPU on the render box, and a plan check standing between someone and hearing the
+  // voice they were deciding whether to pay for. The line and the voice are both fixed,
+  // so the audio can only ever come out the same - there is nothing to generate.
+  //
+  // The fallback still generates, for a voice added to the catalogue before its preview
+  // has been rendered. It is the exception now rather than the path.
   async function preview(voice) {
     if (busyId) return;
     if (playingId === voice.id) return stop();
     await stop();
     setBusyId(voice.id);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`${BACKEND}/api/generate-audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ text: PREVIEW_LINE, voiceId: voice.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      // A 403 here is the plan gate, and its message names the plan - shown as written
-      // rather than replaced with something vaguer.
-      if (!res.ok || data.error) throw new Error(data.error || 'Could not play that voice.');
-      const { sound: snd } = await Audio.Sound.createAsync({ uri: BACKEND + data.audioUrl }, { shouldPlay: true });
+      let uri = `${BACKEND}/previews/${encodeURIComponent(voice.id)}.mp3`;
+      const head = await fetch(uri, { method: 'HEAD' }).catch(() => null);
+      if (!head || !head.ok) {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch(`${BACKEND}/api/generate-audio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ text: PREVIEW_LINE, voiceId: voice.id }),
+        });
+        const data = await res.json().catch(() => ({}));
+        // A 403 here is the plan gate, and its message names the plan - shown as
+        // written rather than replaced with something vaguer.
+        if (!res.ok || data.error) throw new Error(data.error || 'Could not play that voice.');
+        uri = BACKEND + data.audioUrl;
+      }
+      const { sound: snd } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
       setSound(snd);
       setPlayingId(voice.id);
       snd.setOnPlaybackStatusUpdate(st => { if (st.didJustFinish) setPlayingId(null); });
