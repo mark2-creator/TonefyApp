@@ -7,9 +7,16 @@ Bundled rather than fetched on device on purpose. Loading 325 avatars from an AP
 render time would put a network round trip in front of every voice card, and would make
 the picker depend on a third-party service staying up. These are ~8KB each.
 
-DiceBear's avataaars set is open source and free. Facial hair is forced off for the
-female set and likely for the male set, which is what makes the two read differently -
-the style has no gender parameter of its own.
+Style is `notionists` - the same restrained illustrated portrait Notion uses - rather
+than `avataaars`, which reads as a cartoon. Photorealistic faces were considered and
+rejected: the free sources either forbid using identifiable people in ways implying
+endorsement or have unclear provenance, and putting a real human face on a text-to-speech
+engine implies a person performed it when nobody did. Other styles are a one-word change
+here: personas, lorelei, micah, open-peeps, adventurer.
+
+DiceBear is open source and free. Facial hair is forced off for the female set and made
+likely for the male set, which is what makes the two read differently - the style has no
+gender parameter of its own.
 """
 import pathlib, urllib.request, sys
 
@@ -17,13 +24,14 @@ APP = pathlib.Path(__file__).resolve().parent.parent
 OUT = APP / "assets" / "avatars"
 OUT.mkdir(parents=True, exist_ok=True)
 
+STYLE = "notionists"
 BG = "b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf,c9f2d0,ffe0b3"
 N = 30
 
 def fetch(kind, i):
     seed = f"{kind}{i}"
     extra = "facialHairProbability=0" if kind == "f" else "facialHairProbability=70"
-    url = (f"https://api.dicebear.com/9.x/avataaars/png?seed={seed}&size=128"
+    url = (f"https://api.dicebear.com/9.x/{STYLE}/png?seed={seed}&size=128"
            f"&backgroundColor={BG}&{extra}")
     dest = OUT / f"{kind}{i:02d}.png"
     if dest.exists() and dest.stat().st_size > 1000:

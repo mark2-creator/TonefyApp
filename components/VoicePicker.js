@@ -12,6 +12,7 @@ import VoiceAvatar from './VoiceAvatar';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const PREVIEW_LINE = 'Hi, this is a quick preview of my voice.';
+const COLS = 3;
 
 // Choosing from 325 voices across 75 languages, with the voice audible before you
 // commit to it.
@@ -71,14 +72,24 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
     }
   }
 
-  // One flat list of rows and headers rather than a SectionList, so search can collapse
-  // to a plain result list with no empty headings left behind.
+  // A grid, built by chunking each group into rows of COLS and making each ROW one
+  // FlatList item. numColumns cannot do this: it lays every item into a cell, language
+  // headers included, so headers end up sharing a row with voices. The font picker
+  // solved the same problem the same way.
+  //
+  // One flat list rather than a SectionList so a search can collapse to plain results
+  // with no empty headings left behind.
   const rows = useMemo(() => {
+    const chunk = (arr) => {
+      const out = [];
+      for (let i = 0; i < arr.length; i += COLS) out.push(arr.slice(i, i + COLS));
+      return out;
+    };
     const q = query.trim().toLowerCase();
     const match = v => !q || [v.label, v.accent, v.langName, v.country, v.gender]
       .some(f => String(f || '').toLowerCase().includes(q));
     const hits = VOICES.filter(match);
-    if (q) return hits.map(v => ({ type: 'voice', v }));
+    if (q) return chunk(hits).map(cells => ({ type: 'row', cells }));
 
     const byLang = new Map();
     for (const v of hits) {
@@ -90,7 +101,7 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
     const out = [];
     for (const name of names) {
       out.push({ type: 'header', name, count: byLang.get(name).length });
-      for (const v of byLang.get(name)) out.push({ type: 'voice', v });
+      for (const cells of chunk(byLang.get(name))) out.push({ type: 'row', cells });
     }
     return out;
   }, [query]);
@@ -118,8 +129,8 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
 
           <FlatList
             data={rows}
-            keyExtractor={(r, i) => (r.type === 'header' ? 'h' + r.name : 'v' + r.v.id) + i}
-            initialNumToRender={14}
+            keyExtractor={(r, i) => (r.type === 'header' ? 'h' + r.name : 'r' + r.cells[0].id) + i}
+            initialNumToRender={8}
             windowSize={9}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text style={[styles.empty, { color: theme.subtext }]}>No voices match that.</Text>}
@@ -131,41 +142,48 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
                   </Text>
                 );
               }
-              const v = item.v;
-              const active = selectedId === v.id;
-              const locked = !v.free && !isPremium;
               return (
-                <TouchableOpacity
-                  style={[styles.row, { borderColor: theme.border }, active && styles.rowActive]}
-                  onPress={() => {
-                    if (locked) {
-                      return showAlert(v.label, 'This voice is available on the Pro and Creator plans.');
-                    }
-                    onSelect(v.id);
-                    onClose();
-                  }}
-                >
-                  <VoiceAvatar voice={v} size={40} selected={active} busy={busyId === v.id} playing={playingId === v.id} locked={locked} />
-                  <View style={styles.rowText}>
-                    <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>{v.label}</Text>
-                    <Text style={[styles.accent, { color: theme.subtext }]} numberOfLines={1}>
-                      {v.langName} · {v.accent}
-                    </Text>
-                  </View>
-                  {/* Preview stays available on a locked voice on purpose - hearing what
-                      an upgrade buys is the point of showing it at all. */}
-                  <TouchableOpacity
-                    onPress={() => preview(v)}
-                    disabled={!!busyId}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    style={styles.playBtn}
-                  >
-                    {busyId === v.id
-                      ? <ActivityIndicator size="small" color="#2ECC71" />
-                      : <MaterialIcons name={playingId === v.id ? 'stop-circle' : 'play-circle-outline'} size={26} color="#2ECC71" />}
-                  </TouchableOpacity>
-                  {active && <MaterialIcons name="check" size={20} color="#2ECC71" />}
-                </TouchableOpacity>
+                <View style={styles.gridRow}>
+                  {item.cells.map(v => {
+                    const active = selectedId === v.id;
+                    const locked = !v.free && !isPremium;
+                    return (
+                      <TouchableOpacity
+                        key={v.id}
+                        style={[styles.cell, { borderColor: theme.border }, active && styles.cellActive]}
+                        onPress={() => {
+                          if (locked) {
+                            return showAlert(v.label, 'This voice is available on the Pro and Creator plans.');
+                          }
+                          onSelect(v.id);
+                          onClose();
+                        }}
+                      >
+                        <VoiceAvatar voice={v} size={56} selected={active} busy={busyId === v.id} playing={playingId === v.id} locked={locked} />
+                        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>{v.label}</Text>
+                        <Text style={[styles.accent, { color: theme.subtext }]} numberOfLines={1}>{v.accent}</Text>
+                        {/* Preview stays available on a locked voice on purpose -
+                            hearing what an upgrade buys is the point of showing it. */}
+                        <TouchableOpacity
+                          onPress={() => preview(v)}
+                          disabled={!!busyId}
+                          hitSlop={{ top: 10, bottom: 10, left: 16, right: 16 }}
+                          style={styles.playBtn}
+                        >
+                          {busyId === v.id
+                            ? <ActivityIndicator size="small" color="#2ECC71" />
+                            : <MaterialIcons name={playingId === v.id ? 'stop-circle' : 'play-circle-outline'} size={22} color="#2ECC71" />}
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {/* Keeps the last row's cells at column width instead of stretching
+                      them across the gap - the same fix the font grid needed. */}
+                  {item.cells.length < COLS &&
+                    Array.from({ length: COLS - item.cells.length }, (_, i) => (
+                      <View key={'sp' + i} style={styles.cellSpacer} />
+                    ))}
+                </View>
               );
             }}
           />
@@ -181,11 +199,12 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
   searchInput: { flex: 1, fontSize: 14, padding: 0 },
   header: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 14, marginBottom: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, marginBottom: 8, gap: 12 },
-  rowActive: { borderColor: '#2ECC71' },
-  rowText: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700' },
-  accent: { fontSize: 12, marginTop: 2 },
-  playBtn: { paddingHorizontal: 4 },
+  gridRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  cell: { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderRadius: 14, borderWidth: 1 },
+  cellActive: { borderColor: '#2ECC71' },
+  cellSpacer: { flex: 1 },
+  name: { fontSize: 13, fontWeight: '700', marginTop: 8 },
+  accent: { fontSize: 10, marginTop: 2 },
+  playBtn: { marginTop: 6 },
   empty: { textAlign: 'center', marginTop: 30, fontSize: 13 },
 });
