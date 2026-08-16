@@ -2268,6 +2268,60 @@ nothing to aim at.
     the wait feel explained.
 
 
+34. **My Videos had three broken controls; all three fixed** (Aug 16 2026; app
+    `c67bd6db`, `7dada187`, `d6633d1d`, `ce278ff8`). All reported from a real tester's
+    device, none reproducible on the owner's.
+
+    **The filter chips were clipped through the middle, and the first fix was wrong.**
+    `filterRow` had `maxHeight: 44`; removing it changed nothing, confirmed on device -
+    and confirmed *usefully*, because the other half of that same commit (the stat
+    values) did land, which proved the bundle was current and the diagnosis simply
+    wrong. Three things were needed together: `paddingHorizontal` moved from the
+    ScrollView's `style` to `contentContainerStyle` (on a ScrollView, `style` is the
+    outer clipping box, so padding there shrinks the visible area rather than insetting
+    content); `alignItems: 'center'` on the content container, because it defaults to
+    `stretch` and every chip was taking the row's height instead of defining it - which
+    is why they came out cut through the middle rather than overflowing; and
+    `flexShrink: 0` on the row plus `flex: 1` on the FlatList, so a long grid cannot
+    compress the controls above it. **A horizontal ScrollView clipping its children
+    vertically is nearly always cross-axis stretch plus padding on the wrong style, not
+    a height that is too small** - reaching for a height is what put the original
+    `maxHeight: 44` there, and it clipped again the moment a device used a larger font
+    scale.
+
+    **"26.5MB" was wrapping onto two lines** as "26.5M"/"B" on that same device.
+    `numberOfLines={1}` with `adjustsFontSizeToFit`. Both symptoms came from **system
+    font scaling**, which is worth testing deliberately - it breaks any layout with a
+    hardcoded height.
+
+    **Download was `Linking.openURL(url)`** - the video's URL handed to Chrome, leaving
+    the user to download it from the browser. Now `utils/saveVideo.js` fetches the file
+    and takes whichever route the *installed binary* supports: gallery (in a Tonefy
+    album) when `expo-media-library` is present, share sheet when it is not. Required
+    lazily inside a `try`, so build 9 got a working Download over the air and the
+    gallery path switches itself on with no further edit. **Its manifest permissions
+    had to be written by hand** - the library's own manifest merges three in, but
+    `READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES` come from its **config plugin**, and a
+    committed `android/` folder means EAS never runs prebuild so no plugin ever applies.
+    Without them gallery saving fails on Android 13+. **Third time this project has been
+    caught by that** (after the BILLING permission and react-native-iap's Gradle flavour).
+
+    **"Use"/"Use This" navigated to Idea-to-Video with a `reuseVideoUrl` param that
+    nothing read** - written in one place, consumed nowhere, so the video was dropped
+    and you landed on an empty generator screen. Now opens it in the editor as a clip.
+    **The file is downloaded before navigating, and that is load-bearing rather than
+    polish:** `processVideo` builds its upload straight from `item.uri` for every item
+    and maps the server's replies back **by position**, so a remote https uri in that
+    list would upload nothing usable *and* shift every clip after it. Duration comes
+    from the record's `durationSeconds` when present and is measured on device with the
+    existing `measureVideoDuration` when absent - needed because **only two of the three
+    `userVideos` writers store it, and the one that does not is Idea-to-Video**, which
+    is where most of these videos come from. The clip is appended only after
+    `draftChecked` (earlier and the restore wipes it), guarded by a ref against
+    re-render, with the nav param cleared afterwards, and `persistInto`d out of cache
+    like any picked clip.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
