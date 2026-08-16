@@ -100,6 +100,27 @@ npx expo export --platform android 2>&1 | tail -20
 
 Run this after every meaningful patch and confirm clean output before moving on.
 
+**But `expo export` is not enough on its own, and this is the gap that keeps costing
+device round trips.** Metro happily bundles a reference to an identifier that does not
+exist; it resolves at bundle time and throws only when that line runs. A deleted
+`useState` declaration whose setter three call sites still call bundles perfectly and
+grey-screens on a device - which is exactly what shipped in `5caf0ca8`.
+
+**ESLint was set up Aug 16 2026** for precisely that (`npx expo lint` scaffolded it;
+config in `eslint.config.js`). The gate is:
+
+```bash
+npx eslint . --quiet          # errors only - MUST be silent
+```
+
+The codebase sits at **0 errors, ~144 warnings**, so any error is new and real. Warnings
+are left as warnings on purpose: they are style rather than defects, and a lint that is
+always red is a lint nobody reads. `no-undef` and `no-dupe-keys` are the two promoted to
+errors - the second found two real duplicate style keys on the very first run.
+
+Verified by deleting a real `useState` declaration and confirming `--quiet` reports its
+three call sites, not merely by confirming it passes on working code.
+
 `babel.config.js` must exist (it didn't originally) for Reanimated's worklet plugin:
 
 ```js

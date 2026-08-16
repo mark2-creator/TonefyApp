@@ -5356,8 +5356,6 @@ const styles = StyleSheet.create({
   textChipText: { fontSize: 13 },
   captionChip: { backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2ECC71' },
   captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
-  captionChip: { backgroundColor: 'rgba(46,204,113,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, borderWidth: 1, borderColor: '#2ECC71' },
-  captionChipText: { fontSize: 13, color: '#2ECC71', fontWeight: '600' },
 
   bottomToolbar: { flexDirection: 'column', borderTopWidth: 1, borderTopColor: '#1a1a1a', backgroundColor: '#000' },
   tabIconsRow: { paddingVertical: 4 },
