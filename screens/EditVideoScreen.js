@@ -54,8 +54,9 @@ import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { showAlert } from '../components/BrandedAlert';
-import { VOICES } from '../constants/voices';
+import { voiceById } from '../constants/voices';
 import VoiceAvatar from '../components/VoiceAvatar';
+import VoicePicker from '../components/VoicePicker';
 import { navigationRef } from '../utils/navigationRef';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -1307,8 +1308,6 @@ export default function EditVideoScreen({ navigation, route }) {
   const [voiceId, setVoiceId] = useState('gtts-us');
   const [voiceoverTracks, setVoiceoverTracks] = useState([]);
   const [generatingVoiceover, setGeneratingVoiceover] = useState(false);
-  const [voiceoverPreviewSound, setVoiceoverPreviewSound] = useState(null);
-  const [voiceoverPreviewPlaying, setVoiceoverPreviewPlaying] = useState(false);
 
   // Waveforms
   const [waveformCache, setWaveformCache] = useState({});
@@ -2595,39 +2594,10 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }
 
-  // Which voice is being fetched, and which is sounding. Previewing means a round trip
-  // to the server to synthesise the line, which takes seconds - with no per-card
-  // feedback the button read as dead and people pressed it again, queueing a second
-  // clip behind the first.
-  const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
-  const [playingVoiceId, setPlayingVoiceId] = useState(null);
-
-  async function previewVoice(voice) {
-    if (previewingVoiceId) return;
-    try {
-      if (voiceoverPreviewSound) { await voiceoverPreviewSound.stopAsync(); await voiceoverPreviewSound.unloadAsync(); }
-      setPreviewingVoiceId(voice.id);
-      setPlayingVoiceId(null);
-      const res = await apiFetch('/api/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: 'Hi, this is a quick preview of my voice.', voiceId: voice.id }),
-      });
-      const data = await readJson(res);
-      if (data.error) throw new Error(data.error);
-      const { sound } = await Audio.Sound.createAsync({ uri: BACKEND + data.audioUrl }, { shouldPlay: true });
-      setVoiceoverPreviewSound(sound);
-      setVoiceoverPreviewPlaying(true);
-      setPlayingVoiceId(voice.id);
-      sound.setOnPlaybackStatusUpdate(status => {
-        if (status.didJustFinish) { setVoiceoverPreviewPlaying(false); setPlayingVoiceId(null); }
-      });
-    } catch (e) {
-      showAlert('Preview', e.message);
-    } finally {
-      setPreviewingVoiceId(null);
-    }
-  }
+  // Voice preview lives in components/VoicePicker.js now. It used to be here, driving
+  // a horizontal strip of eight cards; with 325 voices the strip became a picker, and
+  // the fetch-and-play went with it so IdeaToVideoScreen could use the same one rather
+  // than reimplement it.
 
   async function pickVoiceoverFile() {
     const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true });
@@ -4414,6 +4384,13 @@ export default function EditVideoScreen({ navigation, route }) {
         </View>
       </Modal>
 
+      <VoicePicker
+        visible={showVoicePicker}
+        selectedId={voiceId}
+        onSelect={setVoiceId}
+        onClose={() => setShowVoicePicker(false)}
+      />
+
       {/* TRANSLATE LANGUAGE PICKER */}
       <Modal visible={translateSheet} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -4989,37 +4966,24 @@ export default function EditVideoScreen({ navigation, route }) {
                   onChangeText={setVoiceoverScript}
                 />
                 <Text style={{ color:'#aaa', fontSize:12, marginBottom:8 }}>Voice</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:16 }}>
-                  {VOICES.map(v => (
-                    <TouchableOpacity key={v.id} onPress={() => setVoiceId(v.id)}
-                      style={{ marginRight:8, paddingHorizontal:10, paddingVertical:12, borderRadius:12, alignItems:'center', minWidth:88,
-                        backgroundColor: voiceId === v.id ? '#2ECC71' : '#2a2a2a' }}>
-                      <VoiceAvatar
-                        voice={v}
-                        size={40}
-                        selected={voiceId === v.id}
-                        busy={previewingVoiceId === v.id}
-                        playing={playingVoiceId === v.id}
-                      />
-                      <Text style={{ color: voiceId === v.id ? '#000' : '#fff', fontWeight:'700', fontSize:12, marginTop:8 }}>{v.label}</Text>
-                      <Text style={{ color: voiceId === v.id ? '#04211f' : '#888', fontSize:9 }}>{v.accent}</Text>
-                      {/* hitSlop because this sits inside the card's own touchable, and a
-                          small target nested in a large one is the press that gets lost. */}
-                      <TouchableOpacity
-                        onPress={() => previewVoice(v)}
-                        disabled={!!previewingVoiceId}
-                        hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-                        style={{ marginTop:8 }}
-                      >
-                        <MaterialIcons
-                          name={playingVoiceId === v.id ? 'stop-circle' : 'play-circle-outline'}
-                          size={20}
-                          color={voiceId === v.id ? '#04211f' : '#9a9a9a'}
-                        />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                {/* One row that opens the picker, not a strip of every voice. The
+                    catalogue is 325 across 75 languages now - a horizontal scroll of
+                    that is not something anyone reaches the end of. */}
+                <TouchableOpacity
+                  onPress={() => setShowVoicePicker(true)}
+                  style={{ flexDirection:'row', alignItems:'center', gap:12, backgroundColor:'#1a1a1a',
+                    borderWidth:1, borderColor:'#2a2a2a', borderRadius:14, padding:12, marginBottom:16 }}
+                >
+                  <VoiceAvatar voice={voiceById(voiceId)} size={40} selected />
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:'#fff', fontWeight:'700', fontSize:15 }}>{voiceById(voiceId).label}</Text>
+                    <Text style={{ color:'#888', fontSize:12, marginTop:2 }}>
+                      {voiceById(voiceId).langName} · {voiceById(voiceId).accent}
+                    </Text>
+                  </View>
+                  <Text style={{ color:'#2ECC71', fontWeight:'700', fontSize:13 }}>Change</Text>
+                  <MaterialIcons name="chevron-right" size={20} color="#2ECC71" />
+                </TouchableOpacity>
 
                 <TouchableOpacity onPress={generateVoiceover} disabled={generatingVoiceover}
                   style={{ backgroundColor:'#2ECC71', borderRadius:8, padding:14, alignItems:'center', marginBottom:10, opacity: generatingVoiceover ? 0.6 : 1 }}>
