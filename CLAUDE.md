@@ -1982,6 +1982,66 @@ nothing to aim at.
     the one part of this system nobody has ever seen behave.
 
 
+31. **Rate limiting audit — every limit had been one shared bucket for all users at
+    once** (Aug 16 2026, `~/Tonefy-react/backend@983748b6`, deployed via `pm2 restart`,
+    process start 08:20:08 postdating the 08:18:44 edit).
+
+    **The core defect.** nginx in front of this app sets `X-Real-IP` and **never**
+    `X-Forwarded-For`: `/etc/nginx/sites-available/api.fitlifesolutions.site` sets its
+    headers inline and does not `include proxy_params;`, unlike mission-control, pages
+    and webhook on the same box, which do. Express derives `req.ip` from
+    `X-Forwarded-For`, so with `app.set("trust proxy", 1)` on and that header absent,
+    **`req.ip` was `127.0.0.1` for every request this server has ever received.** All
+    four limiters were therefore a single global counter - 500 requests / 15 min for the
+    entire world, 20 video generations / hour across all accounts - and any one caller
+    could lock out everybody else. `validate: { xForwardedForHeader: false }` was
+    silencing the check that warns about precisely this.
+
+    Fixed app-side with a shared `keyGenerator` rather than by changing nginx, which
+    needs root. **Keying an authenticated API by account is the better answer anyway**:
+    it survives a phone moving between wifi and mobile data and does not lump a whole
+    NAT behind one counter. Falls back to `X-Real-IP` for routes that run before
+    `verifyToken`. `ipKeyGenerator` is required rather than decorative - it collapses
+    IPv6 to a /56, without which one client can walk its own address space for a fresh
+    bucket per request.
+
+    **Registration order, not path, decides what middleware a route gets.** Three routes
+    sat above the global limiter and so had *no* rate limiting at all - not even the
+    global one - and above the request logger and CORS too:
+    `/api/transcribe-voiceover` (runs faster_whisper), `/api/audio-waveform` (shells out
+    to ffmpeg), and `/api/music-tracks`, which is above `app.use("/api", verifyToken)`
+    as well and is therefore **unauthenticated**. Note this contradicts the claim under
+    "One backend, two clients" above that *every* `/api` route is behind `verifyToken`;
+    that is true only of routes registered after line 633.
+
+    **The three heaviest endpoints had no limiter either** - only the global one:
+    `/api/media-to-video`, `/api/edit-video`, `/api/upload-media`, which is the editor's
+    entire export path. Credits already cap how much anyone can render, so
+    `renderLimiter` (40/hr) is deliberately loose and exists for retry loops rather than
+    as business logic. **Uploads are not credit-gated at all**, so `uploadLimiter`
+    (100/hr) is their only ceiling. `/api/send-verification-email` gets the tightest
+    limit at 5/hr: it sends real mail through a Gmail account with a daily cap, and
+    burning that cap does not degrade one feature, it stops every new signup from being
+    able to verify.
+
+    Limiter definitions had to move above all routes - `const` is not hoisted, so
+    attaching one to a route registered earlier in the file throws at startup.
+
+    **Verified against a real booted instance on a spare port, not by reading**:
+    requests 1-60 to `/api/music-tracks` return 200 and 61 onward return 429, and a
+    request carrying a different `X-Real-IP` still returns 200 while the first bucket is
+    exhausted - the separation that did not exist before.
+
+    **Two findings left open, both needing root or a product call:**
+    - **nginx should send `X-Forwarded-For` anyway** (one line, or `include
+      proxy_params;`). The app no longer depends on it, but every future service behind
+      this vhost will hit the same trap.
+    - **`client_max_body_size 50M` in nginx versus multer's 500MB/file.** The app
+      believes it accepts 500MB; nginx rejects anything over 50MB with a 413 the app
+      never sees. For a video editor 50MB is roughly a minute of 1080p, so this is a
+      real user-facing ceiling that nothing in the app explains.
+
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
