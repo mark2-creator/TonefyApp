@@ -4,15 +4,17 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <!-- expo-media-library. Its own library manifest merges in READ_EXTERNAL_STORAGE,
-       WRITE_EXTERNAL_STORAGE and READ_MEDIA_VISUAL_USER_SELECTED on its own, but
-       READ_MEDIA_VIDEO/READ_MEDIA_IMAGES come from its CONFIG PLUGIN - and this project
-       has a committed android/ folder, so EAS never runs prebuild and no config plugin
-       ever applies. They have to be written here by hand or saving to the gallery fails
-       on Android 13+, which is most devices. Same trap as the BILLING permission and the
-       react-native-iap Gradle flavour. -->
-  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+  <!-- expo-media-library, deliberately WITHOUT READ_MEDIA_VIDEO/READ_MEDIA_IMAGES.
+       Those are what its config plugin would add, and a committed android/ folder means
+       no config plugin ever runs here, so they were written in by hand at first - and
+       Play refused the upload outright: "All developers requesting access to the photo
+       and video permissions are required to tell Google Play about the core
+       functionality of their app". Correctly so. Nothing in this app READS the user's
+       library; it writes one file it just created, which on Android 10+ scoped storage
+       needs no permission at all. requestPermissionsAsync(true) asks write-only to
+       match. The library's own manifest still merges READ_EXTERNAL_STORAGE,
+       WRITE_EXTERNAL_STORAGE and READ_MEDIA_VISUAL_USER_SELECTED, none of which are
+       covered by that policy. -->
   <uses-permission android:name="com.android.vending.BILLING"/>
   <queries>
     <intent>

@@ -71,18 +71,19 @@ export async function saveVideoToDevice(url, video) {
 
   const MediaLibrary = getMediaLibrary();
   if (MediaLibrary) {
-    // Only ever asks on the build that can actually honour the answer.
-    const perm = await MediaLibrary.requestPermissionsAsync();
+    // write-only, and that is a policy decision as much as a technical one. Asking
+    // for read access would pull in READ_MEDIA_VIDEO/READ_MEDIA_IMAGES, and Play
+    // rejects an upload carrying those without a Photo and Video Permissions
+    // declaration justifying them as core functionality - which this could not
+    // honestly make, because nothing here reads the user's library. It writes one
+    // file it just created, which on Android 10+ scoped storage needs no permission.
+    //
+    // No Tonefy album, for the same reason: filing an asset into an album means
+    // finding or listing albums, which is a read. Saved to the gallery is the thing
+    // that was asked for; the album was decoration and it cost a permission.
+    const perm = await MediaLibrary.requestPermissionsAsync(true);
     if (perm.granted) {
       const asset = await MediaLibrary.createAssetAsync(localUri);
-      try {
-        const album = await MediaLibrary.getAlbumAsync('Tonefy');
-        if (album) await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-        else await MediaLibrary.createAlbumAsync('Tonefy', asset, false);
-      } catch (e) {
-        // The asset is already in the gallery; failing to file it into an album is
-        // not worth turning a successful save into an error.
-      }
       return { method: 'gallery', uri: asset.uri };
     }
     // Permission refused is a choice, not a failure - fall through to the share

@@ -194,7 +194,7 @@ export default function MyVideosScreen({ navigation }) {
     try {
       const { method } = await saveVideoToDevice(url, video);
       if (method === 'gallery') {
-        showAlert('Saved', 'The video is in your gallery, in the Tonefy album.');
+        showAlert('Saved', 'The video is in your gallery.');
       }
       // The share sheet is its own confirmation: it opens, the user picks somewhere,
       // it closes. An alert on top of that is a tap of pure noise.
