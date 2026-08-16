@@ -167,7 +167,12 @@ export default function MyVideosScreen({ navigation }) {
         <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Stored</Text></View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterRow}
+        contentContainerStyle={styles.filterRowContent}
+      >
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
@@ -192,6 +197,7 @@ export default function MyVideosScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+          style={styles.list}
           data={filtered}
           keyExtractor={(item) => item.id}
           numColumns={2}
@@ -242,17 +248,29 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, padding: 14, alignItems: 'center' },
   statNum: { color: '#2ecc71', fontSize: 22, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 4 },
-  // No maxHeight. A horizontal ScrollView takes its height from its content, and
-  // capping it at 44 clipped the chips through the middle on any device whose system
-  // font scale is above 1 - the chip is ~36px at the default scale, so it only needed
-  // a moderately larger setting to overflow. `flexGrow: 0` is what a horizontal
-  // ScrollView actually needs here: it stops the row expanding to fill the column,
-  // which is what the maxHeight was really guarding against.
-  filterRow: { paddingHorizontal: 16, marginTop: 16, marginBottom: 4, flexGrow: 0 },
+  // Three things had to be right together, and removing the old `maxHeight: 44`
+  // alone was not enough - the row still clipped.
+  //
+  // 1. `paddingHorizontal` belongs in contentContainerStyle, not here. On a
+  //    ScrollView, `style` is the outer clipping box: padding there shrinks the
+  //    visible area rather than insetting the content.
+  // 2. The chips needed `alignItems: 'center'`. A ScrollView's content container
+  //    defaults to `stretch`, so each chip took the row's height instead of
+  //    defining it - which is why they came out squashed and cut through the
+  //    middle rather than simply overflowing.
+  // 3. flexShrink: 0, so a tall list below can never compress the row.
+  //
+  // The FlatList also now carries flex: 1. Without it a long grid makes the column
+  // over-constrained, and the row is what gives way.
+  filterRow: { marginTop: 16, marginBottom: 4, flexGrow: 0, flexShrink: 0 },
+  filterRowContent: { paddingHorizontal: 16, alignItems: 'center', paddingVertical: 2 },
   filterBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a', marginRight: 8 },
   filterBtnActive: { backgroundColor: '#2ecc71', borderColor: '#2ecc71' },
   filterText: { color: '#888', fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: '#000' },
+  // Takes the space left under the filter row. Without it a long grid over-constrains
+  // the column and the row above is what gets compressed.
+  list: { flex: 1 },
   grid: { padding: 16, gap: 12 },
   card: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
   thumbWrap: { width: '100%', aspectRatio: 9 / 16, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
