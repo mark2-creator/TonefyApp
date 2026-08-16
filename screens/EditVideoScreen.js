@@ -3682,6 +3682,28 @@ export default function EditVideoScreen({ navigation }) {
     adjust: () => setShowAdjustSheet(true),
     crop: openCrop,
     flip: () => setChipPicker('flip'),
+    // ffmpeg-native, so they cost CPU and nothing else - no model and no per-use fee.
+    reverse: () => {
+      if (selectedItem?.type === 'image') {
+        return showAlert('Reverse', 'A photo has nothing to reverse. Try it on a video clip.');
+      }
+      if (!selectedItem?.reverse && clipSpanSeconds(selectedItem) > REVERSE_MAX_SECONDS) {
+        return showAlert('Reverse', `Reverse works on clips up to ${REVERSE_MAX_SECONDS} seconds. Trim this clip shorter and try again.`);
+      }
+      toggleClipFlag('reverse');
+    },
+    reducenoise: () => {
+      if (selectedItem?.type === 'image') {
+        return showAlert('Reduce noise', 'A photo has no sound to clean up. Try it on a video clip.');
+      }
+      toggleClipFlag('denoise');
+    },
+    motionblur: () => {
+      if (selectedItem?.type === 'image') {
+        return showAlert('Motion blur', 'Motion blur blends neighbouring frames, so it needs a video clip.');
+      }
+      toggleClipFlag('motionBlur');
+    },
     // Built rather than dimmed: both are operations on the item list, which this
     // screen already owns. Adding them greyed out alongside the model calls would
     // have been the lazy reading of "add these tools".
@@ -3692,6 +3714,31 @@ export default function EditVideoScreen({ navigation }) {
   const toggleFlip = (axis) => setItems(prev => prev.map(i => (
     i.key === selectedKey ? { ...i, [axis]: !i[axis] } : i
   )));
+
+  // Clip tools that are a single on/off property on the item, applied by ffmpeg at
+  // export. Kept as one table so the toolbar can show which are on without each
+  // needing its own piece of state, and so adding the next one is a line here plus
+  // a filter on the server rather than a new mechanism.
+  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur' };
+
+  // Unlike toggleFlip above these go through pushHistory, so they undo. They change
+  // what the export renders rather than only how the preview is drawn.
+  const toggleClipFlag = useCallback((flag) => {
+    if (!selectedKey) return;
+    pushHistory(items.map(i => (i.key === selectedKey ? { ...i, [flag]: !i[flag] } : i)));
+  }, [items, selectedKey]);
+
+  // The server refuses reverse past this, because the filter holds every decoded
+  // frame of the clip in memory at once. Checked here too so it is a sentence before
+  // the export rather than a failed render minutes into one - the number is
+  // duplicated deliberately and flagged on both sides.
+  const REVERSE_MAX_SECONDS = 15;
+  const clipSpanSeconds = (it) => {
+    if (!it) return 0;
+    const ss = Number(it.trimStart) > 0 ? Number(it.trimStart) : 0;
+    const te = Number(it.trimEnd) > ss ? Number(it.trimEnd) : null;
+    return te !== null ? te - ss : (Number(it.duration) || 0);
+  };
 
   const chipPickerOptions = chipPicker === 'speed'
     ? SPEEDS.map(v => ({ key: 's-' + v, label: v + 'x', active: selectedSpeed === v, onPick: () => applySpeed(v) }))
@@ -4090,20 +4137,23 @@ export default function EditVideoScreen({ navigation }) {
                 // tapped, an unbuilt one is dim whatever the plan.
                 const built = !!clipToolActions[t.key];
                 const locked = t.premium && !isPremium;
+                // A toggle that is currently on says so. Green rather than teal: it
+                // chose a value and applies on tap, which is the green case.
+                const flagOn = !!(CLIP_TOGGLES[t.key] && selectedItem?.[CLIP_TOGGLES[t.key]]);
                 return (
                   <TouchableOpacity
                     key={t.key}
                     style={styles.clipToolBtn}
                     onPress={toolTapAction(t, clipToolActions)}>
                     <View>
-                      <MaterialIcons name={t.icon} size={20} color={built ? '#e6e6e6' : '#5a5a5a'} />
+                      <MaterialIcons name={t.icon} size={20} color={flagOn ? '#2ECC71' : built ? '#e6e6e6' : '#5a5a5a'} />
                       {t.premium && (
                         <MaterialIcons name="diamond" size={12}
                           color={built || locked ? '#f5c451' : '#7a663a'}
                           style={styles.premiumBadge} />
                       )}
                     </View>
-                    <Text style={[styles.clipToolLabel, !built && { color: '#5a5a5a' }]}>{t.label}</Text>
+                    <Text style={[styles.clipToolLabel, !built && { color: '#5a5a5a' }, flagOn && { color: '#2ECC71' }]}>{t.label}</Text>
                   </TouchableOpacity>
                 );
               })}
