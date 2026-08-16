@@ -261,6 +261,33 @@ Screens outside the editor are still entirely green and predate this rule, so so
 their green is decorative and should be neutral — `PostRecordingScreen.js` is the known
 example. Not yet migrated.
 
+## Product direction (stated by the owner, not derivable from the code)
+
+- **Social posting is one of the reasons Tonefy exists**, not a side feature. TikTok is
+  the only platform wired today; Facebook, Instagram and X are "Coming soon" rows in
+  `EditPostVideoScreen`/`ProfileScreen`/`ConnectAccountsScreen`. **As each becomes fully
+  functional it is to be sold as a Pro/Creator benefit**, so treat posting integrations
+  as monetisable scope rather than as chrome. Nothing in `tiers.js` reflects this yet -
+  the caps there are credits, duration, resolution, watermark, caption styles and voices.
+- **The editor's toolbar is a roadmap and stays that way.** 75 tools are defined,
+  ~20 built; the rest fall through to "Coming soon" via `toolTapAction`. **Do not remove
+  the unbuilt ones** - the stated intent is to reach CapCut-level breadth and build them
+  one at a time as revenue allows. Build order is by what costs nothing to run: the
+  ffmpeg-native tools first, since this box already has every filter they need
+  (`vidstabdetect`/`vidstabtransform`, `minterpolate`, `tmix`, `chromakey`/`despill`,
+  `afftdn`/`atadenoise`, `reverse`/`areverse`, `eq`, `unsharp`, `deshake` - all verified
+  present Aug 16 2026). Roughly half the unbuilt toolbar is labour, not spend.
+- **Genuinely-AI tools are a later, separately-funded tier.** BG Remover, AI remove/expand,
+  Eye contact, Lip sync, Retouch, Relight, Auto reframe and voice isolation need real
+  models. **Google is the wrong provider for most of them** - Gemini understands video but
+  cannot segment, inpaint or lip-sync, and Veo generates video rather than editing yours.
+  Veo is also unviable at current pricing: $0.10/sec (Fast 720p) is **$6/minute against
+  $0.117/minute of Pro revenue**, ~51x. If Veo is ever offered it has to be a separately
+  priced add-on, never bundled into credits.
+- **Video Translator is the cheapest big win available** and is not built: whisper
+  (already local) -> Groq translate (already free tier) -> gTTS (already free) -> ffmpeg
+  mux. Every piece is already running and costs nothing.
+
 ## Rebuild status
 
 ### Phase 1: Reanimated timeline foundation — ✅ COMPLETE
