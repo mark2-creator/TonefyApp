@@ -11,6 +11,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
+import { VOICES } from '../constants/voices';
+import VoicePicker from '../components/VoicePicker';
 import { CaptionStyleSheet } from '../components/CaptionStylePicker';
 import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
@@ -22,16 +24,6 @@ import { showAlert } from '../components/BrandedAlert';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
 
-const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   icon: 'record-voice-over' },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   icon: 'record-voice-over' },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   icon: 'record-voice-over' },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     icon: 'record-voice-over' },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     icon: 'record-voice-over' },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   icon: 'graphic-eq' },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', icon: 'record-voice-over' },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', icon: 'record-voice-over' },
-];
 
 const ASPECT_RATIOS = [
   { id: '16:9', label: '16:9', icon: 'desktop-windows', desc: 'YouTube' },
@@ -834,7 +826,11 @@ export default function IdeaToVideoScreen({ navigation }) {
 
       {/* STEP 2 */}
       {step === 2 && (
-        <View style={styles.stepContainer}>
+        // flex: 1 on the step, not just on the input. The input already asked to fill
+        // its parent, but the parent was content-sized, so it fell back to the 130px
+        // minHeight and left most of the screen empty below the button - a generated
+        // script is several paragraphs and had to be edited through a four-line window.
+        <View style={[styles.stepContainer, { flex: 1 }]}>
           <Text style={[styles.stepTitle, { color: theme.text }]}>Your Script</Text>
           <Text style={[styles.stepSub, { color: theme.subtext }]}>Edit your AI-generated script below.</Text>
           <TextInput style={[styles.textArea, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={script} onChangeText={setScript} multiline />
@@ -887,7 +883,10 @@ export default function IdeaToVideoScreen({ navigation }) {
       )}
 
       {/* MODALS */}
-      <OptionModal visible={modal === 'voice'} title="Choose Voice" options={VOICES} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
+      {/* Its own picker rather than the generic OptionModal: that drew the same mic
+          icon on every row and had no way to hear anything, so choosing a voice meant
+          reading "US Female 2" and hoping. */}
+      <VoicePicker visible={modal === 'voice'} selectedId={voiceId} onSelect={setVoiceId} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'ratio'} title="Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <CaptionStyleSheet visible={modal === 'caption'} value={captionStyle} onChange={setCaptionStyle} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'speed'} title="Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, }))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
@@ -913,7 +912,9 @@ const styles = StyleSheet.create({
   ideaHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   ideaIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#1e2020', borderWidth: 1, borderColor: '#2a3a2a', justifyContent: 'center', alignItems: 'center' },
   textAreaWrapper: { borderRadius: 20, borderWidth: 1, borderColor: '#2a3a2a', backgroundColor: '#1e2020', marginBottom: 24, overflow: 'hidden' },
-  textArea: { color: '#e3e2e2', padding: 18, textAlignVertical: 'top', fontSize: 16, minHeight: 130, backgroundColor: 'transparent' },
+  // minHeight is the floor for the steps that are not flex-filled; step 2 grows past
+  // it. borderRadius/borderWidth so the box reads as a field rather than as a slab.
+  textArea: { color: '#e3e2e2', padding: 18, textAlignVertical: 'top', fontSize: 16, minHeight: 200, borderRadius: 12, borderWidth: 1, marginBottom: 16, backgroundColor: 'transparent' },
   sectionLabel: { color: '#869486', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginBottom: 12, paddingHorizontal: 4 },
   settingCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e2020', borderRadius: 20, borderWidth: 1, borderColor: '#2a3a2a', padding: 14, marginBottom: 10 },
   settingCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },

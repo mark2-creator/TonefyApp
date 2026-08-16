@@ -629,7 +629,7 @@ export default function UrlToVideoScreen({ navigation }) {
           <Text style={[styles.stepTitle, { color: theme.text }]}>Enter URL</Text>
           <Text style={[styles.stepSub, { color: theme.subtext }]}>Paste any article, blog post or webpage URL and we'll turn it into a video.</Text>
           <TextInput
-            style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, minHeight: 80, textAlignVertical: 'top' }]}
+            style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, minHeight: 220, textAlignVertical: 'top' }]}
             placeholder="https://example.com/article..."
             placeholderTextColor={theme.subtext}
             value={urlInput}

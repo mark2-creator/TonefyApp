@@ -54,6 +54,8 @@ import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { showAlert } from '../components/BrandedAlert';
+import { VOICES } from '../constants/voices';
+import VoiceAvatar from '../components/VoiceAvatar';
 import { navigationRef } from '../utils/navigationRef';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -186,16 +188,6 @@ const ADD_RAIL = [
 // What the bottom bar becomes while a clip is selected. Grouped as written; the
 // groups are separated by a rule rather than run together, since the order is the
 // only thing that says these belong to each other.
-const VOICES = [
-  { id: 'gtts-us',    label: 'Sarah',   accent: 'US Female',   },
-  { id: 'gtts-uk',    label: 'Emma',    accent: 'UK Female',   },
-  { id: 'gtts-au',    label: 'Olivia',  accent: 'AU Female',   },
-  { id: 'edge-guy',   label: 'Guy',     accent: 'US Male',     },
-  { id: 'edge-ryan',  label: 'Ryan',    accent: 'UK Male',     },
-  { id: 'edge-brian', label: 'Brian',   accent: 'Deep Male',   },
-  { id: 'edge-aria',  label: 'Aria',    accent: 'US Female 2', },
-  { id: 'edge-sonia', label: 'Sonia',   accent: 'UK Female 2', },
-];
 
 // One side of a join, drawn as a plain layer. Muted always - the main <Video> owns
 // the audio and the clock, and a second source playing aloud would double it.
@@ -2603,10 +2595,19 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }
 
+  // Which voice is being fetched, and which is sounding. Previewing means a round trip
+  // to the server to synthesise the line, which takes seconds - with no per-card
+  // feedback the button read as dead and people pressed it again, queueing a second
+  // clip behind the first.
+  const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
+  const [playingVoiceId, setPlayingVoiceId] = useState(null);
+
   async function previewVoice(voice) {
+    if (previewingVoiceId) return;
     try {
       if (voiceoverPreviewSound) { await voiceoverPreviewSound.stopAsync(); await voiceoverPreviewSound.unloadAsync(); }
-      setGeneratingVoiceover(true);
+      setPreviewingVoiceId(voice.id);
+      setPlayingVoiceId(null);
       const res = await apiFetch('/api/generate-audio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2617,13 +2618,14 @@ export default function EditVideoScreen({ navigation, route }) {
       const { sound } = await Audio.Sound.createAsync({ uri: BACKEND + data.audioUrl }, { shouldPlay: true });
       setVoiceoverPreviewSound(sound);
       setVoiceoverPreviewPlaying(true);
+      setPlayingVoiceId(voice.id);
       sound.setOnPlaybackStatusUpdate(status => {
-        if (status.didJustFinish) setVoiceoverPreviewPlaying(false);
+        if (status.didJustFinish) { setVoiceoverPreviewPlaying(false); setPlayingVoiceId(null); }
       });
     } catch (e) {
-      showAlert('Error', e.message);
+      showAlert('Preview', e.message);
     } finally {
-      setGeneratingVoiceover(false);
+      setPreviewingVoiceId(null);
     }
   }
 
@@ -4990,13 +4992,30 @@ export default function EditVideoScreen({ navigation, route }) {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:16 }}>
                   {VOICES.map(v => (
                     <TouchableOpacity key={v.id} onPress={() => setVoiceId(v.id)}
-                      style={{ marginRight:8, padding:10, borderRadius:10, alignItems:'center', minWidth:78,
+                      style={{ marginRight:8, paddingHorizontal:10, paddingVertical:12, borderRadius:12, alignItems:'center', minWidth:88,
                         backgroundColor: voiceId === v.id ? '#2ECC71' : '#2a2a2a' }}>
-                      <MaterialIcons name={v.icon} size={20} color={voiceId === v.id ? '#000' : '#fff'} />
-                      <Text style={{ color: voiceId === v.id ? '#000' : '#fff', fontWeight:'700', fontSize:12, marginTop:4 }}>{v.label}</Text>
-                      <Text style={{ color: voiceId === v.id ? '#003' : '#888', fontSize:9 }}>{v.accent}</Text>
-                      <TouchableOpacity onPress={() => previewVoice(v)} style={{ marginTop:6 }}>
-                        <MaterialIcons name="play-circle-outline" size={18} color={voiceId === v.id ? '#000' : '#888'} />
+                      <VoiceAvatar
+                        voice={v}
+                        size={40}
+                        selected={voiceId === v.id}
+                        busy={previewingVoiceId === v.id}
+                        playing={playingVoiceId === v.id}
+                      />
+                      <Text style={{ color: voiceId === v.id ? '#000' : '#fff', fontWeight:'700', fontSize:12, marginTop:8 }}>{v.label}</Text>
+                      <Text style={{ color: voiceId === v.id ? '#04211f' : '#888', fontSize:9 }}>{v.accent}</Text>
+                      {/* hitSlop because this sits inside the card's own touchable, and a
+                          small target nested in a large one is the press that gets lost. */}
+                      <TouchableOpacity
+                        onPress={() => previewVoice(v)}
+                        disabled={!!previewingVoiceId}
+                        hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+                        style={{ marginTop:8 }}
+                      >
+                        <MaterialIcons
+                          name={playingVoiceId === v.id ? 'stop-circle' : 'play-circle-outline'}
+                          size={20}
+                          color={voiceId === v.id ? '#04211f' : '#9a9a9a'}
+                        />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
