@@ -3704,6 +3704,21 @@ export default function EditVideoScreen({ navigation }) {
       }
       toggleClipFlag('motionBlur');
     },
+    // Two ffmpeg passes over the clip - one to measure the camera's motion, one to
+    // correct it - so it is the slowest tool here by a distance. Said plainly the
+    // first time it is switched on, since an export that takes noticeably longer
+    // with no explanation reads as the app hanging, which this project has already
+    // been caught by once.
+    stabilize: () => {
+      if (selectedItem?.type === 'image') {
+        return showAlert('Stabilize', 'A photo has no camera shake to remove. Try it on a video clip.');
+      }
+      const turningOn = !selectedItem?.stabilize;
+      toggleClipFlag('stabilize');
+      if (turningOn) {
+        showAlert('Stabilize', 'Shake will be smoothed out when you export. This clip takes a little longer to render because it is analysed first.');
+      }
+    },
     // Built rather than dimmed: both are operations on the item list, which this
     // screen already owns. Adding them greyed out alongside the model calls would
     // have been the lazy reading of "add these tools".
@@ -3719,7 +3734,7 @@ export default function EditVideoScreen({ navigation }) {
   // export. Kept as one table so the toolbar can show which are on without each
   // needing its own piece of state, and so adding the next one is a line here plus
   // a filter on the server rather than a new mechanism.
-  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur' };
+  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize' };
 
   // Unlike toggleFlip above these go through pushHistory, so they undo. They change
   // what the export renders rather than only how the preview is drawn.
