@@ -3709,6 +3709,12 @@ export default function EditVideoScreen({ navigation }) {
     // first time it is switched on, since an export that takes noticeably longer
     // with no explanation reads as the app hanging, which this project has already
     // been caught by once.
+    translate: () => {
+      if (selectedItem?.type === 'image') {
+        return showAlert('Video translator', 'A photo has no speech to translate. Try it on a video clip.');
+      }
+      openTranslateSheet();
+    },
     stabilize: () => {
       if (selectedItem?.type === 'image') {
         return showAlert('Stabilize', 'A photo has no camera shake to remove. Try it on a video clip.');
@@ -3734,6 +3740,121 @@ export default function EditVideoScreen({ navigation }) {
   // export. Kept as one table so the toolbar can show which are on without each
   // needing its own piece of state, and so adding the next one is a line here plus
   // a filter on the server rather than a new mechanism.
+  // Mirrors TRANSLATE_LANGS on the server. Kept here as well so the sheet opens
+  // with something the moment it is tapped rather than after a round trip, and
+  // refreshed from /api/translate-languages when that answers - so adding a
+  // language on the server reaches existing installs without an app update.
+  const TRANSLATE_FALLBACK_LANGS = [
+    { code: 'es', label: 'Spanish' }, { code: 'fr', label: 'French' },
+    { code: 'de', label: 'German' }, { code: 'pt', label: 'Portuguese' },
+    { code: 'it', label: 'Italian' }, { code: 'hi', label: 'Hindi' },
+    { code: 'ar', label: 'Arabic' }, { code: 'sw', label: 'Swahili' },
+    { code: 'zh', label: 'Chinese' }, { code: 'ja', label: 'Japanese' },
+    { code: 'ko', label: 'Korean' }, { code: 'ru', label: 'Russian' },
+    { code: 'tr', label: 'Turkish' }, { code: 'en', label: 'English' },
+  ];
+  const [translateSheet, setTranslateSheet] = useState(false);
+  const [translateLangs, setTranslateLangs] = useState(TRANSLATE_FALLBACK_LANGS);
+
+  const openTranslateSheet = useCallback(async () => {
+    setTranslateSheet(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(BACKEND + '/api/translate-languages', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
+      });
+      const data = await readJson(res);
+      if (Array.isArray(data.languages) && data.languages.length) setTranslateLangs(data.languages);
+    } catch (e) {
+      // The fallback list is already on screen; a failed refresh changes nothing.
+    }
+  }, []);
+
+  // Transcribe -> translate -> speak, all on the server. The result arrives as an
+  // audio URL and goes onto the timeline as a voiceover, with the clip's own sound
+  // muted - otherwise the original narration plays underneath the translation.
+  const runTranslate = useCallback(async (lang) => {
+    setTranslateSheet(false);
+    const item = items.find(i => i.key === selectedKey);
+    if (!item) return;
+    try {
+      setUploading(true); setProgress(0); setMessage('Preparing clip...');
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      const token = await user.getIdToken();
+
+      // The clip lives on the device until an export uploads it, and the server
+      // cannot transcribe what it cannot read. Uploaded here if needed, and the URL
+      // is kept on the item so translating a second time does not send it again.
+      let url = item.remoteUrl;
+      if (!url) {
+        const form = new FormData();
+        form.append('files', { uri: item.uri, name: 'clip.mp4', type: 'video/mp4' });
+        const upRes = await fetch(BACKEND + '/api/upload-media', {
+          method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+        });
+        const upData = await readJson(upRes);
+        if (upData.error) throw new Error(upData.error);
+        url = upData.items?.[0]?.url;
+        if (!url) throw new Error('That clip could not be uploaded.');
+        setItems(prev => prev.map(i => (i.key === item.key ? { ...i, remoteUrl: url } : i)));
+      }
+
+      setMessage('Starting translation...');
+      const res = await fetch(BACKEND + '/api/translate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ url, targetLang: lang.code }),
+      });
+      const data = await readJson(res);
+      if (!data.jobId) {
+        setUploading(false);
+        // 402/403 come back with the server's own explanation, which names the plan.
+        if (res.status === 402 || res.status === 403) return promptUpgrade(data.error || 'Video translator');
+        throw new Error(data.error || 'Could not start the translation.');
+      }
+
+      // Its own poller rather than pollJob, which finishes by handing an exported
+      // video to the result screen - a different ending than this needs.
+      await new Promise((resolve, reject) => {
+        let misses = 0;
+        const tick = setInterval(async () => {
+          try {
+            const t = await auth.currentUser?.getIdToken();
+            const jr = await fetch(`${BACKEND}/api/job/${data.jobId}`, { headers: { Authorization: 'Bearer ' + t } });
+            const job = await readJson(jr);
+            if (typeof job.progress === 'number') setProgress(job.progress);
+            if (job.message) setMessage(job.message);
+            if (job.status === 'done') {
+              clearInterval(tick);
+              addVoiceoverTrack({
+                key: String(Date.now()),
+                uri: BACKEND + job.audioUrl,
+                name: `${job.languageLabel} translation`,
+                volume: 1,
+              });
+              // Mute the source, or the original narration plays under the new one.
+              setItems(prev => prev.map(i => (i.key === item.key ? { ...i, muted: true } : i)));
+              resolve();
+            } else if (job.status === 'error' || job.status === 'failed') {
+              clearInterval(tick);
+              reject(new Error(job.error || job.message || 'Translation failed.'));
+            }
+          } catch (e) {
+            // A blip mid-job is not a failed job; only give up after several.
+            if (++misses > 5) { clearInterval(tick); reject(new Error('Lost contact with the server.')); }
+          }
+        }, 3000);
+      });
+
+      setUploading(false);
+      showAlert('Translated', 'The translated voiceover is on your timeline and the clip has been muted. Adjust or delete it like any other track.');
+    } catch (e) {
+      setUploading(false);
+      showAlert('Translate', e.message || 'Could not translate this clip.');
+    }
+  }, [items, selectedKey]);
+
   const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize' };
 
   // Unlike toggleFlip above these go through pushHistory, so they undo. They change
@@ -4236,6 +4357,29 @@ export default function EditVideoScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* TRANSLATE LANGUAGE PICKER */}
+      <Modal visible={translateSheet} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { paddingBottom: sheetInset }]}>
+            <SheetHeader title="Translate video" onClose={() => setTranslateSheet(false)} />
+            <Text style={styles.translateHint}>
+              The speech in this clip is transcribed, translated, and spoken back in the
+              language you pick. It arrives as a voiceover on your timeline and the clip
+              is muted.
+            </Text>
+            <ScrollView style={styles.translateList}>
+              <View style={styles.chipPickerWrap}>
+                {translateLangs.map(l => (
+                  <TouchableOpacity key={l.code} style={styles.toolChip} onPress={() => runTranslate(l)}>
+                    <Text style={styles.toolChipText}>{l.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -5191,6 +5335,8 @@ const styles = StyleSheet.create({
   confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
   clipToolLabel: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center' },
   toolGroupDivider: { width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 6 },
+  translateHint: { color: '#888', fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  translateList: { maxHeight: 320 },
   chipPickerWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
 
   uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', justifyContent: 'center', gap: 16, zIndex: 100 },
