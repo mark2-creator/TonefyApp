@@ -15,6 +15,7 @@ import { CaptionStyleSheet } from '../components/CaptionStylePicker';
 import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
 } from '../constants/captionStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 
@@ -437,6 +438,7 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 
 export default function UrlToVideoScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(1);
   const [urlInput, setUrlInput] = useState('');
   const [pageTitle, setPageTitle] = useState('');
@@ -611,7 +613,7 @@ export default function UrlToVideoScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingBottom: insets.bottom || 16 }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>

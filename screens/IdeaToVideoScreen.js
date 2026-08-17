@@ -18,6 +18,7 @@ import {
   resolveCaptionStyle, captionExportSpec, captionFill, captionFontSize, captionChunkSize,
 } from '../constants/captionStyles';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 
@@ -563,6 +564,7 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 
 export default function IdeaToVideoScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(1);
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('9:16');
@@ -749,7 +751,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingBottom: insets.bottom || 16 }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
@@ -897,6 +899,10 @@ export default function IdeaToVideoScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+// insets.bottom, matching IdeaToAudioScreen. Android's gesture/button bar sits over the
+// window, so a screen that only pads the top has its last control underneath it - the
+// Generate Voiceover button was half behind the navigation bar. `|| 16` because a device
+// with no bar at all reports 0 and a button flush to the edge still reads as a mistake.
   container: { flex: 1, backgroundColor: '#121414', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1e2020' },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

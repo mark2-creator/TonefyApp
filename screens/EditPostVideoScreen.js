@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 
@@ -55,6 +56,7 @@ function VideoPreview({ url }) {
 
 export default function EditPostVideoScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { videoUrl, videoPath } = route.params || {};
   const [caption, setCaption] = useState('');
   const [tiktokConnected, setTiktokConnected] = useState(false);
@@ -170,7 +172,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingBottom: insets.bottom || 16 }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
