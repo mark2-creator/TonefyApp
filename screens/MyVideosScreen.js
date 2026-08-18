@@ -11,6 +11,7 @@ import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice, downloadVideoToCache } from '../utils/saveVideo';
+import ProgressRing from '../components/ProgressRing';
 import { measureVideoDuration } from '../utils/videoDuration';
 
 const FILTERS = [
@@ -28,7 +29,7 @@ function formatDate(iso) {
   }
 }
 
-function VideoCard({ video, onPress, onUse, onDownload, downloading, preparing }) {
+function VideoCard({ video, onPress, onUse, onDownload, downloading, downloadPct, preparing }) {
   const { theme } = useTheme();
   const url = video.downloadUrl || video.localUrl || '';
   const player = useVideoPlayer(url, (p) => {
@@ -63,8 +64,9 @@ function VideoCard({ video, onPress, onUse, onDownload, downloading, preparing }
           onPress={() => onDownload(video)}
           disabled={downloading}
         >
+          {/* A ring rather than a spinner: same footprint, but it says how far. */}
           {downloading
-            ? <ActivityIndicator size="small" color="#2ecc71" />
+            ? <ProgressRing progress={downloadPct} size={30} stroke={2.5} iconSize={14} iconColor="#2ecc71" />
             : <MaterialIcons name="file-download" size={18} color={theme.icon} />}
         </TouchableOpacity>
       </View>
@@ -79,6 +81,7 @@ export default function MyVideosScreen({ navigation }) {
   const [filtered, setFiltered] = useState([]);
   // The id of the video being fetched, so only its own button shows a spinner.
   const [downloading, setDownloading] = useState(null);
+  const [downloadPct, setDownloadPct] = useState(0);
   // Fetching a finished video so the editor can open it as a clip.
   const [preparing, setPreparing] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -192,7 +195,8 @@ export default function MyVideosScreen({ navigation }) {
     if (downloading) return;
     setDownloading(video.id);
     try {
-      const { method } = await saveVideoToDevice(url, video);
+      setDownloadPct(0);
+      const { method } = await saveVideoToDevice(url, video, setDownloadPct);
       if (method === 'gallery') {
         showAlert('Saved', 'The video is in your gallery.');
       }
@@ -272,7 +276,7 @@ export default function MyVideosScreen({ navigation }) {
           columnWrapperStyle={{ gap: 12 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ecc71" />}
           renderItem={({ item }) => (
-            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} preparing={preparing === item.id} />
+            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} downloadPct={downloadPct} preparing={preparing === item.id} />
           )}
         />
       )}
@@ -297,7 +301,7 @@ export default function MyVideosScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={() => selected && handleDownload(selected)} disabled={!!downloading}>
                 {downloading
-                  ? <ActivityIndicator size="small" color="#2ecc71" />
+                  ? <Text style={[styles.modalBtnOutlineText, { color: '#2ecc71' }]}>{downloadPct}%</Text>
                   : <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Download</Text>}
               </TouchableOpacity>
             </View>

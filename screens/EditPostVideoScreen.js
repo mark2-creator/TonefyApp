@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
+import { createEta } from '../utils/eta';
 import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -150,18 +151,24 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // versionCode 11.
   const [downloading, setDownloading] = useState(false);
   const [downloadPct, setDownloadPct] = useState(0);
+  const [downloadEta, setDownloadEta] = useState('');
   async function downloadVideo() {
     if (!fullUrl || downloading) return;
     setDownloading(true);
     setDownloadPct(0);
     try {
       const name = (videoPath || fullUrl).split('/').pop().split('?')[0] || 'tonefy-video.mp4';
-      const { method } = await saveVideoToDevice(fullUrl, { prompt: name.replace(/\.mp4$/i, '') }, setDownloadPct);
+      const eta = createEta();
+      const { method } = await saveVideoToDevice(fullUrl, { prompt: name.replace(/\.mp4$/i, '') }, (pct) => {
+        setDownloadPct(pct);
+        setDownloadEta(eta.push(pct));
+      });
       if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
     } catch (e) {
       showAlert('Download failed', e?.message || 'Could not download the video.');
     } finally {
       setDownloading(false);
+      setDownloadEta('');
     }
   }
 
@@ -198,7 +205,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
               ? <ActivityIndicator size="small" color="#04211f" />
               : <MaterialIcons name="file-download" size={20} color="#04211f" />}
             <Text style={styles.downloadText}>
-              {downloading ? `Downloading… ${downloadPct}%` : 'Save video'}
+              {downloading ? `Downloading… ${downloadPct}%${downloadEta ? ' · ' + downloadEta : ''}` : 'Save video'}
             </Text>
           </TouchableOpacity>
         )}

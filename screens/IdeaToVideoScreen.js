@@ -20,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice } from '../utils/saveVideo';
+import ProgressButton from '../components/ProgressButton';
+import { createEta } from '../utils/eta';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -582,6 +584,8 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [progress, setProgress] = useState(0);
   // Percentage of the finished video downloaded, separate from the generation progress.
   const [downloadPct, setDownloadPct] = useState(0);
+  const [downloadEta, setDownloadEta] = useState('');
+  const downloadEtaRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
   const [modal, setModal] = useState(null); // 'voice' | 'ratio' | 'caption' | 'transition' | 'music'
   const progressInterval = useRef(null);
@@ -738,8 +742,13 @@ export default function IdeaToVideoScreen({ navigation }) {
     setDownloading(true);
     setDownloadPct(0);
     try {
-      const { method } = await saveVideoToDevice(fullVideoUrl, { prompt }, setDownloadPct);
+      downloadEtaRef.current = createEta();
+      const { method } = await saveVideoToDevice(fullVideoUrl, { prompt }, (pct) => {
+        setDownloadPct(pct);
+        setDownloadEta(downloadEtaRef.current.push(pct));
+      });
       setDownloading(false);
+      setDownloadEta('');
       if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
     } catch (err) {
       setDownloading(false);
@@ -900,11 +909,17 @@ export default function IdeaToVideoScreen({ navigation }) {
           <TouchableOpacity style={styles.btn} onPress={copyLink}>
             <Text style={styles.btnText}>Copy Link</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, styles.btnDownload, downloading && styles.btnDisabled]} onPress={downloadVideo} disabled={downloading}>
-            {downloading
-              ? <Text style={[styles.btnText, { color: '#fff' }]}>Downloading… {downloadPct}%</Text>
-              : <Text style={[styles.btnText, { color: '#fff' }]}>Download MP4</Text>}
-          </TouchableOpacity>
+          {/* The button IS the bar. Three elements saying one thing - a button, a bar
+              and a caption - became one that answers all of it in the same space. */}
+          <ProgressButton
+            label={downloading ? `Downloading… ${downloadPct}%` : 'Download MP4'}
+            hint={downloadEta}
+            progress={downloadPct}
+            busy={downloading}
+            onPress={downloadVideo}
+            icon="file-download"
+            style={styles.btnSpacing}
+          />
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
           </TouchableOpacity>
@@ -966,6 +981,9 @@ const styles = StyleSheet.create({
   selectorValue: { flex: 1, color: '#fff', fontSize: 13 },
   selectorChevron: { color: '#555', fontSize: 20, marginLeft: 8 },
   divider: { height: 1, backgroundColor: '#2a2a2a', marginHorizontal: 14 },
+  // Matches .btn's own marginBottom so swapping in ProgressButton does not change
+  // the spacing of the column it sits in.
+  btnSpacing: { marginBottom: 12 },
   btn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 15, alignItems: 'center', marginBottom: 12 },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#000', fontWeight: 'bold', fontSize: 15 },
