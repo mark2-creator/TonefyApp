@@ -135,7 +135,7 @@ export default function IdeaToAudioScreen({ navigation }) {
                 style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, active && styles.chipActive, locked && styles.chipLocked]}
                 onPress={() => pickDuration(d)}
               >
-                {locked && <MaterialIcons name="lock" size={11} color="#5a5a5a" />}
+                {locked && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
                 <Text style={[styles.chipText, { color: theme.subtext }, active && styles.chipTextActive, locked && styles.chipTextLocked]}>{d.label}</Text>
               </TouchableOpacity>
             );

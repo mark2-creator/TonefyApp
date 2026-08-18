@@ -4878,8 +4878,11 @@ export default function EditVideoScreen({ navigation, route }) {
                     setResolution(r); setShowResModal(false);
                   }}>
                   <Text style={[styles.resText, resolution === r && { color: '#2ECC71' }, locked && { color: '#555' }]}>{r}</Text>
+                  {/* Diamond, not a padlock - the same mark the transitions use. A
+                      padlock says "you cannot", a diamond says "this is on a paid
+                      plan", and only one of those is true here. */}
                   {locked
-                    ? <MaterialIcons name="lock" size={16} color="#555" />
+                    ? <MaterialIcons name="diamond" size={14} color="#f5c451" />
                     : resolution === r && <MaterialIcons name="check" size={18} color="#2ECC71" />}
                 </TouchableOpacity>
               );

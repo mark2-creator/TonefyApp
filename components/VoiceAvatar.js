@@ -37,7 +37,9 @@ export default function VoiceAvatar({ voice, size = 44, selected, busy, playing,
       )}
       {locked && !busy && !playing && (
         <View style={[styles.overlay, { borderRadius: size / 2 }]}>
-          <MaterialIcons name="lock" size={size * 0.4} color="#f5c451" />
+          {/* Diamond rather than a padlock: this voice is not forbidden, it is on a
+              paid plan, and the premium gold already says which one. */}
+          <MaterialIcons name="diamond" size={size * 0.4} color="#f5c451" />
         </View>
       )}
       <View style={styles.flag}>
