@@ -112,6 +112,16 @@ both: the premium badge *and* the dimming.
 should stay there. An emoji standing alone was an icon; an emoji leading a label was
 decoration and got deleted.
 
+**Premium is a diamond, never a padlock** — `MaterialIcons` `"diamond"`, premium
+gold `#f5c451`, at size 11–14 alongside a dimmed label. A padlock reads as *you are
+shut out*; a diamond reads as *this is on a paid plan*. Everything gated in this app
+is the second thing. The exception is a lock that genuinely means security rather
+than payment (ProfileScreen's Two-Factor Auth row) — that keeps its padlock.
+
+Never mark unbuilt work with a diamond or a lock: that implies paying would unlock
+it. Unbuilt is dimmed `#5a5a5a` plus "Coming soon". Premium *and* unbuilt gets both
+the diamond and the dimming.
+
 Three sizes, no others:
 
 - **12** — badges drawn on top of content (premium mark, speed badge, chip counts)

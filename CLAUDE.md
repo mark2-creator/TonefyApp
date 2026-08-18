@@ -330,6 +330,27 @@ declarations in `EditVideoScreen.js`, eleven were teal and eight green purely be
 the eight were newest. Teal is no longer a legacy marker, so do not "finish the rebrand"
 by converting it. Full rules in the `tonefy-design` skill.
 
+**A paid feature is marked with a diamond, never a padlock.** `MaterialIcons`
+`"diamond"` in premium gold `#f5c451`, with the label left dimmed — the same mark
+the transitions panel has used since it was written. This is a rule about meaning,
+not decoration: **a padlock is a refusal and a diamond is an offer.** Everything
+gated here is on a plan that is for sale, so a padlock states the opposite of what
+is true and discourages the upgrade the screen exists to sell.
+
+Three gates had drifted to a padlock before this was written down (export
+resolution, the Idea-to-Audio length chips, and locked voices in `VoiceAvatar` —
+that last one drawing every card in the 321-voice picker), fixed Aug 18 2026.
+
+The one padlock that is correct is `ProfileScreen`'s Two-Factor Auth, where a lock
+means *security* rather than *payment*; a diamond there would imply 2FA is
+something you buy. That is the test to apply: **does the lock mean "pay" or does it
+mean "protected"?** Only the first becomes a diamond.
+
+Not an emoji — it is the Material glyph, so the no-emoji rule is intact and the
+mark is identical everywhere rather than merely similar. Verify any icon name
+against the installed glyphmap before using it; an absent name renders as a blank
+square and no build check catches it.
+
 Screens outside the editor are still entirely green and predate this rule, so some of
 their green is decorative and should be neutral — `PostRecordingScreen.js` is the known
 example. Not yet migrated.
