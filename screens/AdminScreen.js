@@ -53,6 +53,7 @@ export default function AdminScreen({ navigation }) {
 
   const u = data?.users;
   const v = data?.videos;
+  const r = data?.revenue;
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg, paddingTop: insets.top, paddingBottom: insets.bottom || 16 }]}>
@@ -82,6 +83,41 @@ export default function AdminScreen({ navigation }) {
             <Stat theme={theme} label="Email verified" value={u?.verified ?? '—'}
               hint={u ? `${u.total - u.verified} not yet` : ''} />
           </View>
+
+          <Text style={[styles.section, { color: theme.subtext }]}>REVENUE</Text>
+          <View style={styles.row}>
+            {/* Checked against Play per subscriber, not counted from the plan field. A
+                paid plan in Firestore is not revenue: one of these was a licence TEST
+                purchase and another was set by hand in the console. */}
+            <Stat theme={theme} label="Paying subscribers" value={r?.paying ?? '—'} />
+            <Stat theme={theme} label="Monthly revenue" value={r ? `$${r.mrrUsd}` : '—'}
+              hint={r?.paying ? 'from real purchases' : 'no real purchases yet'} />
+          </View>
+          {!!r && (r.testing > 0 || r.manual > 0 || r.lapsed > 0) && (
+            <View style={[styles.list, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {r.testing > 0 && (
+                <View style={styles.listRow}>
+                  <Text style={[styles.listName, { color: theme.subtext }]}>Test purchases</Text>
+                  <Text style={styles.listCount}>{r.testing}</Text>
+                </View>
+              )}
+              {r.manual > 0 && (
+                <View style={styles.listRow}>
+                  <Text style={[styles.listName, { color: theme.subtext }]}>Set by hand · no purchase</Text>
+                  <Text style={styles.listCount}>{r.manual}</Text>
+                </View>
+              )}
+              {r.lapsed > 0 && (
+                <View style={styles.listRow}>
+                  <Text style={[styles.listName, { color: '#ff6b6b' }]}>Expired but still on a paid plan</Text>
+                  <Text style={[styles.listCount, { color: '#ff6b6b' }]}>{r.lapsed}</Text>
+                </View>
+              )}
+              <Text style={[styles.listNote, { color: theme.subtext }]}>
+                Not counted as revenue. Nothing revokes an expired subscription yet.
+              </Text>
+            </View>
+          )}
 
           <Text style={[styles.section, { color: theme.subtext }]}>PLANS</Text>
           <View style={styles.row}>

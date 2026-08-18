@@ -2449,6 +2449,22 @@ frames while a still has nothing to reveal.
   is the worked example. Leave `runtimeVersion` alone unless you intend to cut the
   current install off from updates.
 
+  **Hand edits to `android/` do not survive expo tooling.** `npx expo install` and
+  `npx expo lint` have both silently rewritten
+  `android/app/src/main/AndroidManifest.xml`, keeping the permissions but dropping the
+  comments explaining them - twice now, in a project that never prebuilds. So the
+  reasoning has to live here, not only there. **Run `git diff android/` after any expo
+  command.**
+
+  The one that matters most: **`READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES` must stay OUT of
+  that manifest.** expo-media-library's config plugin would add them (and no config
+  plugin runs here), but Play **refuses the upload outright** with "All developers
+  requesting access to the photo and video permissions are required to tell Google Play
+  about the core functionality of their app" - which cost build 10. Nothing in this app
+  reads the user's library; it writes one file it just created, which on Android 10+
+  scoped storage needs no permission, and `requestPermissionsAsync(true)` asks
+  write-only to match.
+
   **The check that enforces this, before every `eas update`:**
 
   ```bash
