@@ -7,22 +7,39 @@ import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { VOICES } from '../constants/voices';
+import VoicePicker from '../components/VoicePicker';
+import VoiceAvatar from '../components/VoiceAvatar';
+import Flag from '../components/Flag';
 
 const INFLECTIONS = ['Soft', 'Natural', 'Intense', 'Dramatic'];
 
-export default function ScriptToAudioScreen({ navigation }) {
+export default function ScriptToAudioScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [script, setScript] = useState('');
+  // Prefilled when arriving from Edit Script on the result screen, so a reworded
+  // line keeps the voice it was written for instead of resetting to the default.
+  const [script, setScript] = useState(route?.params?.script || '');
   const [pace, setPace] = useState(1.0);
   const [pitch, setPitch] = useState(0);
   const [inflection, setInflection] = useState('Natural');
   const [bgMusic, setBgMusic] = useState(false);
   const [autoBreaths, setAutoBreaths] = useState(true);
+  const [voiceId, setVoiceId] = useState(route?.params?.voiceId || 'gtts-us');
+  const [showVoices, setShowVoices] = useState(false);
+
+  const voice = VOICES.find(v => v.id === voiceId) || VOICES[0];
 
   function generate() {
     if (!script.trim()) return;
-    navigation.navigate('GeneratingAudio', { idea: script, duration: '1m', tags: [inflection] });
+    // mode 'script': the text IS the script, so there is nothing to write first and
+    // the generating screen skips straight to synthesis.
+    navigation.navigate('GeneratingAudio', {
+      mode: 'script',
+      script: script.trim(),
+      title: script.trim().slice(0, 60),
+      voiceId,
+    });
   }
 
   const pitchLabel = pitch === 0 ? 'Default' : pitch > 0 ? `+${pitch}` : `${pitch}`;
@@ -84,18 +101,24 @@ export default function ScriptToAudioScreen({ navigation }) {
 
         {/* Voice Selection */}
         <Text style={[styles.sectionLabel, { color: theme.subtext }]}>VOICE SELECTION</Text>
-        <TouchableOpacity style={[styles.voiceBtn, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        <TouchableOpacity
+          style={[styles.voiceBtn, { backgroundColor: theme.card, borderTopColor: theme.border }]}
+          onPress={() => setShowVoices(true)}
+        >
           <View style={styles.voiceLeft}>
-            <View style={styles.voiceAvatar}>
-              <MaterialIcons name="record-voice-over" size={22} color="#3398db" />
-            </View>
+            <VoiceAvatar voice={voice} size={48} />
             <View>
-              <Text style={[styles.voiceName, { color: theme.text }]}>Marcus</Text>
+              <Text style={[styles.voiceName, { color: theme.text }]}>{voice.label}</Text>
               <View style={styles.voiceMeta}>
-                <Text style={[styles.voiceType, { color: theme.subtext }]}>Professional Male</Text>
-                <View style={styles.premiumBadge}>
-                  <Text style={styles.premiumText}>PREMIUM</Text>
-                </View>
+                <Flag country={voice.country} size={12} />
+                <Text style={[styles.voiceType, { color: theme.subtext }]}>
+                  {voice.langName} · {voice.gender}
+                </Text>
+                {!voice.free && (
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumText}>PREMIUM</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -201,6 +224,12 @@ export default function ScriptToAudioScreen({ navigation }) {
           <Text style={styles.generateBtnText}>GENERATE AUDIO</Text>
         </TouchableOpacity>
       </View>
+    <VoicePicker
+        visible={showVoices}
+        selectedId={voiceId}
+        onSelect={setVoiceId}
+        onClose={() => setShowVoices(false)}
+      />
     </View>
   );
 }

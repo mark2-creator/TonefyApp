@@ -1942,6 +1942,33 @@ export default function EditVideoScreen({ navigation, route }) {
     navigation.setParams({ useVideo: undefined });
   }, [draftChecked, route?.params?.useVideo]);
 
+  // "Add to Video" on the Audio Result screen. Same shape as the clip handler above -
+  // held until draftChecked or the restore wipes it, and ref-guarded because nav params
+  // outlive every re-render.
+  //
+  // Goes through addVoiceoverTrack rather than pushing onto audioTracks directly: that
+  // is what tags the track, zeroes its offsets and calls attachAudioSource, and a second
+  // copy of those four steps is how one of them ends up missing later.
+  const usedVoiceoverRef = useRef(null);
+  useEffect(() => {
+    if (!draftChecked) return;
+    const incoming = route?.params?.useVoiceover;
+    if (!incoming?.uri) return;
+    if (usedVoiceoverRef.current === incoming.uri) return;
+    usedVoiceoverRef.current = incoming.uri;
+
+    // Left as a remote URL on purpose: a GENERATED voiceover is durable on the backend
+    // and already exempt from persistInto, exactly as the generate-voiceover path does
+    // it. Only a voiceover the user PICKED is theirs to protect.
+    addVoiceoverTrack({
+      key: String(Date.now()) + '_audio',
+      uri: incoming.uri,
+      name: incoming.name || 'Generated voiceover',
+      volume: 1,
+    });
+    navigation.setParams({ useVoiceover: undefined });
+  }, [draftChecked, route?.params?.useVoiceover]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fmtTime = (s) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);

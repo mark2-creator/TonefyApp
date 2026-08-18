@@ -38,12 +38,12 @@ function getMediaLibrary() {
 // video. Stripped to characters that are safe on every filesystem, because a slash or a
 // colon in a filename fails at the write rather than at the download, after the whole
 // file has already been fetched.
-function fileNameFor(video) {
-  const base = (video?.prompt || 'Tonefy video')
+function fileNameFor(video, ext = 'mp4', fallback = 'Tonefy video') {
+  const base = (video?.prompt || fallback)
     .replace(/[^\p{L}\p{N} _-]/gu, '')
     .trim()
-    .slice(0, 40) || 'Tonefy video';
-  return `${base}.mp4`;
+    .slice(0, 40) || fallback;
+  return `${base}.${ext}`;
 }
 
 /**
@@ -61,9 +61,9 @@ function fileNameFor(video) {
  * remote https uri cannot be a clip - the export builds its upload straight from
  * `item.uri` for every item, so a URL there would upload nothing usable.
  */
-export async function downloadVideoToCache(url, video, onProgress) {
+export async function downloadVideoToCache(url, video, onProgress, ext = 'mp4') {
   if (!url) throw new Error('This video has no file to download.');
-  const target = new File(Paths.cache, fileNameFor(video));
+  const target = new File(Paths.cache, fileNameFor(video, ext, ext === 'mp3' ? 'Tonefy audio' : 'Tonefy video'));
   try { if (target.exists) target.delete(); } catch (e) {}
 
   // With a progress callback, go through the resumable API so the caller can show a
@@ -122,3 +122,46 @@ export async function saveVideoToDevice(url, video, onProgress) {
 export const SAVE_PLATFORM_NOTE = Platform.OS === 'android'
   ? 'Choose "Save to Gallery" to keep it on your phone.'
   : 'Choose "Save Video" to keep it on your phone.';
+
+
+/**
+ * The same two routes for a generated voiceover.
+ *
+ * Separate from saveVideoToDevice rather than a flag on it, because the two disagree
+ * about what a failure means. A video that cannot reach the gallery has the share
+ * sheet as a genuine second choice. Audio has a third state above both: Android files
+ * an mp3 under Music/ rather than in the camera roll, and some OEM galleries then
+ * refuse to list it at all - so a createAssetAsync that THROWS here is an ordinary
+ * outcome to fall through on, not an error worth showing. saveVideoToDevice does not
+ * catch that, and should not start to: for a video it would hide a real failure.
+ */
+export async function saveAudioToDevice(url, meta, onProgress) {
+  const localUri = await downloadVideoToCache(url, meta, onProgress, 'mp3');
+
+  const MediaLibrary = getMediaLibrary();
+  if (MediaLibrary) {
+    try {
+      const perm = await MediaLibrary.requestPermissionsAsync(true);
+      if (perm.granted) {
+        const asset = await MediaLibrary.createAssetAsync(localUri);
+        return { method: 'gallery', uri: asset.uri };
+      }
+    } catch (e) {
+      // Fall through to the share sheet - see above.
+    }
+  }
+
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error('Sharing is not available on this device.');
+  }
+  await Sharing.shareAsync(localUri, {
+    mimeType: 'audio/mpeg',
+    dialogTitle: 'Save or share your audio',
+    UTI: 'public.mp3', // iOS only; ignored on Android
+  });
+  return { method: 'share', uri: localUri };
+}
+
+export const SAVE_AUDIO_NOTE = Platform.OS === 'android'
+  ? 'Choose "Save to Files" or send it to an app to keep it.'
+  : 'Choose "Save to Files" to keep it on your phone.';

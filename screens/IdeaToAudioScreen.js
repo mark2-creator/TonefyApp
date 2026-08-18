@@ -6,24 +6,69 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { VOICES } from '../constants/voices';
+import VoicePicker from '../components/VoicePicker';
+import VoiceAvatar from '../components/VoiceAvatar';
+import Flag from '../components/Flag';
+import { usePlan } from '../constants/plan';
+import { showAlert } from '../components/BrandedAlert';
 
-const DURATIONS = ['30s', '1m', '2m', '5m'];
+// Seconds, not labels. The label is what a person reads; the number is what the
+// script writer is actually told to hit, and keeping both in one place is what stops
+// a chip saying 5m while the request asks for something else.
+const DURATIONS = [
+  { label: '30s', seconds: 30 },
+  { label: '1m', seconds: 60 },
+  { label: '2m', seconds: 120 },
+  { label: '5m', seconds: 300 },
+];
 const STYLES = ['Motivational', 'Podcast', 'Storytelling', 'Educational', 'Casual'];
 
 export default function IdeaToAudioScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { caps } = usePlan();
   const [idea, setIdea] = useState('');
-  const [duration, setDuration] = useState('1m');
+  const [seconds, setSeconds] = useState(60);
   const [tags, setTags] = useState(['Motivational']);
+  const [voiceId, setVoiceId] = useState('gtts-us');
+  const [showVoices, setShowVoices] = useState(false);
+
+  const voice = VOICES.find(v => v.id === voiceId) || VOICES[0];
+  // Length is capped by the same plan limit the rest of the app already uses, so a
+  // locked chip needs no policy of its own and no second number to keep in step.
+  const maxSeconds = caps?.maxExportSeconds || 120;
 
   function toggleTag(tag) {
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   }
 
+  function pickDuration(d) {
+    if (d.seconds > maxSeconds) {
+      showAlert(
+        `${d.label} audio`,
+        `Your plan can generate up to ${Math.round(maxSeconds / 60)} minutes at a time. Pro and Creator go longer.`,
+      );
+      return;
+    }
+    setSeconds(d.seconds);
+  }
+
   function generate() {
     if (!idea.trim()) return;
-    navigation.navigate('GeneratingAudio', { idea, duration, tags });
+    // The style tags are folded into the prompt rather than sent as a field: the
+    // script endpoint takes a prompt and nothing else, and inventing a parameter it
+    // would ignore is how a control ends up looking live while doing nothing.
+    const styled = tags.length
+      ? `${idea.trim()}\n\nTone and style: ${tags.join(', ')}.`
+      : idea.trim();
+    navigation.navigate('GeneratingAudio', {
+      mode: 'idea',
+      prompt: styled,
+      title: idea.trim(),
+      seconds,
+      voiceId,
+    });
   }
 
   return (
@@ -59,12 +104,21 @@ export default function IdeaToAudioScreen({ navigation }) {
 
         {/* Voice */}
         <Text style={[styles.label, { color: theme.subtext }]}>Voice</Text>
-        <TouchableOpacity style={[styles.voiceBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <TouchableOpacity
+          style={[styles.voiceBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => setShowVoices(true)}
+        >
           <View style={styles.voiceLeft}>
-            <View style={styles.voiceIcon}>
-              <MaterialIcons name="record-voice-over" size={20} color="#3398db" />
+            <VoiceAvatar voice={voice} size={36} />
+            <View>
+              <Text style={[styles.voiceText, { color: theme.text }]}>{voice.label}</Text>
+              <View style={styles.voiceMeta}>
+                <Flag country={voice.country} size={12} />
+                <Text style={[styles.voiceSub, { color: theme.subtext }]}>
+                  {voice.langName} · {voice.gender}
+                </Text>
+              </View>
             </View>
-            <Text style={[styles.voiceText, { color: theme.text }]}>Marcus - Professional Male</Text>
           </View>
           <MaterialIcons name="expand-more" size={22} color={theme.icon} />
         </TouchableOpacity>
@@ -72,15 +126,20 @@ export default function IdeaToAudioScreen({ navigation }) {
         {/* Duration */}
         <Text style={[styles.label, { color: theme.subtext }]}>Duration</Text>
         <View style={styles.chips}>
-          {DURATIONS.map(d => (
-            <TouchableOpacity
-              key={d}
-              style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, duration === d && styles.chipActive]}
-              onPress={() => setDuration(d)}
-            >
-              <Text style={[styles.chipText, { color: theme.subtext }, duration === d && styles.chipTextActive]}>{d}</Text>
-            </TouchableOpacity>
-          ))}
+          {DURATIONS.map(d => {
+            const locked = d.seconds > maxSeconds;
+            const active = seconds === d.seconds;
+            return (
+              <TouchableOpacity
+                key={d.label}
+                style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, active && styles.chipActive, locked && styles.chipLocked]}
+                onPress={() => pickDuration(d)}
+              >
+                {locked && <MaterialIcons name="lock" size={11} color="#5a5a5a" />}
+                <Text style={[styles.chipText, { color: theme.subtext }, active && styles.chipTextActive, locked && styles.chipTextLocked]}>{d.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Style Tags */}
@@ -112,6 +171,13 @@ export default function IdeaToAudioScreen({ navigation }) {
           <Text style={styles.generateBtnText}>GENERATE AUDIO</Text>
         </TouchableOpacity>
       </View>
+
+      <VoicePicker
+        visible={showVoices}
+        selectedId={voiceId}
+        onSelect={setVoiceId}
+        onClose={() => setShowVoices(false)}
+      />
     </View>
   );
 }
@@ -132,6 +198,10 @@ const styles = StyleSheet.create({
   voiceLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   voiceIcon: { width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(51,152,219,0.15)', alignItems: 'center', justifyContent: 'center' },
   voiceText: { fontSize: 14, fontWeight: '600' },
+  voiceMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  voiceSub: { fontSize: 11 },
+  chipLocked: { opacity: 0.55 },
+  chipTextLocked: { color: '#5a5a5a' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   chipActive: { backgroundColor: 'rgba(46,204,113,0.1)', borderColor: '#2ecc71' },
