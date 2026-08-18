@@ -22,6 +22,7 @@ import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
+import { useJobs } from '../context/JobsContext';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -566,6 +567,7 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 export default function IdeaToVideoScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { track } = useJobs();
   const [step, setStep] = useState(1);
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('9:16');
@@ -696,6 +698,10 @@ export default function IdeaToVideoScreen({ navigation }) {
       }, 15000);
       const { jobId, error: jobError } = await mergeRes.json();
       if (!jobId) { showAlert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
+      // Registered app-wide the instant it exists. From here the render is followed by
+      // JobsContext whether this screen stays mounted or not, so leaving is safe and the
+      // notification fires wherever the user happens to be.
+      track(jobId, { kind: 'render', label: 'Rendering your video' });
 
       // Poll for job completion
       // No fake timer here: this phase polls, so real progress is available and the two

@@ -54,6 +54,7 @@ import { auth } from '../firebase';
 import ReanimatedAnimated, { useSharedValue, useAnimatedStyle, runOnJS, useAnimatedRef, useAnimatedReaction, scrollTo } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { showAlert } from '../components/BrandedAlert';
+import { useJobs } from '../context/JobsContext';
 import { voiceById } from '../constants/voices';
 import VoiceAvatar from '../components/VoiceAvatar';
 import VoicePicker from '../components/VoicePicker';
@@ -1305,6 +1306,7 @@ export default function EditVideoScreen({ navigation, route }) {
   const [showVoiceoverModal, setShowVoiceoverModal] = useState(false);
   // Beside the sheet it opens from, not beside the preview code it replaced - the
   // declaration lived in that block and went with it when the block was deleted.
+  const { track } = useJobs();
   const [showVoicePicker, setShowVoicePicker] = useState(false);
   const [voiceoverTab, setVoiceoverTab] = useState('generate'); // 'generate' | 'file'
   const [voiceoverScript, setVoiceoverScript] = useState('');
@@ -2564,6 +2566,10 @@ export default function EditVideoScreen({ navigation, route }) {
         setUploading(false);
         return;
       }
+      // The export is the longest job in the app - a caption-heavy project is minutes -
+      // so this is the one that most needed to survive leaving the screen. pollJob stays
+      // for the in-screen progress bar; track() is what keeps it alive beyond it.
+      track(jobId, { kind: 'export', label: 'Exporting your video' });
       pollJob(jobId);
     } catch (e) { showAlert('Error', e.message); setUploading(false); }
   }

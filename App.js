@@ -15,6 +15,8 @@ import { auth } from './firebase';
 import { configureForegroundBehaviour } from './utils/notifications';
 import BrandedAlertHost from './components/BrandedAlert';
 import ErrorBoundary from './components/ErrorBoundary';
+import { JobsProvider } from './context/JobsContext';
+import ActiveJobsBar from './components/ActiveJobsBar';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
@@ -128,6 +130,7 @@ function App() {
     <SafeAreaProvider>
     <ThemeProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
+    <JobsProvider>
     <NavigationContainer ref={navigationRef}>
       <StatusBar style="light" />
       <ErrorBoundary>
@@ -160,7 +163,11 @@ function App() {
         )}
       </Stack.Navigator>
       </ErrorBoundary>
+      {/* Outside the navigator's screens but inside the container, so it shows on every
+          screen and can still navigate. This is what makes leaving a render safe. */}
+      {user && <ActiveJobsBar onOpen={() => navigationRef.current?.navigate('MainTabs', { screen: 'Videos' })} />}
     </NavigationContainer>
+    </JobsProvider>
     <BrandedAlertHost />
     </GestureHandlerRootView>
     </ThemeProvider>
