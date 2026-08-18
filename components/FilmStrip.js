@@ -98,6 +98,33 @@ function getStrip(cacheId, uri, count, interval) {
 // Asking one at a time means one coroutine per retriever, which is the only shape that
 // is safe to rely on. It costs a retriever per frame, which is why frames are
 // published as they land rather than at the end.
+// The order frames are decoded in, which is not the order they are drawn in.
+//
+// Left to right is the obvious order and the worst one: each frame costs its own
+// MediaMetadataRetriever, so a minute of footage is forty of them, and the strip
+// crawls in from the left while the user waits to see the shot they are aiming at.
+//
+// Middle first, then quarters, then eighths. Combined with each tile falling back to
+// the nearest frame that HAS landed, the whole strip is showing footage after the
+// first decode and simply sharpens from there - the same idea as a progressive JPEG.
+// The total work is identical; what changes is that none of it is spent on a grey box.
+function subdivisionOrder(n) {
+  if (n <= 0) return [];
+  const order = [];
+  const taken = new Array(n).fill(false);
+  // Breadth-first, so each pass halves the gap everywhere at once. Depth-first
+  // recursion would finish the entire left half before touching the right.
+  const queue = [[0, n - 1]];
+  while (queue.length) {
+    const [lo, hi] = queue.shift();
+    if (lo > hi) continue;
+    const mid = (lo + hi) >> 1;
+    if (!taken[mid]) { taken[mid] = true; order.push(mid); }
+    queue.push([lo, mid - 1], [mid + 1, hi]);
+  }
+  return order;
+}
+
 async function runExtraction(uri, count, interval, entry, key) {
   const notify = () => entry.listeners.forEach(fn => fn());
   // Sample the middle of each frame's span rather than its leading edge: the first
@@ -115,7 +142,7 @@ async function runExtraction(uri, count, interval, entry, key) {
     player.audioMixingMode = 'mixWithOthers';
     const opts = { maxWidth: THUMB_MAX_PX, maxHeight: THUMB_MAX_PX };
     let lastErr = null;
-    for (let i = 0; i < times.length; i += 1) {
+    for (const i of subdivisionOrder(times.length)) {
       try {
         const [tile] = await player.generateThumbnailsAsync([times[i]], opts);
         entry.tiles[i] = tile || null;
@@ -245,6 +272,31 @@ export default function FilmStrip({
   const decoded = strip ? strip.tiles : null;
   const haveAny = decoded ? decoded.some(Boolean) : false;
 
+  // Every slot filled with the nearest frame that actually landed, in two linear
+  // passes rather than an outward search per tile.
+  //
+  // This is what makes the middle-out decode above visible: without it every
+  // not-yet-decoded slot draws grey, so a strip mid-extraction is mostly holes and
+  // looks broken rather than loading. It also covers the seek that never decodes at
+  // all - variable-frame-rate phone footage produces a few - which used to leave a
+  // permanent grey notch in an otherwise finished strip.
+  //
+  // Nothing moves: a substituted frame occupies exactly the slot it stood in, so the
+  // strip still lines up with the ruler. The only cost is that a tile may briefly
+  // show footage from a second or two away.
+  const resolved = decoded && haveAny ? (() => {
+    const out = decoded.slice();
+    let last = null;
+    for (let i = 0; i < out.length; i += 1) {
+      if (out[i]) last = out[i]; else if (last) out[i] = last;
+    }
+    last = null;
+    for (let i = out.length - 1; i >= 0; i -= 1) {
+      if (decoded[i]) last = decoded[i]; else if (last && !decoded[i]) out[i] = out[i] || last;
+    }
+    return out;
+  })() : decoded;
+
   if (!layout || !haveAny) {
     // Say which of the two silences this is. Still working gets a spinner; finished
     // with nothing gets the decoder's own message, and `no duration` covers the case
@@ -278,8 +330,8 @@ export default function FilmStrip({
           // share one frame whenever there are more tiles than frames, which is what
           // keeps them at their own size on a long clip instead of each being blown
           // up to cover its share of it.
-          const idx = Math.min(decoded.length - 1, Math.floor(((i + 0.5) / layout.tiles) * decoded.length));
-          const tile = decoded[idx];
+          const idx = Math.min(resolved.length - 1, Math.floor(((i + 0.5) / layout.tiles) * resolved.length));
+          const tile = resolved[idx];
           return tile ? (
             <Image
               key={i}
