@@ -196,6 +196,11 @@ async function runExtraction(uri, count, interval, entry, key) {
 // out exactly as they did.
 const TILES_PER_GROUP = 12;
 
+// TEMPORARY. Prints the numbers this component is actually working with onto the clip,
+// because two rounds of reasoning about why a strip goes grey have both been wrong and
+// a device is the only place the real values exist. Flip to false to remove.
+const SHOW_STRIP_DEBUG = true;
+
 function chunk(arr, size) {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -320,8 +325,19 @@ export default function FilmStrip({
   // The whole source is laid out and the clip's box shows the part of it the clip
   // covers. Sliding the strip is what makes a trim handle cheap: the tiles never
   // change, only how much of them is visible.
+  const debugLine = SHOW_STRIP_DEBUG
+    ? `dur ${Number(sourceDuration || 0).toFixed(1)}s · decoded ${decoded.filter(Boolean).length}/${decoded.length}` +
+      ` · tiles ${layout.tiles} · tileW ${layout.tileW.toFixed(1)} · span ${Math.round(layout.spanPx)}px` +
+      ` · pps ${pixelsPerSecond}${strip && strip.done ? ' · DONE' : ' · working'}${strip && strip.error ? ' · ' + strip.error : ''}`
+    : null;
+
   return (
     <Animated.View style={[styles.window, { width, height }]}>
+      {!!debugLine && (
+        <View style={styles.debugBox} pointerEvents="none">
+          <Text style={styles.debugText} numberOfLines={2}>{debugLine}</Text>
+        </View>
+      )}
       <Animated.View style={[styles.row, { left: offset }]}>
         {chunk(Array.from({ length: layout.tiles }, (_, i) => i), TILES_PER_GROUP).map((group, gi) => (
         <View key={gi} style={styles.row}>
@@ -365,4 +381,7 @@ const styles = StyleSheet.create({
   // screen, which is how a failing strip came to look like a silent one.
   reasonBox: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 180, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 6 },
   reasonText: { color: '#c94f4f', fontSize: 8, textAlign: 'center' },
+  // TEMPORARY, with SHOW_STRIP_DEBUG.
+  debugBox: { position: 'absolute', left: 0, top: 0, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 4, paddingVertical: 1, maxWidth: 340 },
+  debugText: { color: '#00d4d4', fontSize: 7 },
 });
