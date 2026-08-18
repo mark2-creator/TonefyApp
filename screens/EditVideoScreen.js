@@ -28,7 +28,9 @@ import {
 import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
 import { persistMedia, newMediaId, sweepUnreferenced, cacheRemoteMedia } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
+import MotionPicker from '../components/MotionPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
+import { motionChain } from '../constants/motions';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
@@ -375,6 +377,7 @@ const CLIP_TOOLS = [
     { key: 'transition', icon: 'compare-arrows', label: 'Transition' },
     { key: 'overlay', icon: 'picture-in-picture-alt', label: 'Overlay' },
     { key: 'filters', icon: 'photo-filter', label: 'Filters' },
+    { key: 'motion', icon: 'animation', label: 'Motion' },
     { key: 'flip', icon: 'flip', label: 'Flip' },
   ],
   // Beyond this point nothing is built yet. Grouped by what they would do, so the
@@ -1360,6 +1363,7 @@ export default function EditVideoScreen({ navigation, route }) {
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [showMotionSheet, setShowMotionSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
   const [showStickerSheet, setShowStickerSheet] = useState(false);
@@ -2277,6 +2281,14 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }
 
+  // Stored as an id, not a chain. The recipe is looked up once, at export - keeping the
+  // id on the item means a project saved today still resolves if a motion's expression
+  // is retuned tomorrow, exactly as the filter and caption catalogues work.
+  function applyMotion(motion) {
+    if (!selectedItem) return;
+    setItems(prev => prev.map(i => i.key === selectedKey ? { ...i, motion } : i));
+  }
+
   function applyTransition(t) {
     setSelectedTransition(t);
     if (selectedItem) {
@@ -2462,6 +2474,11 @@ export default function EditVideoScreen({ navigation, route }) {
         // fragments and the ten adjustments one each, so 13 is the real ceiling.
         // A cap of 12 would have silently dropped grain from a fully-used clip.
         ].slice(0, 20),
+        // What the clip DOES while it is on screen. One string rather than a list -
+        // zoompan and crop expressions are full of commas, and splitting on those
+        // would take them apart. Undefined when no motion is set, so a clip without
+        // one produces exactly the command it did before this existed.
+        motionSpec: motionChain(items[i].motion) || undefined,
         // Fractions of the source, so one rectangle is right for the phone's preview
         // and for the 4K master.
         crop: items[i].crop || null,
@@ -3769,6 +3786,7 @@ export default function EditVideoScreen({ navigation, route }) {
     speed: () => setChipPicker('speed'),
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setShowFilterSheet(true),
+    motion: () => setShowMotionSheet(true),
     adjust: () => setShowAdjustSheet(true),
     crop: openCrop,
     flip: () => setChipPicker('flip'),
@@ -5244,6 +5262,15 @@ export default function EditVideoScreen({ navigation, route }) {
           i.key === selectedKey ? { ...i, adjust: next } : i
         )))}
         onClose={() => setShowAdjustSheet(false)}
+      />
+
+      <MotionPicker
+        visible={showMotionSheet}
+        value={selectedItem?.motion || 'none'}
+        isPremium={isPremium}
+        onSelect={(id) => { applyMotion(id); setShowMotionSheet(false); }}
+        onLocked={(m) => promptUpgrade(m.label)}
+        onClose={() => setShowMotionSheet(false)}
       />
 
       <FilterSheet
