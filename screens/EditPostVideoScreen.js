@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
+import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
 import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
@@ -200,14 +201,16 @@ export default function EditPostVideoScreen({ navigation, route }) {
         </View>
 
         {fullUrl && (
-          <TouchableOpacity style={styles.downloadBtn} onPress={downloadVideo} disabled={downloading}>
-            {downloading
-              ? <ActivityIndicator size="small" color="#04211f" />
-              : <MaterialIcons name="file-download" size={20} color="#04211f" />}
-            <Text style={styles.downloadText}>
-              {downloading ? `Downloading… ${downloadPct}%${downloadEta ? ' · ' + downloadEta : ''}` : 'Save video'}
-            </Text>
-          </TouchableOpacity>
+          <ProgressButton
+            label={downloading ? `Downloading… ${downloadPct}%` : 'Save video'}
+            hint={downloadEta}
+            progress={downloadPct}
+            busy={downloading}
+            icon="file-download"
+            onPress={downloadVideo}
+            style={styles.downloadBtn}
+            labelStyle={styles.downloadText}
+          />
         )}
 
         {/* Caption */}
@@ -319,11 +322,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center',
   },
   videoLoading: { position: 'absolute', right: 14, bottom: 22 },
-  downloadBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#2ECC71', borderRadius: 12, paddingVertical: 13, marginTop: 10,
-  },
-  downloadText: { color: '#04211f', fontSize: 14, fontWeight: '700' },
+  // No backgroundColor and no label colour here on purpose: ProgressButton spreads
+  // `style` last, so either one would paint over the fill it is meant to reveal.
+  downloadBtn: { borderRadius: 12, marginTop: 10, minHeight: 46 },
+  downloadText: { fontSize: 14 },
   noVideo: { alignItems: 'center', padding: 32 },
   noVideoIcon: { fontSize: 36, marginBottom: 8 },
   noVideoText: { color: '#fff', fontWeight: '600', marginBottom: 6 },

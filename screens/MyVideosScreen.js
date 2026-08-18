@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice, downloadVideoToCache } from '../utils/saveVideo';
 import ProgressRing from '../components/ProgressRing';
+import ProgressButton from '../components/ProgressButton';
 import { measureVideoDuration } from '../utils/videoDuration';
 
 const FILTERS = [
@@ -299,11 +300,19 @@ export default function MyVideosScreen({ navigation }) {
                   ? <ActivityIndicator size="small" color="#04211f" />
                   : <Text style={styles.modalBtnGreenText}>Use This</Text>}
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtnOutline, { borderColor: theme.border }]} onPress={() => selected && handleDownload(selected)} disabled={!!downloading}>
-                {downloading
-                  ? <Text style={[styles.modalBtnOutlineText, { color: '#2ecc71' }]}>{downloadPct}%</Text>
-                  : <Text style={[styles.modalBtnOutlineText, { color: theme.text }]}>Download</Text>}
-              </TouchableOpacity>
+              {/* Outline rather than solid: it fills left-to-right like every other
+                  download in the app, but must not out-shout "Use This" beside it. */}
+              <ProgressButton
+                variant="outline"
+                label={downloading ? `${downloadPct}%` : 'Download'}
+                progress={downloadPct}
+                busy={!!downloading}
+                borderColor={theme.border}
+                textColor={theme.text}
+                style={styles.modalBtnProgress}
+                labelStyle={styles.modalBtnProgressLabel}
+                onPress={() => selected && handleDownload(selected)}
+              />
             </View>
           </View>
         </View>
@@ -374,5 +383,9 @@ const styles = StyleSheet.create({
   modalBtnOutline: { flex: 1, borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   modalBtnOutlineText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   modalBtnGreen: { flex: 1, backgroundColor: '#2ecc71', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
+  // Height/radius matched to its two neighbours by hand - ProgressButton's own 54pt
+  // default is sized for a full-width primary, not a third of a modal footer.
+  modalBtnProgress: { flex: 1, minHeight: 46, borderRadius: 25 },
+  modalBtnProgressLabel: { fontSize: 13 },
   modalBtnGreenText: { color: '#000', fontSize: 13, fontWeight: '700' },
 });
