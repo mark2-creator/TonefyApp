@@ -240,6 +240,21 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[styles.rowValue, { color: theme.subtext }]}>{formatResetDate(creditsResetAt)}</Text>
             </View>
           </View>
+          {/* Only the owner sees this row. The uid is duplicated from ADMIN_UIDS in the
+                backend's .env, and that server-side check is the real gate - this only
+                decides whether the row is drawn. Someone editing the bundle to reveal it
+                still gets a 404 from the endpoint. */}
+          {auth.currentUser?.uid === 'sWyTCfLkhOQ8daZFO8TxQkem7al2' && (
+            <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Admin')}>
+              <MaterialIcons name="insights" size={20} color="#2ECC71" style={styles.rowIcon} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Admin</Text>
+                <Text style={[styles.rowValue, { color: theme.subtext }]}>Users, videos and plans</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={theme.subtext} />
+            </TouchableOpacity>
+          )}
+
           {tier !== TIER_CREATOR && (
             <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]} onPress={() => navigation.navigate('Subscription')}>
               <MaterialIcons name="workspace-premium" size={18} color="#2ECC71" style={styles.rowIcon} />

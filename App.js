@@ -35,6 +35,7 @@ import PostRecordingScreen from './screens/PostRecordingScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import SubscriptionScreen from './screens/SubscriptionScreen';
+import AdminScreen from './screens/AdminScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 import { loadAppFonts } from './constants/fontLoader';
@@ -147,6 +148,7 @@ function App() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
             <Stack.Screen name="IdeaToAudio" component={IdeaToAudioScreen} />
             <Stack.Screen name="GeneratingAudio" component={GeneratingAudioScreen} />
             <Stack.Screen name="AudioResult" component={AudioResultScreen} />
