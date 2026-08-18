@@ -196,10 +196,6 @@ async function runExtraction(uri, count, interval, entry, key) {
 // out exactly as they did.
 const TILES_PER_GROUP = 12;
 
-// TEMPORARY. Prints the numbers this component is actually working with onto the clip,
-// because two rounds of reasoning about why a strip goes grey have both been wrong and
-// a device is the only place the real values exist. Flip to false to remove.
-const SHOW_STRIP_DEBUG = true;
 
 function chunk(arr, size) {
   const out = [];
@@ -263,7 +259,7 @@ export default function FilmStrip({
       <Animated.View style={[styles.window, { width, height }]}>
         <Animated.View style={[styles.row, { left: offset }]}>
           {chunk(Array.from({ length: repeats }, (_, i) => i), TILES_PER_GROUP).map((group, gi) => (
-            <View key={gi} style={styles.row}>
+            <View key={gi} style={styles.group}>
               {group.map(i => (
                 <Image key={i} source={{ uri }} style={{ width: tileW, height }} contentFit="cover" />
               ))}
@@ -325,22 +321,11 @@ export default function FilmStrip({
   // The whole source is laid out and the clip's box shows the part of it the clip
   // covers. Sliding the strip is what makes a trim handle cheap: the tiles never
   // change, only how much of them is visible.
-  const debugLine = SHOW_STRIP_DEBUG
-    ? `dur ${Number(sourceDuration || 0).toFixed(1)}s · decoded ${decoded.filter(Boolean).length}/${decoded.length}` +
-      ` · tiles ${layout.tiles} · tileW ${layout.tileW.toFixed(1)} · span ${Math.round(layout.spanPx)}px` +
-      ` · pps ${pixelsPerSecond}${strip && strip.done ? ' · DONE' : ' · working'}${strip && strip.error ? ' · ' + strip.error : ''}`
-    : null;
-
   return (
     <Animated.View style={[styles.window, { width, height }]}>
-      {!!debugLine && (
-        <View style={styles.debugBox} pointerEvents="none">
-          <Text style={styles.debugText} numberOfLines={2}>{debugLine}</Text>
-        </View>
-      )}
       <Animated.View style={[styles.row, { left: offset }]}>
         {chunk(Array.from({ length: layout.tiles }, (_, i) => i), TILES_PER_GROUP).map((group, gi) => (
-        <View key={gi} style={styles.row}>
+        <View key={gi} style={styles.group}>
         {group.map((i) => {
           // The decoded frame nearest the middle of this tile's span. Several tiles
           // share one frame whenever there are more tiles than frames, which is what
@@ -373,7 +358,24 @@ export default function FilmStrip({
 
 const styles = StyleSheet.create({
   window: { overflow: 'hidden' },
+  // The sliding strip itself: absolute, because `left` is what a trim drag animates.
   row: { position: 'absolute', top: 0, flexDirection: 'row' },
+  // A group of tiles INSIDE that strip, and it must not be absolute.
+  //
+  // It was, because it reused `row` - so every group was laid out at left:0 and the
+  // seven groups of a 90-second clip stacked on top of each other. The strip was only
+  // ever as wide as ONE group: 12 tiles at ~44px is ~524px, or about 13 seconds,
+  // after which the clip was empty however many frames had been decoded.
+  //
+  // That is the bug that looked like "frames stop loading part way". They had all been
+  // decoded - the readout said 40/40 - and were being drawn one on top of another.
+  //
+  // A photo was unaffected and that was the clue that made the least sense until now:
+  // every tile of a still is the same image, so stacking them is invisible.
+  //
+  // Introduced with the grouping itself, which was added to escape Android's O(n^2)
+  // draw path. The grouping is still right and still needed; it just has to flow.
+  group: { flexDirection: 'row' },
   pending: { backgroundColor: '#181818' },
   gap: { backgroundColor: '#242424' },
   // At the clip's head, not centred in it. A clip's box is as wide as its footage -
@@ -381,7 +383,4 @@ const styles = StyleSheet.create({
   // screen, which is how a failing strip came to look like a silent one.
   reasonBox: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 180, alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 6 },
   reasonText: { color: '#c94f4f', fontSize: 8, textAlign: 'center' },
-  // TEMPORARY, with SHOW_STRIP_DEBUG.
-  debugBox: { position: 'absolute', left: 0, top: 0, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 4, paddingVertical: 1, maxWidth: 340 },
-  debugText: { color: '#00d4d4', fontSize: 7 },
 });
