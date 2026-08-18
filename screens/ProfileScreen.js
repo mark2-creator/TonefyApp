@@ -9,6 +9,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
+import * as Updates from 'expo-updates';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
 
@@ -369,6 +370,28 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               </TouchableOpacity>
             )}
+          </View>
+        </View>
+
+        {/* Which bundle is actually running.
+            "Is the fix on the phone yet?" has been answered by inference three times in
+            this project and been wrong at least once - a whole session was spent
+            debugging a grey screen that was really a stale bundle. It is one line of
+            text and it turns that question into a glance.
+            isEmbeddedLaunch is the part that matters: true means the JS baked into the
+            APK, so no update has been applied at all. */}
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Build</Text>
+          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.connInfo}>
+              <Text style={[styles.connName, { color: theme.text }]}>
+                {Updates.isEmbeddedLaunch ? 'Original install (no update applied)' : 'Update applied'}
+              </Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }]} numberOfLines={2}>
+                {Updates.channel || 'no channel'} · runtime {Updates.runtimeVersion || '?'}
+                {Updates.createdAt ? `\n${new Date(Updates.createdAt).toLocaleString()}` : ''}
+              </Text>
+            </View>
           </View>
         </View>
 
