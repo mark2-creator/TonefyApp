@@ -478,6 +478,23 @@ export default function UrlToVideoScreen({ navigation }) {
   };
 
   const stopProgress = (v = 100) => { if (progressInterval.current) clearInterval(progressInterval.current); setProgress(v); };
+
+  // The server's own progress, which arrives in jumps: 10, then 45, then 60, then 100.
+  //
+  // The bar used to bounce 20 -> 60 -> 20 -> 60 because BOTH a fake timer and the poll
+  // were writing to the same state. startProgress(40, 95, 120000) crept upward on an
+  // interval while the poll every three seconds overwrote it with the real value, so
+  // the bar alternated between a guess and the truth.
+  //
+  // The server is the only source now. The fake timer is stopped the moment a real
+  // value arrives, and the bar is not allowed to go backwards - a progress bar that
+  // retreats reads as the work being redone, which is worse than one that pauses.
+  const setServerProgress = (value) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
+    setProgress(prev => (value > prev ? value : prev));
+  };
+
   const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); };
 
   const fetchUrlAndGenerate = async () => {
@@ -562,14 +579,17 @@ export default function UrlToVideoScreen({ navigation }) {
       if (!jobId) { showAlert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
 
       // Poll for job completion
-      setLoadingMsg('Generating your video...'); startProgress(40, 95, 120000);
+      // No fake timer here: this phase polls, so real progress is available and the two
+      // would fight. 40 is where the previous phase left off, so the bar holds there
+      // until the server's first report rather than snapping back to it.
+      setLoadingMsg('Generating your video...'); stopProgress(40);
       const result = await new Promise((resolve, reject) => {
         const interval = setInterval(async () => {
           try {
             const pollRes = await fetchWithTimeout(`${BACKEND}/api/job/${jobId}`, {}, 10000);
             const job = await pollRes.json();
             if (job.message) setLoadingMsg(job.message);
-            if (job.progress) setProgress(job.progress);
+            setServerProgress(job.progress);
             if (job.status === 'done') { clearInterval(interval); resolve(job); }
             else if (job.status === 'failed') { clearInterval(interval); reject(new Error(job.message)); }
           } catch (e) { clearInterval(interval); reject(e); }

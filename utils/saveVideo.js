@@ -1,5 +1,10 @@
 import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
+// The legacy API only for createDownloadResumable: the current one has no progress
+// callback in DownloadOptions, and a 26MB file on a slow connection with nothing but a
+// spinner is indistinguishable from a hang. A tester on 12 KB/s would wait half an hour
+// with no idea whether anything was happening.
+import { createDownloadResumable } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 // Downloading a finished video so it lands somewhere the user can find it.
@@ -56,18 +61,31 @@ function fileNameFor(video) {
  * remote https uri cannot be a clip - the export builds its upload straight from
  * `item.uri` for every item, so a URL there would upload nothing usable.
  */
-export async function downloadVideoToCache(url, video) {
+export async function downloadVideoToCache(url, video, onProgress) {
   if (!url) throw new Error('This video has no file to download.');
   const target = new File(Paths.cache, fileNameFor(video));
   try { if (target.exists) target.delete(); } catch (e) {}
+
+  // With a progress callback, go through the resumable API so the caller can show a
+  // percentage. Without one, the current API is simpler and does the same job.
+  if (typeof onProgress === 'function') {
+    const task = createDownloadResumable(url, target.uri, {}, (p) => {
+      const total = p.totalBytesExpectedToWrite;
+      if (total > 0) onProgress(Math.min(99, Math.round((p.totalBytesWritten / total) * 100)));
+    });
+    const res = await task.downloadAsync();
+    if (!res?.uri) throw new Error('The download did not complete.');
+    return res.uri;
+  }
+
   const downloaded = await File.downloadFileAsync(url, target);
   return downloaded.uri;
 }
 
-export async function saveVideoToDevice(url, video) {
+export async function saveVideoToDevice(url, video, onProgress) {
   // Into cache rather than documents: once it is in the gallery or has been shared,
   // this copy is a duplicate, and the OS may reclaim cache on its own.
-  const localUri = await downloadVideoToCache(url, video);
+  const localUri = await downloadVideoToCache(url, video, onProgress);
 
   const MediaLibrary = getMediaLibrary();
   if (MediaLibrary) {

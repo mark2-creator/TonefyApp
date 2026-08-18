@@ -7,8 +7,6 @@ import {
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Audio } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { VOICES } from '../constants/voices';
@@ -21,6 +19,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import { saveVideoToDevice } from '../utils/saveVideo';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -581,6 +580,8 @@ export default function IdeaToVideoScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [progress, setProgress] = useState(0);
+  // Percentage of the finished video downloaded, separate from the generation progress.
+  const [downloadPct, setDownloadPct] = useState(0);
   const [downloading, setDownloading] = useState(false);
   const [modal, setModal] = useState(null); // 'voice' | 'ratio' | 'caption' | 'transition' | 'music'
   const progressInterval = useRef(null);
@@ -606,6 +607,22 @@ export default function IdeaToVideoScreen({ navigation }) {
   };
 
   const stopProgress = (v = 100) => { if (progressInterval.current) clearInterval(progressInterval.current); setProgress(v); };
+
+  // The server's own progress, which arrives in jumps: 10, then 45, then 60, then 100.
+  //
+  // The bar used to bounce 20 -> 60 -> 20 -> 60 because BOTH a fake timer and the poll
+  // were writing to the same state. startProgress(40, 95, 120000) crept upward on an
+  // interval while the poll every three seconds overwrote it with the real value, so
+  // the bar alternated between a guess and the truth.
+  //
+  // The server is the only source now. The fake timer is stopped the moment a real
+  // value arrives, and the bar is not allowed to go backwards - a progress bar that
+  // retreats reads as the work being redone, which is worse than one that pauses.
+  const setServerProgress = (value) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    if (progressInterval.current) { clearInterval(progressInterval.current); progressInterval.current = null; }
+    setProgress(prev => (value > prev ? value : prev));
+  };
   const resetLoading = () => { stopProgress(0); setLoading(false); setLoadingMsg(''); setProgress(0); };
 
   const generateScript = async () => {
@@ -677,14 +694,17 @@ export default function IdeaToVideoScreen({ navigation }) {
       if (!jobId) { showAlert('Error', jobError || 'Failed to start job'); resetLoading(); return; }
 
       // Poll for job completion
-      setLoadingMsg('Generating your video...'); startProgress(40, 95, 120000);
+      // No fake timer here: this phase polls, so real progress is available and the two
+      // would fight. 40 is where the previous phase left off, so the bar holds there
+      // until the server's first report rather than snapping back to it.
+      setLoadingMsg('Generating your video...'); stopProgress(40);
       const result = await new Promise((resolve, reject) => {
         const interval = setInterval(async () => {
           try {
             const pollRes = await fetchWithTimeout(`${BACKEND}/api/job/${jobId}`, {}, 10000);
             const job = await pollRes.json();
             if (job.message) setLoadingMsg(job.message);
-            if (job.progress) setProgress(job.progress);
+            setServerProgress(job.progress);
             if (job.status === 'done') { clearInterval(interval); resolve(job); }
             else if (job.status === 'failed') { clearInterval(interval); reject(new Error(job.message)); }
           } catch (e) { clearInterval(interval); reject(e); }
@@ -706,20 +726,25 @@ export default function IdeaToVideoScreen({ navigation }) {
     showAlert('Copied!', 'Video link copied to clipboard.');
   };
 
+  // Was its own download-then-share, which meant this screen and My Videos behaved
+  // differently for the same action - and neither showed how far along it was. A 26MB
+  // file on a slow connection behind a bare spinner is indistinguishable from a hang,
+  // which is what "takes forever" turned out to be.
+  //
+  // Shared helper now, so it also saves straight to the gallery on a build that has
+  // media-library, and reports a percentage on the way.
   const downloadVideo = async () => {
     if (!fullVideoUrl) return;
     setDownloading(true);
+    setDownloadPct(0);
     try {
-      const filename = `tonefy-${Date.now()}.mp4`;
-      const localUri = FileSystem.documentDirectory + filename;
-      const { uri } = await FileSystem.downloadAsync(fullVideoUrl, localUri);
+      const { method } = await saveVideoToDevice(fullVideoUrl, { prompt }, setDownloadPct);
       setDownloading(false);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'video/mp4', dialogTitle: 'Save or share your video' });
-      } else {
-        showAlert('Saved', `Video saved to: ${uri}`);
-      }
-    } catch (err) { setDownloading(false); showAlert('Error', 'Download failed: ' + err.message); }
+      if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
+    } catch (err) {
+      setDownloading(false);
+      showAlert('Download', err.message || 'Download failed.');
+    }
   };
 
   const toggleVoiceoverPreview = async () => {
@@ -876,7 +901,9 @@ export default function IdeaToVideoScreen({ navigation }) {
             <Text style={styles.btnText}>Copy Link</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnDownload, downloading && styles.btnDisabled]} onPress={downloadVideo} disabled={downloading}>
-            {downloading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnText, { color: '#fff' }]}>Download MP4</Text>}
+            {downloading
+              ? <Text style={[styles.btnText, { color: '#fff' }]}>Downloading… {downloadPct}%</Text>
+              : <Text style={[styles.btnText, { color: '#fff' }]}>Download MP4</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
