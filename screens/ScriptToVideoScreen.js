@@ -7,8 +7,6 @@ import {
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 import { getAuth } from 'firebase/auth';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { CaptionStyleSheet } from '../components/CaptionStylePicker';
@@ -18,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import { saveVideoToDevice } from '../utils/saveVideo';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -453,6 +452,7 @@ export default function ScriptToVideoScreen({ navigation }) {
   const [loadingMsg, setLoadingMsg] = useState('');
   const [progress, setProgress] = useState(0);
   const [downloading, setDownloading] = useState(false);
+  const [downloadPct, setDownloadPct] = useState(0);
   const [modal, setModal] = useState(null); // 'voice' | 'ratio' | 'caption'
   const progressInterval = useRef(null);
 
@@ -598,20 +598,22 @@ export default function ScriptToVideoScreen({ navigation }) {
     showAlert('Copied!', 'Video link copied to clipboard.');
   };
 
+  // Shared helper rather than a fourth copy of download-then-share. It reports a
+  // percentage, which the bare spinner here did not - a ~26MB file on a slow connection
+  // looked like a hang - and it saves straight to the gallery on a build with
+  // media-library.
   const downloadVideo = async () => {
     if (!fullVideoUrl) return;
     setDownloading(true);
+    setDownloadPct(0);
     try {
-      const filename = `tonefy-${Date.now()}.mp4`;
-      const localUri = FileSystem.documentDirectory + filename;
-      const { uri } = await FileSystem.downloadAsync(fullVideoUrl, localUri);
+      const { method } = await saveVideoToDevice(fullVideoUrl, { prompt: 'Tonefy video' }, setDownloadPct);
+      if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
+    } catch (err) {
+      showAlert('Download', err.message || 'Download failed.');
+    } finally {
       setDownloading(false);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'video/mp4', dialogTitle: 'Save or share your video' });
-      } else {
-        showAlert('Saved', `Video saved to: ${uri}`);
-      }
-    } catch (err) { setDownloading(false); showAlert('Error', 'Download failed: ' + err.message); }
+    }
   };
 
   const resetAll = () => {
@@ -693,7 +695,9 @@ export default function ScriptToVideoScreen({ navigation }) {
             <Text style={styles.btnText}>Copy Link</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnDownload, downloading && styles.btnDisabled]} onPress={downloadVideo} disabled={downloading}>
-            {downloading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnText, { color: '#fff' }]}>Download MP4</Text>}
+            <Text style={[styles.btnText, { color: '#fff' }]}>
+              {downloading ? `Downloading… ${downloadPct}%` : 'Download MP4'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>

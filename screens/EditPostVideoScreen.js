@@ -5,8 +5,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, StatusBar
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { saveVideoToDevice } from '../utils/saveVideo';
 import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -140,30 +139,25 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
   // Getting the finished video off the phone's screen and into the phone.
   //
-  // This downloads it and hands it to the system share sheet, which is where "Save to
-  // Files", "Save video" and every messaging app live. It is not a one-tap write into
-  // the gallery: that needs expo-media-library, which is not installed, and adding a
-  // native module cannot be done over the air - it would need a new build of the app.
-  // The share sheet is the honest thing that works today.
+  // This was a third copy of the same download-then-share, alongside My Videos and
+  // Idea-to-Video, and like the others it showed a bare spinner labelled "Preparing…"
+  // while fetching ~26MB. On a slow connection that is minutes with no sign of
+  // progress, which is indistinguishable from a hang - and is what was reported.
+  //
+  // Shared helper now: it reports a percentage, and on a build with media-library it
+  // saves straight to the gallery instead of going through the share sheet. The
+  // comment that used to sit here said media-library was not installed; it is, as of
+  // versionCode 11.
   const [downloading, setDownloading] = useState(false);
+  const [downloadPct, setDownloadPct] = useState(0);
   async function downloadVideo() {
     if (!fullUrl || downloading) return;
     setDownloading(true);
+    setDownloadPct(0);
     try {
       const name = (videoPath || fullUrl).split('/').pop().split('?')[0] || 'tonefy-video.mp4';
-      const target = new File(Paths.cache, name);
-      // A previous download of the same export would otherwise collide.
-      try { if (target.exists) target.delete(); } catch {}
-      const file = await File.downloadFileAsync(fullUrl, target);
-      if (!(await Sharing.isAvailableAsync())) {
-        showAlert('Saved', `Downloaded to the app's storage as ${name}.`);
-        return;
-      }
-      await Sharing.shareAsync(file.uri, {
-        mimeType: 'video/mp4',
-        dialogTitle: 'Save or share your video',
-        UTI: 'public.movie',
-      });
+      const { method } = await saveVideoToDevice(fullUrl, { prompt: name.replace(/\.mp4$/i, '') }, setDownloadPct);
+      if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
     } catch (e) {
       showAlert('Download failed', e?.message || 'Could not download the video.');
     } finally {
@@ -204,7 +198,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
               ? <ActivityIndicator size="small" color="#04211f" />
               : <MaterialIcons name="file-download" size={20} color="#04211f" />}
             <Text style={styles.downloadText}>
-              {downloading ? 'Preparing…' : 'Save video'}
+              {downloading ? `Downloading… ${downloadPct}%` : 'Save video'}
             </Text>
           </TouchableOpacity>
         )}
