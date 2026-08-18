@@ -378,9 +378,13 @@ example. Not yet migrated.
   Veo is also unviable at current pricing: $0.10/sec (Fast 720p) is **$6/minute against
   $0.117/minute of Pro revenue**, ~51x. If Veo is ever offered it has to be a separately
   priced add-on, never bundled into credits.
-- **Video Translator is the cheapest big win available** and is not built: whisper
-  (already local) -> Groq translate (already free tier) -> gTTS (already free) -> ffmpeg
-  mux. Every piece is already running and costs nothing.
+- ~~**Video Translator is the cheapest big win available** and is not built~~ — **BUILT
+  Aug 16 2026, see item 33.** `/api/translate-video` (job-based, 14 languages) plus the
+  `translate` toolbar tool. Leaving the old wording here unstruck cost a session: it was
+  read as current and Video Translator was recommended as the next thing to build, to
+  the person who had already paid for it being built. **A roadmap line is stale the
+  moment the thing ships — strike it in the same commit, do not rely on a later item
+  contradicting it.** Still unverified on a device.
 
 ## Rebuild status
 
