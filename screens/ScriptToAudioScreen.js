@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, StatusBar, Switch
+  StyleSheet, StatusBar
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 import { VOICES } from '../constants/voices';
 import VoicePicker from '../components/VoicePicker';
 import VoiceAvatar from '../components/VoiceAvatar';
@@ -22,9 +23,6 @@ export default function ScriptToAudioScreen({ navigation, route }) {
   const [script, setScript] = useState(route?.params?.script || '');
   const [pace, setPace] = useState(1.0);
   const [pitch, setPitch] = useState(0);
-  const [inflection, setInflection] = useState('Natural');
-  const [bgMusic, setBgMusic] = useState(false);
-  const [autoBreaths, setAutoBreaths] = useState(true);
   const [voiceId, setVoiceId] = useState(route?.params?.voiceId || 'gtts-us');
   const [showVoices, setShowVoices] = useState(false);
 
@@ -39,6 +37,8 @@ export default function ScriptToAudioScreen({ navigation, route }) {
       script: script.trim(),
       title: script.trim().slice(0, 60),
       voiceId,
+      rate: pace,
+      pitch,
     });
   }
 
@@ -167,15 +167,23 @@ export default function ScriptToAudioScreen({ navigation, route }) {
           </View>
 
           {/* Inflection */}
-          <Text style={[styles.sliderLabel, { color: theme.text }]}>Emotional Inflection</Text>
+          {/* Dimmed and inert on purpose. Pace and pitch above are real - they go
+              through rubberband on the server - but neither TTS engine here exposes
+              emotion, so a live-looking chip that changed nothing would be the worst
+              of the three states. Kept rather than deleted, the same way the editor's
+              unbuilt tools are: this is a roadmap, not a defect. */}
+          <View style={styles.soonHeader}>
+            <Text style={[styles.sliderLabel, { color: '#5a5a5a' }]}>Emotional Inflection</Text>
+            <Text style={styles.soonTag}>COMING SOON</Text>
+          </View>
           <View style={styles.chips}>
             {INFLECTIONS.map(inf => (
               <TouchableOpacity
                 key={inf}
-                style={[styles.chip, { backgroundColor: theme.divider, borderColor: theme.border }, inflection === inf && styles.chipActive]}
-                onPress={() => setInflection(inf)}
+                style={[styles.chip, { backgroundColor: theme.divider, borderColor: theme.border }, styles.chipDim]}
+                onPress={() => showAlert('Emotional Inflection', 'Coming soon. For now, Pace and Pitch above shape the delivery.')}
               >
-                <Text style={[styles.chipText, { color: theme.subtext }, inflection === inf && styles.chipTextActive]}>{inf}</Text>
+                <Text style={[styles.chipText, { color: '#5a5a5a' }]}>{inf}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -184,30 +192,26 @@ export default function ScriptToAudioScreen({ navigation, route }) {
         {/* Advanced Options */}
         <Text style={[styles.sectionLabel, { color: theme.subtext }]}>ADVANCED OPTIONS</Text>
         <View style={[styles.advancedCard, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <View style={styles.toggleRow}>
+          <TouchableOpacity
+            style={styles.toggleRow}
+            onPress={() => showAlert('Background Music', 'Coming soon. You can add a music track to this voiceover in the editor today — tap Add to Video on the result screen.')}
+          >
             <View style={styles.toggleLeft}>
-              <MaterialIcons name="music-note" size={20} color="#92ccff" />
-              <Text style={[styles.toggleLabel, { color: theme.text }]}>Background Music</Text>
+              <MaterialIcons name="music-note" size={20} color="#5a5a5a" />
+              <Text style={[styles.toggleLabel, { color: '#5a5a5a' }]}>Background Music</Text>
             </View>
-            <Switch
-              value={bgMusic}
-              onValueChange={setBgMusic}
-              trackColor={{ false: '#353534', true: '#2ecc71' }}
-              thumbColor="#fff"
-            />
-          </View>
-          <View style={[styles.toggleRow, { borderTopWidth: 1, borderTopColor: theme.border }]}>
+            <Text style={styles.soonTag}>COMING SOON</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleRow, { borderTopWidth: 1, borderTopColor: theme.border }]}
+            onPress={() => showAlert('Auto-Breaths', 'Coming soon.')}
+          >
             <View style={styles.toggleLeft}>
-              <MaterialIcons name="air" size={20} color="#58e5c2" />
-              <Text style={[styles.toggleLabel, { color: theme.text }]}>Auto-Breaths</Text>
+              <MaterialIcons name="air" size={20} color="#5a5a5a" />
+              <Text style={[styles.toggleLabel, { color: '#5a5a5a' }]}>Auto-Breaths</Text>
             </View>
-            <Switch
-              value={autoBreaths}
-              onValueChange={setAutoBreaths}
-              trackColor={{ false: '#353534', true: '#2ecc71' }}
-              thumbColor="#fff"
-            />
-          </View>
+            <Text style={styles.soonTag}>COMING SOON</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 100 }} />
@@ -259,6 +263,9 @@ const styles = StyleSheet.create({
 
   sectionLabel: { fontSize: 10, fontWeight: '700', color: '#bbcbbb', letterSpacing: 2, marginTop: 4 },
 
+  soonHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  soonTag: { color: '#5a5a5a', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+  chipDim: { opacity: 0.6 },
   voiceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#201f1f', borderRadius: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', padding: 14 },
   voiceLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   voiceAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(51,152,219,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(51,152,219,0.3)' },

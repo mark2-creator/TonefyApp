@@ -49,6 +49,8 @@ export default function GeneratingAudioScreen({ navigation, route }) {
     title = '',
     seconds = 60,
     voiceId = 'gtts-us',
+    rate = 1,
+    pitch = 0,
   } = route.params || {};
 
   const [progress, setProgress] = useState(0);
@@ -98,7 +100,10 @@ export default function GeneratingAudioScreen({ navigation, route }) {
 
         if (!script) throw new Error('There is no script to read.');
 
-        const audio = await authFetch('/api/generate-audio', { text: script, voiceId }, controller.signal);
+        // rate/pitch default to 1/0, which the server treats as "nothing asked for"
+        // and skips the shaping pass entirely - so the Idea-to-Audio path, which has
+        // no such controls, costs exactly what it did before.
+        const audio = await authFetch('/api/generate-audio', { text: script, voiceId, rate, pitch }, controller.signal);
         if (!audio.audioUrl) throw new Error('No audio came back from the server.');
 
         doneRef.current = true;
