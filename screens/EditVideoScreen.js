@@ -26,7 +26,7 @@ import {
   saveDraft, loadDraft, clearDraft, describeAge, validateDraft, draftUris,
 } from '../utils/draft';
 import { requestNotificationPermission, scheduleReminders } from '../utils/notifications';
-import { persistMedia, newMediaId, sweepUnreferenced } from '../utils/mediaStore';
+import { persistMedia, newMediaId, sweepUnreferenced, cacheRemoteMedia } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
 import AdjustSheet from '../components/AdjustSheet';
@@ -433,6 +433,34 @@ const CLIP_TOOLS = [
 
 // What the bottom bar becomes while an audio track is selected. Confirm is not in
 // this list - it is pinned outside the scroller so it cannot be scrolled away from.
+// Working tools first, unbuilt ones last.
+//
+// The tables below are grouped by what a tool WOULD do, which is the right way to write
+// a roadmap and the wrong way to lay out a toolbar: it left Video translator, Stabilize,
+// Reverse, Reduce noise and Motion blur - all built and all paid - scattered among
+// thirty dimmed placeholders, so the features worth paying for were the hardest to find.
+//
+// Derived from the action map rather than reordered by hand, and that is the point:
+// wiring a tool up promotes it into the front group by itself. A hand-written order
+// would be correct on the day it was written and quietly wrong from the next tool
+// onwards - the same staleness that let a shipped feature sit in the roadmap as
+// "not built".
+//
+// Unbuilt tools keep their own grouping and their own order behind the working ones, so
+// the roadmap is still legible.
+const toolIsBuilt = (t, actions) => t.built !== false && !!actions[t.key];
+
+function builtFirst(groups, actions) {
+  const built = [];
+  const rest = [];
+  for (const group of groups) {
+    const unbuilt = group.filter(t => !toolIsBuilt(t, actions));
+    for (const t of group) if (toolIsBuilt(t, actions)) built.push(t);
+    if (unbuilt.length) rest.push(unbuilt);
+  }
+  return built.length ? [built, ...rest] : rest;
+}
+
 const AUDIO_TOOLS = [
   { key: 'replace', icon: 'swap-horiz', label: 'Replace' },
   { key: 'duplicate', icon: 'content-copy', label: 'Duplicate' },
@@ -2618,8 +2646,11 @@ export default function EditVideoScreen({ navigation, route }) {
         throw new Error(data.error);
       }
       const fullUrl = BACKEND + data.audioUrl;
+      // Same streaming problem as the translated track above, same fix.
+      const voId = newMediaId('vo');
+      const local = await cacheRemoteMedia(fullUrl, voId, 'mp3');
       setVoiceoverTracks(prev => [...prev, {
-        key: String(Date.now()), uri: fullUrl,
+        key: String(Date.now()), mediaId: voId, uri: local || fullUrl, remoteUrl: fullUrl,
         name: 'Voiceover: ' + voiceoverScript.slice(0, 30), volume: 1, isVoiceover: true,
       }]);
       setVoiceoverScript('');
@@ -3886,9 +3917,19 @@ export default function EditVideoScreen({ navigation, route }) {
             if (job.message) setMessage(job.message);
             if (job.status === 'done') {
               clearInterval(tick);
+              const remote = BACKEND + job.audioUrl;
+              // Pulled down before it goes on the timeline. Left remote, expo-av
+              // streams it during preview while the video is also decoding, and the
+              // playback breaks up mid-sentence even though the file is continuous.
+              // remoteUrl keeps the export pointed at the copy the server already has,
+              // so nothing is uploaded twice.
+              const voId = newMediaId('vo');
+              const local = await cacheRemoteMedia(remote, voId, 'mp3');
               addVoiceoverTrack({
                 key: String(Date.now()),
-                uri: BACKEND + job.audioUrl,
+                mediaId: voId,
+                uri: local || remote,
+                remoteUrl: remote,
                 name: `${job.languageLabel} translation`,
                 volume: 1,
               });
@@ -3961,6 +4002,19 @@ export default function EditVideoScreen({ navigation, route }) {
     fade: () => setFadeSheetKey(selectedAudioTrackKey),
     slip: () => setSlipSheetKey(selectedAudioTrackKey),
   };
+
+  // Built-first orderings. Must sit BELOW both action maps: a useMemo factory runs
+  // during render, so reading clipToolActions from above its own `const` is a temporal
+  // dead zone error - which unmounts the tree and shows the grey screen this file has
+  // now been caught by five times, and which lint does not flag.
+  //
+  // Not memoised, deliberately. Both action maps are object literals rebuilt every
+  // render, so any dependency on them changes every render and the memo would never
+  // hit - it would cost a comparison and buy nothing. Reordering forty items is far
+  // cheaper than the toolbar it feeds.
+  const clipToolGroups = builtFirst(CLIP_TOOLS, clipToolActions);
+  const audioToolsOrdered = [...AUDIO_TOOLS].sort(
+    (a, b) => Number(toolIsBuilt(b, audioToolActions)) - Number(toolIsBuilt(a, audioToolActions)));
 
   const fadeSheetTrack = audioTracks.find(t => t.key === fadeSheetKey) || null;
   const slipSheetTrack = audioTracks.find(t => t.key === slipSheetKey) || null;
@@ -4292,7 +4346,7 @@ export default function EditVideoScreen({ navigation, route }) {
                 off the end - which is the one thing it must never be. */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
               contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
-              {AUDIO_TOOLS.map(t => (
+              {audioToolsOrdered.map(t => (
                 <TouchableOpacity
                   key={t.key}
                   style={styles.clipToolBtn}
@@ -4323,7 +4377,7 @@ export default function EditVideoScreen({ navigation, route }) {
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
               again deselects it and the tabs come back, so there is a way out that
               does not need a button of its own. */}
-          {selectedItem ? CLIP_TOOLS.map((group, gi) => (
+          {selectedItem ? clipToolGroups.map((group, gi) => (
             <React.Fragment key={'g' + gi}>
               {gi > 0 && <View style={styles.toolGroupDivider} />}
               {group.map(t => {

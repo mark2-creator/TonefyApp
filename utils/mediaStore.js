@@ -69,6 +69,38 @@ export async function persistMedia(uri, mediaId, kind = 'bin') {
   }
 }
 
+/**
+ * Download a backend-hosted file into permanent storage and return its local uri.
+ *
+ * persistMedia deliberately returns http(s) uris untouched, and on durability grounds
+ * that is right - a generated voiceover is durable on the server, so copying it buys
+ * nothing there. What that reasoning missed is PLAYBACK. A remote uri on the timeline
+ * is streamed by expo-av during preview, over whatever connection the phone has, while
+ * the video is also being decoded. That is what a translated voiceover breaking up
+ * mid-sentence actually is: the file itself is continuous - measured, no silence over
+ * 0.4s anywhere in it - and the gaps appear only on the way in.
+ *
+ * The caller keeps the original URL in `remoteUrl`, which the export already prefers
+ * over `uri`, so the finished render still references the file the server already has
+ * and nothing is re-uploaded.
+ *
+ * Returns null on failure rather than the URL, so a caller cannot mistake "still
+ * remote" for "now local" - the track stays streamable, which is what it does today.
+ */
+export async function cacheRemoteMedia(url, mediaId, kind = 'mp3') {
+  if (!url || !/^https?:/i.test(url)) return null;
+  try {
+    await ensureDir();
+    const dest = `${DIR}${mediaId}.${extensionOf(url, kind)}`;
+    const info = await LegacyFS.getInfoAsync(dest);
+    if (info.exists) return dest;
+    const res = await LegacyFS.downloadAsync(url, dest);
+    return res?.uri || null;
+  } catch {
+    return null;
+  }
+}
+
 /** A stable id for one picked FILE. */
 let seq = 0;
 export function newMediaId(prefix = 'm') {
