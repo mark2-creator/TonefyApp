@@ -303,6 +303,58 @@ because it is a `FlatList` and virtualises; the timeline rows are safe because t
 one chip per item. Waveform and filmstrip were the two that scaled with *content length*
 rather than item count, which is the property to watch for.
 
+## Known bug pattern: an absolute child where a flowing one was meant
+
+**Symptom (Aug 18 2026):** a video clip's filmstrip showed frames for about thirteen
+seconds and was empty for the rest, however long the footage was. **A photo was
+completely unaffected.**
+
+**Cause:** `styles.row` in `components/FilmStrip.js` is `position: absolute, top: 0` -
+correct for the sliding strip, since `left` is what a trim drag animates - and the
+group wrappers *inside* it reused that same style. So every group laid out at `left:
+0` and the seven groups of a 90-second clip stacked on top of one another. The strip
+was only ever as wide as **one group**: `TILES_PER_GROUP` (12) x ~44px = ~524px =
+13.1 seconds. Fixed in `03557326` with a separate `group: { flexDirection: 'row' }`.
+
+Introduced by the grouping added in `87c0479f` to escape the O(n²) draw path above.
+That grouping is still correct and still needed - it just has to flow rather than
+float. **Splitting children into wrapper views is not purely structural if the
+wrapper inherits a positioned style.**
+
+**The photo being fine is the part worth remembering.** Every tile of a still is the
+same image, so stacking them is invisible. The broken case and the working case
+differed only in whether the tiles were distinguishable - which is why it survived two
+days and three rounds of diagnosis. When one media type works and another does not,
+ask what differs in the *rendering* before assuming the difference is in the *data*.
+
+**What actually found it: printing the component's own numbers onto the clip.** Three
+rounds of reasoning from the symptom each landed somewhere else, and two shipped
+"fixes" (middle-out decode order, nearest-frame fill - both kept, both real
+improvements, neither the bug). A temporary readout gave `decoded 40/40 · tiles 84 ·
+span 3675px · DONE` on a strip that visibly ended at 524px, which states the bug in
+one line. **On a defect only a device can show, an instrument is cheaper than another
+guess** - especially here, where each round trip costs the owner an 8MB OTA download
+on a connection measured in hundreds of bytes per second.
+
+## "Is the fix actually on the phone?" - Profile → Build answers it
+
+`ProfileScreen` has a **Build** section reporting `Updates.isEmbeddedLaunch`, channel,
+runtime and the update's publish time. Added Aug 18 2026 after the question was
+answered by inference three times and was wrong at least twice - once as a "grey
+screen" that was a stale bundle (item 29), and again during the filmstrip hunt above,
+where a correct "still broken" report was about a build that did not contain the fix.
+
+**Check it before diagnosing any device report.** "Original install (no update
+applied)" means no OTA has ever been applied and the bundle is whatever shipped in the
+APK.
+
+**`App.js` checks for updates in a mount-only effect**, so resuming from background
+never re-checks - only a cold start does. And on a slow connection `fetchUpdateAsync`
+can fail silently, leaving the app looking current when it is not. Both matter for
+this project's testers, who are largely on Ugandan mobile data. Still unaddressed:
+there is no "downloading update" state, and `reloadAsync()` is called mid-session,
+which can restart the app under someone who is editing.
+
 ## Skills (`.claude/skills/`)
 
 - **`tonefy-design`** — this app's visual conventions: the green/teal rule below, the
