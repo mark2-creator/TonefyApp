@@ -1900,15 +1900,43 @@ export default function EditVideoScreen({ navigation, route }) {
   // deleting its file on removal would restore a clip pointing at nothing.
   useEffect(() => {
     if (!draftChecked) return;
-    const referenced = draftUris({ items, audioTracks, textOverlays, overlays });
-    sweepUnreferenced(referenced).then(({ removed, bytes }) => {
+    (async () => {
+      const referenced = draftUris({ items, audioTracks, textOverlays, overlays });
+
+      // Whatever a draft ON DISK still points at is never orphaned, even when the
+      // timeline in front of us is empty.
+      //
+      // Without this the sweep is a one-way door. It deletes every file the CURRENT
+      // project does not reference, so any path that reaches draftChecked with an
+      // empty timeline wipes the media directory - and a draft whose files are gone
+      // validates as allGone on the next launch and is cleared for good. The work is
+      // then unrecoverable, from a sweep that was only ever meant to reclaim space.
+      //
+      // Reading the draft back costs one AsyncStorage get on a screen that has just
+      // done several. Being wrong here costs someone their project.
+      let protectedUris = referenced;
+      try {
+        const saved = await loadDraft();
+        if (saved) protectedUris = [...referenced, ...draftUris(saved)];
+      } catch (e) {
+        // Could not read the draft, so cannot know what it needs. Skip the sweep
+        // rather than guess: unreclaimed disk is a cost, a deleted project is not.
+        return;
+      }
+
+      const { removed, bytes } = await sweepUnreferenced(protectedUris);
       if (removed) console.log(`[media] swept ${removed} orphaned file(s), ${Math.round(bytes / 1024)}KB`);
-    });
+    })();
     // Deliberately once, on the launch pass. Re-running it as the timeline changes
     // would race the background copies that patch a clip's uri moments after it is
     // added, and delete the file that copy had just written.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftChecked]);
+
+  // Whether this session has ever had a clip on the timeline. See the empty check
+  // below - it is the difference between a project the user cleared and a screen that
+  // simply opened with nothing on it.
+  const hadItemsRef = useRef(false);
 
   // Autosave. Debounced because a trim drag commits on release and a slider does not,
   // and writing the whole project to disk on every keystroke of a caption would be
@@ -1917,11 +1945,19 @@ export default function EditVideoScreen({ navigation, route }) {
     if (!draftChecked) return undefined;
     const t = setTimeout(() => {
       if (items.length === 0) {
-        // An empty timeline is a project that has been cleared, not one worth
-        // restoring. Leaving the old draft would offer work the user deleted.
-        clearDraft();
+        // An empty timeline is only worth clearing the draft for if the user EMPTIED
+        // it. Arriving empty is a different thing entirely, and treating the two the
+        // same is how a saved project gets deleted 900ms after a screen mounts with
+        // nothing on it - silently, and with no way back.
+        //
+        // hadItems is set the moment a clip exists this session, so "they removed the
+        // last clip" is distinguishable from "there was never one here". Never having
+        // had a clip leaves the draft exactly where it is, and Start fresh still
+        // clears it explicitly through discardDraft.
+        if (hadItemsRef.current) clearDraft();
         return;
       }
+      hadItemsRef.current = true;
       saveDraft({ items, audioTracks, textOverlays, overlays, masterVolume, captionStyle, aspectRatio, background });
     }, 900);
     return () => clearTimeout(t);
