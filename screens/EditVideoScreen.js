@@ -29,8 +29,10 @@ import { requestNotificationPermission, scheduleReminders } from '../utils/notif
 import { persistMedia, newMediaId, sweepUnreferenced, cacheRemoteMedia } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
 import MotionPicker from '../components/MotionPicker';
+import EffectPicker from '../components/EffectPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
 import { motionChain } from '../constants/motions';
+import { effectChain, resolveEffect } from '../constants/effects';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
 import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../constants/aspectRatios';
@@ -378,6 +380,7 @@ const CLIP_TOOLS = [
     { key: 'overlay', icon: 'picture-in-picture-alt', label: 'Overlay' },
     { key: 'filters', icon: 'photo-filter', label: 'Filters' },
     { key: 'motion', icon: 'animation', label: 'Motion' },
+    { key: 'effect', icon: 'auto-awesome', label: 'Effects' },
     { key: 'flip', icon: 'flip', label: 'Flip' },
   ],
   // Beyond this point nothing is built yet. Grouped by what they would do, so the
@@ -1364,6 +1367,7 @@ export default function EditVideoScreen({ navigation, route }) {
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showMotionSheet, setShowMotionSheet] = useState(false);
+  const [showEffectSheet, setShowEffectSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
   const [showStickerSheet, setShowStickerSheet] = useState(false);
@@ -2289,6 +2293,11 @@ export default function EditVideoScreen({ navigation, route }) {
     setItems(prev => prev.map(i => i.key === selectedKey ? { ...i, motion } : i));
   }
 
+  function applyEffect(effect) {
+    if (!selectedItem) return;
+    setItems(prev => prev.map(i => i.key === selectedKey ? { ...i, effect } : i));
+  }
+
   function applyTransition(t) {
     setSelectedTransition(t);
     if (selectedItem) {
@@ -2479,6 +2488,10 @@ export default function EditVideoScreen({ navigation, route }) {
         // would take them apart. Undefined when no motion is set, so a clip without
         // one produces exactly the command it did before this existed.
         motionSpec: motionChain(items[i].motion) || undefined,
+        // Effects run after motion: the effect should act on the framing the motion
+        // chose, not be reframed by it. A glitch tear across a picture that is then
+        // zoomed would have its own tear scaled up with the picture.
+        effectSpec: effectChain(items[i].effect) || undefined,
         // Fractions of the source, so one rectangle is right for the phone's preview
         // and for the 4K master.
         crop: items[i].crop || null,
@@ -3677,10 +3690,18 @@ export default function EditVideoScreen({ navigation, route }) {
           ...(textOverlays.length > 0 ? [{ key: 'textlist', icon: 'format-list-bulleted', label: `Texts (${textOverlays.length})`, color: '#00d4d4', onPress: () => setShowTextListModal(true) }] : []),
         ];
       case 'Effects':
-        return [
-          ...FILTERS.map(f => ({ key: 'f-' + f, label: f, active: selectedFilter === f, onPress: () => applyFilter(f) })),
-          ...SPEEDS.map(s => ({ key: 's-' + s, label: s + 'x', active: selectedSpeed === s, onPress: () => applySpeed(s) })),
-        ];
+        // This tab used to list the seven legacy filter names and the speeds - a worse
+        // copy of the Filters tab sitting next to it, which is why the app read as
+        // having no effects. An effect is something HAPPENING on the footage; a filter
+        // is a grade. They are different catalogues and now different tabs.
+        if (!selectedItem) return [{ key: 'fxhint', icon: 'auto-awesome', label: 'Select a clip', color: '#5a5a5a', onPress: () => {} }];
+        return [{
+          key: 'openeffects',
+          icon: 'auto-awesome',
+          label: resolveEffect(selectedItem?.effect).label,
+          color: '#00d4d4',
+          onPress: () => setShowEffectSheet(true),
+        }];
       case 'Background':
         return [{
           key: 'openbg', icon: 'wallpaper',
@@ -3787,6 +3808,7 @@ export default function EditVideoScreen({ navigation, route }) {
     transition: () => selectedKey && onPressClipTransition(selectedKey),
     filters: () => setShowFilterSheet(true),
     motion: () => setShowMotionSheet(true),
+    effect: () => setShowEffectSheet(true),
     adjust: () => setShowAdjustSheet(true),
     crop: openCrop,
     flip: () => setChipPicker('flip'),
@@ -5262,6 +5284,15 @@ export default function EditVideoScreen({ navigation, route }) {
           i.key === selectedKey ? { ...i, adjust: next } : i
         )))}
         onClose={() => setShowAdjustSheet(false)}
+      />
+
+      <EffectPicker
+        visible={showEffectSheet}
+        value={selectedItem?.effect || 'none'}
+        isPremium={isPremium}
+        onSelect={(id) => { applyEffect(id); setShowEffectSheet(false); }}
+        onLocked={(e) => promptUpgrade(e.label)}
+        onClose={() => setShowEffectSheet(false)}
       />
 
       <MotionPicker
