@@ -4137,7 +4137,20 @@ export default function EditVideoScreen({ navigation, route }) {
       out.push({ translateX: -p.pan[0] * frame.w * prog });
       out.push({ translateY: -p.pan[1] * frame.h * prog });
     }
+    // Zooming about a point other than the centre. Scaling by s about an anchor a
+    // (in -1..1) leaves the anchor fixed if the view also moves by -a*(s-1)*size/2 -
+    // which is what zoompan's own x expression does on the other side.
+    if (p.anchor && scale !== 1) {
+      out.push({ translateX: -p.anchor[0] * (scale - 1) * frame.w / 2 });
+      out.push({ translateY: -p.anchor[1] * (scale - 1) * frame.h / 2 });
+    }
     if (p.spin) out.push({ rotate: `${(p.spin[0] * Math.sin(p.spin[1] * t) * 180 / Math.PI).toFixed(2)}deg` });
+    // A rotation that travels rather than oscillates. freq 0 means it settles at the
+    // angle instead of continuing, which is the Dutch angle case.
+    if (p.drift) {
+      const ang = p.drift[1] === 0 ? p.drift[0] * Math.min(t, p.hold || 1) : p.drift[0] * t;
+      out.push({ rotate: `${(ang * 180 / Math.PI).toFixed(2)}deg` });
+    }
     if (scale !== 1) out.push({ scale });
     return out.length ? out : null;
   }, [previewItem, clipLocalTime, frame.w, frame.h]);
