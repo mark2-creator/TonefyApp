@@ -838,7 +838,7 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
           add bar in the header replaces. */}
       {!hasTracks && (
         <TouchableOpacity style={styles.auxTrackBtn} onPress={onPressAdd}>
-          <MaterialIcons name={iconName} size={12} color="#555" />
+          <MaterialIcons name={iconName} size={12} color="#fff" />
           <Text style={styles.auxLabel}>{addLabel}</Text>
         </TouchableOpacity>
       )}
@@ -920,7 +920,7 @@ const CaptionsRow = React.memo(function CaptionsRow({ scrollRef, captionPreviewG
       ) : (
         <TouchableOpacity style={styles.auxTrackBtn}
           onPress={onPress}>
-          <MaterialIcons name="closed-caption" size={12} color="#555" />
+          <MaterialIcons name="closed-caption" size={12} color="#fff" />
           <Text style={styles.auxLabel}>Auto captions</Text>
         </TouchableOpacity>
       )}
@@ -946,7 +946,7 @@ const TextRow = React.memo(function TextRow({ scrollRef, manualTextOverlays, lea
           of them, and the header's add bar is always in reach. */}
       {manualTextOverlays.length === 0 && (
         <TouchableOpacity style={styles.auxTrackBtn} onPress={onPressAdd}>
-          <MaterialIcons name="title" size={12} color="#555" />
+          <MaterialIcons name="title" size={12} color="#fff" />
           <Text style={styles.auxLabel}>Add text</Text>
         </TouchableOpacity>
       )}
@@ -1133,7 +1133,7 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
   if (clipsComputed.length === 0) {
     return (
       <TouchableOpacity style={styles.addClipBtn} onPress={onPressAdd} accessibilityLabel="Add clip">
-        <MaterialIcons name="add" size={22} color="#888" />
+        <MaterialIcons name="add" size={22} color="#fff" />
       </TouchableOpacity>
     );
   }
@@ -1191,7 +1191,7 @@ const ClipsRow = React.memo(function ClipsRow({ clipsComputed, selectedKey, onPr
                   {hasTransition(item.transition) ? (
                     <MaterialIcons name="compare-arrows" size={13} color="#04211f" />
                   ) : (
-                    <Text style={{ color: '#666', fontSize: 14, fontWeight: 'bold' }}>+</Text>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>+</Text>
                   )}
                 </TouchableOpacity>
               )}
@@ -4374,16 +4374,16 @@ export default function EditVideoScreen({ navigation, route }) {
         {/* Playback controls */}
         <View style={styles.playbackRow}>
           <TouchableOpacity style={styles.playBtn} onPress={() => setShowResModal(true)}>
-            <MaterialIcons name="fullscreen" size={22} color="#888" />
+            <MaterialIcons name="fullscreen" size={22} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.playBtn} onPress={() => setPosition(Math.max(0, position - 1))}>
-            <MaterialIcons name="arrow-back" size={22} color="#888" />
+            <MaterialIcons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.playBtnMain} onPress={() => setIsPlaying(!isPlaying)}>
             <MaterialIcons name={isPlaying ? 'pause' : 'play-arrow'} size={36} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.playBtn} onPress={() => setPosition(Math.min(duration, position + 1))}>
-            <MaterialIcons name="arrow-forward" size={22} color="#888" />
+            <MaterialIcons name="arrow-forward" size={22} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.playBtn} onPress={undo}>
             <MaterialIcons name="undo" size={22} color={historyIndex > 0 ? '#fff' : '#888'} />
@@ -4415,7 +4415,7 @@ export default function EditVideoScreen({ navigation, route }) {
             <TouchableOpacity style={styles.sideBtn}
               onPress={() => selectedItem && setItems(prev =>
                 prev.map(i => i.key === selectedKey ? { ...i, muted: !i.muted } : i))}>
-              <MaterialIcons name={selectedItem?.muted ? 'volume-off' : 'volume-up'} size={18} color="#888" />
+              <MaterialIcons name={selectedItem?.muted ? 'volume-off' : 'volume-up'} size={18} color="#fff" />
               <Text style={styles.sideBtnLabel}>Mute{'\n'}clip</Text>
             </TouchableOpacity>
             {/* Choosing which frame represents the video is real work - it needs a
@@ -4429,7 +4429,7 @@ export default function EditVideoScreen({ navigation, route }) {
                 ? <Image source={{ uri: items[0].uri }} style={styles.coverThumbImg} resizeMode="cover" />
                 : <View style={styles.coverThumbEmpty} />}
               <MaterialIcons name="edit" size={10} color="#5a5a5a" style={styles.coverEditIcon} />
-              <Text style={[styles.sideBtnLabel, { color: '#5a5a5a' }]}>Cover</Text>
+              <Text style={[styles.sideBtnLabel, { color: '#fff' }]}>Cover</Text>
             </TouchableOpacity>
             {/* These two sit beside the music and text rows and had no onPress at all -
                 two buttons that looked like the rest of the rail and did nothing. They
@@ -4439,10 +4439,10 @@ export default function EditVideoScreen({ navigation, route }) {
                 to push the last one off the bottom of the rail - the rail is as tall as
                 the track area and does not scroll. */}
             <TouchableOpacity style={styles.sideBtn} onPress={onPressAddMusic}>
-              <MaterialIcons name="music-note" size={18} color="#888" />
+              <MaterialIcons name="music-note" size={18} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.sideBtn} onPress={onPressAddText}>
-              <MaterialIcons name="title" size={18} color="#888" />
+              <MaterialIcons name="title" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -4554,7 +4554,7 @@ export default function EditVideoScreen({ navigation, route }) {
                   style={styles.clipToolBtn}
                   onPress={toolTapAction(t, audioToolActions)}>
                   <View style={styles.toolIconWrap}>
-                    <MaterialIcons name={t.icon} size={20} color={audioToolActions[t.key] ? '#e6e6e6' : '#5a5a5a'} />
+                    <MaterialIcons name={t.icon} size={20} color={audioToolActions[t.key] ? '#fff' : '#5a5a5a'} />
                     {/* The premium mark is a badge on the icon rather than a word in
                         the label, which would not fit the column and would read as
                         part of the tool's name. */}
@@ -4583,7 +4583,7 @@ export default function EditVideoScreen({ navigation, route }) {
           <>
             <TouchableOpacity style={styles.tabBackBtn} onPress={() => setActiveTab(null)}
               accessibilityLabel="Back">
-              <MaterialIcons name="chevron-left" size={24} color="#e6e6e6" />
+              <MaterialIcons name="chevron-left" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.toolGroupDivider} />
           </>
@@ -4611,7 +4611,7 @@ export default function EditVideoScreen({ navigation, route }) {
                     style={styles.clipToolBtn}
                     onPress={toolTapAction(t, clipToolActions)}>
                     <View>
-                      <MaterialIcons name={t.icon} size={20} color={flagOn ? '#2ECC71' : built ? '#e6e6e6' : '#5a5a5a'} />
+                      <MaterialIcons name={t.icon} size={20} color={flagOn ? '#2ECC71' : built ? '#fff' : '#5a5a5a'} />
                       {t.premium && locked && (
                         <MaterialIcons name="diamond" size={12} color="#f5c451"
                           style={styles.premiumBadge} />
@@ -4636,7 +4636,7 @@ export default function EditVideoScreen({ navigation, route }) {
             ) : (
               <TouchableOpacity key={tool.key} style={styles.clipToolBtn} onPress={tool.onPress}>
                 <MaterialIcons name={tool.icon || 'tune'} size={20}
-                  color={tool.active ? '#2ECC71' : (tool.color || '#e6e6e6')} />
+                  color={tool.active ? '#2ECC71' : (tool.color || '#fff')} />
                 <Text style={[styles.clipToolLabel, tool.active && { color: '#2ECC71' },
                   tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
               </TouchableOpacity>
@@ -4657,7 +4657,7 @@ export default function EditVideoScreen({ navigation, route }) {
                   <MaterialIcons
                     name={tab.icon}
                     size={20}
-                    color={active ? '#00d4d4' : (tab.built ? '#555' : '#3a3a3a')}
+                    color={active ? '#00d4d4' : (tab.built ? '#fff' : '#3a3a3a')}
                   />
                   {tab.premium && locked && (
                     <MaterialIcons name="diamond" size={11} color="#f5c451"
@@ -4953,7 +4953,7 @@ export default function EditVideoScreen({ navigation, route }) {
             <Slider style={styles.modalSlider} minimumValue={0} maximumValue={1}
               value={masterVolume} minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#333"
               thumbTintColor="#00d4d4" onValueChange={setMasterVolume} />
-            <Text style={{ color:'#666', fontSize:11, textAlign:'center', marginBottom:10 }}>
+            <Text style={{ color:'#fff', fontSize:11, textAlign:'center', marginBottom:10 }}>
               Scales every voiceover and music track. Tap a track on the timeline to set its own level.
             </Text>
             <TouchableOpacity style={styles.modalBtnApplyBlock} onPress={() => setShowVolumeModal(false)}>
@@ -5074,7 +5074,7 @@ export default function EditVideoScreen({ navigation, route }) {
               onClose={() => setAudioSheetKey(null)} />
             {audioSheetTrack && (
               <>
-                <Text numberOfLines={1} style={{ color:'#aaa', fontSize:12, marginBottom:16 }}>
+                <Text numberOfLines={1} style={{ color:'#fff', fontSize:12, marginBottom:16 }}>
                   {audioSheetTrack.name}
                 </Text>
                 <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
@@ -5122,7 +5122,7 @@ export default function EditVideoScreen({ navigation, route }) {
                       : "Upload failed - plays here, will be retried when you export"}
                   </Text>
                 )}
-                <Text style={{ color:'#666', fontSize:11, marginTop:6 }}>
+                <Text style={{ color:'#fff', fontSize:11, marginTop:6 }}>
                   Starts at {fmtTime(audioSheetTrack.startOffset ?? 0)}
                   {audioSheetTrack.sourceDuration
                     ? ' \u00b7 ' + Math.round((audioSheetTrack.trimEnd ?? audioSheetTrack.sourceDuration) - (audioSheetTrack.trimStart ?? 0)) + 's long'
@@ -5176,7 +5176,7 @@ export default function EditVideoScreen({ navigation, route }) {
               <>
                 {/* One decimal, because the slider can now set one. A whole-second
                     readout under a continuous control just hides what it did. */}
-                <Text style={{ color:'#aaa', fontSize:13, marginBottom:8 }}>
+                <Text style={{ color:'#fff', fontSize:13, marginBottom:8 }}>
                   Duration: {Number(selectedItem.duration ?? 3).toFixed(1)}s
                 </Text>
                 {/* Same floor as the drag handles, and continuous like them. This read
@@ -5216,16 +5216,16 @@ export default function EditVideoScreen({ navigation, route }) {
                   style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
                   <MaterialIcons name={track.isVoiceover ? 'record-voice-over' : 'music-note'} size={16} color="#00d4d4" />
                   <Text style={{ color:'#fff', flex:1, marginLeft:8, fontSize:13 }} numberOfLines={1}>{track.name}</Text>
-                  <Text style={{ color:'#666', fontSize:11, marginRight:8 }}>{Math.round((track.volume ?? 1) * 100)}%</Text>
+                  <Text style={{ color:'#fff', fontSize:11, marginRight:8 }}>{Math.round((track.volume ?? 1) * 100)}%</Text>
                   <TouchableOpacity onPress={() => removeAudioTrack(track.key)}>
-                    <MaterialIcons name="close" size={18} color="#888" />
+                    <MaterialIcons name="close" size={18} color="#fff" />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </ScrollView>
             <TouchableOpacity onPress={() => setShowAudioListModal(false)}
               style={{ alignItems:'center', padding:10, marginTop:6 }}>
-              <Text style={{ color:'#888' }}>Close</Text>
+              <Text style={{ color:'#fff' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -5243,14 +5243,14 @@ export default function EditVideoScreen({ navigation, route }) {
                   style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:10, marginBottom:8 }}>
                   <Text style={{ color: t.color, flex:1, fontSize:13 }} numberOfLines={1}>{t.text}</Text>
                   <TouchableOpacity onPress={() => removeTextOverlay(t.key)}>
-                    <MaterialIcons name="close" size={18} color="#888" />
+                    <MaterialIcons name="close" size={18} color="#fff" />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </ScrollView>
             <TouchableOpacity onPress={() => setShowTextListModal(false)}
               style={{ alignItems:'center', padding:10, marginTop:6 }}>
-              <Text style={{ color:'#888' }}>Close</Text>
+              <Text style={{ color:'#fff' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -5271,7 +5271,7 @@ export default function EditVideoScreen({ navigation, route }) {
 
             {voiceoverTab === 'generate' ? (
               <ScrollView>
-                <Text style={{ color:'#aaa', fontSize:12, marginBottom:6 }}>Script</Text>
+                <Text style={{ color:'#fff', fontSize:12, marginBottom:6 }}>Script</Text>
                 <TextInput
                   style={{ backgroundColor:'#2a2a2a', color:'#fff', borderRadius:8, padding:10, minHeight:70, marginBottom:14, textAlignVertical:'top' }}
                   placeholder="Type what you want the voiceover to say..."
@@ -5280,7 +5280,7 @@ export default function EditVideoScreen({ navigation, route }) {
                   value={voiceoverScript}
                   onChangeText={setVoiceoverScript}
                 />
-                <Text style={{ color:'#aaa', fontSize:12, marginBottom:8 }}>Voice</Text>
+                <Text style={{ color:'#fff', fontSize:12, marginBottom:8 }}>Voice</Text>
                 {/* One row that opens the picker, not a strip of every voice. The
                     catalogue is 325 across 75 languages now - a horizontal scroll of
                     that is not something anyone reaches the end of. */}
@@ -5292,7 +5292,7 @@ export default function EditVideoScreen({ navigation, route }) {
                   <VoiceAvatar voice={voiceById(voiceId)} size={40} selected />
                   <View style={{ flex:1 }}>
                     <Text style={{ color:'#fff', fontWeight:'700', fontSize:15 }}>{voiceById(voiceId).label}</Text>
-                    <Text style={{ color:'#888', fontSize:12, marginTop:2 }}>
+                    <Text style={{ color:'#fff', fontSize:12, marginTop:2 }}>
                       {voiceById(voiceId).langName} · {voiceById(voiceId).accent}
                     </Text>
                   </View>
@@ -5337,7 +5337,7 @@ export default function EditVideoScreen({ navigation, route }) {
             )}
 
             <TouchableOpacity onPress={() => setShowVoiceoverModal(false)} style={{ alignItems:'center', padding:10, marginTop:6 }}>
-              <Text style={{ color:'#888' }}>Close</Text>
+              <Text style={{ color:'#fff' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -5386,7 +5386,7 @@ export default function EditVideoScreen({ navigation, route }) {
             )}
 
             <TouchableOpacity onPress={closeMusicModal} style={{ alignItems:'center', padding:10, marginTop:6 }}>
-              <Text style={{ color:'#888' }}>Close</Text>
+              <Text style={{ color:'#fff' }}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -5527,7 +5527,7 @@ export default function EditVideoScreen({ navigation, route }) {
             <SheetHeader title="Auto Captions" onClose={() => setShowCaptionModal(false)} />
             <ScrollView showsVerticalScrollIndicator={false} scrollEnabled={!colorDragging}>
 
-            <Text style={{ color:'#aaa', fontSize:12, marginBottom:6 }}>Caption Script (optional)</Text>
+            <Text style={{ color:'#fff', fontSize:12, marginBottom:6 }}>Caption Script (optional)</Text>
             <TextInput
               style={{ backgroundColor:'#2a2a2a', color:'#fff', borderRadius:8, padding:10, minHeight:80, marginBottom:14, textAlignVertical:'top' }}
               placeholder="Enter script or leave blank to auto-detect..."
@@ -5540,7 +5540,7 @@ export default function EditVideoScreen({ navigation, route }) {
             <CaptionStylePicker value={captionStyle} onChange={setCaptionStyle} />
 
             <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
-              <Text style={{ color:'#aaa', fontSize:12, flex:1 }}>Caption Colour</Text>
+              <Text style={{ color:'#fff', fontSize:12, flex:1 }}>Caption Colour</Text>
               {captionColor && (
                 <TouchableOpacity onPress={() => setCaptionColor(null)} accessibilityRole="button">
                   <Text style={{ color:'#2ECC71', fontSize:12, fontWeight:'600' }}>Match style</Text>
@@ -5556,7 +5556,7 @@ export default function EditVideoScreen({ navigation, route }) {
               onDragStateChange={setColorDragging}
             />
             {captionColor && (
-              <Text style={{ color:'#666', fontSize:11, marginTop:6 }}>
+              <Text style={{ color:'#fff', fontSize:11, marginTop:6 }}>
                 Overrides the style's own fill, including a gradient one.
               </Text>
             )}
@@ -5568,7 +5568,7 @@ export default function EditVideoScreen({ navigation, route }) {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowCaptionModal(false)}
               style={{ alignItems:'center', padding:10 }}>
-              <Text style={{ color:'#888' }}>Cancel</Text>
+              <Text style={{ color:'#fff' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -5585,7 +5585,7 @@ const styles = StyleSheet.create({
   qualityText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   exportBtn: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 },
   exportBtnActive: { backgroundColor: '#2ECC71' },
-  exportBtnText: { color: '#888', fontWeight: '700', fontSize: 14 },
+  exportBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   previewContainer: { alignItems: 'center', paddingVertical: 6, backgroundColor: '#000' },
   // Size comes from the project's aspect at render time; the fixed 9/16 that used to
@@ -5593,10 +5593,10 @@ const styles = StyleSheet.create({
   previewFrame: { backgroundColor: '#111', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
   exportBadge: { position: 'absolute', top: 6, left: 6, right: 6, zIndex: 5, flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(0,0,0,0.62)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
-  exportBadgeText: { color: '#cfcfcf', fontSize: 9, fontWeight: '600', flex: 1 },
+  exportBadgeText: { color: '#fff', fontSize: 9, fontWeight: '600', flex: 1 },
   previewImage: { width: '100%', height: '100%' },
   previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  previewEmptyText: { color: '#444', fontSize: 12 },
+  previewEmptyText: { color: '#fff', fontSize: 12 },
   textOverlayPreview: { position: 'absolute', bottom: 40, left: 0, right: 0, textAlign: 'center', textShadowColor: '#000', textShadowRadius: 4 },
   playbackRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 8 },
   playBtn: { padding: 4 },
@@ -5607,7 +5607,7 @@ const styles = StyleSheet.create({
   // Exactly the sidebar's width, so what follows lines up with the clips rather
   // than with the end of a string whose length changes as the video plays.
   timecodeCell: { width: SIDEBAR_W, paddingLeft: 10 },
-  timecode: { color: '#555', fontSize: 9, fontFamily: 'monospace' },
+  timecode: { color: '#fff', fontSize: 9, fontFamily: 'monospace' },
   // marginLeft is the sidebar's width, so tick 00:00 sits over the head of the
   // clips rather than over the Mute button.
   // No left margin now: it sits after the clock's cell, which is already the
@@ -5616,7 +5616,7 @@ const styles = StyleSheet.create({
   rulerRow: { height: RULER_H },
   rulerTick: { position: 'absolute', top: 0, alignItems: 'center', width: 60, marginLeft: -30 },
   rulerTickMark: { width: 1, height: 5, backgroundColor: '#3a3a3a' },
-  rulerTickLabel: { color: '#666', fontSize: 9, marginTop: 2 },
+  rulerTickLabel: { color: '#fff', fontSize: 9, marginTop: 2 },
   timeMarkers: { flexDirection: 'row', gap: 20 },
   timeMarker: { color: '#333', fontSize: 9 },
   // The add buttons ride above the rows rather than in them: each one is pinned to
@@ -5633,7 +5633,7 @@ const styles = StyleSheet.create({
   trackArea: { flex: 1, flexDirection: 'row' },
   sidebar: { width: SIDEBAR_W, alignItems: 'center', paddingTop: 8, gap: 12, borderRightWidth: 1, borderRightColor: '#1a1a1a' },
   sideBtn: { alignItems: 'center', gap: 2 },
-  sideBtnLabel: { color: '#555', fontSize: 9, textAlign: 'center' },
+  sideBtnLabel: { color: '#fff', fontSize: 9, textAlign: 'center' },
   coverThumbWrap: { alignItems: 'center', gap: 2 },
   coverThumbImg: { width: 40, height: 48, borderRadius: 4, backgroundColor: '#1a1a1a' },
   coverThumbEmpty: { width: 40, height: 48, borderRadius: 4, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333' },
@@ -5673,17 +5673,17 @@ const styles = StyleSheet.create({
   auxScroll: { paddingLeft: '50%', paddingRight: 40 },
   auxScrollRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   auxTrackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, borderColor: '#222', backgroundColor: '#111' },
-  auxLabel: { color: '#555', fontSize: 11 },
+  auxLabel: { color: '#fff', fontSize: 11 },
 
 
   tabContent: { flexDirection: 'row', alignItems: 'center' },
-  tabSectionLabel: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
+  tabSectionLabel: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
   toolChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1a1a1a', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: '#2a2a2a' },
   toolChipActive: { backgroundColor: '#2ECC71', borderColor: '#2ECC71' },
   toolChipText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   clipInfo: { marginTop: 8 },
-  clipInfoText: { color: '#888', fontSize: 11, marginBottom: 4 },
-  clipInfoLabel: { color: '#666', fontSize: 11, width: 90 },
+  clipInfoText: { color: '#fff', fontSize: 11, marginBottom: 4 },
+  clipInfoLabel: { color: '#fff', fontSize: 11, width: 90 },
   durationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   audioTrackRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginTop: 4 },
   audioTrackName: { flex: 1, color: '#fff', fontSize: 12 },
@@ -5697,7 +5697,7 @@ const styles = StyleSheet.create({
   tabToolsRow: { paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, minHeight: 44 },
   tabBtn: { alignItems: 'center', gap: 3, paddingHorizontal: 14, paddingVertical: 4 },
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#00d4d4' },
-  tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
+  tabLabel: { color: '#fff', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
   tabBackBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
@@ -5706,21 +5706,21 @@ const styles = StyleSheet.create({
   toolIconWrap: { position: 'relative' },
   premiumBadge: { position: 'absolute', right: -7, top: -5 },
   confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
-  clipToolLabel: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', textAlign: 'center' },
+  clipToolLabel: { color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'center' },
   toolGroupDivider: { width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 6 },
-  translateHint: { color: '#888', fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  translateHint: { color: '#fff', fontSize: 13, lineHeight: 19, marginBottom: 14 },
   translateList: { maxHeight: 320 },
   chipPickerWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
 
   uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', justifyContent: 'center', gap: 16, zIndex: 100 },
-  uploadMsg: { color: '#aaa', fontSize: 13 },
+  uploadMsg: { color: '#fff', fontSize: 13 },
   progressBarBg: { width: '70%', height: 6, backgroundColor: '#222', borderRadius: 3, overflow: 'hidden' },
   progressBarFill: { height: '100%', backgroundColor: '#00d4d4', borderRadius: 3 },
   progressText: { color: '#00d4d4', fontSize: 13, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
-  modalLabel: { color: '#888', fontSize: 12, marginBottom: 4, marginTop: 8 },
+  modalLabel: { color: '#fff', fontSize: 12, marginBottom: 4, marginTop: 8 },
   modalSlider: { width: '100%', height: 32 },
   bgToggleRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -5739,13 +5739,13 @@ const styles = StyleSheet.create({
   bgPreviewRow: { alignItems: 'center', paddingVertical: 10 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 16 },
   modalBtnCancel: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, alignItems: 'center' },
-  modalBtnCancelText: { color: '#888', fontWeight: '600' },
+  modalBtnCancelText: { color: '#fff', fontWeight: '600' },
   modalBtnApply: { flex: 1, backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   // Same button standing alone in a column. flex: 1 belongs only to the pair in
   // modalBtns, which is a row: in a column it resolves flexBasis to 0, so the
   // button collapses to its own padding and the label is clipped out of it.
   modalBtnApplyBlock: { backgroundColor: '#2ECC71', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
-  trimHint: { color: '#888', fontSize: 12, marginBottom: 10 },
+  trimHint: { color: '#fff', fontSize: 12, marginBottom: 10 },
   missingClip: {
     ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#1a0d0dEE', gap: 2,
@@ -5756,7 +5756,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0a0aF2', paddingHorizontal: 22, gap: 8,
   },
   missingCanvasText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  missingCanvasHint: { color: '#888', fontSize: 11, textAlign: 'center', lineHeight: 15 },
+  missingCanvasHint: { color: '#fff', fontSize: 11, textAlign: 'center', lineHeight: 15 },
   sourceTabsRow: { height: 40, marginBottom: 14 },
   sourceTabsContent: { gap: 8, alignItems: 'center', paddingRight: 4 },
   sourceTab: {
@@ -5775,12 +5775,12 @@ const styles = StyleSheet.create({
   },
   joinLabelText: { color: '#04211f', fontSize: 10, fontWeight: '700' },
   clipVolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  audioSheetName: { color: '#888', fontSize: 12, marginBottom: 14 },
+  audioSheetName: { color: '#fff', fontSize: 12, marginBottom: 14 },
   clipVolLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
   clipVolValue: { color: '#00d4d4', fontSize: 13 },
   clipMuteBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
-  clipMuteText: { color: '#e6e6e6', fontSize: 13 },
-  clipVolNote: { color: '#888', fontSize: 11, marginBottom: 12 },
+  clipMuteText: { color: '#fff', fontSize: 13 },
+  clipVolNote: { color: '#fff', fontSize: 11, marginBottom: 12 },
   modalBtnApplyText: { color: '#000', fontWeight: '700' },
   textModalSheet: { maxHeight: '88%' },
   textModalActions: {
