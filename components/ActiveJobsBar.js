@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useJobs } from '../context/JobsContext';
 import ProgressRing from './ProgressRing';
@@ -15,6 +16,16 @@ import ProgressRing from './ProgressRing';
 // while the phone was in a pocket.
 export default function ActiveJobsBar({ onOpen }) {
   const { jobs, forget } = useJobs();
+  // Mounted at the root, outside any screen, so nothing else is insetting it. On a
+  // phone with gesture navigation or on-screen buttons it sat underneath them: the
+  // subtitle was covered and the dismiss X was as good as unreachable.
+  //
+  // Padding rather than margin - the bar's background should reach the bottom of the
+  // screen, or a strip of whatever is behind it shows through under the bar.
+  //
+  // The 10 is the paddingVertical the style already has, kept as the floor so a device
+  // reporting no bottom inset looks exactly as it did.
+  const insets = useSafeAreaInsets();
   if (!jobs.length) return null;
 
   // One bar, showing the oldest unfinished job - or the first finished one waiting to be
@@ -26,7 +37,12 @@ export default function ActiveJobsBar({ onOpen }) {
 
   return (
     <TouchableOpacity
-      style={[styles.bar, done && styles.barDone, failed && styles.barFailed]}
+      style={[
+        styles.bar,
+        done && styles.barDone,
+        failed && styles.barFailed,
+        { paddingBottom: Math.max(10, insets.bottom) },
+      ]}
       activeOpacity={0.85}
       onPress={() => (done || failed ? forget(job.id) : onOpen?.(job))}
     >
