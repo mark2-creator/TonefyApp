@@ -487,6 +487,8 @@ const AUDIO_TOOLS = [
 ];
 
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
+// Measured bands, not adjectives: slow <=80, medium <=110, upbeat <=139, fast above.
+const MUSIC_TEMPOS = ['Any', 'Slow', 'Medium', 'Upbeat', 'Fast'];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 // A colour mixed on the picker is worth keeping - the next overlay almost always
@@ -1361,6 +1363,8 @@ export default function EditVideoScreen({ navigation, route }) {
   // Music library
   const [showMusicModal, setShowMusicModal] = useState(false);
   const [musicTab, setMusicTab] = useState('library'); // 'library' | 'device'
+  const [musicMood, setMusicMood] = useState('All');
+  const [musicTempo, setMusicTempo] = useState('Any');
   const [musicLibraryTracks, setMusicLibraryTracks] = useState([]);
   const [musicLoading, setMusicLoading] = useState(false);
   const musicPreviewSoundRef = useRef(null);
@@ -4108,6 +4112,16 @@ export default function EditVideoScreen({ navigation, route }) {
   useEffect(() => {
     bottomBarScrollRef.current?.scrollTo({ x: 0, animated: false });
   }, [activeTab, selectedKey, selectedAudioTrackKey]);
+  // Built from what the library actually contains rather than from a fixed list, so a
+  // mood with no tracks in it is never offered.
+  const musicMoods = useMemo(
+    () => ['All', ...Array.from(new Set(musicLibraryTracks.map(t => t.mood).filter(Boolean))).sort()],
+    [musicLibraryTracks]);
+  const musicFiltered = useMemo(() => musicLibraryTracks.filter(t =>
+    (musicMood === 'All' || t.mood === musicMood) &&
+    (musicTempo === 'Any' || t.tempo === musicTempo)
+  ), [musicLibraryTracks, musicMood, musicTempo]);
+
   const clipToolGroups = builtFirst(CLIP_TOOLS, clipToolActions);
   const audioToolsOrdered = [...AUDIO_TOOLS].sort(
     (a, b) => Number(toolIsBuilt(b, audioToolActions)) - Number(toolIsBuilt(a, audioToolActions)));
@@ -5363,19 +5377,61 @@ export default function EditVideoScreen({ navigation, route }) {
               musicLoading ? (
                 <ActivityIndicator color="#00d4d4" style={{ marginVertical: 30 }} />
               ) : (
-                <ScrollView>
-                  {musicLibraryTracks.map(track => (
-                    <TouchableOpacity key={track.id} onPress={() => addMusicTrackFromLibrary(track)}
-                      style={{ flexDirection:'row', alignItems:'center', backgroundColor:'#2a2a2a', borderRadius:8, padding:12, marginBottom:8 }}>
-                      <TouchableOpacity onPress={() => previewMusicTrack(track)}
-                        style={{ width:32, height:32, borderRadius:16, backgroundColor: musicPreviewPlayingId === track.id ? '#00d4d4' : '#333', alignItems:'center', justifyContent:'center', marginRight:10 }}>
-                        <MaterialIcons name={musicPreviewPlayingId === track.id ? 'pause' : 'play-arrow'} size={18} color={musicPreviewPlayingId === track.id ? '#000' : '#fff'} />
+                <>
+                  {/* Mood, then tempo. 68 tracks in one alphabetical column is a folder,
+                      not a library - you cannot look for "something calm and slow", which
+                      is the only way anyone actually chooses music for a cut.
+                      Teal, because these switch which part of the library you are looking
+                      at rather than choosing a value. */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                    style={styles.musicFilterRow} contentContainerStyle={styles.musicFilterContent}>
+                    {musicMoods.map(m => (
+                      <TouchableOpacity key={m} onPress={() => setMusicMood(m)}
+                        style={[styles.musicChip, musicMood === m && styles.musicChipActive]}>
+                        <Text style={[styles.musicChipText, musicMood === m && styles.musicChipTextActive]}>{m}</Text>
                       </TouchableOpacity>
-                      <Text style={{ color:'#fff', flex:1, fontSize:13 }} numberOfLines={1}>{track.name}</Text>
-                      <Text style={{ color:'#2ECC71', fontWeight:'700', fontSize:12 }}>ADD</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                    ))}
+                  </ScrollView>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                    style={styles.musicFilterRow} contentContainerStyle={styles.musicFilterContent}>
+                    {MUSIC_TEMPOS.map(t => (
+                      <TouchableOpacity key={t} onPress={() => setMusicTempo(t)}
+                        style={[styles.musicChip, musicTempo === t && styles.musicChipActive]}>
+                        <Text style={[styles.musicChipText, musicTempo === t && styles.musicChipTextActive]}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.musicCount}>
+                    {musicFiltered.length} of {musicLibraryTracks.length} tracks
+                  </Text>
+
+                  <ScrollView>
+                    {musicFiltered.map(track => (
+                      <TouchableOpacity key={track.id} onPress={() => addMusicTrackFromLibrary(track)}
+                        style={styles.musicRow}>
+                        <TouchableOpacity onPress={() => previewMusicTrack(track)}
+                          style={[styles.musicPlay, musicPreviewPlayingId === track.id && styles.musicPlayOn]}>
+                          <MaterialIcons name={musicPreviewPlayingId === track.id ? 'pause' : 'play-arrow'} size={18}
+                            color={musicPreviewPlayingId === track.id ? '#000' : '#fff'} />
+                        </TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.musicName} numberOfLines={1}>{track.name}</Text>
+                          {/* What the track IS, which is what you are choosing on. */}
+                          <Text style={styles.musicMeta} numberOfLines={1}>
+                            {[track.mood, track.bpm ? `${track.bpm} BPM` : null,
+                              track.seconds ? fmtTime(track.seconds) : null]
+                              .filter(Boolean).join('  ·  ')}
+                          </Text>
+                        </View>
+                        <Text style={styles.musicAdd}>ADD</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {musicFiltered.length === 0 && (
+                      <Text style={styles.musicEmpty}>Nothing matches those two filters.</Text>
+                    )}
+                  </ScrollView>
+                </>
               )
             ) : (
               <TouchableOpacity onPress={pickMusicFile}
@@ -5700,6 +5756,22 @@ const styles = StyleSheet.create({
   tabLabel: { color: '#fff', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
+  // paddingHorizontal on the CONTENT container: on a horizontal ScrollView `style` is
+  // the clipping box, and padding there shrinks what is visible instead of insetting it.
+  musicFilterRow: { flexGrow: 0, marginBottom: 8 },
+  musicFilterContent: { alignItems: 'center', gap: 6, paddingHorizontal: 2 },
+  musicChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a' },
+  musicChipActive: { backgroundColor: 'rgba(0,212,212,0.12)', borderColor: '#00d4d4' },
+  musicChipText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  musicChipTextActive: { color: '#00d4d4' },
+  musicCount: { color: '#fff', fontSize: 10, marginBottom: 8, opacity: 0.6 },
+  musicRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 12, marginBottom: 8 },
+  musicPlay: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  musicPlayOn: { backgroundColor: '#00d4d4' },
+  musicName: { color: '#fff', fontSize: 13 },
+  musicMeta: { color: '#fff', fontSize: 10, opacity: 0.55, marginTop: 2 },
+  musicAdd: { color: '#2ECC71', fontWeight: '700', fontSize: 12, marginLeft: 10 },
+  musicEmpty: { color: '#fff', opacity: 0.6, fontSize: 12, textAlign: 'center', paddingVertical: 24 },
   tabBackBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   overlayThumbBtn: { alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 },
   overlayThumb: { width: 32, height: 32, borderRadius: 4 },
