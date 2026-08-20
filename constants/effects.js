@@ -123,7 +123,7 @@ export const EFFECTS = [
   E('crt', 'CRT', 'Retro',
     `geq=lum='lum(X,Y)*(0.82+0.18*sin(Y*2.2))':cb='cb(X,Y)':cr='cr(X,Y)',eq=contrast=1.12`),
   E('damaged-tape', 'Damaged Tape', 'Retro',
-    `chromashift=cbh=12:crh=-12:${burst(1.7, 0.2)},noise=alls=28:allf=t:${burst(1.7, 0.2)}`),
+    `chromashift=cbh=18:crh=-18:${burst(1.2, 0.45)},noise=alls=36:allf=t:${burst(1.2, 0.45)}`),
   E('sepia-flicker', 'Sepia Flicker', 'Retro',
     `hue=s=0,colorbalance=rm=0.2:gm=0.08:bm=-0.14,eq=brightness='0.06*sin(t*31)':eval=frame`),
   E('gate-weave', 'Gate Weave', 'Retro',
@@ -178,6 +178,90 @@ export const EFFECTS = [
   E('haze', 'Haze', 'Atmosphere', `boxblur=2:1,eq=brightness='0.1+0.05*sin(t*1.2)':contrast=0.88:eval=frame`),
   E('fade-breathe', 'Fade Breathe', 'Atmosphere', `eq=saturation='1-0.5*abs(sin(t*1.1))':eval=frame`, true, { saturate: { pulse: [0.75, 0.25, 1.1] } }),
   E('deep-dark', 'Deep Dark', 'Atmosphere', `vignette=a=PI/3,eq=brightness=-0.05:contrast=1.2`, true, { brightness: { fixed: 0.95 }, contrast: { fixed: 1.2 } }),
+
+  // --- More glitch. Cheap filters over geq wherever the look allows it: geq is
+  // per-pixel and the measured cost of the ones already here is 1.7-4.6x realtime.
+  E('rgb-drift', 'RGB Drift', 'Glitch', `rgbashift=rh='-3':bh='3'`, false),
+  E('rgb-wide', 'Wide Split', 'Glitch', 'rgbashift=rh=-11:bh=11'),
+  E('rgb-vertical', 'Vertical Split', 'Glitch', 'rgbashift=rv=-9:bv=9'),
+  E('chroma-heavy', 'Heavy Chroma', 'Glitch', 'chromashift=cbh=16:crh=-16'),
+  E('chroma-vertical', 'Chroma Drop', 'Glitch', 'chromashift=cbv=12:crv=-12'),
+  E('block-small', 'Small Blocks', 'Glitch', `pixelize=w=9:h=9:${burst(0.8, 0.4)}`),
+  E('block-huge', 'Big Blocks', 'Glitch', `pixelize=w=30:h=30:${burst(1.4, 0.2)}`),
+  E('sync-loss', 'Sync Loss', 'Glitch', `chromashift=cbh=20:crh=-20:${burst(2.4, 0.25)},noise=alls=40:allf=t:${burst(2.4, 0.25)}`),
+  E('colour-tear', 'Colour Tear', 'Glitch', `rgbashift=rh=-20:gh=6:bh=20:${burst(1.8, 0.16)}`),
+  E('dropout', 'Dropout', 'Glitch', `eq=brightness=-0.85:${burst(1.9, 0.045)}`),
+
+  // --- More light
+  E('candle', 'Candlelight', 'Light', `eq=brightness='0.06*sin(t*11)+0.04*sin(t*19)':gamma_r=1.1:gamma_b=0.92:eval=frame`, true, { brightness: { pulse: [1, 0.06, 11] } }),
+  E('neon-flicker', 'Neon Flicker', 'Light', `eq=brightness='0.5*lt(mod(t,0.7),0.03)+0.3*lt(mod(t+0.08,0.7),0.02)':eval=frame`, true, { brightness: { burst: [1, 1.5, 0.7, 0.03] } }),
+  E('ramp-up', 'Light Up', 'Light', `eq=brightness='min(0.35,0.05*t)':eval=frame`),
+  E('ramp-down', 'Fade Down', 'Light', `eq=brightness='max(-0.35,-0.05*t)':eval=frame`),
+  E('red-pulse', 'Red Pulse', 'Light', `eq=gamma_r='1+0.35*abs(sin(t*2.2))':eval=frame`),
+  E('green-pulse', 'Green Pulse', 'Light', `eq=gamma_g='1+0.35*abs(sin(t*2.2))':eval=frame`),
+  E('blue-pulse', 'Blue Pulse', 'Light', `eq=gamma_b='1+0.35*abs(sin(t*2.2))':eval=frame`),
+  E('hard-strobe', 'Hard Strobe', 'Light', `eq=brightness='0.9*lt(mod(t,0.2),0.05)-0.3':eval=frame`, true, { brightness: { burst: [0.7, 1.6, 0.2, 0.05] } }),
+  E('slow-blink', 'Slow Blink', 'Light', `eq=brightness='-0.5*lt(mod(t,2.0),0.25)':eval=frame`, true, { brightness: { burst: [1, 0.5, 2.0, 0.25] } }),
+
+  // --- More trails. Decay and frame count are the two dials and they do not feel the
+  // same: decay smears a bright edge, frames average everything equally.
+  // Soft Echo removed: at any decay gentle enough to be 'soft' it measured as a
+  // duplicate of trail-pulse. Between none, echo, echo-long and echo-max the range is
+  // already covered without a fifth point nobody could tell apart.
+  E('echo-max', 'Max Echo', 'Trails', 'lagfun=decay=0.99'),
+  E('ghost-light', 'Light Ghost', 'Trails', 'tmix=frames=4'),
+  E('ghost-max', 'Max Ghost', 'Trails', 'tmix=frames=40'),
+  E('smear-soft', 'Soft Smear', 'Trails', 'dblur=angle=0:radius=6'),
+  E('smear-heavy', 'Heavy Smear', 'Trails', 'dblur=angle=0:radius=28'),
+  E('smear-up', 'Upward Smear', 'Trails', 'dblur=angle=135:radius=18'),
+  E('trail-colour', 'Colour Trail', 'Trails', 'lagfun=decay=0.93,hue=s=1.6'),
+  E('ghost-dark', 'Dark Ghost', 'Trails', 'tmix=frames=14,eq=brightness=-0.05:contrast=1.15'),
+
+  // --- More retro
+  E('eightmm', '8mm', 'Retro', `noise=alls=26:allf=t,eq=gamma_r=1.18:gamma_b=0.85:saturation=0.8,vignette=a=PI/4`),
+  E('sixteenmm', '16mm', 'Retro', `noise=alls=16:allf=t,eq=contrast=1.1:saturation=0.9,vignette=a=PI/5`),
+  E('xerox', 'Xerox', 'Retro', 'hue=s=0,eq=contrast=2.2:brightness=0.05', true, { saturate: { fixed: 0 }, contrast: { fixed: 2.2 }, brightness: { fixed: 1.05 } }),
+  E('newsprint', 'Newsprint', 'Retro', 'hue=s=0,eq=contrast=1.7,noise=alls=24:allf=t'),
+  E('colour-bleed', 'Colour Bleed', 'Retro', 'chromashift=cbh=5:crh=-5,eq=saturation=1.4'),
+  E('tracking', 'Tracking Error', 'Retro', `chromashift=cbv=9:crv=-9:${burst(1.2, 0.3)},noise=alls=20:allf=t`),
+  E('faded-tape', 'Faded Tape', 'Retro', 'eq=contrast=0.8:saturation=0.6:brightness=0.08,noise=alls=14:allf=t'),
+  E('technicolour', 'Technicolour', 'Retro', 'eq=saturation=1.8:contrast=1.15,colorbalance=rm=0.06:bm=-0.04', true, { saturate: { fixed: 1.8 }, contrast: { fixed: 1.15 } }),
+
+  // --- More distort. Cheap ones only; the geq family is already represented.
+  E('pixel-tiny', 'Fine Pixels', 'Distort', 'pixelize=w=5:h=5'),
+  E('pixel-huge', 'Coarse Pixels', 'Distort', 'pixelize=w=40:h=40'),
+  E('soft-focus', 'Soft Focus', 'Distort', 'boxblur=4:1,eq=contrast=1.08'),
+  E('heavy-blur', 'Heavy Blur', 'Distort', 'boxblur=12:1'),
+  E('blur-flash', 'Blur Flash', 'Distort', `boxblur=16:1:${burst(1.3, 0.35)}`),
+  // Crisp was written and removed, for the same reason sharpen-pump was: it renders,
+  // but sharpening changes local edge contrast, which mean-pixel-difference cannot
+  // see - so distinctness could not be demonstrated. over-sharp is strong enough to
+  // measure and covers the intent.
+  E('over-sharp', 'Over Sharp', 'Distort', 'unsharp=9:9:3.5:9:9:1.2'),
+  E('edge-only', 'Edges', 'Distort', 'edgedetect=mode=wires:high=0.15'),
+  E('emboss', 'Emboss', 'Distort', 'convolution=-2 -1 0 -1 1 1 0 1 2:-2 -1 0 -1 1 1 0 1 2:-2 -1 0 -1 1 1 0 1 2:0 0 0 0 1 0 0 0 0'),
+  E('erode', 'Erode', 'Distort', 'erosion'),
+  E('dilate', 'Dilate', 'Distort', 'dilation'),
+
+  // --- More colour
+  E('hue-slow', 'Slow Hue', 'Colour', `hue=h='t*12':s=1`, false, { hue: { cycle: 12 } }),
+  E('hue-reverse', 'Reverse Hue', 'Colour', `hue=h='-t*55':s=1`, true, { hue: { cycle: -55 } }),
+  E('mono-red', 'Red Only', 'Colour', 'colorchannelmixer=1:0:0:0:0:0:0:0:0:0:0:0'),
+  E('mono-green', 'Green Only', 'Colour', 'colorchannelmixer=0:0:0:0:0:1:0:0:0:0:0:0'),
+  E('mono-blue', 'Blue Only', 'Colour', 'colorchannelmixer=0:0:0:0:0:0:0:0:0:0:1:0'),
+  E('swap-rb', 'Swap Red Blue', 'Colour', 'colorchannelmixer=0:0:1:0:0:1:0:0:1:0:0:0'),
+  E('crush-colour', 'Crush', 'Colour', 'eq=saturation=2.4:contrast=1.35', true, { saturate: { fixed: 2.4 }, contrast: { fixed: 1.35 } }),
+  E('wash-out', 'Wash Out', 'Colour', 'eq=saturation=0.25:contrast=0.85:brightness=0.12', true, { saturate: { fixed: 0.25 }, contrast: { fixed: 0.85 }, brightness: { fixed: 1.12 } }),
+  E('deep-sat', 'Deep Saturation', 'Colour', `hue=s='1.8+0.6*sin(t*1.5)'`, true, { saturate: { pulse: [1.8, 0.6, 1.5] } }),
+  E('half-invert', 'Half Invert', 'Colour', `negate=${burst(0.8, 0.4)}`, true, { invert: { burst: [0, 1, 0.8, 0.4] } }),
+
+  // --- More atmosphere
+  E('vignette-hard', 'Hard Vignette', 'Atmosphere', 'vignette=a=PI/2.6'),
+  E('vignette-soft', 'Soft Vignette', 'Atmosphere', 'vignette=a=PI/6', false),
+  E('mist', 'Mist', 'Atmosphere', 'boxblur=4:1,eq=brightness=0.14:contrast=0.82:saturation=0.75'),
+  E('bloom-soft', 'Bloom', 'Atmosphere', 'boxblur=2:1,eq=brightness=0.12:contrast=1.05:saturation=1.1'),
+  E('noir-fog', 'Noir Fog', 'Atmosphere', 'hue=s=0,boxblur=3:1,eq=contrast=1.3:brightness=0.05,vignette=a=PI/3.4'),
+  E('cold-night', 'Cold Night', 'Atmosphere', 'eq=gamma_b=1.25:gamma_r=0.88:brightness=-0.06:contrast=1.15,vignette=a=PI/3.6'),
 ];
 
 export function resolveEffect(id) {
