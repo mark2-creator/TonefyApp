@@ -1301,7 +1301,10 @@ export default function EditVideoScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
 
   // Active bottom tab
-  const [activeTab, setActiveTab] = useState('Edit');
+  // null = the tab STRIP is showing. A tab name = that tab's tools have taken the bar,
+  // the same way selecting a clip does. It started as 'Edit', which meant a tab was
+  // permanently notionally open while the strip was what you actually saw.
+  const [activeTab, setActiveTab] = useState(null);
 
   // Text overlays
   const [textOverlays, setTextOverlays] = useState([]);
@@ -4526,34 +4529,6 @@ export default function EditVideoScreen({ navigation, route }) {
       </View>
 
       {/* TRUE SINGLE-ROW BOTTOM TOOLBAR */}
-      {/* The active tab's tools, in a row of their own ABOVE the tab strip.
-          They used to live in the SAME horizontal scroller as the tabs, after a
-          divider - so tapping a tab put its tools past all twelve of them, off the
-          right-hand edge. The tab lit up and nothing else appeared to happen, which is
-          indistinguishable from a menu that is not wired up.
-          Hidden while a clip is selected, because the bar below has become that clip's
-          own tools and these would be a second, unrelated set stacked over them. */}
-      {!selectedItem && !selectedAudioTrack && tabTools.length > 0 && (
-        <View style={styles.tabToolsRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabToolsContent}>
-            {tabTools.map(tool => (
-              tool.isOverlayThumb ? (
-                <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
-                  style={styles.overlayThumbBtn}>
-                  <Image source={{ uri: tool.overlay.uri }} style={styles.overlayThumb} resizeMode="cover" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity key={tool.key} style={[styles.toolChip, tool.active && styles.toolChipActive]} onPress={tool.onPress}>
-                  {tool.icon && <MaterialIcons name={tool.icon} size={16} color={tool.active ? '#000' : (tool.color || '#fff')} />}
-                  <Text style={[styles.toolChipText, tool.active && { color: '#000' }, tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
-                </TouchableOpacity>
-              )
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
       <View style={[styles.bottomToolbar, { paddingBottom: insets.bottom || 16 }]}>
         {selectedAudioTrack && !selectedItem ? (
           <View style={styles.barWithAction}>
@@ -4588,7 +4563,8 @@ export default function EditVideoScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        <View style={styles.barWithAction}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
               again deselects it and the tabs come back, so there is a way out that
@@ -4622,7 +4598,34 @@ export default function EditVideoScreen({ navigation, route }) {
                 );
               })}
             </React.Fragment>
-          )) : (
+          )) : activeTab ? (
+          // The tab's tools have taken the bar. Same shape as a selected clip's tools,
+          // because it is the same idea: the bar shows what you can do to the thing you
+          // just chose. Confirm is pinned outside the scroller below.
+          //
+          // The name leads, because once the strip is gone there is nothing else saying
+          // which tab these belong to - and Confirm returns you to the tabs rather than
+          // undoing anything, so the bar has to be self-describing.
+          [
+            <View key="__label" style={styles.tabToolsLabel}>
+              <MaterialIcons name={bottomTabs.find(t => t.name === activeTab)?.icon || 'tune'} size={14} color="#00d4d4" />
+              <Text style={styles.tabToolsLabelText}>{activeTab}</Text>
+            </View>,
+            ...tabTools.map(tool => (
+            tool.isOverlayThumb ? (
+              <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
+                style={styles.overlayThumbBtn}>
+                <Image source={{ uri: tool.overlay.uri }} style={styles.overlayThumb} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity key={tool.key} style={[styles.toolChip, tool.active && styles.toolChipActive]} onPress={tool.onPress}>
+                {tool.icon && <MaterialIcons name={tool.icon} size={16} color={tool.active ? '#000' : (tool.color || '#fff')} />}
+                <Text style={[styles.toolChipText, tool.active && { color: '#000' }, tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
+              </TouchableOpacity>
+            )
+          )),
+          ]
+          ) : (
           bottomTabs.map(tab => {
             const active = tab.built && activeTab === tab.name;
             const locked = tab.premium && !isPremium;
@@ -4654,6 +4657,15 @@ export default function EditVideoScreen({ navigation, route }) {
           })
           )}
         </ScrollView>
+        {/* Only while a tab has the bar. Outside the scroller, because it is how you get
+            back to the tabs and must never be the thing that scrolled off the end. */}
+        {!selectedItem && !!activeTab && (
+          <TouchableOpacity style={styles.confirmBtn} onPress={() => setActiveTab(null)}
+            accessibilityLabel="Back to tabs">
+            <MaterialIcons name="check" size={24} color="#04211f" />
+          </TouchableOpacity>
+        )}
+        </View>
         )}
       </View>
 
@@ -5570,12 +5582,6 @@ const styles = StyleSheet.create({
   // Size comes from the project's aspect at render time; the fixed 9/16 that used to
   // be here is why every export was portrait whatever the picker said.
   previewFrame: { backgroundColor: '#111', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
-  // Sits directly on the tab strip, so the two read as one control rather than as a
-  // floating row: a hairline between them and no gap.
-  tabToolsRow: { backgroundColor: '#0d0d0d', borderTopWidth: 1, borderTopColor: '#1e1e1e' },
-  tabToolsContent: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
-  overlayThumbBtn: { alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 },
-  overlayThumb: { width: 32, height: 32, borderRadius: 4 },
   exportBadge: { position: 'absolute', top: 6, left: 6, right: 6, zIndex: 5, flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(0,0,0,0.62)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   exportBadgeText: { color: '#cfcfcf', fontSize: 9, fontWeight: '600', flex: 1 },
@@ -5679,11 +5685,17 @@ const styles = StyleSheet.create({
 
   bottomToolbar: { flexDirection: 'column', borderTopWidth: 1, borderTopColor: '#1a1a1a', backgroundColor: '#000' },
   tabIconsRow: { paddingVertical: 4 },
+  tabToolsRow: { paddingTop: 8, paddingBottom: 2, paddingHorizontal: 4, minHeight: 44 },
   tabBtn: { alignItems: 'center', gap: 3, paddingHorizontal: 14, paddingVertical: 4 },
   tabBtnActive: { borderBottomWidth: 2, borderBottomColor: '#00d4d4' },
   tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
+  tabToolsLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingRight: 10, marginRight: 4,
+    borderRightWidth: 1, borderRightColor: '#2a2a2a' },
+  tabToolsLabelText: { color: '#00d4d4', fontSize: 11, fontWeight: '700' },
+  overlayThumbBtn: { alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 },
+  overlayThumb: { width: 32, height: 32, borderRadius: 4 },
   toolIconWrap: { position: 'relative' },
   premiumBadge: { position: 'absolute', right: -7, top: -5 },
   confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
