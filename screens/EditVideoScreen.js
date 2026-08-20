@@ -1301,10 +1301,7 @@ export default function EditVideoScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
 
   // Active bottom tab
-  // null = the tab STRIP is showing. A tab name = that tab's tools have taken the bar,
-  // the same way selecting a clip does. It started as 'Edit', which meant a tab was
-  // permanently notionally open while the strip was what you actually saw.
-  const [activeTab, setActiveTab] = useState(null);
+  const [activeTab, setActiveTab] = useState('Edit');
 
   // Text overlays
   const [textOverlays, setTextOverlays] = useState([]);
@@ -4096,7 +4093,6 @@ export default function EditVideoScreen({ navigation, route }) {
   // render, so any dependency on them changes every render and the memo would never
   // hit - it would cost a comparison and buy nothing. Reordering forty items is far
   // cheaper than the toolbar it feeds.
-  const tabTools = getTabTools();
   const clipToolGroups = builtFirst(CLIP_TOOLS, clipToolActions);
   const audioToolsOrdered = [...AUDIO_TOOLS].sort(
     (a, b) => Number(toolIsBuilt(b, audioToolActions)) - Number(toolIsBuilt(a, audioToolActions)));
@@ -4563,8 +4559,7 @@ export default function EditVideoScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         ) : (
-        <View style={styles.barWithAction}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
               again deselects it and the tabs come back, so there is a way out that
@@ -4598,35 +4593,8 @@ export default function EditVideoScreen({ navigation, route }) {
                 );
               })}
             </React.Fragment>
-          )) : activeTab ? (
-          // The tab's tools have taken the bar. Same shape as a selected clip's tools,
-          // because it is the same idea: the bar shows what you can do to the thing you
-          // just chose. Confirm is pinned outside the scroller below.
-          //
-          // The name leads, because once the strip is gone there is nothing else saying
-          // which tab these belong to - and Confirm returns you to the tabs rather than
-          // undoing anything, so the bar has to be self-describing.
-          [
-            <View key="__label" style={styles.tabToolsLabel}>
-              <MaterialIcons name={bottomTabs.find(t => t.name === activeTab)?.icon || 'tune'} size={14} color="#00d4d4" />
-              <Text style={styles.tabToolsLabelText}>{activeTab}</Text>
-            </View>,
-            ...tabTools.map(tool => (
-            tool.isOverlayThumb ? (
-              <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
-                style={styles.overlayThumbBtn}>
-                <Image source={{ uri: tool.overlay.uri }} style={styles.overlayThumb} resizeMode="cover" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity key={tool.key} style={[styles.toolChip, tool.active && styles.toolChipActive]} onPress={tool.onPress}>
-                {tool.icon && <MaterialIcons name={tool.icon} size={16} color={tool.active ? '#000' : (tool.color || '#fff')} />}
-                <Text style={[styles.toolChipText, tool.active && { color: '#000' }, tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
-              </TouchableOpacity>
-            )
-          )),
-          ]
-          ) : (
-          bottomTabs.map(tab => {
+          )) : (<>
+          {bottomTabs.map(tab => {
             const active = tab.built && activeTab === tab.name;
             const locked = tab.premium && !isPremium;
             return (
@@ -4654,18 +4622,23 @@ export default function EditVideoScreen({ navigation, route }) {
                 ]}>{tab.name}</Text>
               </TouchableOpacity>
             );
-          })
-          )}
+          })}
+          <View style={{ width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 4 }} />
+          {getTabTools().map(tool => (
+            tool.isOverlayThumb ? (
+              <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
+                style={{ alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 }}>
+                <Image source={{ uri: tool.overlay.uri }} style={{ width: 32, height: 32, borderRadius: 4 }} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity key={tool.key} style={[styles.toolChip, tool.active && styles.toolChipActive]} onPress={tool.onPress}>
+                {tool.icon && <MaterialIcons name={tool.icon} size={16} color={tool.active ? '#000' : (tool.color || '#fff')} />}
+                <Text style={[styles.toolChipText, tool.active && { color: '#000' }, tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
+              </TouchableOpacity>
+            )
+          ))}
+          </>)}
         </ScrollView>
-        {/* Only while a tab has the bar. Outside the scroller, because it is how you get
-            back to the tabs and must never be the thing that scrolled off the end. */}
-        {!selectedItem && !!activeTab && (
-          <TouchableOpacity style={styles.confirmBtn} onPress={() => setActiveTab(null)}
-            accessibilityLabel="Back to tabs">
-            <MaterialIcons name="check" size={24} color="#04211f" />
-          </TouchableOpacity>
-        )}
-        </View>
         )}
       </View>
 
@@ -5691,11 +5664,6 @@ const styles = StyleSheet.create({
   tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
-  tabToolsLabel: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingRight: 10, marginRight: 4,
-    borderRightWidth: 1, borderRightColor: '#2a2a2a' },
-  tabToolsLabelText: { color: '#00d4d4', fontSize: 11, fontWeight: '700' },
-  overlayThumbBtn: { alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 },
-  overlayThumb: { width: 32, height: 32, borderRadius: 4 },
   toolIconWrap: { position: 'relative' },
   premiumBadge: { position: 'absolute', right: -7, top: -5 },
   confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
