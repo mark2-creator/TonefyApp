@@ -4096,6 +4096,18 @@ export default function EditVideoScreen({ navigation, route }) {
   // hit - it would cost a comparison and buy nothing. Reordering forty items is far
   // cheaper than the toolbar it feeds.
   const tabTools = getTabTools();
+
+  // A horizontal ScrollView keeps its contentOffset when its children change. Scroll
+  // the strip right to reach a tab, tap it, and the short tools row that replaces it
+  // opens already scrolled past its own end - an empty bar that fills in the moment you
+  // touch it, which is exactly how this was reported.
+  //
+  // Reset on every level change, in both directions: coming back up to a strip that is
+  // still scrolled to where a tool used to be is the same bug wearing the other hat.
+  const bottomBarScrollRef = useRef(null);
+  useEffect(() => {
+    bottomBarScrollRef.current?.scrollTo({ x: 0, animated: false });
+  }, [activeTab, selectedKey, selectedAudioTrackKey]);
   const clipToolGroups = builtFirst(CLIP_TOOLS, clipToolActions);
   const audioToolsOrdered = [...AUDIO_TOOLS].sort(
     (a, b) => Number(toolIsBuilt(b, audioToolActions)) - Number(toolIsBuilt(a, audioToolActions)));
@@ -4576,7 +4588,7 @@ export default function EditVideoScreen({ navigation, route }) {
             <View style={styles.toolGroupDivider} />
           </>
         )}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
+        <ScrollView ref={bottomBarScrollRef} horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
               again deselects it and the tabs come back, so there is a way out that
