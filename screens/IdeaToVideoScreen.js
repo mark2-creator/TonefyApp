@@ -18,6 +18,9 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import TransitionSheet from '../components/TransitionPicker';
+import { transitionSpec, resolveTransition } from '../constants/transitions';
+import { usePlan } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
@@ -35,67 +38,14 @@ const ASPECT_RATIOS = [
 ];
 
 
-const TRANSITION_STYLES = [
-  { id: 'none',        label: 'Cut',          desc: 'Hard cut, no transition',        group: 'Basic' },
-  { id: 'fade',        label: 'Fade',         desc: 'Smooth fade',                    group: 'Basic' },
-  { id: 'fadewhite',   label: 'Flash White',  desc: 'Slam to white',                  group: 'Trendy' },
-  { id: 'fadeblack',   label: 'Fade Black',   desc: 'Dip to black',                   group: 'Basic' },
-  { id: 'fadegrays',   label: 'Film Burn',    desc: 'Cinematic gray burn',            group: 'Cinematic' },
-  { id: 'fadefast',    label: 'Flash Cut',    desc: 'Ultra fast fade',                group: 'Trendy' },
-  { id: 'fadeslow',    label: 'Slow Burn',    desc: 'Dreamy slow fade',               group: 'Cinematic' },
-  { id: 'zoomin',      label: 'Zoom In',      desc: 'Punch zoom into next scene',     group: 'Trendy' },
-  { id: 'hblur',       label: 'Blur Wipe',    desc: 'Horizontal blur transition',     group: 'Trendy' },
-  { id: 'pixelize',    label: 'Pixelate',     desc: 'Pixel burst between scenes',     group: 'Trendy' },
-  { id: 'dissolve',    label: 'Dissolve',     desc: 'Soft dissolve blend',            group: 'Basic' },
-  { id: 'radial',      label: 'Radial',       desc: 'Spinning radial wipe',           group: 'Cinematic' },
-  { id: 'circleopen',  label: 'Circle Open',  desc: 'Circle expands to reveal',       group: 'Cinematic' },
-  { id: 'circleclose', label: 'Circle Close', desc: 'Circle closes between scenes',   group: 'Cinematic' },
-  { id: 'circlecrop',  label: 'Circle Crop',  desc: 'Circle crop transition',         group: 'Cinematic' },
-  { id: 'coverleft',   label: 'Cover Left',   desc: 'Next scene covers from right',   group: 'Trendy' },
-  { id: 'coverright',  label: 'Cover Right',  desc: 'Next scene covers from left',    group: 'Trendy' },
-  { id: 'coverup',     label: 'Cover Up',     desc: 'Next scene covers from bottom',  group: 'Trendy' },
-  { id: 'coverdown',   label: 'Cover Down',   desc: 'Next scene covers from top',     group: 'Trendy' },
-  { id: 'revealleft',  label: 'Reveal Left',  desc: 'Reveal next scene leftward',     group: 'Cinematic' },
-  { id: 'revealright', label: 'Reveal Right', desc: 'Reveal next scene rightward',    group: 'Cinematic' },
-  { id: 'revealup',    label: 'Reveal Up',    desc: 'Reveal next scene upward',       group: 'Cinematic' },
-  { id: 'revealdown',  label: 'Reveal Down',  desc: 'Reveal next scene downward',     group: 'Cinematic' },
-  { id: 'slideleft',   label: 'Slide Left',   desc: 'Slide to the left',              group: 'Basic' },
-  { id: 'slideright',  label: 'Slide Right',  desc: 'Slide to the right',             group: 'Basic' },
-  { id: 'slideup',     label: 'Slide Up',     desc: 'Slide upward',                   group: 'Basic' },
-  { id: 'slidedown',   label: 'Slide Down',   desc: 'Slide downward',                 group: 'Basic' },
-  { id: 'smoothleft',  label: 'Smooth Left',  desc: 'Smooth ease slide left',         group: 'Cinematic' },
-  { id: 'smoothright', label: 'Smooth Right', desc: 'Smooth ease slide right',        group: 'Cinematic' },
-  { id: 'smoothup',    label: 'Smooth Up',    desc: 'Smooth ease slide up',           group: 'Cinematic' },
-  { id: 'smoothdown',  label: 'Smooth Down',  desc: 'Smooth ease slide down',         group: 'Cinematic' },
-  { id: 'wipeleft',    label: 'Wipe Left',    desc: 'Hard wipe left',                 group: 'Basic' },
-  { id: 'wiperight',   label: 'Wipe Right',   desc: 'Hard wipe right',                group: 'Basic' },
-  { id: 'wipeup',      label: 'Wipe Up',      desc: 'Hard wipe up',                   group: 'Basic' },
-  { id: 'wipedown',    label: 'Wipe Down',    desc: 'Hard wipe down',                 group: 'Basic' },
-  { id: 'wipetl',      label: 'Wipe TL',       desc: 'Diagonal wipe top-left',         group: 'Cinematic' },
-  { id: 'wipetr',      label: 'Wipe TR',       desc: 'Diagonal wipe top-right',        group: 'Cinematic' },
-  { id: 'wipebl',      label: 'Wipe BL',       desc: 'Diagonal wipe bottom-left',      group: 'Cinematic' },
-  { id: 'wipebr',      label: 'Wipe BR',       desc: 'Diagonal wipe bottom-right',     group: 'Cinematic' },
-  { id: 'diagtl',      label: 'Diag TL',       desc: 'Diagonal reveal top-left',       group: 'Cinematic' },
-  { id: 'diagtr',      label: 'Diag TR',       desc: 'Diagonal reveal top-right',      group: 'Cinematic' },
-  { id: 'diagbl',      label: 'Diag BL',       desc: 'Diagonal reveal bottom-left',    group: 'Cinematic' },
-  { id: 'diagbr',      label: 'Diag BR',       desc: 'Diagonal reveal bottom-right',   group: 'Cinematic' },
-  { id: 'hlslice',     label: 'H Slices',     desc: 'Horizontal slice wipe',          group: 'Trendy' },
-  { id: 'hrslice',     label: 'HR Slices',    desc: 'Horizontal reverse slice',       group: 'Trendy' },
-  { id: 'vuslice',     label: 'V Slices',     desc: 'Vertical slice wipe',            group: 'Trendy' },
-  { id: 'vdslice',     label: 'VD Slices',    desc: 'Vertical down slice',            group: 'Trendy' },
-  { id: 'hlwind',      label: 'H Wind',       desc: 'Horizontal wind sweep',          group: 'Trendy' },
-  { id: 'hrwind',      label: 'HR Wind',      desc: 'Horizontal reverse wind',        group: 'Trendy' },
-  { id: 'vuwind',      label: 'V Wind',       desc: 'Vertical wind sweep',            group: 'Trendy' },
-  { id: 'vdwind',      label: 'VD Wind',      desc: 'Vertical down wind',             group: 'Trendy' },
-  { id: 'squeezeh',    label: 'Squeeze H',    desc: 'Horizontal squeeze',             group: 'Trendy' },
-  { id: 'squeezev',    label: 'Squeeze V',    desc: 'Vertical squeeze',               group: 'Trendy' },
-  { id: 'vertopen',    label: 'Vert Open',    desc: 'Vertical barn door open',        group: 'Cinematic' },
-  { id: 'vertclose',   label: 'Vert Close',   desc: 'Vertical barn door close',       group: 'Cinematic' },
-  { id: 'horzopen',    label: 'Horz Open',    desc: 'Horizontal barn door open',      group: 'Cinematic' },
-  { id: 'horzclose',   label: 'Horz Close',   desc: 'Horizontal barn door close',     group: 'Cinematic' },
-  { id: 'rectcrop',    label: 'Rect Crop',    desc: 'Rectangle crop reveal',          group: 'Cinematic' },
-  { id: 'distance',    label: 'Distance',     desc: 'Distance-based blend',           group: 'Cinematic' },
-];
+// TRANSITION_STYLES used to be a local table of 22 here, and the same 22 again in
+// each of the other two generation screens. The catalogue in constants/transitions.js
+// has 132 with rendered previews, and the editor has used it since it was written -
+// so these screens were offering a sixth of the app's own transitions, described in
+// words, while the editor showed all of them as pictures.
+//
+// Three copies of one list is the shape this codebase keeps recording as a defect:
+// they drift the first time one of them gets a fix.
 
 
 const VIDEO_SPEEDS = [
@@ -363,54 +313,8 @@ function TransitionPreview({ item }) {
   );
 }
 
-function TransitionModal({ visible, options, selectedId, onSelect, onClose }) {
-  const { theme, isDark } = useTheme();
-  const groups = ['Basic', 'Trendy', 'Cinematic'];
-  const sheetInset = useSheetInset();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[styles.modalSheet, { backgroundColor: theme.settingBg, maxHeight: '85%' }, sheetInset]}>
-          <View style={[styles.modalHandle, { backgroundColor: theme.handle }]} />
-          <SheetHeader title="Transition Style" onClose={onClose} style={styles.sheetHeaderPad} titleColor={theme.text} closeColor={theme.icon} />
-          <FlatList
-            data={groups}
-            keyExtractor={g => g}
-            renderItem={({ item: group }) => {
-              const items = options.filter(o => o.group === group);
-              if (!items.length) return null;
-              return (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 }}>{group.toUpperCase()}</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {items.map(item => (
-                      <TouchableOpacity
-                        key={item.id}
-                        onPress={() => { onSelect(item.id); onClose(); }}
-                        style={{
-                          width: '30%',
-                          backgroundColor: selectedId === item.id ? (isDark ? '#1a3a1a' : '#e0f5e9') : theme.card,
-                          borderWidth: 1.5,
-                          borderColor: selectedId === item.id ? '#2ecc71' : theme.border,
-                          borderRadius: 12,
-                          padding: 8,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <TransitionPreview item={item} />
-                        <Text style={{ color: selectedId === item.id ? '#2ecc71' : theme.text, fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>{item.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              );
-            }}
-          />
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
+// TransitionModal lived here - a word-list modal for the local table. Both are gone;
+// the shared TransitionSheet shows the real catalogue as rendered previews.
 
 function MusicTrackRow({ item, selectedId, onSelect, onClose, playingId, onTogglePlay }) {
   const { theme, isDark } = useTheme();
@@ -565,6 +469,8 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 }
 
 export default function IdeaToVideoScreen({ navigation }) {
+  // Gates the locked tiles in the transition sheet, the same way the editor does.
+  const { isPremium } = usePlan();
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { track } = useJobs();
@@ -595,7 +501,7 @@ export default function IdeaToVideoScreen({ navigation }) {
   const selectedVoice = VOICES.find(v => v.id === voiceId);
   const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
   const selectedCaption = resolveCaptionStyle(captionStyle);
-  const selectedTransition = TRANSITION_STYLES.find(t => t.id === transition);
+  const selectedTransition = resolveTransition(transition);
   const selectedSpeed = VIDEO_SPEEDS.find(s => s.id === videoSpeed) || VIDEO_SPEEDS[0];
 
   const startProgress = (start, end, duration) => {
@@ -682,7 +588,12 @@ export default function IdeaToVideoScreen({ navigation }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voiceover: script, segments,
-          audioUrl, aspectRatio, captionStyle, transition, videoSpeed,
+          audioUrl, aspectRatio, captionStyle, transition,
+          // The recipe, so the whole catalogue renders rather than the twenty
+          // names the endpoint's own map happens to know. The id still goes
+          // with it, for a server older than this change.
+          transitionSpec: transitionSpec(transition),
+          videoSpeed,
           // The server burns these captions in itself and has no copy of the
           // catalogue, so it needs the style rather than just its name.
           captionMeta: {
@@ -833,7 +744,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
             <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <SettingCard icon="subtitles" iconColor="#34d399" iconBg="#0a2a1a" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
-            <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.desc}`} onPress={() => setModal('transition')} />
+            <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.category}`} onPress={() => setModal('transition')} />
             <SettingCard icon="speed" iconColor="#fb923c" iconBg="#2a1500" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
             <SettingCard icon="music-note" iconColor="#facc15" iconBg="#2a2000" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
             {loading && <ProgressBar progress={progress} label={loadingMsg} theme={theme} />}
@@ -940,7 +851,15 @@ export default function IdeaToVideoScreen({ navigation }) {
       <OptionModal visible={modal === 'ratio'} title="Video Format" options={ASPECT_RATIOS} selectedId={aspectRatio} onSelect={setAspectRatio} onClose={() => setModal(null)} />
       <CaptionStyleSheet visible={modal === 'caption'} value={captionStyle} onChange={setCaptionStyle} onClose={() => setModal(null)} />
       <OptionModal visible={modal === 'speed'} title="Video Speed" options={VIDEO_SPEEDS.map(s => ({...s, id: s.id, label: s.label, desc: s.desc, }))} selectedId={videoSpeed} onSelect={(v) => setVideoSpeed(parseFloat(v))} onClose={() => setModal(null)} />
-      <TransitionModal visible={modal === 'transition'} options={TRANSITION_STYLES} selectedId={transition} onSelect={setTransition} onClose={() => setModal(null)} />
+      <TransitionSheet
+        visible={modal === 'transition'}
+        value={transition}
+        backend={BACKEND}
+        isPremium={isPremium}
+        onSelect={(id) => { setTransition(id); setModal(null); }}
+        onLocked={() => setModal(null)}
+        onClose={() => setModal(null)}
+      />
       <MusicModal visible={modal === 'music'} selectedId={musicTrack.id} onSelect={setMusicTrack} onClose={() => setModal(null)} />
     </View>
   );
