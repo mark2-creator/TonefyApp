@@ -1,24 +1,74 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, Pressable,
+  View, Text, TouchableOpacity, ScrollView, FlatList, Modal, StyleSheet, Pressable,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import SheetHeader from './SheetHeader';
 
-// One sheet for the two catalogues that cannot be previewed as a picture.
+// One sheet for the two catalogues that cannot be shown as a still picture.
 //
-// No rendered tile, unlike the filter and transition sheets, and that is a decision
-// rather than an omission: a grade can be shown in a still frame and a movement cannot.
-// A tile of a zoom is a photograph. An icon that names the shape of the thing is worth
-// more than a picture that says nothing.
+// Each tile is an animated WebP rendered from the recipe itself, the same arrangement
+// the transition picker uses - so a preview cannot disagree with the result. It
+// replaced a MaterialIcon per CATEGORY, which meant every Glitch effect drew the same
+// broken-image glyph and a grid of sixty-eight was nine distinct pictures.
 //
-// Motion and Effects are the same sheet because they are the same problem - a category
-// strip, a grid of named tiles, a premium diamond and a lock. Two copies of that would
-// drift the first time one of them got a fix, which is the failure this codebase keeps
-// recording. The catalogue, the title and the icon per category are the only
-// differences, so they are the props.
+// Motion and Effects share this because they are the same problem - a category strip,
+// a grid of named tiles, a diamond and a lock. Two copies would drift the first time
+// one of them got a fix.
+//
+// A FlatList, not a ScrollView, and that is load-bearing rather than tidy. Sixty-eight
+// tiles is 3.5MB of animated WebP; rendering them all mounts every image at once and
+// fetches the lot. Virtualised, a device pulls the dozen on screen. It is also what
+// keeps the grid off Android's O(n^2) sibling draw path - the same reason the caption
+// style picker is a FlatList.
+const COLS = 3;
+
+function Tile({ item, previewBase, version, selected, locked, onPick }) {
+  return (
+    <Pressable style={styles.tile} onPress={() => onPick(item)}>
+      <View style={[styles.thumbWrap, selected && styles.thumbWrapActive]}>
+        {item.chain ? (
+          <ExpoImage
+            source={{ uri: `${previewBase}/${encodeURIComponent(item.id)}.webp?v=${version}` }}
+            style={styles.thumb}
+            contentFit="cover"
+            transition={0}
+          />
+        ) : (
+          // "None" has no recipe and therefore nothing to render. A crossed-out icon
+          // says that better than a still frame of untouched footage, which would look
+          // like a tile that failed to load.
+          <View style={[styles.thumb, styles.noneThumb]}>
+            <MaterialIcons name="block" size={20} color="#5a5a5a" />
+          </View>
+        )}
+        {/* Only when it is actually locked. A diamond on a plan that already includes
+            the thing is not information, it is noise on every tile at once. */}
+        {locked && (
+          <View style={styles.lockPill}>
+            <MaterialIcons name="diamond" size={11} color="#f5c451" />
+          </View>
+        )}
+        {/* Measured, not guessed: these run 1.7-4.6x realtime, so a minute of footage
+            is two to five minutes of rendering. Worth saying before the wait. */}
+        {!!item.slow && <Text style={styles.slow}>SLOWER</Text>}
+      </View>
+      <Text
+        style={[styles.label, selected && styles.labelActive, locked && styles.labelLocked]}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  );
+}
+
+const MemoTile = React.memo(Tile);
+
 export default function RecipeSheet({
-  visible, title, items, categories, icons, value, isPremium, onSelect, onLocked, onClose,
+  visible, title, items, categories, previewBase, version,
+  value, isPremium, onSelect, onLocked, onClose,
 }) {
   const [cat, setCat] = useState('All');
   const cats = useMemo(() => ['All', ...categories], [categories]);
@@ -26,6 +76,22 @@ export default function RecipeSheet({
     () => (cat === 'All' ? items : items.filter(m => m.category === cat)),
     [cat, items]
   );
+
+  const pick = useCallback((item) => {
+    if (item.premium && !isPremium) { onLocked?.(item); return; }
+    onSelect(item.id);
+  }, [isPremium, onSelect, onLocked]);
+
+  const renderItem = useCallback(({ item }) => (
+    <MemoTile
+      item={item}
+      previewBase={previewBase}
+      version={version}
+      selected={value === item.id}
+      locked={item.premium && !isPremium}
+      onPick={pick}
+    />
+  ), [previewBase, version, value, isPremium, pick]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -50,40 +116,18 @@ export default function RecipeSheet({
             ))}
           </ScrollView>
 
-          <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
-            {shown.map(m => {
-              const locked = m.premium && !isPremium;
-              const active = value === m.id;
-              return (
-                <Pressable
-                  key={m.id}
-                  style={[styles.tile, active && styles.tileActive]}
-                  onPress={() => (locked ? onLocked?.(m) : onSelect(m.id))}
-                >
-                  <View style={styles.iconWrap}>
-                    <MaterialIcons
-                      name={icons[m.category] || 'auto-awesome'}
-                      size={22}
-                      color={active ? '#2ECC71' : locked ? '#5a5a5a' : '#e6e6e6'}
-                    />
-                    {m.premium && (
-                      <MaterialIcons name="diamond" size={11} color="#f5c451" style={styles.gem} />
-                    )}
-                  </View>
-                  <Text
-                    style={[styles.label, active && styles.labelActive, locked && styles.labelLocked]}
-                    numberOfLines={1}
-                  >
-                    {m.label}
-                  </Text>
-                  {/* Measured, not guessed - these run 1.7-4.6x realtime, so a minute of
-                      footage is two to five minutes of rendering. Saying so before the
-                      wait is the same courtesy Stabilize already extends. */}
-                  {!!m.slow && <Text style={styles.slow}>SLOWER</Text>}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <FlatList
+            data={shown}
+            keyExtractor={i => i.id}
+            renderItem={renderItem}
+            numColumns={COLS}
+            columnWrapperStyle={styles.row}
+            contentContainerStyle={styles.grid}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={9}
+            windowSize={5}
+            removeClippedSubviews
+          />
         </View>
       </View>
     </Modal>
@@ -92,12 +136,12 @@ export default function RecipeSheet({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 24, maxHeight: '78%' },
+  sheet: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 24, maxHeight: '80%' },
   // paddingHorizontal on the CONTENT container, not on style: on a horizontal
   // ScrollView `style` is the clipping box, so padding there shrinks what you can see
-  // rather than insetting what is in it. alignItems keeps the chips at their own
-  // height instead of stretching to the row - both are the pair that clipped the
-  // My Videos filter chips through the middle.
+  // rather than insetting what is in it. alignItems keeps the chips at their own height
+  // instead of stretching to the row - the pair that clipped the My Videos chips
+  // through the middle.
   catRow: { flexGrow: 0, marginBottom: 12 },
   catRowContent: { paddingHorizontal: 2, gap: 8, alignItems: 'center' },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a' },
@@ -106,13 +150,18 @@ const styles = StyleSheet.create({
   catChipActive: { backgroundColor: 'rgba(0,212,212,0.12)', borderColor: '#00d4d4' },
   catText: { color: '#888', fontSize: 11, fontWeight: '600' },
   catTextActive: { color: '#00d4d4' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
-  tile: { width: '31.5%', aspectRatio: 1.25, borderRadius: 12, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  tileActive: { borderColor: '#2ECC71', backgroundColor: 'rgba(46,204,113,0.10)' },
-  iconWrap: { width: 30, height: 24, alignItems: 'center', justifyContent: 'center' },
-  gem: { position: 'absolute', top: -2, right: -4 },
-  label: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', paddingHorizontal: 4 },
+  grid: { paddingBottom: 12 },
+  row: { gap: 8, marginBottom: 8 },
+  tile: { flex: 1 / COLS, maxWidth: `${100 / COLS}%` },
+  thumbWrap: { borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#2a2a2a', aspectRatio: 1.25, backgroundColor: '#1a1a1a' },
+  thumb: { width: '100%', height: '100%' },
+  noneThumb: { alignItems: 'center', justifyContent: 'center' },
+  // Selection lives on the frame, not on the picture - a tint over the preview
+  // would change the very thing the tile exists to show.
+  thumbWrapActive: { borderColor: '#2ECC71', borderWidth: 2 },
+  lockPill: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 3, paddingVertical: 2 },
+  slow: { position: 'absolute', bottom: 3, left: 4, color: '#f5c451', fontSize: 7, fontWeight: '700', letterSpacing: 0.5, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 3, borderRadius: 3 },
+  label: { color: '#cfcfcf', fontSize: 10, fontWeight: '600', marginTop: 4, textAlign: 'center' },
   labelActive: { color: '#2ECC71' },
   labelLocked: { color: '#5a5a5a' },
-  slow: { color: '#f5c451', fontSize: 7, fontWeight: '700', letterSpacing: 0.5 },
 });

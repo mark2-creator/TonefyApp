@@ -304,8 +304,12 @@ function SourceTabs({ tabs, value, isPremium, onSelect }) {
                 active && styles.sourceTabTextActive,
                 !t.built && styles.sourceTabTextDim,
               ]}>{t.label}</Text>
-              {t.premium && (
-                <MaterialIcons name="diamond" size={11} color={locked ? '#f5c451' : '#7a663a'} />
+              {/* Only when it is actually LOCKED. A diamond on a plan that already
+                  includes the thing is not information - for a Creator subscriber it
+                  was a gold mark on most of the bar at once. Every picker in the app
+                  already gated it this way; the four in this file did not. */}
+              {t.premium && locked && (
+                <MaterialIcons name="diamond" size={11} color="#f5c451" />
               )}
             </TouchableOpacity>
           );
@@ -4432,7 +4436,7 @@ export default function EditVideoScreen({ navigation, route }) {
                     {/* The premium mark is a badge on the icon rather than a word in
                         the label, which would not fit the column and would read as
                         part of the tool's name. */}
-                    {t.premium && (
+                    {t.premium && !isPremium && (
                       <MaterialIcons name="diamond" size={12} color="#f5c451" style={styles.premiumBadge} />
                     )}
                   </View>
@@ -4472,9 +4476,8 @@ export default function EditVideoScreen({ navigation, route }) {
                     onPress={toolTapAction(t, clipToolActions)}>
                     <View>
                       <MaterialIcons name={t.icon} size={20} color={flagOn ? '#2ECC71' : built ? '#e6e6e6' : '#5a5a5a'} />
-                      {t.premium && (
-                        <MaterialIcons name="diamond" size={12}
-                          color={built || locked ? '#f5c451' : '#7a663a'}
+                      {t.premium && locked && (
+                        <MaterialIcons name="diamond" size={12} color="#f5c451"
                           style={styles.premiumBadge} />
                       )}
                     </View>
@@ -4500,9 +4503,9 @@ export default function EditVideoScreen({ navigation, route }) {
                     size={20}
                     color={active ? '#00d4d4' : (tab.built ? '#555' : '#3a3a3a')}
                   />
-                  {tab.premium && (
-                    <MaterialIcons name="diamond" size={11}
-                      color={locked ? '#f5c451' : '#7a663a'} style={styles.premiumBadge} />
+                  {tab.premium && locked && (
+                    <MaterialIcons name="diamond" size={11} color="#f5c451"
+                      style={styles.premiumBadge} />
                   )}
                 </View>
                 <Text style={[
@@ -5323,6 +5326,7 @@ export default function EditVideoScreen({ navigation, route }) {
       />
 
       <EffectPicker
+        backend={BACKEND}
         visible={showEffectSheet}
         value={selectedItem?.effect || 'none'}
         isPremium={isPremium}
@@ -5332,6 +5336,7 @@ export default function EditVideoScreen({ navigation, route }) {
       />
 
       <MotionPicker
+        backend={BACKEND}
         visible={showMotionSheet}
         value={selectedItem?.motion || 'none'}
         isPremium={isPremium}
