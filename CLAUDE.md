@@ -303,6 +303,68 @@ because it is a `FlatList` and virtualises; the timeline rows are safe because t
 one chip per item. Waveform and filmstrip were the two that scaled with *content length*
 rather than item count, which is the property to watch for.
 
+## Live preview on the canvas, and why no native module was bought
+
+**Confirmed working on device Aug 20 2026.** The editor canvas shows grades and camera
+moves live. Four separate concepts, and the distinction decides the implementation:
+
+| | what it changes | where it lives | live on canvas |
+|---|---|---|---|
+| **filter** | colour only, same every frame | `constants/filters.js`, 155 | **131/154** |
+| **motion** | where the camera is | `constants/motions.js`, 22 | **21/21** |
+| **effect** | something happening on the footage | `constants/effects.js`, 68 | 18/67 |
+| **transition** | how clip A becomes clip B | `constants/transitions.js`, 132 | n/a |
+
+**React Native 0.81 has a built-in `filter` style prop, and this is the thing not to
+re-discover.** On Android the colour-matrix functions (brightness, contrast, saturate,
+hue-rotate, grayscale, invert, sepia) compile to a `ColorMatrixColorFilter` via
+`FilterHelper.kt`'s `isOnlyColorMatrixFilters`, which works on **every** Android version
+- only blur and drop-shadow need the API 31 `RenderEffect`. It is core RN, already
+inside versionCode 11, so all of this shipped **over the air**.
+
+**A native module was explicitly asked for and deliberately not added.** A colour-matrix
+module would have offered the same matrix these are already fitted to. A shader could go
+further, but compositing a shader over a native video view is not a solved problem in
+React Native, and finding that out would have cost a binary and a review cycle. If this
+is revisited, the open question is shader-over-video, not colour matrices.
+
+**The lesson worth keeping is how the coverage went from 20 to 131.** Only 20 chains are
+built from `eq`/`hue` and map exactly; the rest use `colorbalance`, `curves` or
+`colorchannelmixer`, and a curve is non-linear while a colour matrix is linear. That was
+read as "no mapping exists" and it was the wrong conclusion: **there is no exact one,
+but there is a NEAREST one, and it can be found rather than guessed.**
+`scripts/fit-filter-preview.py` renders each grade through real ffmpeg on three
+portraits at different exposures and fits brightness/contrast/saturate/hue-rotate/sepia
+by Nelder-Mead against it, using the W3C matrices so the simulation is of what Android
+actually applies. Median error 3.8 levels of 255; kept at 8 (3.1%), which is below what
+is distinguishable on a moving phone preview. Output is `constants/filterPreview.js`,
+GENERATED, `[css, measuredError]` per grade.
+
+**Anything with no close-enough live form abstains** and shows its name on a canvas
+badge instead - the badge lists only what CANNOT be shown, so a grade already on screen
+is not announced. The rule throughout: a preview is worth having when it resembles the
+result, and past that it misinforms. What changed is that "resembles" is a number.
+
+Two traps recorded:
+
+- **Flip and motion both want `transform`, and two `transform` keys in a style array do
+  not merge** - the later silently replaces the earlier, so a flipped clip with a zoom
+  loses its flip. Composed into one array in `canvasLayerStyle`.
+- **`constants/filters.js` is loaded by `scripts/gen-filter-previews.mjs` OUTSIDE React
+  Native**, so any import it gains needs an explicit `.js` extension - plain Node ESM
+  does not resolve extensionless paths, Metro takes either. Breaking that would not
+  surface until the next tile regeneration.
+
+**Preview tiles for motions and effects** are animated WebP rendered from the recipe
+(`scripts/gen-recipe-previews.mjs`, served from `/motions` and `/effects`), the same
+arrangement transitions use. Motions render over a STILL so the motion is the only thing
+moving; effects render over a MOVING clip because `lagfun`/`tmix` blend across frames and
+preview as nothing on a still. The sheet virtualises - 68 tiles is 3.5MB and a
+ScrollView would fetch all of them.
+
+**A diamond appears only when an item is actually LOCKED**, never merely because it is
+premium - see the design rule above.
+
 ## Known bug pattern: an absolute child where a flowing one was meant
 
 **Symptom (Aug 18 2026):** a video clip's filmstrip showed frames for about thirteen
