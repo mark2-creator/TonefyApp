@@ -30,8 +30,9 @@ import { persistMedia, newMediaId, sweepUnreferenced, cacheRemoteMedia } from '.
 import FilterSheet from '../components/FilterPicker';
 import MotionPicker from '../components/MotionPicker';
 import EffectPicker from '../components/EffectPicker';
-import { filterSpec, resolveFilter } from '../constants/filters';
+import { filterSpec, resolveFilter, filterCss } from '../constants/filters';
 import { motionChain, resolveMotion } from '../constants/motions';
+import { effectCss } from '../constants/effects';
 import { effectChain, resolveEffect } from '../constants/effects';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
@@ -4099,15 +4100,80 @@ export default function EditVideoScreen({ navigation, route }) {
   const fadeSheetTrack = audioTracks.find(t => t.key === fadeSheetKey) || null;
   const slipSheetTrack = audioTracks.find(t => t.key === slipSheetKey) || null;
 
+  // --- Live preview of what the export will do -------------------------------------
+  //
+  // Three separate mechanisms, because the three things are separately expressible:
+  //
+  //   motion   a transform. Faithful - a zoom is a scale and a shake is a translate,
+  //            which is the same operation ffmpeg performs, not an imitation of it.
+  //   filter   RN 0.81's `filter` style. Exact for the grades built from eq and hue;
+  //            null for the rest, which use colorbalance or curves - a curve is
+  //            non-linear and a colour matrix is by definition linear, so no amount of
+  //            native module makes those expressible this way.
+  //   effect   the same style, evaluated against the clock for the pulsing ones.
+  //
+  // Anything with no live form keeps its name on the badge instead. Showing an
+  // approximation that disagrees with the render is the one outcome worth avoiding:
+  // it teaches the wrong thing about a file you have not made yet.
+  const clipLocalTime = previewClipStart != null ? Math.max(0, position - previewClipStart) : 0;
+
+  const motionTransform = useMemo(() => {
+    const p = previewItem && previewItem.motion ? resolveMotion(previewItem.motion).preview : null;
+    if (!p) return null;
+    const len = Math.max(0.1, clipSpanSeconds(previewItem));
+    // A hold finishes the move early and stays there, which is what a punch is.
+    const prog = Math.max(0, Math.min(1, p.hold ? clipLocalTime / p.hold : clipLocalTime / len));
+    const t = clipLocalTime;
+    const out = [];
+    let scale = 1;
+    if (p.zoom) scale = p.zoom[0] + (p.zoom[1] - p.zoom[0]) * prog;
+    if (p.osc) scale = p.osc[0] + p.osc[1] * Math.sin(p.osc[2] * t);
+    if (p.shake) {
+      out.push({ translateX: p.shake.ax * Math.sin(p.shake.fx * t) });
+      out.push({ translateY: p.shake.ay * Math.cos(p.shake.fy * t) });
+    }
+    if (p.pan) {
+      // Fraction of the frame, so the travel is the same on any canvas size.
+      out.push({ translateX: -p.pan[0] * frame.w * prog });
+      out.push({ translateY: -p.pan[1] * frame.h * prog });
+    }
+    if (p.spin) out.push({ rotate: `${(p.spin[0] * Math.sin(p.spin[1] * t) * 180 / Math.PI).toFixed(2)}deg` });
+    if (scale !== 1) out.push({ scale });
+    return out.length ? out : null;
+  }, [previewItem, clipLocalTime, frame.w, frame.h]);
+
+  // Flip and motion both want `transform`, and two transform keys in a style array do
+  // not merge - the later one silently replaces the earlier, so a flipped clip with a
+  // zoom would lose its flip. Composed into one array here instead.
+  const canvasLayerStyle = useMemo(() => {
+    const flip = flipTransform(previewItem);
+    const t = [...(flip ? flip.transform : []), ...(motionTransform || [])];
+    const out = {};
+    if (t.length) out.transform = t;
+    return Object.keys(out).length ? out : null;
+  }, [previewItem, motionTransform]);
+
+  const liveFilter = useMemo(() => {
+    if (!previewItem) return null;
+    const parts = [];
+    const f = previewItem.filter && previewItem.filter !== 'None' ? filterCss(previewItem.filter) : null;
+    if (f) parts.push(f);
+    const e = previewItem.effect && previewItem.effect !== 'none' ? effectCss(previewItem.effect, clipLocalTime) : null;
+    if (e) parts.push(e);
+    return parts.length ? parts.join(' ') : null;
+  }, [previewItem, clipLocalTime]);
+
   // The look/movement settings on the clip under the playhead, named for the badge
   // above. Only the ones actually set, so an untouched clip carries no badge at all.
   const previewBadges = useMemo(() => {
     const it = previewItem;
     if (!it) return [];
     const out = [];
-    if (it.filter && it.filter !== 'None') out.push(resolveFilter(it.filter).label);
-    if (it.effect && it.effect !== 'none') out.push(resolveEffect(it.effect).label);
-    if (it.motion && it.motion !== 'none') out.push(resolveMotion(it.motion).label);
+    // Only what the canvas CANNOT show. A grade that is already on screen does not need
+    // announcing; one that is not does. Motion is always previewable, so it never
+    // appears here.
+    if (it.filter && it.filter !== 'None' && !filterCss(it.filter)) out.push(resolveFilter(it.filter).label);
+    if (it.effect && it.effect !== 'none' && !effectCss(it.effect, 0)) out.push(resolveEffect(it.effect).label);
     return out;
   }, [previewItem]);
 
@@ -4167,7 +4233,7 @@ export default function EditVideoScreen({ navigation, route }) {
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
-                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode={clipResize}
+                style={[styles.previewImage, canvasLayerStyle, joinLayers?.main, liveFilter ? { filter: liveFilter } : null]} resizeMode={clipResize}
                 shouldPlay={isPlaying} isLooping={false}
                 // isMuted was here and volume was not, which is exactly why muting a
                 // clip worked and setting its level did nothing: there was no prop
@@ -4182,7 +4248,7 @@ export default function EditVideoScreen({ navigation, route }) {
                 isMuted={previewItem.muted} rate={previewItem.speed || 1} />
             ) : (
               <Image source={{ uri: previewItem.uri }}
-                style={[styles.previewImage, flipTransform(previewItem), joinLayers?.main]} resizeMode={clipResize} />
+                style={[styles.previewImage, canvasLayerStyle, joinLayers?.main, liveFilter ? { filter: liveFilter } : null]} resizeMode={clipResize} />
             )
           ) : (
             <View style={styles.previewEmpty}>

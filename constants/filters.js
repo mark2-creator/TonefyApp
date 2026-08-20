@@ -233,3 +233,68 @@ export function filterSpec(id) {
 export function isPremiumFilter(id) {
   return !!resolveFilter(id)?.premium;
 }
+
+
+// --- Live preview -----------------------------------------------------------------
+//
+// React Native 0.81 has a `filter` style prop, and on Android the colour-matrix
+// functions (brightness, contrast, saturate, hue-rotate, grayscale, invert) compile to
+// a ColorMatrixColorFilter, which works on every version rather than needing the API 31
+// RenderEffect that blur does. So a grade can be shown live with no native module and
+// no new binary.
+//
+// Derived from the CHAIN rather than written out per filter, so there is no second
+// description to drift from the first. That is the whole reason this returns null
+// instead of guessing.
+//
+// The rule is all-or-nothing: a css preview is offered only when EVERY fragment of the
+// chain maps. A filter that is colorbalance plus a saturation nudge would otherwise
+// preview as the nudge alone - which is a different look, confidently displayed, and
+// worse than showing nothing. colorbalance, curves, colorchannelmixer, noise, unsharp
+// and vignette have no colour-matrix equivalent, so anything using them abstains.
+//
+// Where it does map it is close but not identical: ffmpeg's eq brightness is additive
+// over -1..1 while CSS brightness is multiplicative. The direction and rough magnitude
+// agree; the pixels do not. A preview, not a proof.
+function eqToCss(params) {
+  const out = [];
+  for (const p of params.split(':')) {
+    const [k, v] = p.split('=');
+    const n = parseFloat(v);
+    if (!Number.isFinite(n)) return null;
+    if (k === 'brightness') out.push(`brightness(${(1 + n).toFixed(3)})`);
+    else if (k === 'contrast') out.push(`contrast(${n.toFixed(3)})`);
+    else if (k === 'saturation') out.push(`saturate(${n.toFixed(3)})`);
+    else return null;              // gamma_r / gamma_b and friends have no equivalent
+  }
+  return out;
+}
+
+function hueToCss(params) {
+  const out = [];
+  for (const p of params.split(':')) {
+    const [k, v] = p.split('=');
+    const n = parseFloat(v);
+    if (!Number.isFinite(n)) return null;
+    if (k === 's') out.push(n === 0 ? 'grayscale(1)' : `saturate(${n.toFixed(3)})`);
+    else if (k === 'h') out.push(`hue-rotate(${n.toFixed(1)}deg)`);
+    else return null;
+  }
+  return out;
+}
+
+/** The CSS filter string for a grade, or null when it cannot be shown honestly. */
+export function filterCss(id) {
+  const f = FILTERS.find(x => x.id === id);
+  if (!f) return null;
+  if (!f.chain || !f.chain.length) return null;   // None
+  const out = [];
+  for (const part of f.chain) {
+    const [op, ...rest] = String(part).split('=');
+    const params = rest.join('=');
+    const mapped = op === 'eq' ? eqToCss(params) : op === 'hue' ? hueToCss(params) : null;
+    if (!mapped) return null;
+    out.push(...mapped);
+  }
+  return out.length ? out.join(' ') : null;
+}

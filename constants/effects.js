@@ -48,8 +48,22 @@ const SLOW = new Set([
   'edge-glow', 'mirror-left', 'mirror-right', 'mirror-top', 'kaleido',
 ]);
 
-const E = (id, label, category, chain, premium = true) =>
-  ({ id, label, category, chain, premium, slow: SLOW.has(id) });
+// `preview` is how the canvas shows the effect live, evaluated against the playback
+// clock. Only for effects a colour matrix can actually express - RN 0.81's `filter`
+// style gives brightness, contrast, saturate, hue-rotate, grayscale and invert, and on
+// Android those compile to a ColorMatrixColorFilter that works on every version.
+//
+// Most of this catalogue has no preview and that is correct rather than unfinished:
+// geq displacement, temporal trails, noise and mirroring are not colour operations and
+// cannot be faked with one. An effect with no preview shows its name on the canvas and
+// renders at export, which is honest; showing the wrong thing confidently is not.
+//
+//   pulse  [mid, amp, freq]           fn(t) = mid + amp*sin(freq*t)
+//   burst  [base, peak, period, on]   peak while lt(mod(t,period),on), else base
+//   cycle  degPerSec                  hue rotation
+//   fixed  value                      constant
+const E = (id, label, category, chain, premium = true, preview = null) =>
+  ({ id, label, category, chain, premium, slow: SLOW.has(id), preview });
 
 // A burst that fires for `on` seconds every `period` seconds.
 const burst = (period, on) => `enable='lt(mod(t,${period}),${on})'`;
@@ -74,17 +88,17 @@ export const EFFECTS = [
     `rgbashift=rh=-14:bh=14:${burst(0.45, 0.07)},noise=alls=30:allf=t:${burst(0.45, 0.07)}`),
 
   // --- Light --------------------------------------------------------------
-  E('strobe', 'Strobe', 'Light', `eq=brightness='0.55*lt(mod(t,0.32),0.06)':eval=frame`, false),
-  E('flash-beat', 'Flash', 'Light', `eq=brightness='0.7*lt(mod(t,0.9),0.05)':eval=frame`),
-  E('expo-pulse', 'Exposure Pulse', 'Light', `eq=brightness='0.14*sin(t*3.2)':eval=frame`, false),
-  E('dark-pulse', 'Dark Pulse', 'Light', `eq=brightness='-0.16*abs(sin(t*2.4))':eval=frame`),
-  E('overexpose', 'Blowout', 'Light', `eq=brightness='0.28+0.18*sin(t*1.6)':contrast=1.12:eval=frame`),
-  E('flicker', 'Flicker', 'Light', `eq=brightness='0.10*sin(t*37)+0.05*sin(t*61)':eval=frame`),
+  E('strobe', 'Strobe', 'Light', `eq=brightness='0.55*lt(mod(t,0.32),0.06)':eval=frame`, false, { brightness: { burst: [1, 1.55, 0.32, 0.06] } }),
+  E('flash-beat', 'Flash', 'Light', `eq=brightness='0.7*lt(mod(t,0.9),0.05)':eval=frame`, true, { brightness: { burst: [1, 1.7, 0.9, 0.05] } }),
+  E('expo-pulse', 'Exposure Pulse', 'Light', `eq=brightness='0.14*sin(t*3.2)':eval=frame`, false, { brightness: { pulse: [1, 0.14, 3.2] } }),
+  E('dark-pulse', 'Dark Pulse', 'Light', `eq=brightness='-0.16*abs(sin(t*2.4))':eval=frame`, true, { brightness: { pulse: [0.92, 0.08, 2.4] } }),
+  E('overexpose', 'Blowout', 'Light', `eq=brightness='0.28+0.18*sin(t*1.6)':contrast=1.12:eval=frame`, true, { brightness: { pulse: [1.28, 0.18, 1.6] }, contrast: { fixed: 1.12 } }),
+  E('flicker', 'Flicker', 'Light', `eq=brightness='0.10*sin(t*37)+0.05*sin(t*61)':eval=frame`, true, { brightness: { pulse: [1, 0.10, 37] } }),
   E('lightning', 'Lightning', 'Light',
-    `eq=brightness='0.85*lt(mod(t,3.1),0.04)+0.5*lt(mod(t+0.12,3.1),0.03)':eval=frame`),
+    `eq=brightness='0.85*lt(mod(t,3.1),0.04)+0.5*lt(mod(t+0.12,3.1),0.03)':eval=frame`, true, { brightness: { burst: [1, 1.85, 3.1, 0.04] } }),
   E('warm-pulse', 'Warm Pulse', 'Light', `eq=gamma_r='1+0.22*abs(sin(t*1.9))':gamma_b='1-0.14*abs(sin(t*1.9))':eval=frame`),
   E('cool-pulse', 'Cool Pulse', 'Light', `eq=gamma_b='1+0.24*abs(sin(t*1.7))':gamma_r='1-0.14*abs(sin(t*1.7))':eval=frame`),
-  E('contrast-pump', 'Contrast Pump', 'Light', `eq=contrast='1+0.45*abs(sin(t*2.8))':eval=frame`),
+  E('contrast-pump', 'Contrast Pump', 'Light', `eq=contrast='1+0.45*abs(sin(t*2.8))':eval=frame`, true, { contrast: { pulse: [1.22, 0.22, 2.8] } }),
 
   // --- Trails: read across frames, so they cost nothing extra to look expensive.
   E('echo', 'Echo', 'Trails', 'lagfun=decay=0.92', false),
@@ -136,19 +150,19 @@ export const EFFECTS = [
     `geq=lum='lum(X+(X-W/2)*0.08*sin(T*2),Y+(Y-H/2)*0.08*sin(T*2))':cb='cb(X,Y)':cr='cr(X,Y)'`),
 
   // --- Colour events ------------------------------------------------------
-  E('hue-cycle', 'Hue Cycle', 'Colour', `hue=h='t*40':s=1`, false),
-  E('hue-fast', 'Fast Hue', 'Colour', `hue=h='t*180':s=1.1`),
-  E('sat-pulse', 'Saturation Pulse', 'Colour', `hue=s='1+0.9*abs(sin(t*2.2))'`),
-  E('desat-pulse', 'Desaturate Pulse', 'Colour', `hue=s='1-0.85*abs(sin(t*1.8))'`),
-  E('invert-flash', 'Invert Flash', 'Colour', `negate=${burst(1.6, 0.05)}`),
-  E('invert', 'Invert', 'Colour', 'negate'),
-  E('neon-cycle', 'Neon Cycle', 'Colour', `hue=h='t*70':s=1.6,eq=contrast=1.2`),
+  E('hue-cycle', 'Hue Cycle', 'Colour', `hue=h='t*40':s=1`, false, { hue: { cycle: 40 } }),
+  E('hue-fast', 'Fast Hue', 'Colour', `hue=h='t*180':s=1.1`, true, { hue: { cycle: 180 }, saturate: { fixed: 1.1 } }),
+  E('sat-pulse', 'Saturation Pulse', 'Colour', `hue=s='1+0.9*abs(sin(t*2.2))'`, true, { saturate: { pulse: [1.45, 0.45, 2.2] } }),
+  E('desat-pulse', 'Desaturate Pulse', 'Colour', `hue=s='1-0.85*abs(sin(t*1.8))'`, true, { saturate: { pulse: [0.575, 0.425, 1.8] } }),
+  E('invert-flash', 'Invert Flash', 'Colour', `negate=${burst(1.6, 0.05)}`, true, { invert: { burst: [0, 1, 1.6, 0.05] } }),
+  E('invert', 'Invert', 'Colour', 'negate', true, { invert: { fixed: 1 } }),
+  E('neon-cycle', 'Neon Cycle', 'Colour', `hue=h='t*70':s=1.6,eq=contrast=1.2`, true, { hue: { cycle: 70 }, saturate: { fixed: 1.6 }, contrast: { fixed: 1.2 } }),
   // Posterize (elbg) was written and then removed: measured at 10.9x realtime on 720p,
   // so a one-minute clip would spend eleven minutes on the effect alone. Nothing else
   // here is above 4.6x. Worth retrying if a cheaper quantiser turns up.
   E('duotone-flash', 'Duotone Flash', 'Colour',
     `hue=s=0,colorbalance=rs=0.25:bs=0.3,eq=brightness='0.2*lt(mod(t,1.2),0.08)':eval=frame`),
-  E('bleed-warm', 'Warm Bleed', 'Colour', `hue=h='18*sin(t*1.4)':s='1+0.3*sin(t*1.4)'`),
+  E('bleed-warm', 'Warm Bleed', 'Colour', `hue=h='18*sin(t*1.4)':s='1+0.3*sin(t*1.4)'`, true, { hue: { pulse: [0, 18, 1.4] }, saturate: { pulse: [1, 0.3, 1.4] } }),
 
   // --- Mirror: structural rather than temporal, and still not a grade.
   E('mirror-left', 'Mirror Left', 'Mirror', `geq=lum='lum(if(lt(X,W/2),X,W-X),Y)':cb='cb(if(lt(X,W/2),X,W-X),Y)':cr='cr(if(lt(X,W/2),X,W-X),Y)'`),
@@ -162,8 +176,8 @@ export const EFFECTS = [
   E('tunnel', 'Tunnel', 'Atmosphere', `vignette=a='PI/3.2+0.35*abs(sin(t*2.1))':eval=frame`),
   E('dream', 'Dream', 'Atmosphere', `boxblur=3:1,eq=brightness=0.06:saturation=1.15:contrast=0.92`),
   E('haze', 'Haze', 'Atmosphere', `boxblur=2:1,eq=brightness='0.1+0.05*sin(t*1.2)':contrast=0.88:eval=frame`),
-  E('fade-breathe', 'Fade Breathe', 'Atmosphere', `eq=saturation='1-0.5*abs(sin(t*1.1))':eval=frame`),
-  E('deep-dark', 'Deep Dark', 'Atmosphere', `vignette=a=PI/3,eq=brightness=-0.05:contrast=1.2`),
+  E('fade-breathe', 'Fade Breathe', 'Atmosphere', `eq=saturation='1-0.5*abs(sin(t*1.1))':eval=frame`, true, { saturate: { pulse: [0.75, 0.25, 1.1] } }),
+  E('deep-dark', 'Deep Dark', 'Atmosphere', `vignette=a=PI/3,eq=brightness=-0.05:contrast=1.2`, true, { brightness: { fixed: 0.95 }, contrast: { fixed: 1.2 } }),
 ];
 
 export function resolveEffect(id) {
@@ -177,3 +191,29 @@ export function effectChain(id) {
 }
 
 export const EFFECT_CATEGORIES = [...new Set(EFFECTS.map(e => e.category))];
+
+
+/**
+ * The CSS filter string for an effect at time `t` seconds, or null when the effect
+ * cannot be shown live.
+ */
+export function effectCss(id, t) {
+  const e = EFFECTS.find(x => x.id === id);
+  if (!e || !e.preview) return null;
+  const at = (spec) => {
+    if (!spec) return null;
+    if (spec.fixed != null) return spec.fixed;
+    if (spec.pulse) { const [mid, amp, freq] = spec.pulse; return mid + amp * Math.sin(freq * t); }
+    if (spec.burst) { const [base, peak, period, on] = spec.burst; return (t % period) < on ? peak : base; }
+    if (spec.cycle != null) return spec.cycle * t;
+    return null;
+  };
+  const p = e.preview;
+  const out = [];
+  const b = at(p.brightness); if (b != null) out.push(`brightness(${b.toFixed(3)})`);
+  const c = at(p.contrast);   if (c != null) out.push(`contrast(${c.toFixed(3)})`);
+  const sa = at(p.saturate);  if (sa != null) out.push(`saturate(${Math.max(0, sa).toFixed(3)})`);
+  const h = at(p.hue);        if (h != null) out.push(`hue-rotate(${(h % 360).toFixed(1)}deg)`);
+  const iv = at(p.invert);    if (iv != null) out.push(`invert(${iv.toFixed(3)})`);
+  return out.length ? out.join(' ') : null;
+}
