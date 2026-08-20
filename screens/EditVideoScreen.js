@@ -1301,7 +1301,9 @@ export default function EditVideoScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
 
   // Active bottom tab
-  const [activeTab, setActiveTab] = useState('Edit');
+  // null = the top-level strip is showing. A name = that tab's tools have the bar,
+  // with a back chevron to return - the CapCut arrangement.
+  const [activeTab, setActiveTab] = useState(null);
 
   // Text overlays
   const [textOverlays, setTextOverlays] = useState([]);
@@ -4093,6 +4095,7 @@ export default function EditVideoScreen({ navigation, route }) {
   // render, so any dependency on them changes every render and the memo would never
   // hit - it would cost a comparison and buy nothing. Reordering forty items is far
   // cheaper than the toolbar it feeds.
+  const tabTools = getTabTools();
   const clipToolGroups = builtFirst(CLIP_TOOLS, clipToolActions);
   const audioToolsOrdered = [...AUDIO_TOOLS].sort(
     (a, b) => Number(toolIsBuilt(b, audioToolActions)) - Number(toolIsBuilt(a, audioToolActions)));
@@ -4559,7 +4562,21 @@ export default function EditVideoScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        <View style={styles.barWithAction}>
+        {/* Pinned at the LEFT, outside the scroller, and only once a tab has the bar.
+            It is the way back to the top level, so it cannot be a thing that scrolls
+            off the end - and it sits where CapCut puts it, which is where a thumb
+            already expects it. */}
+        {!selectedItem && !!activeTab && (
+          <>
+            <TouchableOpacity style={styles.tabBackBtn} onPress={() => setActiveTab(null)}
+              accessibilityLabel="Back">
+              <MaterialIcons name="chevron-left" size={24} color="#e6e6e6" />
+            </TouchableOpacity>
+            <View style={styles.toolGroupDivider} />
+          </>
+        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}
           contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8, gap: 6 }}>
           {/* Selecting a clip turns the bar into that clip's tools. Tapping the clip
               again deselects it and the tabs come back, so there is a way out that
@@ -4593,8 +4610,28 @@ export default function EditVideoScreen({ navigation, route }) {
                 );
               })}
             </React.Fragment>
-          )) : (<>
-          {bottomTabs.map(tab => {
+          )) : activeTab ? (
+          // Icon above label, the same shape as the tabs they replaced and as a clip's
+          // tools - not the pill chips these used to be. In CapCut every level of this
+          // bar looks the same, which is what makes going down a level read as the bar
+          // changing rather than as a different control appearing.
+          tabTools.map(tool => (
+            tool.isOverlayThumb ? (
+              <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
+                style={styles.overlayThumbBtn}>
+                <Image source={{ uri: tool.overlay.uri }} style={styles.overlayThumb} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity key={tool.key} style={styles.clipToolBtn} onPress={tool.onPress}>
+                <MaterialIcons name={tool.icon || 'tune'} size={20}
+                  color={tool.active ? '#2ECC71' : (tool.color || '#e6e6e6')} />
+                <Text style={[styles.clipToolLabel, tool.active && { color: '#2ECC71' },
+                  tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
+              </TouchableOpacity>
+            )
+          ))
+          ) : (
+          bottomTabs.map(tab => {
             const active = tab.built && activeTab === tab.name;
             const locked = tab.premium && !isPremium;
             return (
@@ -4622,23 +4659,10 @@ export default function EditVideoScreen({ navigation, route }) {
                 ]}>{tab.name}</Text>
               </TouchableOpacity>
             );
-          })}
-          <View style={{ width: 1, height: 32, backgroundColor: '#2a2a2a', marginHorizontal: 4 }} />
-          {getTabTools().map(tool => (
-            tool.isOverlayThumb ? (
-              <TouchableOpacity key={tool.key} onLongPress={tool.onLongPress} onPress={tool.onPress}
-                style={{ alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 }}>
-                <Image source={{ uri: tool.overlay.uri }} style={{ width: 32, height: 32, borderRadius: 4 }} resizeMode="cover" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity key={tool.key} style={[styles.toolChip, tool.active && styles.toolChipActive]} onPress={tool.onPress}>
-                {tool.icon && <MaterialIcons name={tool.icon} size={16} color={tool.active ? '#000' : (tool.color || '#fff')} />}
-                <Text style={[styles.toolChipText, tool.active && { color: '#000' }, tool.color && !tool.active && { color: tool.color }]}>{tool.label}</Text>
-              </TouchableOpacity>
-            )
-          ))}
-          </>)}
+          })
+          )}
         </ScrollView>
+        </View>
         )}
       </View>
 
@@ -5664,6 +5688,9 @@ const styles = StyleSheet.create({
   tabLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
   clipToolBtn: { alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, minWidth: 62 },
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
+  tabBackBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
+  overlayThumbBtn: { alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 4 },
+  overlayThumb: { width: 32, height: 32, borderRadius: 4 },
   toolIconWrap: { position: 'relative' },
   premiumBadge: { position: 'absolute', right: -7, top: -5 },
   confirmBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2ECC71', alignItems: 'center', justifyContent: 'center', marginRight: 10, marginLeft: 4 },
