@@ -16,15 +16,18 @@ import ProgressRing from './ProgressRing';
 // while the phone was in a pocket.
 export default function ActiveJobsBar({ onOpen }) {
   const { jobs, forget } = useJobs();
-  // Mounted at the root, outside any screen, so nothing else is insetting it. On a
-  // phone with gesture navigation or on-screen buttons it sat underneath them: the
-  // subtitle was covered and the dismiss X was as good as unreachable.
+  // Floats OVER the bottom chrome instead of standing under it.
   //
-  // Padding rather than margin - the bar's background should reach the bottom of the
-  // screen, or a strip of whatever is behind it shows through under the bar.
+  // It used to be a sibling of the navigator inside a flex column, so it occupied real
+  // height and the navigator shrank to make room - which pushed the tab bar up by the
+  // height of the banner every time a render started, and dropped it again when the
+  // banner was dismissed. Chrome that moves because a background job exists reads as a
+  // layout accident rather than a design.
   //
-  // The 10 is the paddingVertical the style already has, kept as the floor so a device
-  // reporting no bottom inset looks exactly as it did.
+  // Absolute, so it displaces nothing, and lifted clear of the tab bar rather than
+  // tucked beneath it. TAB_H matches MainTabs' own `60 + insets.bottom`; screens with
+  // no tab bar have their own bottom toolbar of about the same height, so one offset
+  // is right for both without asking the navigator which screen is showing.
   const insets = useSafeAreaInsets();
   if (!jobs.length) return null;
 
@@ -41,7 +44,7 @@ export default function ActiveJobsBar({ onOpen }) {
         styles.bar,
         done && styles.barDone,
         failed && styles.barFailed,
-        { paddingBottom: Math.max(10, insets.bottom) },
+        { bottom: TAB_H + insets.bottom + 8 },
       ]}
       activeOpacity={0.85}
       onPress={() => (done || failed ? forget(job.id) : onOpen?.(job))}
@@ -72,11 +75,23 @@ export default function ActiveJobsBar({ onOpen }) {
   );
 }
 
+// The tab bar's own height in MainTabs, before its safe-area padding.
+const TAB_H = 60;
+
 const styles = StyleSheet.create({
   bar: {
+    position: 'absolute', left: 10, right: 10,
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#141414', borderTopWidth: 1, borderTopColor: '#2a2a2a',
-    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#141414',
+    // A card, so it reads as floating above the screen rather than as a strip welded
+    // to the bottom of it. Bordered all round for the same reason - a top-only border
+    // is the shape of something anchored to an edge it is no longer touching.
+    borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2a',
+    paddingHorizontal: 14, paddingVertical: 10,
+    // Lifts it off whatever it is covering. Android needs elevation; the shadow props
+    // are what iOS reads.
+    elevation: 8,
+    shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
   barDone: { backgroundColor: '#0f2417' },
   barFailed: { backgroundColor: '#2a1414' },
