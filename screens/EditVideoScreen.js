@@ -31,7 +31,7 @@ import FilterSheet from '../components/FilterPicker';
 import MotionPicker from '../components/MotionPicker';
 import EffectPicker from '../components/EffectPicker';
 import { filterSpec, resolveFilter } from '../constants/filters';
-import { motionChain } from '../constants/motions';
+import { motionChain, resolveMotion } from '../constants/motions';
 import { effectChain, resolveEffect } from '../constants/effects';
 import AdjustSheet from '../components/AdjustSheet';
 import { adjustChain, hasAdjustments } from '../constants/adjustments';
@@ -4099,6 +4099,18 @@ export default function EditVideoScreen({ navigation, route }) {
   const fadeSheetTrack = audioTracks.find(t => t.key === fadeSheetKey) || null;
   const slipSheetTrack = audioTracks.find(t => t.key === slipSheetKey) || null;
 
+  // The look/movement settings on the clip under the playhead, named for the badge
+  // above. Only the ones actually set, so an untouched clip carries no badge at all.
+  const previewBadges = useMemo(() => {
+    const it = previewItem;
+    if (!it) return [];
+    const out = [];
+    if (it.filter && it.filter !== 'None') out.push(resolveFilter(it.filter).label);
+    if (it.effect && it.effect !== 'none') out.push(resolveEffect(it.effect).label);
+    if (it.motion && it.motion !== 'none') out.push(resolveMotion(it.motion).label);
+    return out;
+  }, [previewItem]);
+
   const captionStyleDef = resolveCaptionStyle(captionStyle);
   const effectiveCaptionColor = captionColor || captionFill(captionStyleDef).color;
   // Generate Captions still has two paths - with a voiceover the words are timed
@@ -4136,6 +4148,22 @@ export default function EditVideoScreen({ navigation, route }) {
       {/* VIDEO PREVIEW */}
       <View style={styles.previewContainer}>
         <View style={[styles.previewFrame, { width: frame.w, height: frame.h, backgroundColor: canvasBg }]}>
+          {/* What is on this clip that the canvas cannot show.
+              Filters, effects and motion are ffmpeg chains that run on the server at
+              export - the canvas is a plain video view and applies none of them, and
+              never has. Silence about that reads as the setting not having worked:
+              you pick VHS, press play, and nothing happens.
+              Naming them is the honest half. A live approximation would be the
+              dishonest one - it would disagree with the render, and a preview that
+              disagrees is worse than a preview that abstains. */}
+          {!!previewBadges.length && (
+            <View style={styles.exportBadge} pointerEvents="none">
+              <MaterialIcons name="auto-awesome" size={10} color="#00d4d4" />
+              <Text style={styles.exportBadgeText} numberOfLines={1}>
+                {previewBadges.join(' · ')} — applied on export
+              </Text>
+            </View>
+          )}
           {previewItem ? (
             previewItem.type === 'video' ? (
               <Video ref={videoRef} source={previewVideoSource}
@@ -5448,6 +5476,9 @@ const styles = StyleSheet.create({
   // Size comes from the project's aspect at render time; the fixed 9/16 that used to
   // be here is why every export was portrait whatever the picker said.
   previewFrame: { backgroundColor: '#111', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#222' },
+  exportBadge: { position: 'absolute', top: 6, left: 6, right: 6, zIndex: 5, flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.62)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
+  exportBadgeText: { color: '#cfcfcf', fontSize: 9, fontWeight: '600', flex: 1 },
   previewImage: { width: '100%', height: '100%' },
   previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   previewEmptyText: { color: '#444', fontSize: 12 },
