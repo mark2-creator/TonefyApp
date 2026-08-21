@@ -184,7 +184,7 @@ export default function PostRecordingScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={20} color='#fff' />
         </TouchableOpacity>
-        <Text style={[styles.logo, { color: theme.text }]}>Tonefy AI</Text>
+        <Text style={[styles.logo, { color: '#fff' }]}>Tonefy AI</Text>
         <View style={{ width: 20 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -222,7 +222,7 @@ export default function PostRecordingScreen({ navigation, route }) {
             {enhanceRows.map(r => (
               <TouchableOpacity key={r.key} style={styles.enhanceRow} onPress={r.onPress}>
                 <MaterialIcons name={r.icon} size={20} color='#fff' />
-                <Text style={[styles.enhanceLabel, { color: theme.text }]}>{r.label}</Text>
+                <Text style={[styles.enhanceLabel, { color: '#fff' }]}>{r.label}</Text>
                 <Text style={[styles.enhanceValue, { color: '#fff' }]} numberOfLines={1}>{r.value}</Text>
                 <MaterialIcons name="chevron-right" size={20} color='#fff' />
               </TouchableOpacity>
@@ -233,7 +233,7 @@ export default function PostRecordingScreen({ navigation, route }) {
                 this row opens the same sheet filtered to it. */}
             <TouchableOpacity style={styles.enhanceRow} onPress={() => setSheet('effect')}>
               <MaterialIcons name="face-retouching-natural" size={20} color='#fff' />
-              <Text style={[styles.enhanceLabel, { color: theme.text }]}>Face Retouch</Text>
+              <Text style={[styles.enhanceLabel, { color: '#fff' }]}>Face Retouch</Text>
               <Text style={[styles.enhanceValue, { color: '#fff' }]}>Beauty effects</Text>
               <MaterialIcons name="chevron-right" size={20} color='#fff' />
             </TouchableOpacity>
@@ -255,7 +255,7 @@ export default function PostRecordingScreen({ navigation, route }) {
           <View style={[styles.aiCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.aiCardHeader}>
               <MaterialIcons name="auto-awesome" size={20} color='#fff' />
-              <Text style={[styles.aiCardTitle, { color: theme.text }]}>AI Suggestions</Text>
+              <Text style={[styles.aiCardTitle, { color: '#fff' }]}>AI Suggestions</Text>
             </View>
             <Text style={[styles.aiCardSub, { color: '#fff' }]}>Based on your content, we recommend these high-impact edits:</Text>
             {[
@@ -279,9 +279,9 @@ export default function PostRecordingScreen({ navigation, route }) {
           <Text style={[styles.sectionLabel, { color: '#fff' }]}>REFINE WITH AI</Text>
           <View style={[styles.refineCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TextInput
-              style={[styles.refineInput, { color: theme.text, borderBottomColor: theme.border }]}
+              style={[styles.refineInput, { color: '#fff', borderBottomColor: theme.border }]}
               placeholder="e.g. Make the colors warmer and add more film grain..."
-              placeholderTextColor={theme.subtext}
+              placeholderTextColor="rgba(255,255,255,0.45)"
               multiline
               value={refinement}
               onChangeText={setRefinement}
@@ -319,8 +319,8 @@ export default function PostRecordingScreen({ navigation, route }) {
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
               onPress={() => navigation.replace('Recording')}>
-              <MaterialIcons name="refresh" size={20} color={theme.text} />
-              <Text style={[styles.actionBtnText, { color: theme.text }]}>Retake</Text>
+              <MaterialIcons name="refresh" size={20} color='#fff' />
+              <Text style={[styles.actionBtnText, { color: '#fff' }]}>Retake</Text>
             </TouchableOpacity>
             <ProgressButton
               variant="outline"
@@ -328,7 +328,7 @@ export default function PostRecordingScreen({ navigation, route }) {
               progress={savePct}
               busy={saving}
               borderColor={theme.border}
-              textColor={theme.text}
+              textColor="#fff"
               icon="download"
               style={styles.saveRawBtn}
               labelStyle={styles.saveRawLabel}
@@ -339,14 +339,25 @@ export default function PostRecordingScreen({ navigation, route }) {
 
         {/* Stats */}
         <View style={[styles.section, { marginBottom: 40 }]}>
+          {/* Both of these were hardcoded strings: "4K (2160p)" and "60 FPS", stated as
+              facts about a recording neither had looked at. The export has no 4K path at
+              all, so it was not merely unverified - it was not achievable. Replaced with
+              two things actually known here: what the render will output, and how long
+              the clip is. */}
           <View style={[styles.statsCard, { backgroundColor: theme.card, borderLeftColor: theme.border }]}>
             <View>
-              <Text style={[styles.statsLabel, { color: '#fff' }]}>RESOLUTION</Text>
-              <Text style={[styles.statsValue, { color: theme.text }]}>4K (2160p)</Text>
+              <Text style={[styles.statsLabel, { color: '#fff' }]}>EXPORTS AT</Text>
+              <Text style={[styles.statsValue, { color: '#fff' }]}>
+                {route?.params?.quality || '1080p'}
+              </Text>
             </View>
             <View>
-              <Text style={[styles.statsLabel, { color: '#fff' }]}>FRAME RATE</Text>
-              <Text style={[styles.statsValue, { color: theme.text }]}>60 FPS</Text>
+              <Text style={[styles.statsLabel, { color: '#fff' }]}>LENGTH</Text>
+              <Text style={[styles.statsValue, { color: '#fff' }]}>
+                {recordedSeconds > 0
+                  ? `${Math.floor(recordedSeconds / 60)}:${String(recordedSeconds % 60).padStart(2, '0')}`
+                  : '--:--'}
+              </Text>
             </View>
           </View>
         </View>
@@ -404,11 +415,15 @@ const styles = StyleSheet.create({
   timeCode: { color: '#fff', fontSize: 11 },
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 2, marginBottom: 10 },
-  toggleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a' },
+  // A column, not a wrapping 2x2. It was `flexDirection: row, flexWrap: wrap` with 46%
+  // wide children - correct for the four Switches that used to live here, and wrong the
+  // moment they became full-width rows: two rows landed per line at auto width and the
+  // labels, being flex:1 inside a shrunk cell, collapsed to nothing.
+  toggleGrid: { backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2a', overflow: 'hidden' },
   toggleItem: { width: '46%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   soonTag: { color: '#5a5a5a', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
   applyBtn: { borderRadius: 12, minHeight: 50, marginBottom: 10 },
-  enhanceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 14 },
+  enhanceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#1e1e1e' },
   enhanceLabel: { fontSize: 14, flex: 1 },
   enhanceValue: { fontSize: 12, maxWidth: 130, textAlign: 'right' },
   noClipText: { color: '#5a5a5a', fontSize: 12, marginTop: 6 },
