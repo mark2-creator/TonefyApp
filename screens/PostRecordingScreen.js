@@ -182,7 +182,7 @@ export default function PostRecordingScreen({ navigation, route }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={20} color={theme.icon} />
+          <MaterialIcons name="arrow-back" size={20} color='#fff' />
         </TouchableOpacity>
         <Text style={[styles.logo, { color: theme.text }]}>Tonefy AI</Text>
         <View style={{ width: 20 }} />
@@ -217,14 +217,14 @@ export default function PostRecordingScreen({ navigation, route }) {
 
         {/* Quick Edit Toggles */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUICK EDITS</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>QUICK EDITS</Text>
           <View style={[styles.toggleGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {enhanceRows.map(r => (
               <TouchableOpacity key={r.key} style={styles.enhanceRow} onPress={r.onPress}>
-                <MaterialIcons name={r.icon} size={20} color={theme.icon} />
+                <MaterialIcons name={r.icon} size={20} color='#fff' />
                 <Text style={[styles.enhanceLabel, { color: theme.text }]}>{r.label}</Text>
-                <Text style={[styles.enhanceValue, { color: theme.subtext }]} numberOfLines={1}>{r.value}</Text>
-                <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+                <Text style={[styles.enhanceValue, { color: '#fff' }]} numberOfLines={1}>{r.value}</Text>
+                <MaterialIcons name="chevron-right" size={20} color='#fff' />
               </TouchableOpacity>
             ))}
             {/* Face Retouch is real now and needs no model: smartblur with a negative
@@ -232,10 +232,10 @@ export default function PostRecordingScreen({ navigation, route }) {
                 not eyes or hair. It lives in the effects catalogue under Beauty, so
                 this row opens the same sheet filtered to it. */}
             <TouchableOpacity style={styles.enhanceRow} onPress={() => setSheet('effect')}>
-              <MaterialIcons name="face-retouching-natural" size={20} color={theme.icon} />
+              <MaterialIcons name="face-retouching-natural" size={20} color='#fff' />
               <Text style={[styles.enhanceLabel, { color: theme.text }]}>Face Retouch</Text>
-              <Text style={[styles.enhanceValue, { color: theme.subtext }]}>Beauty effects</Text>
-              <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+              <Text style={[styles.enhanceValue, { color: '#fff' }]}>Beauty effects</Text>
+              <MaterialIcons name="chevron-right" size={20} color='#fff' />
             </TouchableOpacity>
             {/* Eye contact is the one that genuinely cannot be done here. Redirecting a
                 gaze means generating eyes that were never photographed - there is no
@@ -251,13 +251,13 @@ export default function PostRecordingScreen({ navigation, route }) {
 
         {/* AI Suggestions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>AI SUGGESTIONS</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>AI SUGGESTIONS</Text>
           <View style={[styles.aiCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.aiCardHeader}>
-              <MaterialIcons name="auto-awesome" size={20} color={theme.icon} />
+              <MaterialIcons name="auto-awesome" size={20} color='#fff' />
               <Text style={[styles.aiCardTitle, { color: theme.text }]}>AI Suggestions</Text>
             </View>
-            <Text style={[styles.aiCardSub, { color: theme.subtext }]}>Based on your content, we recommend these high-impact edits:</Text>
+            <Text style={[styles.aiCardSub, { color: '#fff' }]}>Based on your content, we recommend these high-impact edits:</Text>
             {[
               { icon: 'bolt', label: 'Turn into motivational video' },
               { icon: 'movie', label: 'Add cinematic B-roll' },
@@ -276,7 +276,7 @@ export default function PostRecordingScreen({ navigation, route }) {
 
         {/* Refine */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>REFINE WITH AI</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>REFINE WITH AI</Text>
           <View style={[styles.refineCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TextInput
               style={[styles.refineInput, { color: theme.text, borderBottomColor: theme.border }]}
@@ -293,7 +293,7 @@ export default function PostRecordingScreen({ navigation, route }) {
               {['Enhance Blue Tones', 'Reduce Noise', 'Add Slow-mo'].map(p => (
                 <TouchableOpacity key={p} onPress={() => setRefinement(p)}
                   style={[styles.promptChip, { borderColor: theme.border }]}>
-                  <Text style={[styles.promptChipText, { color: theme.subtext }]}>{p}</Text>
+                  <Text style={[styles.promptChipText, { color: '#fff' }]}>{p}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -341,11 +341,11 @@ export default function PostRecordingScreen({ navigation, route }) {
         <View style={[styles.section, { marginBottom: 40 }]}>
           <View style={[styles.statsCard, { backgroundColor: theme.card, borderLeftColor: theme.border }]}>
             <View>
-              <Text style={[styles.statsLabel, { color: theme.subtext }]}>RESOLUTION</Text>
+              <Text style={[styles.statsLabel, { color: '#fff' }]}>RESOLUTION</Text>
               <Text style={[styles.statsValue, { color: theme.text }]}>4K (2160p)</Text>
             </View>
             <View>
-              <Text style={[styles.statsLabel, { color: theme.subtext }]}>FRAME RATE</Text>
+              <Text style={[styles.statsLabel, { color: '#fff' }]}>FRAME RATE</Text>
               <Text style={[styles.statsValue, { color: theme.text }]}>60 FPS</Text>
             </View>
           </View>
@@ -401,9 +401,9 @@ const styles = StyleSheet.create({
   playRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12 },
   playLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   playRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  timeCode: { color: '#888', fontSize: 11 },
+  timeCode: { color: '#fff', fontSize: 11 },
   section: { paddingHorizontal: 16, marginBottom: 16 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#555', letterSpacing: 2, marginBottom: 10 },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 2, marginBottom: 10 },
   toggleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a' },
   toggleItem: { width: '46%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   soonTag: { color: '#5a5a5a', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
@@ -414,11 +414,11 @@ const styles = StyleSheet.create({
   noClipText: { color: '#5a5a5a', fontSize: 12, marginTop: 6 },
   saveRawBtn: { flex: 1, minHeight: 46, borderRadius: 10 },
   saveRawLabel: { fontSize: 13 },
-  toggleItemLabel: { color: '#cfcfcf', fontSize: 12, flex: 1 },
+  toggleItemLabel: { color: '#fff', fontSize: 12, flex: 1 },
   aiCard: { backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a', gap: 10 },
   aiCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   aiCardTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  aiCardSub: { fontSize: 12, color: '#888' },
+  aiCardSub: { fontSize: 12, color: '#fff' },
   suggestionBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#2a2a2a' },
   suggestionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   suggestionText: { color: '#fff', fontSize: 13, fontWeight: '500' },
@@ -427,13 +427,13 @@ const styles = StyleSheet.create({
   sendBtn: { alignSelf: 'flex-end', backgroundColor: '#2ECC71', borderRadius: 8, padding: 8 },
   promptChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   promptChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#2a2a2a' },
-  promptChipText: { color: '#888', fontSize: 11 },
+  promptChipText: { color: '#fff', fontSize: 11 },
   enhanceBtn: { backgroundColor: '#2ECC71', borderRadius: 12, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10, shadowColor: '#2ECC71', shadowOpacity: 0.3, shadowRadius: 12 },
   enhanceBtnText: { color: '#04211f', fontWeight: '700', fontSize: 14 },
   actionRow: { flexDirection: 'row', gap: 10 },
   actionBtn: { flex: 1, height: 46, backgroundColor: '#111', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: '#2a2a2a' },
   actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '500' },
   statsCard: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#111', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#2a2a2a' },
-  statsLabel: { fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 4 },
+  statsLabel: { fontSize: 10, color: '#fff', letterSpacing: 1, marginBottom: 4 },
   statsValue: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

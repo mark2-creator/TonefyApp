@@ -154,7 +154,7 @@ export default function RecordingScreen({ navigation, route }) {
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconBtn} onPress={() => (recording ? stop() : navigation.goBack())}>
-          <MaterialIcons name="close" size={24} color="#e5e2e1" />
+          <MaterialIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         {recording && (
           <View style={styles.timerBox}>
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   controlBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   controlBtnOff: { backgroundColor: 'rgba(255,255,255,0.05)' },
   controlBtnGhost: { width: 52, height: 52 },
-  controlLabel: { color: '#e5e2e1', fontSize: 11, fontWeight: '600' },
+  controlLabel: { color: '#fff', fontSize: 11, fontWeight: '600' },
   recordBtn: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   recordBtnOn: { backgroundColor: '#ff4444', borderColor: '#fff' },
   blockedTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: 6 },

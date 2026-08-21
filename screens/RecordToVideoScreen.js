@@ -41,7 +41,7 @@ export default function RecordToVideoScreen({ navigation }) {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={22} color={theme.icon} />
+          <MaterialIcons name="arrow-back" size={22} color='#fff' />
         </TouchableOpacity>
         <Text style={styles.logo}>Tonefy AI</Text>
         <View style={{ width: 22 }} />
@@ -49,14 +49,17 @@ export default function RecordToVideoScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.titleSection}>
           <View style={styles.titleIcons}>
-            <MaterialIcons name="mic" size={22} color="#2ecc71" />
-            <MaterialIcons name="videocam" size={22} color="#2ecc71" />
+            {/* Decorative, so neutral. Green marks a control that commits - the record
+                button and an active chip - and spending it on a header icon is what
+                leaves nothing to distinguish the button that actually does something. */}
+            <MaterialIcons name="mic" size={22} color="#fff" />
+            <MaterialIcons name="videocam" size={22} color="#fff" />
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Record to Video</Text>
-          <Text style={[styles.titleSub, { color: theme.subtext }]}>Turn recordings into polished videos with subtitles</Text>
+          <Text style={[styles.titleSub, { color: '#fff' }]}>Turn recordings into polished videos with subtitles</Text>
         </View>
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUALITY</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>QUALITY</Text>
           <View style={styles.chips}>
             {QUALITIES.map(q => (
               <TouchableOpacity key={q}
@@ -64,19 +67,19 @@ export default function RecordToVideoScreen({ navigation }) {
                 onPress={() => (q === '1080p' && caps?.maxResolution === '720p'
                   ? showAlert('1080p', 'Your plan records at 720p. Pro and Creator go to 1080p.')
                   : setQuality(q))}>
-                <Text style={[styles.chipText, { color: theme.subtext }, quality === q && styles.chipTextActive]}>{q}</Text>
+                <Text style={[styles.chipText, { color: '#fff' }, quality === q && styles.chipTextActive]}>{q}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>DURATION</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>DURATION</Text>
           <View style={styles.chips}>
             {DURATIONS.map(d => (
               <TouchableOpacity key={d}
                 style={[styles.chip, { backgroundColor: theme.card, borderColor: theme.border }, duration === d && styles.chipActive]}
                 onPress={() => setDuration(d)}>
-                <Text style={[styles.chipText, { color: theme.subtext }, duration === d && styles.chipTextActive]}>
+                <Text style={[styles.chipText, { color: '#fff' }, duration === d && styles.chipTextActive]}>
                   {d < 60 ? `${d}s` : `${d / 60}m`}
                 </Text>
               </TouchableOpacity>
@@ -106,10 +109,10 @@ export default function RecordToVideoScreen({ navigation }) {
             onPress={() => navigation.navigate('Recording', { maxSeconds: duration, quality, filter, effect })}>
             <View style={styles.recordInner} />
           </TouchableOpacity>
-          <Text style={[styles.recordHint, { color: theme.subtext }]}>Tap to start recording</Text>
+          <Text style={[styles.recordHint, { color: '#fff' }]}>Tap to start recording</Text>
         </View>
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>LOOK</Text>
+          <Text style={[styles.sectionLabel, { color: '#fff' }]}>LOOK</Text>
           {/* Five Switches lived here - Auto-subtitles, Music, Effects, B-roll,
               Voiceover - each bound to a useState nothing read. Three of them did not
               belong on a screen about recording yourself anyway: B-roll is stock footage
@@ -126,15 +129,15 @@ export default function RecordToVideoScreen({ navigation }) {
               <TouchableOpacity key={r.key} onPress={() => setSheet(r.key)}
                 style={[styles.toggleRow, i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
                 <View style={styles.toggleLeft}>
-                  <MaterialIcons name={r.icon} size={20} color="#2ecc71" />
+                  <MaterialIcons name={r.icon} size={20} color="#fff" />
                   <Text style={[styles.toggleLabel, { color: theme.text }]}>{r.label}</Text>
                 </View>
-                <Text style={[styles.rowValue, { color: theme.subtext }]} numberOfLines={1}>{r.value}</Text>
-                <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+                <Text style={[styles.rowValue, { color: '#fff' }]} numberOfLines={1}>{r.value}</Text>
+                <MaterialIcons name="chevron-right" size={20} color='#fff' />
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={[styles.lookHint, { color: theme.subtext }]}>
+          <Text style={[styles.lookHint, { color: '#fff' }]}>
             Music, subtitles and more are on the next screen, once there is something to
             put them on.
           </Text>
@@ -162,13 +165,13 @@ const styles = StyleSheet.create({
   titleSection: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
   titleIcons: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   title: { fontSize: 26, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  titleSub: { fontSize: 13, color: '#666' },
+  titleSub: { fontSize: 13, color: '#fff' },
   section: { paddingHorizontal: 16, marginBottom: 20 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#666', letterSpacing: 2, marginBottom: 10 },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 2, marginBottom: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1e1e1e' },
   chipActive: { backgroundColor: 'rgba(46,204,113,0.1)', borderColor: '#2ecc71' },
-  chipText: { color: '#666', fontSize: 12, fontWeight: '600' },
+  chipText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   chipTextActive: { color: '#2ecc71' },
   cameraPreview: { height: 280, backgroundColor: '#111', borderRadius: 16, borderWidth: 1, borderColor: '#1e1e1e', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
   cameraText: { color: '#333', fontSize: 13, marginTop: 8 },
@@ -182,14 +185,14 @@ const styles = StyleSheet.create({
   modeChipActive: { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 999, backgroundColor: '#2ecc71' },
   modeChipTextActive: { color: '#003919', fontWeight: '700', fontSize: 13 },
   modeChip: { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 999 },
-  modeChipText: { color: '#888', fontSize: 13 },
+  modeChipText: { color: '#fff', fontSize: 13 },
   recordBtnRow: { alignItems: 'center', gap: 10, marginBottom: 24 },
   recordBtn: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   recordInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#2ecc71' },
-  recordHint: { color: '#555', fontSize: 12 },
+  recordHint: { color: '#fff', fontSize: 12 },
   toggleCard: { backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1e1e1e', overflow: 'hidden' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
   toggleBorder: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  toggleLabel: { color: '#e5e2e1', fontSize: 14 },
+  toggleLabel: { color: '#fff', fontSize: 14 },
 });
