@@ -11,7 +11,8 @@ import { auth, db } from '../firebase';
 import { showAlert } from '../components/BrandedAlert';
 import { CaptionStyleSheet } from '../components/CaptionStylePicker';
 import { resolveCaptionStyle } from '../constants/captionStyles';
-import CaptionText from '../components/CaptionText';
+import CanvasOverlay from '../components/CanvasOverlay';
+import TextOverlayContent from '../components/TextOverlayContent';
 import ProgressButton from '../components/ProgressButton';
 import { saveImageToDevice, SAVE_PLATFORM_NOTE } from '../utils/saveVideo';
 import { usePlan } from '../constants/plan';
@@ -53,10 +54,17 @@ export default function ThumbnailScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState(null);
 
-  const [headline, setHeadline] = useState('');
-  const [styleId, setStyleId] = useState('tiktok');
+  // The headline is an OVERLAY, not a string, because it now carries where it sits,
+  // how big it is and which way up it is - the same shape EditVideoScreen's overlays
+  // have, so the same CanvasOverlay and TextOverlayContent drive it.
+  const [overlay, setOverlay] = useState(null);
+  const [selected, setSelected] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [showStyles, setShowStyles] = useState(false);
-  const [size, setSize] = useState(34);
+  // The real frame, with no text on it, so the overlay is positioned against the
+  // picture it will actually sit on rather than against a grey box.
+  const [backdrop, setBackdrop] = useState(null);
+  const [backdropBusy, setBackdropBusy] = useState(false);
   const [atSeconds, setAtSeconds] = useState(0);
   const [aspect, setAspect] = useState('16:9');
 
@@ -70,6 +78,7 @@ export default function ThumbnailScreen({ navigation }) {
   const [knownDuration, setKnownDuration] = useState(0);
   const [stageWidth, setStageWidth] = useState(FALLBACK_PREVIEW_WIDTH);
 
+  const styleId = overlay?.captionStyleId || 'tiktok';
   const spec = useMemo(() => resolveCaptionStyle(styleId), [styleId]);
   const ratio = ASPECTS.find(a => a.id === aspect)?.ratio || 16 / 9;
 
@@ -96,10 +105,64 @@ export default function ThumbnailScreen({ navigation }) {
   // Changing anything about the composition invalidates a thumbnail already made from
   // the old settings. Without this the screen shows a stale image beside controls that
   // no longer describe it, which reads as the controls doing nothing.
-  useEffect(() => { setResult(null); }, [picked, headline, styleId, size, atSeconds, aspect]);
+  useEffect(() => { setResult(null); }, [picked, overlay, atSeconds, aspect]);
   useEffect(() => { setKnownDuration(0); }, [picked]);
 
   const maxSeconds = Math.max(knownDuration, Math.floor(Number(picked?.durationSeconds) || 0));
+
+  // The frame on its own, so the overlay is dragged around the real picture instead of
+  // a grey box. Deliberately a separate call from `generate`: it carries no text, so it
+  // is the cheap path through the same endpoint (measured ~0.5s) and it must NOT be
+  // invalidated by a text edit - only by which frame is being looked at.
+  useEffect(() => {
+    if (!picked) { setBackdrop(null); return; }
+    const url = picked.downloadUrl || picked.localUrl;
+    if (!url) return;
+    let cancelled = false;
+    setBackdropBusy(true);
+    (async () => {
+      try {
+        const res = await apiFetch('/api/thumbnail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: url.replace(BACKEND, ''), atSeconds, aspectRatio: aspect, textOverlays: [],
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        // Ignored if the selection moved on while this was in flight - otherwise a
+        // slow reply for an old frame lands on top of a newer one.
+        if (cancelled) return;
+        if (data.thumbnailUrl) setBackdrop(BACKEND + data.thumbnailUrl);
+        if (Number(data.durationSeconds) > 0) setKnownDuration(Math.floor(Number(data.durationSeconds)));
+      } catch (e) {
+        if (!cancelled) setBackdrop(null);
+      } finally {
+        if (!cancelled) setBackdropBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [picked, atSeconds, aspect]);
+
+  const setOverlayFields = useCallback((patch) => {
+    setOverlay(prev => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
+  const addText = useCallback(() => {
+    setOverlay({
+      key: 'headline',
+      text: 'Your headline',
+      captionStyleId: 'tiktok',
+      font: resolveCaptionStyle('tiktok').font,
+      color: resolveCaptionStyle('tiktok').color,
+      size: 34,
+      x: 50, y: 50, scale: 1, rotation: 0,
+    });
+    setSelected(true);
+    // Straight into typing: the placeholder text is there to be replaced, and making
+    // someone tap twice to reach a caret they were always going to need is friction.
+    setEditing(true);
+  }, []);
 
   const generate = useCallback(async () => {
     if (!picked) return showAlert('Thumbnail', 'Pick a video first.');
@@ -118,14 +181,24 @@ export default function ThumbnailScreen({ navigation }) {
           atSeconds,
           aspectRatio: aspect,
           previewWidth: Math.round(stageWidth),
-          textOverlays: headline.trim()
+          textOverlays: overlay?.text?.trim()
             ? [{
-                text: headline.trim(),
-                font: spec.font,
-                size,
-                color: spec.color,
+                text: overlay.text.trim(),
+                font: overlay.font || spec.font,
+                // A pinch scales every part of an overlay together, and every part is
+                // already a multiple of the size - stroke, glow, chip padding - so
+                // folding the scale into the size reproduces it exactly, with no
+                // second factor for the renderer to apply and get wrong. Same rule
+                // the editor's export uses.
+                size: Math.max(1, Math.round((overlay.size || 34) * (overlay.scale ?? 1))),
+                color: overlay.color || spec.color,
                 gradient: spec.gradient,
-                x: 50, y: 50, anchor: 'center',
+                // Percentages of the frame, and they are the overlay's CENTRE -
+                // anchor: 'center'. Top-left is not a position you can rotate about.
+                x: overlay.x ?? 50,
+                y: overlay.y ?? 50,
+                anchor: 'center',
+                rotation: overlay.rotation ?? 0,
                 captionSpec: spec,
               }]
             : [],
@@ -142,13 +215,13 @@ export default function ThumbnailScreen({ navigation }) {
     } finally {
       setBusy(false);
     }
-  }, [picked, isPremium, atSeconds, aspect, headline, spec, size, stageWidth]);
+  }, [picked, isPremium, atSeconds, aspect, overlay, spec, stageWidth]);
 
   const save = useCallback(async () => {
     if (!result) return;
     try {
       setSaving(1);
-      const out = await saveImageToDevice(result, { prompt: headline || 'Tonefy thumbnail' },
+      const out = await saveImageToDevice(result, { prompt: overlay?.text || 'Tonefy thumbnail' },
         (p) => setSaving(Math.max(1, p)));
       showAlert('Thumbnail',
         out.method === 'gallery' ? 'Saved to your gallery.' : SAVE_PLATFORM_NOTE);
@@ -157,7 +230,7 @@ export default function ThumbnailScreen({ navigation }) {
     } finally {
       setSaving(0);
     }
-  }, [result, headline]);
+  }, [result, overlay]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -214,38 +287,99 @@ export default function ThumbnailScreen({ navigation }) {
         <View
           style={[styles.stage, { aspectRatio: ratio }]}
           onLayout={(e) => setStageWidth(e.nativeEvent.layout.width)}>
+          {/* Once generated, the text is BURNED IN - drawing the live overlay on top of
+              it too would show the headline twice. Any edit clears `result`, which puts
+              the editable canvas straight back. */}
           {result ? (
             <Image source={{ uri: result }} style={styles.shot} resizeMode="cover" />
           ) : (
-            <View style={styles.stageInner}>
-              <MaterialIcons name="image" size={28} color="#333" />
-              {!!headline.trim() && (
-                <View style={styles.overlayWrap} pointerEvents="none">
-                  <CaptionText style={spec} text={headline.trim()} size={size} color={spec.color} />
-                </View>
+            <>
+              {backdrop
+                ? <Image source={{ uri: backdrop }} style={styles.shot} resizeMode="cover" />
+                : (
+                  <View style={styles.stageInner}>
+                    {backdropBusy
+                      ? <ActivityIndicator color="#00d4d4" />
+                      : <MaterialIcons name="image" size={28} color="#333" />}
+                  </View>
+                )}
+
+              {/* Tapping the canvas itself deselects, the same way the editor's does -
+                  otherwise there is no way to put the handles away. */}
+              {selected && !editing && (
+                <TouchableOpacity
+                  style={StyleSheet.absoluteFill}
+                  activeOpacity={1}
+                  onPress={() => setSelected(false)}
+                />
               )}
-            </View>
+
+              {!!overlay && stageWidth > 0 && (
+                <CanvasOverlay
+                  overlay={overlay}
+                  containerW={stageWidth}
+                  containerH={stageWidth / ratio}
+                  selected={selected}
+                  onSelect={() => setSelected(true)}
+                  onTransform={(key, next) => setOverlayFields(next)}
+                  // First tap selects so it can be moved without the keyboard in the
+                  // way; tapping the selected one puts a caret in it. Same two-step
+                  // the editor uses, and for the same reason.
+                  onTap={() => (selected ? setEditing(true) : setSelected(true))}
+                  onLongPress={() => setShowStyles(true)}
+                  onEditDone={() => {
+                    setEditing(false);
+                    // Typed empty means deleted. Leaving it would keep an invisible
+                    // object on the canvas that still swallows every tap.
+                    setOverlay(prev => (prev && !prev.text.trim() ? null : prev));
+                  }}
+                  editing={editing}
+                >
+                  <TextOverlayContent
+                    overlay={overlay}
+                    maxWidth={stageWidth * 0.8}
+                    editing={editing}
+                    onChangeText={(key, text) => setOverlayFields({ text })}
+                    onEndEditing={() => setEditing(false)}
+                  />
+                </CanvasOverlay>
+              )}
+            </>
           )}
         </View>
-        {!result && (
-          <Text style={styles.note}>
-            The frame appears once you generate. The text above is drawn by the same
-            renderer the server uses, so its style will match.
-          </Text>
-        )}
+
+        <Text style={styles.note}>
+          {overlay
+            ? 'Drag to move, pinch to resize, two fingers to turn. Tap once to select, again to type.'
+            : 'Add a headline and place it anywhere on the frame.'}
+        </Text>
 
         {/* 3 - composition */}
-        <Text style={styles.step}>Headline</Text>
-        <TextInput
-          style={styles.input}
-          value={headline}
-          onChangeText={setHeadline}
-          placeholder="Leave empty for just the frame"
-          placeholderTextColor="#555"
-          maxLength={60}
-        />
+        <View style={styles.headlineRow}>
+          <Text style={styles.step}>Headline</Text>
+          {overlay ? (
+            <TouchableOpacity onPress={() => setOverlay(null)} hitSlop={8}>
+              <Text style={styles.remove}>Remove</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {overlay ? (
+          <TextInput
+            style={styles.input}
+            value={overlay.text}
+            onChangeText={(text) => setOverlayFields({ text })}
+            placeholder="Your headline"
+            placeholderTextColor="#555"
+            maxLength={60}
+          />
+        ) : (
+          <TouchableOpacity style={styles.addText} onPress={addText}>
+            <MaterialIcons name="add" size={20} color="#2ECC71" />
+            <Text style={styles.addTextLabel}>Add headline</Text>
+          </TouchableOpacity>
+        )}
 
-        <TouchableOpacity style={styles.row} onPress={() => setShowStyles(true)}>
+        <TouchableOpacity style={[styles.row, !overlay && styles.rowOff]} disabled={!overlay} onPress={() => setShowStyles(true)}>
           <Text style={styles.rowLabel}>Style</Text>
           <View style={styles.rowRight}>
             <Text style={styles.rowValue}>{spec.label || styleId}</Text>
@@ -253,10 +387,19 @@ export default function ThumbnailScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.sliderLabel}>Text size · {Math.round(size)}</Text>
+        {/* Kept alongside the pinch rather than replaced by it. A pinch is quick and
+            imprecise; a slider is the only way to land on an exact size. They edit the
+            same number - this is the base, and a pinch multiplies it by `scale`, which
+            is folded back in when the request is built. Reading the pinch back into the
+            label keeps the two honest with each other. */}
+        <Text style={styles.sliderLabel}>
+          Text size · {Math.round((overlay?.size || 34) * (overlay?.scale ?? 1))}
+        </Text>
         <Slider
-          minimumValue={16} maximumValue={64} step={1} value={size}
-          onValueChange={setSize}
+          minimumValue={16} maximumValue={64} step={1}
+          value={overlay?.size || 34}
+          disabled={!overlay}
+          onValueChange={(v) => setOverlayFields({ size: Math.round(v), scale: 1 })}
           minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#2a2a2a" thumbTintColor="#00d4d4"
         />
 
@@ -313,7 +456,14 @@ export default function ThumbnailScreen({ navigation }) {
       <CaptionStyleSheet
         visible={showStyles}
         value={styleId}
-        onChange={(id) => { setStyleId(id); setShowStyles(false); }}
+        onChange={(id) => {
+          const next = resolveCaptionStyle(id);
+          // The style's own face and colour come with it. They stay editable
+          // afterwards, which is why they live on the overlay rather than being read
+          // from the style at render time.
+          setOverlayFields({ captionStyleId: id, font: next.font, color: next.color });
+          setShowStyles(false);
+        }}
         onClose={() => setShowStyles(false)}
       />
     </View>
@@ -345,6 +495,11 @@ const styles = StyleSheet.create({
   overlayWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   shot: { width: '100%', height: '100%' },
   note: { color: '#888', fontSize: 11, lineHeight: 16, marginTop: 8 },
+  headlineRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  remove: { color: '#ff6b6b', fontSize: 12, fontWeight: '600', marginTop: 18 },
+  addText: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 14 },
+  addTextLabel: { color: '#2ECC71', fontSize: 13, fontWeight: '700' },
+  rowOff: { opacity: 0.45 },
   input: { backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginTop: 10 },
   rowLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
