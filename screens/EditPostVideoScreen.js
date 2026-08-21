@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -64,7 +64,13 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
   const [ttOn, setTtOn] = useState(false);
+  // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
+  // schedMode existed and was never read - the queue had no notion of "when", so every
+  // post was written with scheduledFor = now whatever the user intended.
   const [schedMode, setSchedMode] = useState('immediate');
+  const [schedDay, setSchedDay] = useState(0);      // days from today
+  const [schedHour, setSchedHour] = useState(19);   // 7pm, which the tip above recommends
+  const [schedMin, setSchedMin] = useState(0);
   const [posting, setPosting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [queue, setQueue] = useState([]);
@@ -122,21 +128,44 @@ export default function EditPostVideoScreen({ navigation, route }) {
     setPosting(false);
   }
 
+  // The instant the post is due, from the three chips. Built fresh on each render rather
+  // than stored, so it cannot go stale across midnight while the screen is open.
+  const scheduledAt = useMemo(() => {
+    if (schedMode === 'immediate') return new Date();
+    const d = new Date();
+    d.setDate(d.getDate() + schedDay);
+    d.setHours(schedHour, schedMin, 0, 0);
+    // Choosing a time earlier today means tomorrow, which is what every calendar does
+    // and what the user meant - not "post immediately because that moment has passed".
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    return d;
+  }, [schedMode, schedDay, schedHour, schedMin]);
+
+  const SCHED_DAYS = useMemo(() => Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    return { offset: i, label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow'
+      : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }) };
+  }), []);
+
   async function saveToQueue() {
     setSaving(true);
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '',
         platforms: ttOn ? ['tiktok'] : [],
-        scheduledFor: new Date().toISOString(),
-        scheduleMode: 'queued', status: 'queued', createdAt: new Date().toISOString()
+        scheduledFor: scheduledAt.toISOString(),
+        scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
+        status: 'queued', createdAt: new Date().toISOString()
       });
       await loadQueue();
       // Says when, because it now actually happens. The queue used to be a list nothing
       // read: this said "Added to queue!" and the post was never sent.
-      showAlert('Queued', ttOn
-        ? 'It will post to TikTok within about 5 minutes. You can see it on the Calendar.'
-        : 'Saved to your queue. Connect TikTok to have it post automatically.');
+      showAlert('Queued', !ttOn
+        ? 'Saved to your queue. Connect TikTok to have it post automatically.'
+        : schedMode === 'immediate'
+          ? 'It will post to TikTok within about 5 minutes. You can see it on the Calendar.'
+          : `It will post to TikTok on ${scheduledAt.toLocaleDateString()} at `
+            + `${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
     } catch (e) { showAlert('Error', e.message); }
     setSaving(false);
   }
@@ -281,10 +310,67 @@ export default function EditPostVideoScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* WHEN */}
+        <Text style={[styles.sectionLabel, { color: theme.subtext }]}>WHEN</Text>
+        <View style={styles.schedRow}>
+          {[['immediate', 'As soon as possible'], ['later', 'At a time']].map(([k, label]) => (
+            <TouchableOpacity key={k} onPress={() => setSchedMode(k)}
+              style={[styles.schedMode, { borderColor: theme.border },
+                schedMode === k && styles.schedModeOn]}>
+              <Text style={[styles.schedModeText, { color: theme.text },
+                schedMode === k && styles.schedModeTextOn]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {schedMode === 'later' && (
+          <>
+            {/* Fourteen days is as far ahead as anyone plans a short-form post, and it
+                keeps this to chips rather than a calendar grid - no native module, which
+                a date picker would otherwise need and which cannot ship over the air. */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              style={styles.chipRow} contentContainerStyle={styles.chipRowContent}>
+              {SCHED_DAYS.map(d => (
+                <TouchableOpacity key={d.offset} onPress={() => setSchedDay(d.offset)}
+                  style={[styles.chip, { borderColor: theme.border }, schedDay === d.offset && styles.chipOn]}>
+                  <Text style={[styles.chipText, { color: theme.text }, schedDay === d.offset && styles.chipTextOn]}>{d.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              style={styles.chipRow} contentContainerStyle={styles.chipRowContent}>
+              {Array.from({ length: 24 }, (_, h) => h).map(h => (
+                <TouchableOpacity key={h} onPress={() => setSchedHour(h)}
+                  style={[styles.chip, { borderColor: theme.border }, schedHour === h && styles.chipOn]}>
+                  <Text style={[styles.chipText, { color: theme.text }, schedHour === h && styles.chipTextOn]}>
+                    {String(h).padStart(2, '0')}:00
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}
+              style={styles.chipRow} contentContainerStyle={styles.chipRowContent}>
+              {[0, 15, 30, 45].map(m => (
+                <TouchableOpacity key={m} onPress={() => setSchedMin(m)}
+                  style={[styles.chip, { borderColor: theme.border }, schedMin === m && styles.chipOn]}>
+                  <Text style={[styles.chipText, { color: theme.text }, schedMin === m && styles.chipTextOn]}>
+                    :{String(m).padStart(2, '0')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <Text style={[styles.schedSummary, { color: theme.subtext }]}>
+              Posts {scheduledAt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}
+              {' at '}{scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.btnQueue} onPress={saveToQueue} disabled={saving}>
-            {saving ? <ActivityIndicator color="#2ecc71" size="small" /> : <Text style={styles.btnQueueText}>Save to Queue</Text>}
+            {saving ? <ActivityIndicator color="#2ecc71" size="small" />
+              : <Text style={styles.btnQueueText}>{schedMode === 'later' ? 'Schedule' : 'Save to Queue'}</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnPost} onPress={postNow} disabled={posting}>
             {posting ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.btnPostText}>Post Now</Text>}
@@ -318,6 +404,20 @@ const styles = StyleSheet.create({
   back: { color: '#2ecc71', fontSize: 15, fontWeight: '600' },
   title: { color: '#fff', fontSize: 16, fontWeight: '700' },
   scroll: { flex: 1, padding: 16 },
+  schedRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  schedMode: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  schedModeOn: { borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.10)' },
+  schedModeText: { fontSize: 13, fontWeight: '600' },
+  schedModeTextOn: { color: '#2ecc71' },
+  // All four ingredients, per the chip-row rule in CLAUDE.md: no growing, no shrinking,
+  // and both alignment and padding on the CONTENT container rather than on `style`.
+  chipRow: { flexGrow: 0, flexShrink: 0, marginBottom: 8 },
+  chipRowContent: { alignItems: 'center', gap: 6, paddingVertical: 2 },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  chipOn: { borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.10)' },
+  chipText: { fontSize: 12, fontWeight: '600' },
+  chipTextOn: { color: '#2ecc71' },
+  schedSummary: { fontSize: 12, marginBottom: 12 },
   sectionLabel: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, marginTop: 16 },
   videoWrap: { backgroundColor: '#1a1a1a', borderRadius: 14, overflow: 'hidden', marginBottom: 4, minHeight: 200 },
   video: { width: '100%', height: 260, backgroundColor: '#000' },
