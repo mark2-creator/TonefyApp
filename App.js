@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import * as Updates from 'expo-updates';
 import * as SplashScreen from 'expo-splash-screen';
@@ -17,6 +17,7 @@ import BrandedAlertHost from './components/BrandedAlert';
 import ErrorBoundary from './components/ErrorBoundary';
 import { JobsProvider } from './context/JobsContext';
 import ActiveJobsBar from './components/ActiveJobsBar';
+import UpdateNotice from './components/UpdateNotice';
 import LandingScreen from './screens/LandingScreen';
 import AuthScreen from './screens/AuthScreen';
 import IdeaToVideoScreen from './screens/IdeaToVideoScreen';
@@ -61,27 +62,43 @@ function App() {
   // on a build without the native module.
   useEffect(() => { configureForegroundBehaviour(); }, []);
 
+  // Updates, and the two things that made them unreliable for real testers.
+  //
+  // FIRST: an 8MB bundle on a connection measured in hundreds of bytes per second takes
+  // minutes, and reloadAsync() fires whenever it finishes. On a fast connection that is
+  // seamless; on a slow one it restarts the app several minutes in, discarding whatever
+  // the person was doing. expo-updates already applies a downloaded update on the NEXT
+  // launch by itself, so the reload is only worth doing while it is still free - inside
+  // the first few seconds, before anyone has started.
+  //
+  // SECOND: every failure was silent. A fetch that times out left the app looking
+  // current when it was not, which is how a fixed bug gets reported as still broken -
+  // twice, here, on Aug 18. The outcome is now recorded and surfaced on Profile.
+  const [otaState, setOtaState] = useState(null); // 'downloading' | 'ready' | 'failed' | null
   useEffect(() => {
-    async function checkUpdates() {
+    const startedAt = Date.now();
+    const SEAMLESS_MS = 8000;
+    let alive = true;
+    (async () => {
       try {
-        if (!Updates.isEnabled) {
-          console.log('[OTA] Updates not enabled in this environment');
+        if (!Updates.isEnabled) return;
+        const update = await Updates.checkForUpdateAsync();
+        if (!alive || !update.isAvailable) return;
+        setOtaState('downloading');
+        await Updates.fetchUpdateAsync();
+        if (!alive) return;
+        if (Date.now() - startedAt < SEAMLESS_MS) {
+          await Updates.reloadAsync();
           return;
         }
-        console.log('[OTA] Checking for updates...');
-        const update = await Updates.checkForUpdateAsync();
-        console.log('[OTA] Update available:', update.isAvailable);
-        if (update.isAvailable) {
-          console.log('[OTA] Fetching update...');
-          await Updates.fetchUpdateAsync();
-          console.log('[OTA] Reloading...');
-          await Updates.reloadAsync();
-        }
+        // Too late to restart under someone. It is on disk and launches next time.
+        setOtaState('ready');
       } catch (e) {
-        console.log('[OTA] Error:', e.message);
+        console.log('[OTA] failed:', e.message);
+        if (alive) setOtaState('failed');
       }
-    }
-    checkUpdates();
+    })();
+    return () => { alive = false; };
   }, []);
 
   const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
@@ -167,6 +184,9 @@ function App() {
       </ErrorBoundary>
       {/* Outside the navigator's screens but inside the container, so it shows on every
           screen and can still navigate. This is what makes leaving a render safe. */}
+      {!!otaState && otaState !== 'downloading' && (
+        <UpdateNotice state={otaState} onDismiss={() => setOtaState(null)} />
+      )}
       {user && <ActiveJobsBar onOpen={() => navigationRef.current?.navigate('MainTabs', { screen: 'Videos' })} />}
     </NavigationContainer>
     </JobsProvider>
