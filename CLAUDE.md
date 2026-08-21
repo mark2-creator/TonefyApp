@@ -2668,14 +2668,77 @@ nothing to aim at.
     description and destination disagree passes every check that only asks whether something
     happens on tap.**
 
-    **Untested on device.** Also still not built from this group: **Beats / Beat Sync** (BPM
-    exists only as library-track metadata from `scripts/analyse-music.py`; an uploaded track
-    has none, so this needs a real detection endpoint). And **Thumbnail**, which the Dashboard
+    **Untested on device.** ~~Also still not built from this group: **Beats / Beat Sync**~~ -
+    **BUILT, see item 36.** Still not built: **Thumbnail**, which the Dashboard
     still marks "soon": it is genuinely buildable for free - frame extraction, the 138 caption
     styles and ImageMagick are all present - but the app has **no view-capture library**
     (`react-native-view-shot`/Skia are both absent), so an in-app compositor would need a new
     binary, and the server-side text renderer is a set of closures inside the `media-to-video`
     handler rather than a module either path can call.
+
+36. **Beat Sync** (Aug 21 2026; app published as update group
+    `ef2bca23-c176-403a-ad6a-da6ae59c756b`, runtime 1.1.0; backend `/api/detect-beats` +
+    `backend/detect_beats.py`, deployed via `pm2 restart` at 14:41:08).
+
+    **Tempo is not enough to place a marker, and that is the whole problem.** The
+    autocorrelation in `scripts/analyse-music.py` gives the beat **period** - how far apart
+    beats are - which is all a tempo band needs and is why the library has BPM but no beat
+    times. A marker needs the **phase** as well: where the first beat actually falls. A
+    right period with a wrong phase puts every marker exactly *between* the beats, which is
+    worse than no markers, because it is confidently wrong rather than absent.
+
+    `detect_beats.py` does both: spectral-flux onset envelope autocorrelated for the period,
+    then a pulse train slid across that envelope to find the offset with the most onset
+    energy under its pulses. Phase is summed over the **whole track**, so an intro that
+    starts off-grid cannot set the phase for everything after it.
+
+    **It returns a grid, not raw onsets.** A grid is what a musician means by "the beat" and
+    what a cut wants to land on; raw onsets include every snare flam and vocal consonant,
+    and cutting to those looks nervous rather than rhythmic.
+
+    **The two halves needed different checks, and only one of them was already proven:**
+    - **period** - 12/12 agreement with the library's own measurement across real tracks
+      (half/double time counted as agreement; both are musically correct readings). This
+      reuses the method already checked against 68 tracks, so it was the cheap half.
+    - **phase** - the NEW part, so measured separately: onset energy under the chosen grid
+      versus half a beat off, on 10 tracks. The chosen phase won every one, and several
+      anti-phase scores came out **negative** - those points land on below-mean flux, i.e.
+      in the quiet gaps between beats, which is the strongest confirmation available.
+
+    **`strength` is reported by the server and gated in the app**, deliberately. The honest
+    answer for spoken word is "there is no beat in this", and the app is where there is a
+    user to tell. Meditation music measures 0.116 against 0.44-0.86 for tracks with a real
+    pulse. Under 0.25 the grid is still stored - a weak reading is not always a wrong one -
+    but the message says plainly not to trust it.
+
+    **The snap is the feature; the markers are how you aim it.** `splitAtPlayhead` snaps to
+    the nearest beat within **0.12s**, which is under a sixteenth note at 120bpm. The
+    detector only reports 60-180 BPM, which puts beats at least 0.33s apart, so a snap can
+    never cross to the wrong beat at any tempo it finds. Markers you can see but cannot land
+    on would be decoration.
+
+    **The correctness property worth re-checking after any timeline change:** where a marker
+    is DRAWN is block-relative (`beat - trimStart`), and where a split SNAPS is
+    timeline-absolute (`beat + startOffset - trimStart`). **Two mappings of one number, and
+    if they disagree the cut lands somewhere other than the tick it was aimed at.** Verified
+    against real detector output across four placements including offset and trimmed tracks.
+
+    **`components/BeatMarkers.js` caps at 240 ticks and nests them in groups of 16**, because
+    beats scale with content length exactly as Waveform's bars did - a 3-minute track is ~300
+    of them. See the O(n^2) sibling item above. 240 is well past legible on a 26px row at
+    40px/s (beats land ~24px apart at 100bpm), so the cap only bites where the extra ticks
+    are off-screen anyway. Its group wrapper fills the same box as the layer, which
+    **resembles the FilmStrip bug (`03557326`) and is not**: those tiles FLOWED, so a wrapper
+    narrower than the row truncated it, while these ticks each carry their own absolute
+    `left` measured from a group that fills the layer exactly. **Grouping is transparent for
+    absolutely-positioned children and not for flowing ones** - that is the distinction, not
+    whether the wrapper is positioned.
+
+    Premium, matching the clip-side `beats` tool and the real cost: ~6 seconds of a core per
+    track. Synchronous, like `/api/extract-audio` and unlike `/api/translate-video` - 5-7s
+    measured against nginx's 600s `proxy_read_timeout`.
+
+    **Untested on device.**
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
