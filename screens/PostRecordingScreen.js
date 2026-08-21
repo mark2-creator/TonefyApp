@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, StatusBar, TextInput
+  StyleSheet, StatusBar, TextInput, ActivityIndicator
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,9 +17,9 @@ import FilterSheet from '../components/FilterPicker';
 import AdjustSheet from '../components/AdjustSheet';
 import MotionPicker from '../components/MotionPicker';
 import EffectPicker from '../components/EffectPicker';
-import { resolveFilter, filterCss, filterSpec } from '../constants/filters';
-import { resolveEffect, effectCss, effectChain } from '../constants/effects';
-import { resolveMotion, motionChain } from '../constants/motions';
+import { FILTERS, resolveFilter, filterCss, filterSpec } from '../constants/filters';
+import { EFFECTS, resolveEffect, effectCss, effectChain } from '../constants/effects';
+import { MOTIONS, resolveMotion, motionChain } from '../constants/motions';
 import { adjustChain } from '../constants/adjustments';
 import { usePlan } from '../constants/plan';
 
@@ -46,12 +46,59 @@ export default function PostRecordingScreen({ navigation, route }) {
   const [effect, setEffect] = useState(route?.params?.effect || 'none');
   const [motion, setMotion] = useState('none');
   const [sheet, setSheet] = useState(null);   // 'filter' | 'adjust' | 'effect' | 'motion'
+  const [speed, setSpeed] = useState(1);
+  const [refining, setRefining] = useState(false);
   const [position, setPosition] = useState(0);
 
   const player = useVideoPlayer(uri || null, p => { if (p) p.loop = false; });
   const soonRef = useRef(null);
 
   const soon = (what) => showAlert(what, 'Coming soon.');
+
+  const SPEEDS = ['0.3', '0.5', '1', '1.5', '2', '3'];
+
+  // Describe the look, get the settings. The model PICKS FROM the catalogues rather
+  // than describing a look in prose - asked to invent, it returns ids that do not exist
+  // and the app then applies nothing, which reads as the request being ignored.
+  async function refineWithAI(text) {
+    const prompt = String(text || refinement || '').trim();
+    if (!prompt || refining) return;
+    setRefining(true);
+    try {
+      const token = await getAuth().currentUser?.getIdToken();
+      const r = await fetch(`${BACKEND}/api/suggest-look`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+          prompt,
+          filters: FILTERS.map(f => f.id),
+          effects: EFFECTS.map(e => e.id),
+          motions: MOTIONS.map(m => m.id),
+          speeds: SPEEDS,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Could not work that out.');
+
+      const applied = [];
+      if (d.filter) { setFilter(d.filter); applied.push(resolveFilter(d.filter).label); }
+      if (d.effect && d.effect !== 'none') { setEffect(d.effect); applied.push(resolveEffect(d.effect).label); }
+      if (d.motion && d.motion !== 'none') { setMotion(d.motion); applied.push(resolveMotion(d.motion).label); }
+      if (d.speed && Number(d.speed) !== 1) { setSpeed(Number(d.speed)); applied.push(`${d.speed}x speed`); }
+
+      // Nothing matched is a real answer, not a failure. Saying so beats leaving the
+      // screen unchanged and letting it look like the request was dropped.
+      showAlert(applied.length ? 'Applied' : 'Nothing matched',
+        applied.length
+          ? `${applied.join(', ')}. Tap Apply to render it.`
+          : 'Nothing in the catalogue matched that. Try naming a look, a mood or a speed.');
+      setRefinement('');
+    } catch (e) {
+      showAlert('Refine', e?.message || 'Could not reach the service.');
+    } finally {
+      setRefining(false);
+    }
+  }
 
   // The same live preview the editor canvas runs. RN 0.81's `filter` style compiles to
   // a ColorMatrixColorFilter on Android, so a grade and a colour effect show on the
@@ -113,7 +160,7 @@ export default function PostRecordingScreen({ navigation, route }) {
   const [applyPct, setApplyPct] = useState(0);
   const [applyMsg, setApplyMsg] = useState('');
 
-  const anythingChosen = filter !== 'None' || !!adjust || effect !== 'none' || motion !== 'none';
+  const anythingChosen = filter !== 'None' || !!adjust || effect !== 'none' || motion !== 'none' || speed !== 1;
 
   // Renders the choices onto the clip HERE, rather than handing it to another screen.
   // Same endpoint the editor exports through, and the same per-clip fields - so a grade
@@ -137,7 +184,7 @@ export default function PostRecordingScreen({ navigation, route }) {
       const body = {
         mediaItems: [{
           url: remote, type: 'video', trimStart: 0,
-          trimEnd: recordedSeconds || undefined, speed: 1,
+          trimEnd: recordedSeconds || undefined, speed,
           filter,
           filterSpec: [...(filterSpec(filter) || []), ...adjustChain(adjust)].slice(0, 20),
           motionSpec: motionChain(motion) || undefined,
@@ -168,7 +215,7 @@ export default function PostRecordingScreen({ navigation, route }) {
       // Raw now saves. The choices are cleared because they are baked in - leaving them
       // set would apply them a second time on a second pass.
       setEnhancedUri(`${BACKEND}${job.videoUrl}`);
-      setFilter('None'); setAdjust(null); setEffect('none'); setMotion('none');
+      setFilter('None'); setAdjust(null); setEffect('none'); setMotion('none'); setSpeed(1);
       showAlert('Done', 'Your recording has been enhanced.');
     } catch (e) {
       showAlert('Could not enhance', e?.message || 'Something went wrong.');
@@ -286,12 +333,14 @@ export default function PostRecordingScreen({ navigation, route }) {
               value={refinement}
               onChangeText={setRefinement}
             />
-            <TouchableOpacity style={styles.sendBtn} onPress={() => soon('Refine with AI')}>
-              <MaterialIcons name="send" size={20} color="#04211f" />
+            <TouchableOpacity style={styles.sendBtn} onPress={() => refineWithAI()} disabled={refining}>
+              {refining
+                ? <ActivityIndicator size="small" color="#04211f" />
+                : <MaterialIcons name="send" size={20} color="#04211f" />}
             </TouchableOpacity>
             <View style={styles.promptChips}>
               {['Enhance Blue Tones', 'Reduce Noise', 'Add Slow-mo'].map(p => (
-                <TouchableOpacity key={p} onPress={() => setRefinement(p)}
+                <TouchableOpacity key={p} onPress={() => refineWithAI(p)} disabled={refining}
                   style={[styles.promptChip, { borderColor: theme.border }]}>
                   <Text style={[styles.promptChipText, { color: '#fff' }]}>{p}</Text>
                 </TouchableOpacity>

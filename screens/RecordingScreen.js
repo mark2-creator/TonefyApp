@@ -51,6 +51,11 @@ export default function RecordingScreen({ navigation, route }) {
   const [facing, setFacing] = useState('back');
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  // The length is read AFTER the await below, and an await keeps the closure it started
+  // with - where seconds is 0, because setSeconds(0) is the first line of start(). The
+  // state is for drawing the timer; this ref is for reading it later.
+  const secondsRef = useRef(0);
+  secondsRef.current = seconds;
   // The recording promise has to be resolvable from stop(), which is a different call.
   const stoppingRef = useRef(false);
 
@@ -99,14 +104,14 @@ export default function RecordingScreen({ navigation, route }) {
       setRecording(false);
       stoppingRef.current = false;
       if (video?.uri) {
-        navigation.replace('PostRecording', { uri: video.uri, seconds, quality, filter, effect });
+        navigation.replace('PostRecording', { uri: video.uri, seconds: secondsRef.current, quality, filter, effect });
       }
     } catch (e) {
       setRecording(false);
       stoppingRef.current = false;
       showAlert('Recording', e?.message || 'The recording could not be saved.');
     }
-  }, [recording, navigation, seconds]);
+  }, [recording, navigation, quality, filter, effect]);
 
   const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
   const secs = String(seconds % 60).padStart(2, '0');
