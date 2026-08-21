@@ -142,6 +142,17 @@ export function captionMetrics(style, size, align = 'center') {
     fontSize: size,
     ...(family ? { fontFamily: family } : { fontWeight: 'bold' }),
     ...(style && style.spacing ? { letterSpacing: style.spacing * (size / 18) } : null),
+    // Line spacing, and ONLY when asked for. A lineHeight is deliberately absent by
+    // default - see the note in the renderer below: a fixed one clips the display faces
+    // with deep descenders, which is why this file never set one. Setting it on request
+    // is a different thing: too tight is then a choice the user can see and back off
+    // from, not a silent default that quietly crops Abril Fatface.
+    //
+    // 1.2 is RN's own approximate default leading, so lineSpacing 0 lands where the
+    // unset case already was. The extra is the same "points at the 18pt base" unit the
+    // server's -interline-spacing takes, so both sides move by the same amount.
+    ...(style && style.lineSpacing
+      ? { lineHeight: size * 1.2 + style.lineSpacing * (size / 18) } : null),
     textAlign: align,
   };
 }

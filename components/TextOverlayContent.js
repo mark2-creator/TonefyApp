@@ -28,8 +28,18 @@ function TextOverlayContent({
   // sheet does what it appears to.
   const captionStyle = overlay.captionStyleId ? resolveCaptionStyle(overlay.captionStyleId) : null;
   const renderStyle = useMemo(
-    () => (captionStyle && overlay.font ? { ...captionStyle, font: overlay.font } : captionStyle),
-    [captionStyle, overlay.font]
+    () => {
+      if (!captionStyle) return captionStyle;
+      // The overlay's own values win over the style's, which is what makes a style a
+      // starting point rather than a cage. Each is applied only when actually set, so
+      // an overlay that overrides nothing renders exactly as the catalogue says.
+      const over = {};
+      if (overlay.font) over.font = overlay.font;
+      if (overlay.spacing != null) over.spacing = overlay.spacing;
+      if (overlay.lineSpacing != null) over.lineSpacing = overlay.lineSpacing;
+      return Object.keys(over).length ? { ...captionStyle, ...over } : captionStyle;
+    },
+    [captionStyle, overlay.font, overlay.spacing, overlay.lineSpacing]
   );
   // undefined for 'Default' and for the legacy Bold/Italic/Mono values, which are
   // weight and slant on the system face rather than families of their own.

@@ -88,7 +88,16 @@ export default function ThumbnailScreen({ navigation }) {
   const [stageWidth, setStageWidth] = useState(FALLBACK_PREVIEW_WIDTH);
 
   const styleId = overlay?.captionStyleId || 'tiktok';
-  const spec = useMemo(() => resolveCaptionStyle(styleId), [styleId]);
+  const baseSpec = useMemo(() => resolveCaptionStyle(styleId), [styleId]);
+  // What actually goes to the server: the catalogue style with the overlay's own
+  // overrides folded in. TextOverlayContent folds the same ones for the preview, so the
+  // two agree by construction rather than by both being edited the same way.
+  const spec = useMemo(() => {
+    const over = {};
+    if (overlay?.spacing != null) over.spacing = overlay.spacing;
+    if (overlay?.lineSpacing != null) over.lineSpacing = overlay.lineSpacing;
+    return Object.keys(over).length ? { ...baseSpec, ...over } : baseSpec;
+  }, [baseSpec, overlay?.spacing, overlay?.lineSpacing]);
   const ratio = ASPECTS.find(a => a.id === aspect)?.ratio || 16 / 9;
 
   useEffect(() => {
@@ -489,6 +498,39 @@ export default function ThumbnailScreen({ navigation }) {
                 />
               ))}
             </View>
+
+            {/* Both are points at the app's 18pt base, the unit every other length in a
+                caption spec already uses, and both scale with the font size on the way
+                out. The style's own tracking is the starting value, so a style designed
+                wide stays wide until it is deliberately changed. */}
+            <Text style={styles.sliderLabel}>
+              Letter spacing · {(overlay.spacing ?? baseSpec.spacing ?? 0).toFixed(1)}
+            </Text>
+            <Slider
+              minimumValue={-1} maximumValue={8} step={0.1}
+              value={overlay.spacing ?? baseSpec.spacing ?? 0}
+              onValueChange={(v) => setOverlayFields({ spacing: Math.round(v * 10) / 10 })}
+              minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#2a2a2a" thumbTintColor="#00d4d4"
+            />
+
+            <Text style={styles.sliderLabel}>
+              Line spacing · {(overlay.lineSpacing ?? 0).toFixed(1)}
+            </Text>
+            <Slider
+              minimumValue={-4} maximumValue={16} step={0.5}
+              value={overlay.lineSpacing ?? 0}
+              onValueChange={(v) => setOverlayFields({ lineSpacing: Math.round(v * 2) / 2 })}
+              minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#2a2a2a" thumbTintColor="#00d4d4"
+            />
+            {/* Only reachable by having moved one of them, so it is never a control
+                offering to undo nothing. */}
+            {(overlay.spacing != null || overlay.lineSpacing != null) && (
+              <TouchableOpacity
+                style={styles.resetSpacing}
+                onPress={() => setOverlayFields({ spacing: null, lineSpacing: null })}>
+                <Text style={styles.resetSpacingText}>Reset spacing</Text>
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -614,6 +656,8 @@ const styles = StyleSheet.create({
   swatchMatch: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 15, backgroundColor: '#1a1a1a', borderWidth: 2, borderColor: '#2a2a2a' },
   swatchMatchText: { color: '#cfcfcf', fontSize: 11, fontWeight: '600' },
   swatchOn: { borderColor: '#2ECC71' },
+  resetSpacing: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 15, borderWidth: 1, borderColor: '#2a2a2a' },
+  resetSpacingText: { color: '#cfcfcf', fontSize: 11, fontWeight: '600' },
   input: { backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginTop: 10 },
   rowLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
