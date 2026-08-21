@@ -303,6 +303,66 @@ because it is a `FlatList` and virtualises; the timeline rows are safe because t
 one chip per item. Waveform and filmstrip were the two that scaled with *content length*
 rather than item count, which is the property to watch for.
 
+## Two flex traps that have each bitten twice
+
+**A horizontal chip row in a flex column needs all four of these**, and building one
+from scratch instead of copying a working one is how three of the four get written:
+
+```js
+row:     { flexGrow: 0, flexShrink: 0 }                    // on `style`
+content: { alignItems: 'center', paddingHorizontal: N }    // on `contentContainerStyle`
+```
+
+- `flexGrow: 0` - it must not expand to fill the sheet.
+- `flexShrink: 0` - and a long list below must not be able to **compress it to
+  nothing**. This is the one that gets forgotten. It emptied the music filter rows
+  under a 68-track list, and `RecipeSheet`'s category strip had the same omission under
+  a 128-tile FlatList.
+- `alignItems` on the **content** container - it defaults to `stretch`, so every chip
+  takes the row's height instead of defining it, and they come out clipped through the
+  middle rather than overflowing.
+- padding on the **content** container - on a horizontal ScrollView `style` is the
+  clipping box, so padding there shrinks what is visible instead of insetting it.
+
+First hit on `MyVideosScreen`'s filter chips (item 34), then reintroduced from scratch
+on the music filters Aug 21 2026. `grep -E "flexGrow: 0" | grep -v flexShrink` finds
+the shape.
+
+**`maxHeight` is not a definite height, so `flex: 1` inside it resolves to zero.** The
+music sheet is `maxHeight: '85%'`; giving its track list `flex: 1` emptied the list
+completely - the child has nothing to flex against, and because it then contributes
+nothing to the sheet's intrinsic height the sheet shrinks to fit everything else and
+the child stays at zero. A deadlock, not a clipping problem. A list inside a
+content-sized sheet should stay content-sized and let the sheet's own maxHeight do the
+clipping.
+
+Both bugs in that one row came from **adding one more thing than the situation needed**
+- `flexShrink: 0` alone had already fixed it, and the `flex: 1` added alongside was
+solving a problem that fix had already solved.
+
+## The music library
+
+68 tracks, and the honest state of them (Aug 21 2026):
+
+- **All 68 are 96 kbps**, which is the real audio quality problem and is not fixable
+  here. Re-encoding cannot restore what was never in the file, and **Mixkit and Pixabay
+  both return 403 to this VPS** - with browser headers too - so the originals cannot be
+  re-fetched. Better files have to come from a machine that is not blocked.
+- **Loudness is fine and does not need a normalisation pass** - 3.4 dB across all 68,
+  median -16 LUFS, already normalised at source. Measured before assuming.
+- **"Energy" does not discriminate anything** - every track sits between 0.14 and 0.18.
+  BPM does: 62 to 185.
+- Each track carries mood, tempo band, BPM and length, from
+  `scripts/analyse-music.py` -> `backend/music-meta.json`, read once at boot.
+  BPM is measured by onset autocorrelation (no librosa or aubio on this box); mood comes
+  from the track's own title where it says something, and from measured tempo where it
+  does not. **There is deliberately no fallback category** - the first version put 25 of
+  68 in "Corporate", including a 185bpm Valley Sunset.
+- Adding tracks: drop mp3s into `backend/public/music/`, re-run the script, restart.
+  Prefer **Pixabay Music** - CC0-equivalent, commercial use, no attribution, and no
+  redistribution restriction. **Avoid Epidemic Sound and Artlist**: their licences
+  forbid redistributing the files, which is what bundling them into an app does.
+
 ## Live preview on the canvas, and why no native module was bought
 
 **Confirmed working on device Aug 20 2026.** The editor canvas shows grades and camera
