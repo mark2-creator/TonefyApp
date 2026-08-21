@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const { width } = Dimensions.get('window');
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -82,7 +83,8 @@ export default function LandingScreen({ navigation }) {
             <MaterialIcons name="arrow-forward" size={18} color="#00391f" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.border }]} activeOpacity={0.85}
+          onPress={() => showAlert('Watch Demo', 'Coming soon.')}>
             <MaterialIcons name="play-circle" size={16} color={theme.subtext} />
             <Text style={[styles.secondaryBtnText, { color: theme.subtext }]}>Watch Demo</Text>
           </TouchableOpacity>
@@ -152,7 +154,8 @@ export default function LandingScreen({ navigation }) {
           >
             <Text style={styles.ctaBannerBtnText}>Get Started — It's Free</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.ctaBannerSecondary, { borderColor: theme.border }]} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.ctaBannerSecondary, { borderColor: theme.border }]} activeOpacity={0.85}
+            onPress={() => showAlert('Book a Demo', 'Coming soon.')}>
             <Text style={[styles.ctaBannerSecondaryText, { color: theme.text }]}>Book a Demo</Text>
           </TouchableOpacity>
           <Text style={[styles.ctaBannerNote, { color: theme.subtext }]}>No credit card required. Cancel anytime.</Text>

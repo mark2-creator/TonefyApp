@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { showAlert } from '../components/BrandedAlert';
 
 const QUALITIES = ['4K 60', '1080p 60', '720p 30'];
 const DURATIONS = ['15s', '60s', '3m'];
@@ -68,7 +69,9 @@ export default function RecordToVideoScreen({ navigation }) {
               <View style={styles.timerDot} />
               <Text style={styles.timerText}>00:00</Text>
             </View>
-            <TouchableOpacity style={styles.flipBtn}>
+            {/* The preview here is a placeholder, not a live camera - the real one is the
+              Recording screen. Flipping a still has nothing to flip. */}
+            <TouchableOpacity style={styles.flipBtn} onPress={() => showAlert('Flip camera', 'Start recording first - the camera opens on the next screen.')}>
               <MaterialIcons name="flip-camera-ios" size={20} color="#fff" />
             </TouchableOpacity>
             <View style={styles.modeSwitcher}>

@@ -21,6 +21,13 @@ DEFS = [
     re.compile(r'\bimport\s+(?:[A-Za-z0-9_$]+\s*,\s*)?\{([^}]*)\}', re.S),
     re.compile(r'\bfunction\s+([A-Z][A-Za-z0-9_]*)'),
     re.compile(r'\b(?:const|let|var)\s+([A-Z][A-Za-z0-9_]*)'),
+    # Destructured out of something at runtime, e.g. `const { CameraView } = Cam;` where
+    # Cam is a lazily required native module. That pattern is deliberate here - a native
+    # module cannot be imported at the top level if it might be missing from the installed
+    # binary - so a checker that flags it reports an error on every correct use of the
+    # rule this project already follows. A check that is always red is a check nobody
+    # reads.
+    re.compile(r'\b(?:const|let|var)\s*\{([^}]*)\}\s*='),
     re.compile(r'\bclass\s+([A-Z][A-Za-z0-9_]*)'),
     re.compile(r'\bas\s+([A-Z][A-Za-z0-9_]*)'),
 ]

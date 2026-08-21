@@ -8,6 +8,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import * as Clipboard from 'expo-clipboard';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { VOICES } from '../constants/voices';
 import VoicePicker from '../components/VoicePicker';
 import VoiceAvatar from '../components/VoiceAvatar';
@@ -21,6 +24,33 @@ export default function ScriptToAudioScreen({ navigation, route }) {
   // Prefilled when arriving from Edit Script on the result screen, so a reworded
   // line keeps the voice it was written for instead of resetting to the default.
   const [script, setScript] = useState(route?.params?.script || '');
+
+  // Paste and Upload were drawn and wired to nothing. Both are ordinary: the clipboard
+  // is one call, and a script is a text file.
+  async function pasteScript() {
+    try {
+      const text = await Clipboard.getStringAsync();
+      if (!text?.trim()) { showAlert('Paste', 'There is no text on your clipboard.'); return; }
+      // Appended rather than replacing, so a paste cannot silently discard what is
+      // already typed.
+      setScript(prev => (prev ? `${prev.trimEnd()}\n${text.trim()}` : text.trim()));
+    } catch (e) {
+      showAlert('Paste', e?.message || 'Could not read the clipboard.');
+    }
+  }
+
+  async function uploadScript() {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const text = new File(res.assets[0].uri).textSync();
+      if (!text?.trim()) { showAlert('Upload', 'That file has no text in it.'); return; }
+      // A script long enough to be a book is a paste accident, not a voiceover.
+      setScript(text.trim().slice(0, 20000));
+    } catch (e) {
+      showAlert('Upload', 'Could not read that file. A plain .txt works best.');
+    }
+  }
   const [pace, setPace] = useState(1.0);
   const [pitch, setPitch] = useState(0);
   const [voiceId, setVoiceId] = useState(route?.params?.voiceId || 'gtts-us');
@@ -86,11 +116,11 @@ export default function ScriptToAudioScreen({ navigation, route }) {
           />
           <View style={[styles.inputToolbar, { borderTopColor: theme.border, backgroundColor: isDark ? 'rgba(14,14,14,0.5)' : 'rgba(0,0,0,0.03)' }]}>
             <View style={styles.inputBtns}>
-              <TouchableOpacity style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
+              <TouchableOpacity onPress={pasteScript} style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
                 <MaterialIcons name="content-paste" size={16} color={theme.text} />
                 <Text style={[styles.inputBtnText, { color: theme.text }]}>Paste</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
+              <TouchableOpacity onPress={uploadScript} style={[styles.inputBtn, { backgroundColor: theme.divider }]}>
                 <MaterialIcons name="upload-file" size={16} color={theme.text} />
                 <Text style={[styles.inputBtnText, { color: theme.text }]}>Upload</Text>
               </TouchableOpacity>

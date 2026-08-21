@@ -1,93 +1,188 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, Animated
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showAlert } from '../components/BrandedAlert';
 
-const BAR_COUNT = 40;
+// A real camera, replacing a screen that had none.
+//
+// This used to draw a grey rectangle, animate forty random bars, count a timer that was
+// just a setInterval, and hand PostRecording nothing at all - so "Record" produced no
+// file and the screen after it had no video to show. Every control here except Close
+// was decoration.
+//
+// expo-camera is required lazily inside a try, and every entry point copes with it being
+// absent, per the rule in CLAUDE.md: a native module cannot ship over the air, and a
+// top-level import of one that is not in the installed binary takes the app down at
+// launch rather than degrading. It has been in package.json since e81870f0 and its own
+// AndroidManifest merges CAMERA and RECORD_AUDIO in - which is why no permission had to
+// be hand-added to a manifest no config plugin ever touches - but "should be there" is
+// not a reason to import it eagerly.
+function getCamera() {
+  try {
+    return require('expo-camera');
+  } catch (e) {
+    return null;
+  }
+}
+
+const MAX_SECONDS = 15 * 60;
 
 export default function RecordingScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const Cam = useRef(getCamera()).current;
+  const cameraRef = useRef(null);
+
+  const [ready, setReady] = useState(false);
+  const [granted, setGranted] = useState(null);   // null = still asking
+  const [facing, setFacing] = useState('back');
+  const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const bars = useRef([...Array(BAR_COUNT)].map(() => new Animated.Value(10))).current;
+  // The recording promise has to be resolvable from stop(), which is a different call.
+  const stoppingRef = useRef(false);
 
   useEffect(() => {
-    if (paused) return;
+    if (!Cam) { setGranted(false); return; }
+    (async () => {
+      try {
+        const cam = await Cam.Camera.requestCameraPermissionsAsync();
+        const mic = await Cam.Camera.requestMicrophonePermissionsAsync();
+        setGranted(!!cam?.granted && !!mic?.granted);
+      } catch (e) {
+        setGranted(false);
+      }
+    })();
+  }, [Cam]);
+
+  // The timer counts only while the camera is actually recording, rather than from the
+  // moment the screen opened - the old one started on mount and never stopped.
+  useEffect(() => {
+    if (!recording) return undefined;
     const t = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(t);
-  }, [paused]);
+  }, [recording]);
 
+  const stop = useCallback(() => {
+    if (!recording || stoppingRef.current) return;
+    stoppingRef.current = true;
+    try { cameraRef.current?.stopRecording(); } catch (e) {}
+  }, [recording]);
+
+  // A cap, so a recording left running does not fill the phone. 15 minutes at 1080p is
+  // already about 1.5GB.
   useEffect(() => {
-    bars.forEach((bar, i) => {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(bar, { toValue: Math.random() * 60 + 10, duration: 100 + i * 2, useNativeDriver: false }),
-          Animated.timing(bar, { toValue: 10, duration: 100 + i * 2, useNativeDriver: false }),
-        ])
-      );
-      setTimeout(() => loop.start(), i * 20);
-    });
-  }, []);
+    if (recording && seconds >= MAX_SECONDS) stop();
+  }, [recording, seconds, stop]);
+
+  const start = useCallback(async () => {
+    if (!cameraRef.current || recording) return;
+    setSeconds(0);
+    setRecording(true);
+    stoppingRef.current = false;
+    try {
+      // Resolves when stopRecording() is called, not when this returns.
+      const video = await cameraRef.current.recordAsync();
+      setRecording(false);
+      stoppingRef.current = false;
+      if (video?.uri) {
+        navigation.replace('PostRecording', { uri: video.uri, seconds });
+      }
+    } catch (e) {
+      setRecording(false);
+      stoppingRef.current = false;
+      showAlert('Recording', e?.message || 'The recording could not be saved.');
+    }
+  }, [recording, navigation, seconds]);
 
   const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
   const secs = String(seconds % 60).padStart(2, '0');
 
+  if (!Cam || granted === false) {
+    return (
+      <View style={[styles.container, styles.centerAll, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+        <MaterialIcons name="videocam-off" size={40} color="#5a5a5a" />
+        <Text style={styles.blockedTitle}>
+          {Cam ? 'Camera access is off' : 'Recording needs a newer build'}
+        </Text>
+        <Text style={styles.blockedBody}>
+          {Cam
+            ? 'Allow camera and microphone access in Settings to record.'
+            : 'This version of the app was built without the camera. Update from the Play Store.'}
+        </Text>
+        <TouchableOpacity style={styles.blockedBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.blockedBtnText}>Go back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const { CameraView } = Cam;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" translucent />
-      <View style={styles.cameraBg} />
-      <View style={styles.gradientTop} />
-      <View style={styles.gradientBottom} />
+
+      {granted === null ? (
+        <View style={[styles.centerAll, StyleSheet.absoluteFill]}>
+          <ActivityIndicator color="#2ecc71" />
+        </View>
+      ) : (
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing={facing}
+          // Video, not photo: recordAsync is unavailable in the default picture mode.
+          mode="video"
+          onCameraReady={() => setReady(true)}
+        />
+      )}
+
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => (recording ? stop() : navigation.goBack())}>
           <MaterialIcons name="close" size={24} color="#e5e2e1" />
         </TouchableOpacity>
-        <View style={styles.timerBox}>
-          <View style={styles.redDot} />
-          <Text style={styles.timer}>{mins}:{secs}</Text>
-        </View>
-        <TouchableOpacity style={styles.iconBtn}>
-          <MaterialIcons name="settings" size={24} color="#e5e2e1" />
-        </TouchableOpacity>
+        {recording && (
+          <View style={styles.timerBox}>
+            <View style={styles.redDot} />
+            <Text style={styles.timer}>{mins}:{secs}</Text>
+          </View>
+        )}
+        <View style={{ width: 44 }} />
       </View>
-      <View style={styles.aiLabel}>
-        <MaterialIcons name="auto-awesome" size={14} color="#2ecc71" />
-        <Text style={styles.aiLabelText}>Tonefy AI analyzing frequencies...</Text>
-      </View>
-      <View style={styles.center}>
-        <View style={styles.recordGlow} />
-        <TouchableOpacity style={styles.stopBtn} onPress={() => navigation.replace('PostRecording')}>
-          <MaterialIcons name="stop" size={40} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.recordRing} />
-      </View>
+
       <View style={[styles.bottom, { paddingBottom: insets.bottom || 20 }]}>
-        <View style={styles.waveform}>
-          {bars.map((bar, i) => (
-            <Animated.View key={i} style={[styles.waveBar, { height: bar }]} />
-          ))}
-        </View>
         <View style={styles.controls}>
           <View style={styles.controlItem}>
-            <TouchableOpacity style={styles.controlBtn} onPress={() => setPaused(!paused)}>
-              <MaterialIcons name={paused ? 'play-arrow' : 'pause'} size={28} color="#e5e2e1" />
-            </TouchableOpacity>
-            <Text style={styles.controlLabel}>{paused ? 'Resume' : 'Pause'}</Text>
-          </View>
-          <View style={styles.controlItem}>
-            <TouchableOpacity style={styles.finishBtn} onPress={() => navigation.replace('PostRecording')}>
-              <MaterialIcons name="check" size={36} color="#003919" />
-            </TouchableOpacity>
-            <Text style={[styles.controlLabel, { color: '#2ecc71' }]}>Finish</Text>
-          </View>
-          <View style={styles.controlItem}>
-            <TouchableOpacity style={styles.controlBtn}>
-              <MaterialIcons name="flip-camera-ios" size={28} color="#e5e2e1" />
+            {/* Flipping mid-recording restarts the encoder on most devices, so it is
+                only offered between takes. */}
+            <TouchableOpacity
+              style={[styles.controlBtn, recording && styles.controlBtnOff]}
+              disabled={recording}
+              onPress={() => setFacing(f => (f === 'back' ? 'front' : 'back'))}>
+              <MaterialIcons name="flip-camera-ios" size={28} color={recording ? '#5a5a5a' : '#e5e2e1'} />
             </TouchableOpacity>
             <Text style={styles.controlLabel}>Flip</Text>
+          </View>
+
+          <View style={styles.controlItem}>
+            <TouchableOpacity
+              style={[styles.recordBtn, recording && styles.recordBtnOn]}
+              disabled={!ready}
+              onPress={() => (recording ? stop() : start())}>
+              <MaterialIcons name={recording ? 'stop' : 'fiber-manual-record'} size={recording ? 34 : 44}
+                color={recording ? '#fff' : '#ff4444'} />
+            </TouchableOpacity>
+            <Text style={[styles.controlLabel, recording && { color: '#ff4444' }]}>
+              {recording ? 'Stop' : ready ? 'Record' : 'Starting…'}
+            </Text>
+          </View>
+
+          <View style={styles.controlItem}>
+            <View style={styles.controlBtnGhost} />
+            <Text style={[styles.controlLabel, { opacity: 0 }]}>.</Text>
           </View>
         </View>
       </View>
@@ -97,26 +192,23 @@ export default function RecordingScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  cameraBg: { ...StyleSheet.absoluteFillObject, backgroundColor: '#111' },
-  gradientTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 200, backgroundColor: 'rgba(0,0,0,0.6)' },
-  gradientBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 300, backgroundColor: 'rgba(0,0,0,0.8)' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16, zIndex: 10 },
-  iconBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(20,20,20,0.7)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1e1e1e' },
-  timerBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(20,20,20,0.7)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#1e1e1e' },
+  centerAll: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8 },
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  timerBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   redDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff4444' },
-  timer: { color: '#e5e2e1', fontSize: 22, fontWeight: '700' },
-  aiLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', backgroundColor: 'rgba(46,204,113,0.1)', borderWidth: 1, borderColor: 'rgba(46,204,113,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, zIndex: 10 },
-  aiLabelText: { color: '#2ecc71', fontSize: 11, fontWeight: '500' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  recordGlow: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,68,68,0.12)' },
-  stopBtn: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#ff4444', alignItems: 'center', justifyContent: 'center' },
-  recordRing: { position: 'absolute', width: 120, height: 120, borderRadius: 60, borderWidth: 2, borderColor: 'rgba(255,68,68,0.3)' },
-  bottom: { paddingHorizontal: 20, zIndex: 10 },
-  waveform: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 3, height: 70, marginBottom: 20, overflow: 'hidden' },
-  waveBar: { width: 4, backgroundColor: '#2ecc71', borderRadius: 4, opacity: 0.7 },
-  controls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingBottom: 10 },
+  timer: { color: '#fff', fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 16, backgroundColor: 'rgba(0,0,0,0.35)' },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   controlItem: { alignItems: 'center', gap: 6 },
-  controlBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(20,20,20,0.7)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1e1e1e' },
-  finishBtn: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#2ecc71', alignItems: 'center', justifyContent: 'center', shadowColor: '#2ecc71', shadowOpacity: 0.4, shadowRadius: 20 },
-  controlLabel: { color: '#888', fontSize: 11, fontWeight: '500' },
+  controlBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  controlBtnOff: { backgroundColor: 'rgba(255,255,255,0.05)' },
+  controlBtnGhost: { width: 52, height: 52 },
+  controlLabel: { color: '#e5e2e1', fontSize: 11, fontWeight: '600' },
+  recordBtn: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 4, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  recordBtnOn: { backgroundColor: '#ff4444', borderColor: '#fff' },
+  blockedTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: 6 },
+  blockedBody: { color: '#fff', opacity: 0.7, fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  blockedBtn: { marginTop: 14, paddingHorizontal: 22, paddingVertical: 11, borderRadius: 999, backgroundColor: '#2ecc71' },
+  blockedBtnText: { color: '#04211f', fontWeight: '700' },
 });

@@ -1,20 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, StatusBar, Switch, TextInput
+  StyleSheet, StatusBar, TextInput
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { saveVideoToDevice } from '../utils/saveVideo';
+import { showAlert } from '../components/BrandedAlert';
+import ProgressButton from '../components/ProgressButton';
 
-export default function PostRecordingScreen({ navigation }) {
+export default function PostRecordingScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [noiseReduction, setNoiseReduction] = useState(true);
-  const [faceRetouch, setFaceRetouch] = useState(false);
-  const [autoLevels, setAutoLevels] = useState(true);
-  const [eyeContact, setEyeContact] = useState(false);
+  // The clip that was just recorded. This screen used to receive nothing at all and
+  // drew a videocam icon on a grey rectangle in place of the footage.
+  const uri = route?.params?.uri || null;
+  const recordedSeconds = Number(route?.params?.seconds) || 0;
   const [refinement, setRefinement] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savePct, setSavePct] = useState(0);
+
+  const player = useVideoPlayer(uri || null, p => { if (p) p.loop = false; });
+  const soonRef = useRef(null);
+
+  const soon = (what) => showAlert(what, 'Coming soon.');
+
+  async function saveRaw() {
+    if (!uri || saving) return;
+    setSaving(true); setSavePct(0);
+    try {
+      const { method } = await saveVideoToDevice(uri, { prompt: 'Tonefy recording' }, setSavePct);
+      if (method === 'gallery') showAlert('Saved', 'The recording is in your gallery.');
+    } catch (e) {
+      showAlert('Save failed', e?.message || 'Could not save the recording.');
+    } finally { setSaving(false); }
+  }
+
+  function openInEditor() {
+    if (!uri) return;
+    // The editor already knows how to take a clip handed to it this way.
+    navigation.navigate('EditVideo', { useVideo: { uri, seconds: recordedSeconds } });
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
@@ -34,42 +62,48 @@ export default function PostRecordingScreen({ navigation }) {
               <View style={styles.rawDot} />
               <Text style={styles.rawBadgeText}>RAW PREVIEW</Text>
             </View>
-            <MaterialIcons name="videocam" size={48} color="#1a1a1a" />
-            <TouchableOpacity style={styles.fullscreenBtn}>
-              <MaterialIcons name="fullscreen" size={20} color="#fff" />
-            </TouchableOpacity>
+            {uri ? (
+              // expo-video's own controls, rather than a play button and a timecode of
+              // "0:12 / 0:45" that were painted on and wired to nothing.
+              <VideoView player={player} style={StyleSheet.absoluteFill}
+                nativeControls allowsFullscreen contentFit="contain" />
+            ) : (
+              <>
+                <MaterialIcons name="videocam-off" size={40} color="#333" />
+                <Text style={styles.noClipText}>No recording to show.</Text>
+              </>
+            )}
           </View>
-          <View style={styles.timeline}>
-            <View style={[styles.timelineTrack, { backgroundColor: theme.border }]}>
-              <View style={styles.timelineFill} />
-            </View>
-          </View>
-          <View style={styles.playRow}>
-            <View style={styles.playLeft}>
-              <TouchableOpacity><MaterialIcons name="play-arrow" size={24} color={theme.text} /></TouchableOpacity>
-              <Text style={[styles.timeCode, { color: theme.subtext }]}>0:12 / 0:45</Text>
-            </View>
-            <View style={styles.playRight}>
-              <TouchableOpacity><MaterialIcons name="volume-up" size={20} color={theme.icon} /></TouchableOpacity>
-              <TouchableOpacity><MaterialIcons name="settings" size={20} color={theme.icon} /></TouchableOpacity>
-            </View>
-          </View>
+          {/* The scrubber, play button, timecode and volume/settings icons that used to
+              sit here were all painted on - none had a handler and the timecode was the
+              literal string "0:12 / 0:45". The player above has real ones. */}
         </View>
 
         {/* Quick Edit Toggles */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUICK EDITS</Text>
+          {/* These were four Switches bound to four useStates that nothing anywhere
+              read - flicking one changed a boolean and then nothing. Dimmed and
+              labelled, per the rule that an unbuilt control must not look live.
+              Reduce noise genuinely exists, but on a clip in the editor rather than as
+              a toggle here, so it points there instead of claiming to do it. */}
           <View style={[styles.toggleGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {[
-              { label: 'Noise Reduction', value: noiseReduction, set: setNoiseReduction },
-              { label: 'Face Retouch', value: faceRetouch, set: setFaceRetouch },
-              { label: 'Auto-Levels', value: autoLevels, set: setAutoLevels },
-              { label: 'Eye Contact Fix', value: eyeContact, set: setEyeContact },
+              { label: 'Noise Reduction', where: 'editor' },
+              { label: 'Face Retouch', where: 'soon' },
+              { label: 'Auto-Levels', where: 'soon' },
+              { label: 'Eye Contact Fix', where: 'soon' },
             ].map(item => (
-              <View key={item.label} style={styles.toggleItem}>
-                <Text style={[styles.toggleItemLabel, { color: theme.text }]}>{item.label}</Text>
-                <Switch value={item.value} onValueChange={item.set} trackColor={{ false: '#333', true: '#2ECC71' }} thumbColor="#fff" />
-              </View>
+              <TouchableOpacity
+                key={item.label}
+                style={styles.toggleItem}
+                onPress={() => (item.where === 'editor'
+                  ? showAlert(item.label, 'Open this clip in the editor and use Reduce noise on it.')
+                  : soon(item.label))}
+              >
+                <Text style={[styles.toggleItemLabel, { color: '#5a5a5a' }]}>{item.label}</Text>
+                <Text style={styles.soonTag}>{item.where === 'editor' ? 'IN EDITOR' : 'SOON'}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -87,12 +121,13 @@ export default function PostRecordingScreen({ navigation }) {
               { icon: 'bolt', label: 'Turn into motivational video' },
               { icon: 'movie', label: 'Add cinematic B-roll' },
             ].map(s => (
-              <TouchableOpacity key={s.label} style={[styles.suggestionBtn, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+              <TouchableOpacity key={s.label} onPress={() => soon(s.label)}
+                style={[styles.suggestionBtn, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <View style={styles.suggestionLeft}>
-                  <MaterialIcons name={s.icon} size={20} color={theme.text} />
-                  <Text style={[styles.suggestionText, { color: theme.text }]}>{s.label}</Text>
+                  <MaterialIcons name={s.icon} size={20} color="#5a5a5a" />
+                  <Text style={[styles.suggestionText, { color: '#5a5a5a' }]}>{s.label}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+                <Text style={styles.soonTag}>SOON</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -110,12 +145,13 @@ export default function PostRecordingScreen({ navigation }) {
               value={refinement}
               onChangeText={setRefinement}
             />
-            <TouchableOpacity style={styles.sendBtn}>
+            <TouchableOpacity style={styles.sendBtn} onPress={() => soon('Refine with AI')}>
               <MaterialIcons name="send" size={20} color="#04211f" />
             </TouchableOpacity>
             <View style={styles.promptChips}>
               {['Enhance Blue Tones', 'Reduce Noise', 'Add Slow-mo'].map(p => (
-                <TouchableOpacity key={p} style={[styles.promptChip, { borderColor: theme.border }]}>
+                <TouchableOpacity key={p} onPress={() => setRefinement(p)}
+                  style={[styles.promptChip, { borderColor: theme.border }]}>
                   <Text style={[styles.promptChipText, { color: theme.subtext }]}>{p}</Text>
                 </TouchableOpacity>
               ))}
@@ -125,19 +161,32 @@ export default function PostRecordingScreen({ navigation }) {
 
         {/* Actions */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.enhanceBtn}>
+          {/* The primary action is the editor, where the tools this screen only named
+              actually exist - filters, motion, effects, captions and Reduce noise. It
+              was "Enhance with AI" and did nothing. */}
+          <TouchableOpacity style={styles.enhanceBtn} onPress={openInEditor} disabled={!uri}>
             <MaterialIcons name="auto-fix-high" size={20} color="#04211f" />
-            <Text style={styles.enhanceBtnText}>Enhance with AI</Text>
+            <Text style={styles.enhanceBtnText}>Edit this clip</Text>
           </TouchableOpacity>
           <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => navigation.replace('Recording')}>
               <MaterialIcons name="refresh" size={20} color={theme.text} />
               <Text style={[styles.actionBtnText, { color: theme.text }]}>Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <MaterialIcons name="download" size={20} color={theme.text} />
-              <Text style={[styles.actionBtnText, { color: theme.text }]}>Save Raw</Text>
-            </TouchableOpacity>
+            <ProgressButton
+              variant="outline"
+              label={saving ? `${savePct}%` : 'Save Raw'}
+              progress={savePct}
+              busy={saving}
+              borderColor={theme.border}
+              textColor={theme.text}
+              icon="download"
+              style={styles.saveRawBtn}
+              labelStyle={styles.saveRawLabel}
+              onPress={saveRaw}
+            />
           </View>
         </View>
 
@@ -180,6 +229,10 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 10, fontWeight: '700', color: '#555', letterSpacing: 2, marginBottom: 10 },
   toggleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a' },
   toggleItem: { width: '46%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  soonTag: { color: '#5a5a5a', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  noClipText: { color: '#5a5a5a', fontSize: 12, marginTop: 6 },
+  saveRawBtn: { flex: 1, minHeight: 46, borderRadius: 10 },
+  saveRawLabel: { fontSize: 13 },
   toggleItemLabel: { color: '#cfcfcf', fontSize: 12, flex: 1 },
   aiCard: { backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a', gap: 10 },
   aiCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },

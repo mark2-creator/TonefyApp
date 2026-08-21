@@ -209,7 +209,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.bannerContent}>
             <Text style={styles.bannerTag}>FEATURED TOOL</Text>
             <Text style={[styles.bannerTitle, { color: theme.text }]}>AI Avatar{'\n'}Generation</Text>
-            <TouchableOpacity style={styles.bannerBtn}>
+            <TouchableOpacity style={styles.bannerBtn} onPress={() => showAlert('AI Avatar Generation', 'Coming soon.')}>
               <Text style={styles.bannerBtnText}>Explore Beta</Text>
             </TouchableOpacity>
           </View>

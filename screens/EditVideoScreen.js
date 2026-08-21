@@ -4235,9 +4235,9 @@ export default function EditVideoScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
           <MaterialIcons name="close" size={24} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.topBtn}>
-          <MaterialIcons name="search" size={24} color="#fff" />
-        </TouchableOpacity>
+        {/* Search was an icon with no handler and nothing to search - the timeline is a
+            handful of clips you can already see. Removed rather than given a
+            "Coming soon", because there is no feature intended behind it. */}
         <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.qualityBtn} onPress={() => setShowResModal(true)}>
           <MaterialIcons name="diamond" size={14} color="#00d4d4" />
