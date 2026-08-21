@@ -42,6 +42,7 @@ import StickerSheet, { stickerUri } from '../components/StickerPicker';
 import BackgroundSheet from '../components/BackgroundSheet';
 import CropSheet from '../components/CropSheet';
 import AudioFxSheet from '../components/AudioFxSheet';
+import BeatMarkers from '../components/BeatMarkers';
 import { DEFAULT_BACKGROUND, normaliseBackground } from '../constants/background';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
@@ -483,7 +484,7 @@ const AUDIO_TOOLS = [
   { key: 'fade', icon: 'gradient', label: 'Fade' },
   { key: 'volume', icon: 'volume-up', label: 'Volume' },
   { key: 'more', icon: 'more-horiz', label: 'More' },
-  { key: 'beatsync', icon: 'av-timer', label: 'Beat Sync' },
+  { key: 'beatsync', icon: 'av-timer', label: 'Beat Sync', premium: true },
   { key: 'audiofx', icon: 'equalizer', label: 'Effects', premium: true },
   { key: 'enhance', icon: 'auto-fix-high', label: 'Enhance voice', premium: true },
   { key: 'captions', icon: 'closed-caption', label: 'Captions' },
@@ -836,6 +837,14 @@ const AudioTrackRow = React.memo(function AudioTrackRow({
                   is actually under it - the old one was a fixed 3px per sample and
                   simply got clipped. */}
               <Waveform peaks={waveformCache[track.key]} width={trackW - 16} height={12} />
+              {/* Over the waveform rather than beside it: a beat is a moment IN this
+                  audio, and a separate lane would make the reader match two rows up. */}
+              <BeatMarkers
+                beats={track.beats}
+                trimStart={track.trimStart || 0}
+                width={trackW}
+                pixelsPerSecond={PIXELS_PER_SECOND}
+              />
             </TouchableOpacity>
           </DraggableAudioTrack>
         ))}
@@ -2239,6 +2248,27 @@ export default function EditVideoScreen({ navigation, route }) {
     setSelectedKey(prevKey => prevKey === key ? null : prevKey);
   }, []);
 
+  // The nearest beat to a timeline second, across every track that has been analysed,
+  // or null if none is close enough.
+  //
+  // Beats are stored against the SOURCE FILE, so each one has to be mapped through the
+  // track's own placement to become a timeline second: startOffset moves the whole track
+  // and trimStart says which part of the file the block begins at. Reading the raw beat
+  // time would work only for an untrimmed track sitting at 0:00.
+  const BEAT_SNAP = 0.12;
+  function nearestBeat(t) {
+    let best = null, bestD = BEAT_SNAP;
+    for (const track of audioTracks) {
+      if (!track.beats?.length) continue;
+      const off = (track.startOffset || 0) - (track.trimStart || 0);
+      for (const b of track.beats) {
+        const d = Math.abs(b + off - t);
+        if (d < bestD) { bestD = d; best = b + off; }
+      }
+    }
+    return best;
+  }
+
   function splitAtPlayhead() {
     if (!selectedItem) { showAlert('Split', 'Select a clip first.'); return; }
     const idx = items.findIndex(i => i.key === selectedKey);
@@ -2250,7 +2280,15 @@ export default function EditVideoScreen({ navigation, route }) {
     let clipStart = 0;
     for (let i = 0; i < idx; i += 1) clipStart += clipLength(items[i]);
     const len = clipLength(selectedItem);
-    const into = positionRef.current - clipStart;
+    // Snap to the beat if one is near. Markers you can see but not land on are
+    // decoration - this is what makes Beat Sync an edit rather than a readout.
+    //
+    // 0.12s either side, which is under a sixteenth note at 120bpm, so the snap can
+    // never cross to the wrong beat at any tempo this detects (60-180 BPM puts beats
+    // at least 0.33s apart). Below that it is a correction, not a hijack: a deliberate
+    // cut somewhere else stays where it was put.
+    const at = nearestBeat(positionRef.current) ?? positionRef.current;
+    const into = at - clipStart;
     if (!(into > MIN_CLIP_DUR && into < len - MIN_CLIP_DUR)) {
       showAlert('Split', 'Move the playhead inside this clip first.');
       return;
@@ -2802,6 +2840,53 @@ export default function EditVideoScreen({ navigation, route }) {
     setVoiceoverTracks(prev => prev.filter(t => t.key !== track.key));
     setShowVoiceoverModal(false);
     attachAudioSource(tagged);
+  }
+
+  // Beat detection for an audio track.
+  //
+  // The server returns a beat GRID plus how periodic the audio actually was. `strength`
+  // is reported rather than used as a gate there, on purpose - so the decision about
+  // what to tell someone whose track has no beat in it is made HERE, where there is a
+  // user to tell. Spoken word measures around 0.1; music with a real pulse measures
+  // 0.44-0.86. Below the threshold the grid is still stored, because a weak reading is
+  // not always a wrong one, but the message says plainly not to trust it.
+  const WEAK_BEAT = 0.25;
+  async function detectBeats(trackKey) {
+    const track = audioTracks.find(t => t.key === trackKey);
+    if (!track) return;
+    if (!isPremium) {
+      promptUpgrade('Beat Sync', 'Beat Sync is available on the Pro and Creator plans.');
+      return;
+    }
+    const url = track.remoteUrl;
+    if (!url) {
+      // A track picked from the device has not been uploaded until an export sends it,
+      // and the server cannot analyse what it has never received. Saying so beats a 404.
+      showAlert('Beat Sync', 'This track has not finished uploading yet. Try again in a moment.');
+      return;
+    }
+    try {
+      setUploading(true); setProgress(0); setMessage('Finding the beat...');
+      const res = await apiFetch('/api/detect-beats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.replace(BACKEND, '') }),
+      });
+      const data = await readJson(res);
+      if (data.error || !data.beats) throw new Error(data.error || 'Could not find a beat in this track.');
+
+      setTrackField(trackKey, { beats: data.beats, bpm: data.bpm });
+      setUploading(false);
+      showAlert(
+        'Beat Sync',
+        data.strength < WEAK_BEAT
+          ? `This track has no strong beat - the marks are a best guess at ${Math.round(data.bpm)} BPM and may not line up.`
+          : `${data.beats.length} beats marked at ${Math.round(data.bpm)} BPM. Split a clip near a mark and the cut lands on it.`
+      );
+    } catch (e) {
+      setUploading(false);
+      showAlert('Beat Sync', e.message || 'Could not find a beat in this track.');
+    }
   }
 
   async function loadMusicLibrary() {
@@ -4258,6 +4343,7 @@ export default function EditVideoScreen({ navigation, route }) {
     captions: openCaptionModal,
     fade: () => setFadeSheetKey(selectedAudioTrackKey),
     audiofx: () => selectedAudioTrackKey && setAudioFxTarget(selectedAudioTrackKey),
+    beatsync: () => selectedAudioTrackKey && detectBeats(selectedAudioTrackKey),
     slip: () => setSlipSheetKey(selectedAudioTrackKey),
   };
 
