@@ -489,6 +489,9 @@ const AUDIO_TOOLS = [
 const FILTERS = ['None','Bright','Contrast','Warm','Cool','Fade','B&W'];
 // Measured bands, not adjectives: slow <=80, medium <=110, upbeat <=139, fast above.
 const MUSIC_TEMPOS = ['Any', 'Slow', 'Medium', 'Upbeat', 'Fast'];
+// How long to hold the last frame. Capped at 5 on both sides - the server clamps it
+// too, because this is duration invented after the credit check counted the clip.
+const FREEZE_SECONDS = [0, 1, 2, 3, 5];
 const SPEEDS = [0.3, 0.5, 1, 1.5, 2, 3];
 const TEXT_COLORS = ['#fff','#000','#ff0','#f00','#0f0','#00f','#f0f','#0ff'];
 // A colour mixed on the picker is worth keeping - the next overlay almost always
@@ -2556,6 +2559,9 @@ export default function EditVideoScreen({ navigation, route }) {
         motionBlur: !!items[i].motionBlur,
         stabilize: !!items[i].stabilize,
         enhanceVoice: !!items[i].enhanceVoice,
+        // Seconds of held final frame. The server clamps it to 5 - it is duration the
+        // client asks the server to invent, and duration the credit check did not count.
+        freezeEnd: Number(items[i].freezeEnd) || 0,
         crop: items[i].crop || null,
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
@@ -3874,6 +3880,13 @@ export default function EditVideoScreen({ navigation, route }) {
     filters: () => setShowFilterSheet(true),
     motion: () => setShowMotionSheet(true),
     effect: () => setShowEffectSheet(true),
+    freeze: () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') {
+        return showAlert('Freeze', 'A photo is already a held frame. Drag its edge to hold it longer.');
+      }
+      setChipPicker('freeze');
+    },
     enhancevoice: () => {
       if (!selectedItem) return;
       if (selectedItem.type === 'image') {
@@ -4071,7 +4084,7 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }, [items, selectedKey]);
 
-  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize', enhancevoice: 'enhanceVoice' };
+  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize', enhancevoice: 'enhanceVoice', freeze: 'freezeEnd' };
 
   // Unlike toggleFlip above these go through pushHistory, so they undo. They change
   // what the export renders rather than only how the preview is drawn.
@@ -4096,6 +4109,16 @@ export default function EditVideoScreen({ navigation, route }) {
     ? SPEEDS.map(v => ({ key: 's-' + v, label: v + 'x', active: selectedSpeed === v, onPick: () => applySpeed(v) }))
     : chipPicker === 'filter'
       ? FILTERS.map(v => ({ key: 'f-' + v, label: v, active: selectedFilter === v, onPick: () => applyFilter(v) }))
+      : chipPicker === 'freeze'
+        ? FREEZE_SECONDS.map(v => ({
+            key: 'fz-' + v,
+            label: v === 0 ? 'Off' : v + 's',
+            active: (selectedItem?.freezeEnd || 0) === v,
+            onPick: () => {
+              setItems(prev => prev.map(i => (i.key === selectedKey ? { ...i, freezeEnd: v } : i)));
+              setChipPicker(null);
+            },
+          }))
       : chipPicker === 'flip'
         ? [
           { key: 'flipH', label: 'Horizontal', active: !!selectedItem?.flipH, onPick: () => toggleFlip('flipH') },
@@ -4739,7 +4762,7 @@ export default function EditVideoScreen({ navigation, route }) {
       <Modal visible={!!chipPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, sheetInset]}>
-            <SheetHeader title={chipPicker === 'speed' ? 'Speed' : chipPicker === 'flip' ? 'Flip' : 'Filters'} onClose={() => setChipPicker(null)} />
+            <SheetHeader title={chipPicker === 'speed' ? 'Speed' : chipPicker === 'flip' ? 'Flip' : chipPicker === 'freeze' ? 'Hold last frame' : 'Filters'} onClose={() => setChipPicker(null)} />
             <View style={styles.chipPickerWrap}>
               {chipPickerOptions.map(o => (
                 <TouchableOpacity key={o.key} style={[styles.toolChip, o.active && styles.toolChipActive]}
