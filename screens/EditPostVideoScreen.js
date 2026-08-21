@@ -132,7 +132,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
         scheduleMode: 'queued', status: 'queued', createdAt: new Date().toISOString()
       });
       await loadQueue();
-      showAlert('Saved', 'Added to queue!');
+      // Says when, because it now actually happens. The queue used to be a list nothing
+      // read: this said "Added to queue!" and the post was never sent.
+      showAlert('Queued', ttOn
+        ? 'It will post to TikTok within about 5 minutes. You can see it on the Calendar.'
+        : 'Saved to your queue. Connect TikTok to have it post automatically.');
     } catch (e) { showAlert('Error', e.message); }
     setSaving(false);
   }
