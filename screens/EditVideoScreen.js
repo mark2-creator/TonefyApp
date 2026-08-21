@@ -5406,7 +5406,13 @@ export default function EditVideoScreen({ navigation, route }) {
                     {musicFiltered.length} of {musicLibraryTracks.length} tracks
                   </Text>
 
-                  <ScrollView style={styles.musicList}>
+                  {/* No flex here, deliberately. The sheet is maxHeight:'85%', which
+                      bounds it but does not give it a definite height - so a flex:1
+                      child has nothing to flex against and resolves to zero, which is
+                      exactly what emptied this list. Content-sized and clipped by the
+                      sheet is what worked, and the chip rows above are protected by
+                      flexShrink:0 rather than by this competing with them. */}
+                  <ScrollView>
                     {musicFiltered.map(track => (
                       <TouchableOpacity key={track.id} onPress={() => addMusicTrackFromLibrary(track)}
                         style={styles.musicRow}>
@@ -5774,9 +5780,6 @@ const styles = StyleSheet.create({
   musicChipText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   musicChipTextActive: { color: '#00d4d4' },
   musicCount: { color: '#fff', fontSize: 10, marginBottom: 8, opacity: 0.6 },
-  // flex 1 so the list takes what is left after the two chip rows, instead of both
-  // sides negotiating for the same space.
-  musicList: { flex: 1 },
   musicRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 12, marginBottom: 8 },
   musicPlay: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   musicPlayOn: { backgroundColor: '#00d4d4' },
