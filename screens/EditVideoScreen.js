@@ -2555,6 +2555,7 @@ export default function EditVideoScreen({ navigation, route }) {
         denoise: !!items[i].denoise,
         motionBlur: !!items[i].motionBlur,
         stabilize: !!items[i].stabilize,
+        enhanceVoice: !!items[i].enhanceVoice,
         crop: items[i].crop || null,
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
@@ -2627,6 +2628,9 @@ export default function EditVideoScreen({ navigation, route }) {
         fadeIn: Math.max(0, Number(track.fadeIn) || 0),
         fadeOut: Math.max(0, Number(track.fadeOut) || 0),
         isVoiceover: !!track.isVoiceover,
+        // Broadcast voice chain on the server. Sent here rather than baked into the
+        // file, so it can be turned off again on a track already on the timeline.
+        enhanceVoice: !!track.enhanceVoice,
         startOffset: track.startOffset ?? 0,
         trimStart: track.trimStart ?? 0,
         trimEnd: track.trimEnd ?? track.sourceDuration ?? null,
@@ -3870,6 +3874,17 @@ export default function EditVideoScreen({ navigation, route }) {
     filters: () => setShowFilterSheet(true),
     motion: () => setShowMotionSheet(true),
     effect: () => setShowEffectSheet(true),
+    enhancevoice: () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') {
+        return showAlert('Enhance voice', 'A photo has no sound to enhance.');
+      }
+      const on = !selectedItem.enhanceVoice;
+      setItems(prev => prev.map(i => (i.key === selectedKey ? { ...i, enhanceVoice: on } : i)));
+      showAlert(on ? 'Voice enhancement on' : 'Voice enhancement off', on
+        ? "This clip's own audio will be cleaned up and levelled when you export."
+        : 'This clip will export as recorded.');
+    },
     adjust: () => setShowAdjustSheet(true),
     crop: openCrop,
     flip: () => setChipPicker('flip'),
@@ -4056,7 +4071,7 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }, [items, selectedKey]);
 
-  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize' };
+  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize', enhancevoice: 'enhanceVoice' };
 
   // Unlike toggleFlip above these go through pushHistory, so they undo. They change
   // what the export renders rather than only how the preview is drawn.
@@ -4093,7 +4108,20 @@ export default function EditVideoScreen({ navigation, route }) {
     [audioTracks, selectedAudioTrackKey]
   );
 
+  // Toggles the chain on the selected track. A flag rather than a render, so it costs
+  // nothing until the export and can be undone.
+  function toggleEnhanceVoice() {
+    const t = audioTracks.find(x => x.key === selectedAudioTrackKey);
+    if (!t) return;
+    const on = !t.enhanceVoice;
+    setTrackField(t.key, { enhanceVoice: on });
+    showAlert(on ? 'Voice enhancement on' : 'Voice enhancement off', on
+      ? 'Rumble and hiss removed, sibilance tamed, presence lifted and the level evened out. Applied when you export.'
+      : 'This track will export as recorded.');
+  }
+
   const audioToolActions = {
+    enhance: toggleEnhanceVoice,
     replace: replaceAudioTrackFile,
     duplicate: duplicateAudioTrack,
     delete: () => selectedAudioTrackKey && removeAudioTrack(selectedAudioTrackKey),
