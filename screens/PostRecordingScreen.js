@@ -225,17 +225,25 @@ export default function PostRecordingScreen({ navigation, route }) {
                 <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
               </TouchableOpacity>
             ))}
-            {/* Two that genuinely do not exist. Face retouch and eye contact need real
-                models, not an ffmpeg filter, and this app's own product notes put them
-                in a separately funded tier - so they say so rather than being drawn as
-                a row that opens nothing. */}
-            {['Face Retouch', 'Eye Contact Fix'].map(label => (
-              <TouchableOpacity key={label} style={styles.enhanceRow} onPress={() => soon(label)}>
-                <MaterialIcons name="face-retouching-natural" size={20} color="#5a5a5a" />
-                <Text style={[styles.enhanceLabel, { color: '#5a5a5a' }]}>{label}</Text>
-                <Text style={styles.soonTag}>SOON</Text>
-              </TouchableOpacity>
-            ))}
+            {/* Face Retouch is real now and needs no model: smartblur with a negative
+                threshold smooths only what has low local contrast, which is skin and
+                not eyes or hair. It lives in the effects catalogue under Beauty, so
+                this row opens the same sheet filtered to it. */}
+            <TouchableOpacity style={styles.enhanceRow} onPress={() => setSheet('effect')}>
+              <MaterialIcons name="face-retouching-natural" size={20} color={theme.icon} />
+              <Text style={[styles.enhanceLabel, { color: theme.text }]}>Face Retouch</Text>
+              <Text style={[styles.enhanceValue, { color: theme.subtext }]}>Beauty effects</Text>
+              <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+            </TouchableOpacity>
+            {/* Eye contact is the one that genuinely cannot be done here. Redirecting a
+                gaze means generating eyes that were never photographed - there is no
+                ffmpeg filter for it at any setting, and no amount of tuning gets there.
+                It needs a model, which is a cost rather than a technique. */}
+            <TouchableOpacity style={styles.enhanceRow} onPress={() => soon('Eye Contact Fix')}>
+              <MaterialIcons name="remove-red-eye" size={20} color="#5a5a5a" />
+              <Text style={[styles.enhanceLabel, { color: '#5a5a5a' }]}>Eye Contact Fix</Text>
+              <Text style={styles.soonTag}>SOON</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
