@@ -29,6 +29,7 @@ import { requestNotificationPermission, scheduleReminders } from '../utils/notif
 import { persistMedia, newMediaId, sweepUnreferenced, cacheRemoteMedia } from '../utils/mediaStore';
 import FilterSheet from '../components/FilterPicker';
 import MotionPicker from '../components/MotionPicker';
+import ChromaSheet from '../components/ChromaSheet';
 import EffectPicker from '../components/EffectPicker';
 import { filterSpec, resolveFilter, filterCss } from '../constants/filters';
 import { motionChain, resolveMotion } from '../constants/motions';
@@ -1381,6 +1382,7 @@ export default function EditVideoScreen({ navigation, route }) {
   const [applyAllPrompt, setApplyAllPrompt] = useState(null);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showMotionSheet, setShowMotionSheet] = useState(false);
+  const [showChromaSheet, setShowChromaSheet] = useState(false);
   const [showEffectSheet, setShowEffectSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
@@ -2562,6 +2564,7 @@ export default function EditVideoScreen({ navigation, route }) {
         // Seconds of held final frame. The server clamps it to 5 - it is duration the
         // client asks the server to invent, and duration the credit check did not count.
         freezeEnd: Number(items[i].freezeEnd) || 0,
+        chromaKey: items[i].chromaKey || undefined,
         crop: items[i].crop || null,
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
@@ -3880,6 +3883,16 @@ export default function EditVideoScreen({ navigation, route }) {
     filters: () => setShowFilterSheet(true),
     motion: () => setShowMotionSheet(true),
     effect: () => setShowEffectSheet(true),
+    // BG Remover opens the green-screen sheet, which says plainly that it needs a real
+    // screen. Cutting a person out of an ordinary room needs a model; keying a known
+    // colour does not, and only one of those is free.
+    bgremover: () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') {
+        return showAlert('Green screen', 'This works on a video clip.');
+      }
+      setShowChromaSheet(true);
+    },
     freeze: () => {
       if (!selectedItem) return;
       if (selectedItem.type === 'image') {
@@ -4084,7 +4097,7 @@ export default function EditVideoScreen({ navigation, route }) {
     }
   }, [items, selectedKey]);
 
-  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize', enhancevoice: 'enhanceVoice', freeze: 'freezeEnd' };
+  const CLIP_TOGGLES = { reverse: 'reverse', reducenoise: 'denoise', motionblur: 'motionBlur', stabilize: 'stabilize', enhancevoice: 'enhanceVoice', freeze: 'freezeEnd', bgremover: 'chromaKey' };
 
   // Unlike toggleFlip above these go through pushHistory, so they undo. They change
   // what the export renders rather than only how the preview is drawn.
@@ -5603,6 +5616,15 @@ export default function EditVideoScreen({ navigation, route }) {
         onSelect={(id) => { applyEffect(id); setShowEffectSheet(false); }}
         onLocked={(e) => promptUpgrade(e.label)}
         onClose={() => setShowEffectSheet(false)}
+      />
+
+      <ChromaSheet
+        visible={showChromaSheet}
+        value={selectedItem?.chromaKey || null}
+        onChange={(next) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, chromaKey: next || undefined } : i
+        )))}
+        onClose={() => setShowChromaSheet(false)}
       />
 
       <MotionPicker
