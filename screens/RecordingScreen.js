@@ -28,9 +28,20 @@ function getCamera() {
   }
 }
 
-const MAX_SECONDS = 15 * 60;
+// A ceiling regardless of what was asked for: 15 minutes at 1080p is already about
+// 1.5GB, and a recording left running should not fill the phone.
+const HARD_MAX_SECONDS = 15 * 60;
 
-export default function RecordingScreen({ navigation }) {
+export default function RecordingScreen({ navigation, route }) {
+  // Chosen on the setup screen before this one. They were seven pieces of state there
+  // that nothing read; the length is enforced here and the look travels through to the
+  // screen that can apply it.
+  const {
+    maxSeconds = 15 * 60,
+    quality = '1080p',
+    filter = 'None',
+    effect = 'none',
+  } = route?.params || {};
   const insets = useSafeAreaInsets();
   const Cam = useRef(getCamera()).current;
   const cameraRef = useRef(null);
@@ -72,9 +83,10 @@ export default function RecordingScreen({ navigation }) {
 
   // A cap, so a recording left running does not fill the phone. 15 minutes at 1080p is
   // already about 1.5GB.
+  const limit = Math.min(HARD_MAX_SECONDS, Math.max(5, Number(maxSeconds) || HARD_MAX_SECONDS));
   useEffect(() => {
-    if (recording && seconds >= MAX_SECONDS) stop();
-  }, [recording, seconds, stop]);
+    if (recording && seconds >= limit) stop();
+  }, [recording, seconds, stop, limit]);
 
   const start = useCallback(async () => {
     if (!cameraRef.current || recording) return;
@@ -87,7 +99,7 @@ export default function RecordingScreen({ navigation }) {
       setRecording(false);
       stoppingRef.current = false;
       if (video?.uri) {
-        navigation.replace('PostRecording', { uri: video.uri, seconds });
+        navigation.replace('PostRecording', { uri: video.uri, seconds, quality, filter, effect });
       }
     } catch (e) {
       setRecording(false);
@@ -148,6 +160,11 @@ export default function RecordingScreen({ navigation }) {
           <View style={styles.timerBox}>
             <View style={styles.redDot} />
             <Text style={styles.timer}>{mins}:{secs}</Text>
+            {limit < HARD_MAX_SECONDS && (
+              <Text style={styles.limitText}>
+                / {String(Math.floor(limit / 60)).padStart(2, '0')}:{String(limit % 60).padStart(2, '0')}
+              </Text>
+            )}
           </View>
         )}
         <View style={{ width: 44 }} />
@@ -198,6 +215,7 @@ const styles = StyleSheet.create({
   timerBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   redDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff4444' },
   timer: { color: '#fff', fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  limitText: { color: '#fff', opacity: 0.6, fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 16, backgroundColor: 'rgba(0,0,0,0.35)' },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   controlItem: { alignItems: 'center', gap: 6 },

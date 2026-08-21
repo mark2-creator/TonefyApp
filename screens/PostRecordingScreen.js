@@ -39,9 +39,11 @@ export default function PostRecordingScreen({ navigation, route }) {
 
   // The clip's own settings, held here and passed to the same sheets the editor uses.
   // These were four Switches bound to booleans nothing read.
-  const [filter, setFilter] = useState('None');
+  // Seeded from what was chosen before recording, so the look you set up is already on
+  // when you get here rather than needing choosing twice.
+  const [filter, setFilter] = useState(route?.params?.filter || 'None');
   const [adjust, setAdjust] = useState(null);
-  const [effect, setEffect] = useState('none');
+  const [effect, setEffect] = useState(route?.params?.effect || 'none');
   const [motion, setMotion] = useState('none');
   const [sheet, setSheet] = useState(null);   // 'filter' | 'adjust' | 'effect' | 'motion'
   const [position, setPosition] = useState(0);
@@ -142,7 +144,7 @@ export default function PostRecordingScreen({ navigation, route }) {
           effectSpec: effectChain(effect) || undefined,
           volume: 1, muted: false, transition: 'none',
         }],
-        aspectRatio: '9:16', resolution: '1080p', transition: 'none',
+        aspectRatio: '9:16', resolution: route?.params?.quality || '1080p', transition: 'none',
       };
       const start = await (await fetch(`${BACKEND}/api/media-to-video`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },

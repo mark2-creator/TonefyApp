@@ -40,3 +40,31 @@ for root in ('screens', 'components'):
 print(f'controls with no press handler: {len(found)}\n')
 for p, n, t in found:
     print(f'  {p}:{n}  {t}')
+
+# --- state nothing reads ------------------------------------------------------------
+#
+# A Switch always has an onValueChange, so the check above cannot see one that is wired
+# to a useState nothing else ever looks at. That is the same defect wearing different
+# clothes - the control moves, a boolean changes, and nothing downstream asks about it.
+# It is how five toggles survived on the Record screen and four more on Post-Recording.
+#
+# The test is occurrence count. The declaration itself contributes exactly one, so a
+# name appearing ONCE is read by nobody. The first version of this used <= 2 and
+# reported a dozen variables that are read exactly once each - a check that cries wolf
+# is a check nobody reads, which is the third time that has been the lesson today.
+STATE = re.compile(r'const \[([a-zA-Z_$][\w$]*), *set[A-Z][\w$]*\] *= *useState')
+unread = []
+for root in ('screens', 'components'):
+    for f in sorted(os.listdir(root)):
+        if not f.endswith('.js'): continue
+        p = os.path.join(root, f)
+        src = open(p).read()
+        for m in STATE.finditer(src):
+            name = m.group(1)
+            uses = len(re.findall(r'\b' + re.escape(name) + r'\b', src))
+            if uses <= 1:
+                line = src[:m.start()].count('\n') + 1
+                unread.append((p, line, name, uses))
+print(f'\nstate written but never read: {len(unread)}\n')
+for p, n, name, uses in unread:
+    print(f'  {p}:{n}  {name} ({uses} occurrence{"s" if uses != 1 else ""})')
