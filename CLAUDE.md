@@ -303,6 +303,44 @@ because it is a `FlatList` and virtualises; the timeline rows are safe because t
 one chip per item. Waveform and filmstrip were the two that scaled with *content length*
 rather than item count, which is the property to watch for.
 
+## Social posting: the chain is built, TikTok is in sandbox
+
+Everything from connect to publish now works and was built Aug 21 2026 - but **the
+TikTok credentials are sandbox-only and the Content Posting API has not been applied
+for**, so a real post cannot succeed yet. Do not spend time debugging a failed publish
+against that; it is the app registration, not the code.
+
+```
+connect TikTok      tokens persisted in Firestore (see below)
+post now            verifyToken + ownership check + own-host-only videoUrl
+save to queue       scheduledPostSweep publishes due items every 5 minutes
+schedule for later  day within 14 days + quarter-hour, chips not a native picker
+failures            written back onto the post with the reason
+```
+
+Three fixes underneath it, each of which had to come before the one after:
+
+- **`tiktokTokens` was a plain in-memory `{}`**, so every `pm2 restart` disconnected
+  every account - silently, because the "Connected" badge reads `connectedAccounts`
+  which the client writes and which survives. Now `tiktokTokens/{openId}` in Firestore,
+  its own collection rather than `connectedAccounts/{uid}` because that document is
+  readable by its owner and these are bearer credentials. **No security rule mentions
+  that path, and Firestore denies where no rule matches**, so it is Admin-SDK-only by
+  construction.
+- **`/tiktok/post-video` was unauthenticated and did `fetch(videoUrl)` on a client
+  string.** Anyone could post to any account whose openId they knew (an openId is not a
+  secret), and anyone could make this box fetch any address - `127.0.0.1:5000` and the
+  cloud metadata endpoint included, on a VPS running five other pm2 services. Now
+  `verifyToken` inline, an ownership check against `connectedAccounts/{uid}`, and
+  `videoUrl` restricted to https on this host under `/videos` or `/uploads`. The
+  ownership lookup fails CLOSED - unlike the plan checks, being wrong here posts to a
+  stranger's account.
+- **Nothing read `scheduledPosts`.** "Add to queue" wrote a document, said "Added to
+  queue!", and the post was never sent while the Calendar listed it as pending.
+
+`publishToTikTok` is a function the route and the sweep both call, deliberately - two
+implementations of "send this to TikTok" drift the first time one gets a fix.
+
 ## Two flex traps that have each bitten twice
 
 **A horizontal chip row in a flex column needs all four of these**, and building one
