@@ -165,3 +165,38 @@ export async function saveAudioToDevice(url, meta, onProgress) {
 export const SAVE_AUDIO_NOTE = Platform.OS === 'android'
   ? 'Choose "Save to Files" or send it to an app to keep it.'
   : 'Choose "Save to Files" to keep it on your phone.';
+
+/**
+ * The same two routes for a generated thumbnail.
+ *
+ * Separate from saveVideoToDevice for one reason that matters: a thumbnail IS an image,
+ * so unlike an mp3 (which Android files under Music/ and some OEM galleries then refuse
+ * to list) it belongs in the camera roll and a createAssetAsync failure here is a real
+ * failure worth falling through on rather than a normal outcome to swallow. The mime
+ * type and UTI differ too, and a share sheet given the wrong one offers the wrong apps.
+ */
+export async function saveImageToDevice(url, meta, onProgress) {
+  const localUri = await downloadVideoToCache(url, meta, onProgress, 'jpg');
+
+  const MediaLibrary = getMediaLibrary();
+  if (MediaLibrary) {
+    // Write-only, for the same reason as saveVideoToDevice: asking for read access
+    // pulls in READ_MEDIA_IMAGES, and Play rejects an upload carrying it without a
+    // Photo and Video Permissions declaration this app could not honestly make.
+    const perm = await MediaLibrary.requestPermissionsAsync(true);
+    if (perm.granted) {
+      const asset = await MediaLibrary.createAssetAsync(localUri);
+      return { method: 'gallery', uri: asset.uri };
+    }
+  }
+
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error('Sharing is not available on this device.');
+  }
+  await Sharing.shareAsync(localUri, {
+    mimeType: 'image/jpeg',
+    dialogTitle: 'Save or share your thumbnail',
+    UTI: 'public.jpeg', // iOS only; ignored on Android
+  });
+  return { method: 'share', uri: localUri };
+}

@@ -44,7 +44,7 @@ const sections = [
       // routes the tap to the "coming soon" alert, so wiring one up is a matter
       // of adding its branch to handleCardPress and deleting this flag - the
       // card cannot end up live-looking and inert again by accident.
-      { title: 'Thumbnail', desc: 'Create stunning thumbnails for your videos.', icon: 'image', color: '#2ecc71', soon: true },
+      { title: 'Thumbnail', desc: 'Create stunning thumbnails for your videos.', icon: 'image', color: '#2ecc71' },
       { title: 'Social', desc: 'Create engaging social posts.', icon: 'people', color: '#92ccff', soon: true },
     ],
   },
@@ -81,6 +81,7 @@ export default function DashboardScreen({ navigation }) {
     // you - the opposite of starting from blank, and a card whose description and
     // destination disagreed.
     else if (title === 'Empty Audio') navigation.navigate('ScriptToAudio', { script: '' });
+    else if (title === 'Thumbnail') navigation.navigate('Thumbnail');
   };
 
   return (
