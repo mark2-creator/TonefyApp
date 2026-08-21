@@ -2541,6 +2541,20 @@ export default function EditVideoScreen({ navigation, route }) {
         effectSpec: effectChain(items[i].effect) || undefined,
         // Fractions of the source, so one rectangle is right for the phone's preview
         // and for the 4K master.
+        // The four per-clip processing flags. The server has read item.denoise,
+        // item.stabilize, item.reverse and item.motionBlur since those tools were
+        // written - but nothing ever put them in this object, so every one of them set
+        // a flag that never left the phone. The chip turned green, the toolbar showed
+        // it on, and the export silently ignored it.
+        //
+        // Nothing failed and nothing logged; the video simply came back unprocessed,
+        // which is indistinguishable from the filter being subtle. The tools were
+        // verified against real ffmpeg when they were built - but that proved the
+        // BACKEND could do it, not that the app ever asked.
+        reverse: !!items[i].reverse,
+        denoise: !!items[i].denoise,
+        motionBlur: !!items[i].motionBlur,
+        stabilize: !!items[i].stabilize,
         crop: items[i].crop || null,
         flipH: !!items[i].flipH,
         flipV: !!items[i].flipV,
