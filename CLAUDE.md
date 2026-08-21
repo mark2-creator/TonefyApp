@@ -2580,6 +2580,103 @@ nothing to aim at.
     like any picked clip.
 
 
+35. **Extract audio, 23 audio effects, and the Empty Audio misroute** (Aug 21 2026; app
+    `rebuild/phase-4`, published as update group `5c9ca907-1274-4aa4-887f-ce8707ae3d16`,
+    runtime 1.1.0; backend `~/Tonefy-react@HEAD`, deployed via `pm2 restart` at 13:45:49,
+    confirmed postdating the 13:45:48 edit).
+
+    **`/api/extract-audio`** pulls a clip's sound into a file of its own so it can live on
+    the timeline as a real track. Synchronous, unlike `/api/translate-video` which it
+    otherwise mirrors: that one returns a jobId because whisper runs slower than realtime,
+    while this is a demux-and-encode with no model in it. It **probes for an audio stream
+    first** - without that a silent clip yields a valid but empty mp3 and the user gets a
+    track that plays nothing with no explanation, which is worse than being told the clip
+    has no sound. Offsite URLs are refused (SSRF: this box runs other services on
+    localhost) and the scratch download is unlinked in a `finally`.
+
+    App side it does **not** mute the source clip, deliberately unlike Translate - which
+    must, or the original narration plays under the translation. Here the extracted audio
+    is the *same sound*, so muting would leave the timeline sounding identical while
+    looking changed.
+
+    **`AUDIO_FX` is 23 chains, and the app sends an ID and never a filter string** -
+    deliberately unlike the effect/motion/transition paths, which ship a chain and have the
+    backend validate it. Those catalogues are large and change without a deploy; this one
+    is small enough to afford the safer shape, so no caller-supplied text reaches a command
+    line at all. **The cost, stated so it is not rediscovered:** adding one to
+    `constants/audioFx.js` alone does nothing - it needs a matching `server.js` entry and a
+    restart. A cross-check that both sides carry the same 23 ids is worth re-running after
+    any edit to either.
+
+    **The durable lesson is about instruments, not audio.** Every chain was rendered against
+    real speech and measured, and the *first* pass reported a third of them dead:
+
+    - **Reverbs.** A whole-file FFT magnitude spectrum is nearly blind to an echo - a delay
+      moves phase, not magnitude - so all five measured ~0.00 and looked like no-ops. By
+      **autocorrelation at the delay lag** they lift it from ~0.00 to +0.27 (room) .. +0.60
+      (stadium). All five were working the entire time.
+    - **Pitch.** Autocorrelation f0 **octave-errored** and reported `deep` as unchanged. By
+      **median spectral-peak ratio across voiced frames** it is exactly 0.700. Note this is
+      the opposite correction to the music work, where a spectral centroid was the wrong
+      pitch instrument and autocorrelation was right - **neither method is "the" pitch
+      instrument; each fails differently, so a pitch claim needs two that agree.**
+    - **Loudness.** `loudnorm` is *supposed* to leave tone alone. Judged on a spectral
+      measure it looks dead while working perfectly (x1.40 level).
+
+    **One genuine defect did come out of that pass, and telling it apart from the
+    false alarms is the point**: `bassboost` at `g=8:f=110` measured x1.10 on speech -
+    applied, but inaudible, because voice carries almost nothing below 110Hz. It was
+    credible *because the same instrument correctly read `warm` at x1.17 and `treble` at
+    x3.19*. Retuned to `g=12:f=180`, which measures x2.06. An instrument that is wrong for
+    one class can still be right for another; the way to tell is whether it succeeds on
+    comparable cases.
+
+    **`AudioFxSheet` is deliberately not `RecipeSheet`**, which every other catalogue uses.
+    That sheet is built around an animated WebP preview tile per item, and there is no such
+    thing as a picture of a reverb - it would render 23 identical grey squares looking like
+    a failed load. **There is also no audition**: the preview canvas plays the raw clip, and
+    `expo-av` can shift rate and pitch but has no reverb or EQ, so an honest preview would
+    mean a server round trip per tap. The descriptions carry that weight instead and each
+    says what the result *sounds like* rather than naming the filter. The sheet says so.
+
+    **The export payload was edited first, for both clips and tracks**, because a tool whose
+    flag never reaches the server is the bug this file already shipped four times.
+
+    **Two things checked rather than reasoned about**, both settled with a real repro:
+    - **TDZ.** `clipToolActions` references `extractClipAudio` 141 lines before its `const`.
+      Safe, because it sits inside an **arrow body**, which resolves on call. Confirmed by
+      running both forms: the arrow form runs fine, and only the immediate-eval form (a
+      `useMemo` factory, which is what bit before) throws. **Arrow-wrapped forward
+      references in the action maps are fine; a factory that runs during render is not.**
+    - **`items[i].audioFx` vs `item.audioFx`.** The per-clip hook was written with `items[i]`,
+      but the in-scope name in that loop is `item`. `node --check` cannot see this - same
+      shape as the `transitionSpec` destructuring miss. Caught before deploy by grepping the
+      enclosing block for what the neighbouring lines actually use.
+      Note `\b` in **awk** is backspace, not a word boundary, so `awk '/\bitem\b/'` silently
+      matches nothing - that cost two empty searches here. Use grep for word boundaries.
+
+    **Verified against the deployed server, not by reading**: extract-audio returns
+    200/400/404/400/401 across sound, no-sound, missing, offsite and unauthenticated, and
+    the returned mp3 **correlates 1.000** with the source. Two full `/api/media-to-video`
+    renders confirm the effects reach the finished mp4 - cathedral lifts the 150ms lag from
+    -0.023 to +0.581, chipmunk shifts pitch x1.400. Test accounts and Firestore docs removed.
+
+    **Dashboard**: the **Empty Audio** card said "start creating audio from a blank file" and
+    navigated to **Idea to Audio**, which asks for an idea and writes the script for you -
+    the opposite of starting blank. Now opens Script to Audio with an empty box. It was not
+    a dead control, which is why the dead-control sweep never flagged it: **a card whose
+    description and destination disagree passes every check that only asks whether something
+    happens on tap.**
+
+    **Untested on device.** Also still not built from this group: **Beats / Beat Sync** (BPM
+    exists only as library-track metadata from `scripts/analyse-music.py`; an uploaded track
+    has none, so this needs a real detection endpoint). And **Thumbnail**, which the Dashboard
+    still marks "soon": it is genuinely buildable for free - frame extraction, the 138 caption
+    styles and ImageMagick are all present - but the app has **no view-capture library**
+    (`react-native-view-shot`/Skia are both absent), so an in-app compositor would need a new
+    binary, and the server-side text renderer is a set of closures inside the `media-to-video`
+    handler rather than a module either path can call.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
