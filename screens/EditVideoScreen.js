@@ -42,6 +42,9 @@ import StickerSheet, { stickerUri } from '../components/StickerPicker';
 import BackgroundSheet from '../components/BackgroundSheet';
 import CropSheet from '../components/CropSheet';
 import AudioFxSheet from '../components/AudioFxSheet';
+import { TransformSheet, TransparencySheet } from '../components/TransformSheet';
+import LayersSheet from '../components/LayersSheet';
+import MaskSheet from '../components/MaskSheet';
 import BeatMarkers from '../components/BeatMarkers';
 import { DEFAULT_BACKGROUND, normaliseBackground } from '../constants/background';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
@@ -396,9 +399,6 @@ const CLIP_TOOLS = [
   [
     { key: 'transparency', icon: 'opacity', label: 'Transparency', premium: true },
     { key: 'layers', icon: 'layers', label: 'Layers', premium: true },
-    // More is an overflow, not a feature, so it carries no diamond: there is nothing
-    // behind it to sell.
-    { key: 'more', icon: 'more-horiz', label: 'More' },
     // Built and free: choosing which part of the shot is used is core editing.
     { key: 'crop', icon: 'crop', label: 'Crop' },
     { key: 'colour', icon: 'palette', label: 'Colour', premium: true },
@@ -411,7 +411,6 @@ const CLIP_TOOLS = [
     { key: 'adjust', icon: 'tune', label: 'Adjust' },
     { key: 'bgremover', icon: 'auto-fix-high', label: 'BG Remover', premium: true },
     { key: 'magic', icon: 'auto-awesome', label: 'Magic Studio', premium: true },
-    { key: 'effects', icon: 'movie-filter', label: 'Effects', premium: true },
     { key: 'retouch', icon: 'face-retouching-natural', label: 'Retouch', premium: true },
   ],
   [
@@ -483,7 +482,6 @@ const AUDIO_TOOLS = [
   { key: 'slip', icon: 'swipe', label: 'Slip' },
   { key: 'fade', icon: 'gradient', label: 'Fade' },
   { key: 'volume', icon: 'volume-up', label: 'Volume' },
-  { key: 'more', icon: 'more-horiz', label: 'More' },
   { key: 'beatsync', icon: 'av-timer', label: 'Beat Sync', premium: true },
   { key: 'audiofx', icon: 'equalizer', label: 'Effects', premium: true },
   { key: 'enhance', icon: 'auto-fix-high', label: 'Enhance voice', premium: true },
@@ -1088,6 +1086,16 @@ function TimelineClip({
             // runs past the clip's own box.
             pixelsPerSecond={PIXELS_PER_SECOND / clipSpeed(item)}
           />
+          {/* Beats found in this clip's own sound. Same component the audio tracks use,
+              so it is capped and grouped the same way - and laid out at the same scale
+              as the filmstrip above, since a 2x clip shows its seconds in half the width
+              and beats drawn at full scale would drift steadily out of the box. */}
+          <BeatMarkers
+            beats={item.beats}
+            trimStart={item.trimStart || 0}
+            width={width}
+            pixelsPerSecond={PIXELS_PER_SECOND / clipSpeed(item)}
+          />
           {/* Its file is gone. Says so on the clip rather than leaving a grey box the
               filmstrip will keep trying to decode - and names the fix, since replacing
               it keeps the trim, speed and grade already set on this clip. */}
@@ -1399,6 +1407,10 @@ export default function EditVideoScreen({ navigation, route }) {
   // question drift, and the sheet then edits whatever was selected last rather than
   // what was tapped.
   const [audioFxTarget, setAudioFxTarget] = useState(null);
+  const [showTransformSheet, setShowTransformSheet] = useState(false);
+  const [showTransparencySheet, setShowTransparencySheet] = useState(false);
+  const [showLayersSheet, setShowLayersSheet] = useState(false);
+  const [showMaskSheet, setShowMaskSheet] = useState(false);
   const [showEffectSheet, setShowEffectSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
@@ -2258,13 +2270,27 @@ export default function EditVideoScreen({ navigation, route }) {
   const BEAT_SNAP = 0.12;
   function nearestBeat(t) {
     let best = null, bestD = BEAT_SNAP;
+    const consider = (b, off) => {
+      const d = Math.abs(b + off - t);
+      if (d < bestD) { bestD = d; best = b + off; }
+    };
     for (const track of audioTracks) {
       if (!track.beats?.length) continue;
+      // startOffset moves the whole track; trimStart says where in the file it begins.
       const off = (track.startOffset || 0) - (track.trimStart || 0);
-      for (const b of track.beats) {
-        const d = Math.abs(b + off - t);
-        if (d < bestD) { bestD = d; best = b + off; }
+      for (const b of track.beats) consider(b, off);
+    }
+    // A clip's beats map differently and the difference is not cosmetic: a clip has no
+    // startOffset at all - where it sits is the running sum of every length before it -
+    // so reusing the track mapping would put every clip's beats at 0:00.
+    let clipStart = 0;
+    for (const item of items) {
+      const len = clipLength(item);
+      if (item.beats?.length) {
+        const off = clipStart - (item.trimStart || 0);
+        for (const b of item.beats) consider(b, off);
       }
+      clipStart += len;
     }
     return best;
   }
@@ -2608,6 +2634,10 @@ export default function EditVideoScreen({ navigation, route }) {
         enhanceVoice: !!items[i].enhanceVoice,
         // An id, never a filter string - the chain lives in AUDIO_FX on the server.
         audioFx: items[i].audioFx || undefined,
+        transform: items[i].transform || undefined,
+        mask: items[i].mask || undefined,
+        rotate: Number(items[i].rotate) || 0,
+        opacity: Number.isFinite(Number(items[i].opacity)) ? Number(items[i].opacity) : 1,
         // Seconds of held final frame. The server clamps it to 5 - it is duration the
         // client asks the server to invent, and duration the credit check did not count.
         freezeEnd: Number(items[i].freezeEnd) || 0,
@@ -2886,6 +2916,65 @@ export default function EditVideoScreen({ navigation, route }) {
     } catch (e) {
       setUploading(false);
       showAlert('Beat Sync', e.message || 'Could not find a beat in this track.');
+    }
+  }
+
+  // Beats in a clip's own audio. Same detector as a track's Beat Sync, but the clip has
+  // to be uploaded first and its sound extracted, because /api/detect-beats analyses an
+  // audio file and a clip on the device is neither uploaded nor separated.
+  async function detectClipBeats(item) {
+    if (item.type === 'image') return showAlert('Beats', 'A photo has no sound to analyse.');
+    if (!isPremium) {
+      promptUpgrade('Beats', 'Beats is available on the Pro and Creator plans.');
+      return;
+    }
+    try {
+      setUploading(true); setProgress(0); setMessage('Preparing clip...');
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      const token = await user.getIdToken();
+
+      let url = item.remoteUrl;
+      if (!url) {
+        const form = new FormData();
+        form.append('files', { uri: item.uri, name: 'clip.mp4', type: 'video/mp4' });
+        const upRes = await fetch(BACKEND + '/api/upload-media', {
+          method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+        });
+        const upData = await readJson(upRes);
+        if (upData.error) throw new Error(upData.error);
+        url = upData.items?.[0]?.url;
+        if (!url) throw new Error('That clip could not be uploaded.');
+        setItems(prev => prev.map(i => (i.key === item.key ? { ...i, remoteUrl: url } : i)));
+      }
+
+      setMessage('Extracting audio...');
+      const exRes = await apiFetch('/api/extract-audio', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const exData = await readJson(exRes);
+      if (exData.error || !exData.audioUrl) {
+        throw new Error(exData.error || 'Could not read this clip’s sound.');
+      }
+
+      setMessage('Finding the beat...');
+      const res = await apiFetch('/api/detect-beats', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: exData.audioUrl }),
+      });
+      const data = await readJson(res);
+      if (data.error || !data.beats) throw new Error(data.error || 'Could not find a beat in this clip.');
+
+      setItems(prev => prev.map(i => (i.key === item.key
+        ? { ...i, beats: data.beats, bpm: data.bpm } : i)));
+      setUploading(false);
+      showAlert('Beats', data.strength < WEAK_BEAT
+        ? `This clip has no strong beat - the marks are a best guess at ${Math.round(data.bpm)} BPM and may not line up.`
+        : `${data.beats.length} beats found at ${Math.round(data.bpm)} BPM. Split near one and the cut lands on it.`);
+    } catch (e) {
+      setUploading(false);
+      showAlert('Beats', e.message || 'Could not find a beat in this clip.');
     }
   }
 
@@ -4021,6 +4110,57 @@ export default function EditVideoScreen({ navigation, route }) {
         : 'This clip will export as recorded.');
     },
     adjust: () => setShowAdjustSheet(true),
+    // Colour is what Adjust IS - brightness, contrast, saturation, temperature, tint,
+    // highlights, shadows, and three more. A separate colour tool would be a second
+    // sheet of the same ten sliders, so this is the same door with the other name on it.
+    colour: () => setShowAdjustSheet(true),
+    transform: () => selectedItem && setShowTransformSheet(true),
+    transparency: () => selectedItem && setShowTransparencySheet(true),
+    layers: () => setShowLayersSheet(true),
+    mask: () => selectedItem && setShowMaskSheet(true),
+    // Animating a CLIP is a camera move, and this app has 66 of them. A separate
+    // animation tool would be a second way to say the same thing - the same mistake
+    // Colour and Retouch would have been.
+    animate: () => selectedItem && setShowMotionSheet(true),
+    // Beats on a CLIP finds the pulse in the clip's own sound, so cuts land on the
+    // music that is already in the footage rather than on a track added over it.
+    beats: () => selectedItem && detectClipBeats(selectedItem),
+    // Magic Studio is a bundle, not a new capability: it turns on the things this app
+    // already does that almost every clip wants, in one tap. Named for what it applies
+    // rather than promising a model that is not there.
+    magic: () => {
+      if (!selectedItem) return;
+      const isImage = selectedItem.type === 'image';
+      const key = selectedItem.key;
+      setItems(prev => prev.map(i => (i.key === key
+        ? {
+            ...i,
+            adjust: { ...(i.adjust || {}), contrast: 8, saturation: 10, sharpen: 12 },
+            ...(isImage ? {} : { denoise: true, enhanceVoice: true }),
+          }
+        : i)));
+      showAlert('Magic Studio', isImage
+        ? 'Contrast, colour and sharpness lifted. Open Adjust to fine-tune.'
+        : 'Contrast, colour and sharpness lifted, background noise reduced and the voice evened out. Open Adjust to fine-tune.');
+    },
+    // Retouch already exists as a real effect in the Beauty category (edge-preserving
+    // smartblur, a small lift, a touch of warmth). It needed a way in, not building.
+    retouch: () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') return showAlert('Retouch', 'This works on a video clip.');
+      applyEffect('retouch');
+      showAlert('Retouch', 'Skin smoothing applied. Open Effects to change or remove it.');
+    },
+    // Unlink is Extract audio PLUS muting the clip - the two halves of "separate this
+    // clip's sound from its picture". Extract on its own deliberately does not mute,
+    // because there the extracted track is the same sound; here detaching is the point.
+    unlink: async () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') return showAlert('Unlink', 'A photo has no sound to unlink.');
+      const key = selectedItem.key;
+      await extractClipAudio(selectedItem);
+      setItems(prev => prev.map(i => (i.key === key ? { ...i, muted: true } : i)));
+    },
     crop: openCrop,
     flip: () => setChipPicker('flip'),
     // ffmpeg-native, so they cost CPU and nothing else - no model and no per-use fee.
@@ -5795,6 +5935,44 @@ export default function EditVideoScreen({ navigation, route }) {
         onSelect={(id) => { applyEffect(id); setShowEffectSheet(false); }}
         onLocked={(e) => promptUpgrade(e.label)}
         onClose={() => setShowEffectSheet(false)}
+      />
+
+      <MaskSheet
+        visible={showMaskSheet}
+        value={selectedItem?.mask || null}
+        onChange={(next) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, mask: next || undefined } : i
+        )))}
+        onClose={() => setShowMaskSheet(false)}
+      />
+
+      <LayersSheet
+        visible={showLayersSheet}
+        overlays={textOverlays}
+        onReorder={setTextOverlays}
+        onClose={() => setShowLayersSheet(false)}
+      />
+
+      <TransformSheet
+        visible={showTransformSheet}
+        value={selectedItem?.transform || null}
+        rotate={Number(selectedItem?.rotate) || 0}
+        onChange={(next) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, transform: next || undefined } : i
+        )))}
+        onRotate={(deg) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, rotate: deg || undefined } : i
+        )))}
+        onClose={() => setShowTransformSheet(false)}
+      />
+
+      <TransparencySheet
+        visible={showTransparencySheet}
+        value={selectedItem?.opacity ?? null}
+        onChange={(next) => setItems(prev => prev.map(i => (
+          i.key === selectedKey ? { ...i, opacity: next ?? undefined } : i
+        )))}
+        onClose={() => setShowTransparencySheet(false)}
       />
 
       <AudioFxSheet
