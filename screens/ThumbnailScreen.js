@@ -14,6 +14,7 @@ import { CaptionStyleSheet } from '../components/CaptionStylePicker';
 import { resolveCaptionStyle } from '../constants/captionStyles';
 import CanvasOverlay from '../components/CanvasOverlay';
 import TextOverlayContent from '../components/TextOverlayContent';
+import FontPicker from '../components/FontPicker';
 import ProgressButton from '../components/ProgressButton';
 import { saveImageToDevice, SAVE_PLATFORM_NOTE } from '../utils/saveVideo';
 import { usePlan } from '../constants/plan';
@@ -38,6 +39,12 @@ const ASPECTS = [
 // failure this project keeps recording. Verified: halving previewWidth doubles the
 // rendered text exactly (33x62 -> 65x122 px, measured).
 const FALLBACK_PREVIEW_WIDTH = 360;
+
+// Fills that hold up on a photograph. Deliberately few and deliberately saturated: a
+// thumbnail is judged at about 320px wide in a feed, where a subtle colour is just grey.
+// The style's own colour is always the first option, so this is an override rather than
+// a palette to build from.
+const HEADLINE_COLOURS = ['#FFFFFF', '#000000', '#FFE24A', '#2ECC71', '#00d4d4', '#FF4D4D', '#FF7AC8'];
 
 async function apiFetch(path, options = {}) {
   const user = auth.currentUser;
@@ -437,6 +444,14 @@ export default function ThumbnailScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
+        {/* The two are LAYERS, not alternatives, and the order here is the order they
+            apply in. A caption style is a whole look - face, fill, stroke, glow, shadow,
+            box, tracking, case - and stroke and glow are precisely what keeps text
+            legible on top of a photograph, which is the only problem a thumbnail has.
+            The font then overrides just the face, because every one of the 138 styles is
+            locked to one, and a typeface is a brand decision rather than a look. The
+            renderer already honours the override ({ ...captionStyle, font }); this only
+            exposes it. */}
         <TouchableOpacity style={[styles.row, !overlay && styles.rowOff]} disabled={!overlay} onPress={() => setShowStyles(true)}>
           <Text style={styles.rowLabel}>Style</Text>
           <View style={styles.rowRight}>
@@ -444,6 +459,38 @@ export default function ThumbnailScreen({ navigation }) {
             <MaterialIcons name="chevron-right" size={20} color="#888" />
           </View>
         </TouchableOpacity>
+
+        {!!overlay && (
+          <View style={styles.fontWrap}>
+            <FontPicker
+              value={overlay.font || spec.font}
+              onChange={(font) => setOverlayFields({ font })}
+            />
+          </View>
+        )}
+
+        {!!overlay && (
+          <>
+            <Text style={styles.sliderLabel}>Colour</Text>
+            <View style={styles.swatches}>
+              {/* First swatch reverts to whatever the style itself specifies, so a
+                  colour tried and disliked is one tap from undone - the same "Match
+                  style" affordance the Auto Captions sheet already uses. */}
+              <TouchableOpacity
+                style={[styles.swatchMatch, overlay.color === spec.color && styles.swatchOn]}
+                onPress={() => setOverlayFields({ color: spec.color })}>
+                <Text style={styles.swatchMatchText}>Match style</Text>
+              </TouchableOpacity>
+              {HEADLINE_COLOURS.map(c => (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.swatch, { backgroundColor: c }, overlay.color === c && styles.swatchOn]}
+                  onPress={() => setOverlayFields({ color: c })}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Kept alongside the pinch rather than replaced by it. A pinch is quick and
             imprecise; a slider is the only way to land on an exact size. They edit the
@@ -561,6 +608,12 @@ const styles = StyleSheet.create({
   addText: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 14 },
   addTextLabel: { color: '#2ECC71', fontSize: 13, fontWeight: '700' },
   rowOff: { opacity: 0.45 },
+  fontWrap: { marginTop: 10 },
+  swatches: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8 },
+  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: '#2a2a2a' },
+  swatchMatch: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 15, backgroundColor: '#1a1a1a', borderWidth: 2, borderColor: '#2a2a2a' },
+  swatchMatchText: { color: '#cfcfcf', fontSize: 11, fontWeight: '600' },
+  swatchOn: { borderColor: '#2ECC71' },
   input: { backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#111', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, marginTop: 10 },
   rowLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
