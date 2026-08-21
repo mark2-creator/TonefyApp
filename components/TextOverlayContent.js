@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
 import CaptionText, { captionMetrics } from './CaptionText';
 import {
   resolveCaptionStyle, captionHighlight, activeWordIndex, withAlpha,
@@ -96,6 +96,16 @@ function TextOverlayContent({
           underlineColorAndroid="transparent"
           autoCorrect={false}
           spellCheck={false}
+          // The actual defence against the composing-span highlight, rather than a hope
+          // that turning autocorrect off leaves nothing to highlight - which was tried
+          // (28f32b2f) and confirmed NOT to hold on a real device. visible-password
+          // sets TYPE_TEXT_VARIATION_VISIBLE_PASSWORD, which disables the IME's
+          // composing region outright, so there is no uncommitted span to paint.
+          //
+          // It costs the suggestion strip and, on some keyboards, the emoji key. For a
+          // caption or a headline that is an acceptable trade; this app forbids emoji
+          // in its own UI anyway, and nothing here wants autocorrect.
+          keyboardType={Platform.OS === 'android' ? 'visible-password' : 'default'}
           accessibilityLabel="Edit overlay text"
         />
       </View>
@@ -113,7 +123,19 @@ function TextOverlayContent({
         maxWidth={maxWidth}
         activeWord={activeWord}
       />,
-      captionMetrics(renderStyle, overlay.size, 'center')
+      captionMetrics(renderStyle, overlay.size, 'center'),
+      // A caption style now flips the caret trick too, like a plain overlay already
+      // did. It used to pass no colour, which left the TextInput transparent over a
+      // visible CaptionText - and Android's IME paints the still-uncommitted text in
+      // ITS OWN colour, which `color: 'transparent'` has no authority over. The result
+      // on a device was two copies of the headline: the styled white one underneath
+      // and the keyboard's black one on top, wrapped differently because the style
+      // upper-cases and the raw value does not.
+      //
+      // The cost, and it is a real one: stroke and glow are not on screen WHILE typing,
+      // because a TextInput cannot draw them. They come back the instant editing ends.
+      // A duplicate that misreads the text is worse than a style that is briefly plain.
+      overlay.captionColorOverride || renderStyle.color || '#ffffff'
     );
   }
 

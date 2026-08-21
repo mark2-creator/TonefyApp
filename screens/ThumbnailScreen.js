@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import Slider from '@react-native-community/slider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -65,6 +66,7 @@ export default function ThumbnailScreen({ navigation }) {
   // picture it will actually sit on rather than against a grey box.
   const [backdrop, setBackdrop] = useState(null);
   const [backdropBusy, setBackdropBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [atSeconds, setAtSeconds] = useState(0);
   const [aspect, setAspect] = useState('16:9');
 
@@ -143,6 +145,59 @@ export default function ThumbnailScreen({ navigation }) {
     })();
     return () => { cancelled = true; };
   }, [picked, atSeconds, aspect]);
+
+  // A photo or a clip straight from the phone, not only a finished Tonefy video.
+  //
+  // A thumbnail is very often made from a photo that was never a video at all - a
+  // frame grab, a product shot, a screenshot - and offering only the userVideos
+  // library made that impossible. The picked file is uploaded and then behaves exactly
+  // like a library video: the same url goes to the same endpoint.
+  const pickFromDevice = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      return showAlert('Permission needed', 'Allow access to photos and videos to use your own.');
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.9,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    const asset = res.assets[0];
+    const isVideo = asset.type === 'video';
+    try {
+      setUploading(true);
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      const token = await user.getIdToken();
+      const form = new FormData();
+      form.append('files', {
+        uri: asset.uri,
+        name: isVideo ? 'source.mp4' : 'source.jpg',
+        type: isVideo ? 'video/mp4' : 'image/jpeg',
+      });
+      const up = await fetch(BACKEND + '/api/upload-media', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+      });
+      const data = await up.json().catch(() => ({}));
+      const url = data.items?.[0]?.url;
+      if (!url) throw new Error(data.error || 'That file could not be uploaded.');
+      // Shaped like a userVideos record so everything downstream - the backdrop fetch,
+      // generate, the frame slider - takes one path rather than branching on origin.
+      setPicked({
+        id: 'device-' + Date.now(),
+        prompt: asset.fileName || (isVideo ? 'Your video' : 'Your photo'),
+        downloadUrl: BACKEND + url,
+        // A photo has no timeline, so the frame slider stays away and atSeconds stays
+        // 0 - which is also what keeps the server from seeking past its only frame.
+        durationSeconds: isVideo ? undefined : 0,
+        fromDevice: true,
+      });
+      setAtSeconds(0);
+    } catch (e) {
+      showAlert('Upload', e.message || 'That file could not be uploaded.');
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   const setOverlayFields = useCallback((patch) => {
     setOverlay(prev => (prev ? { ...prev, ...patch } : prev));
@@ -255,18 +310,21 @@ export default function ThumbnailScreen({ navigation }) {
         <Text style={styles.step}>Choose a video</Text>
         {loading ? (
           <ActivityIndicator color="#00d4d4" style={{ marginVertical: 20 }} />
-        ) : videos.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              You have no finished videos yet. Make one first and it will appear here.
-            </Text>
-          </View>
         ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.pickRow}
             contentContainerStyle={styles.pickRowContent}>
+            {/* First, and always here. A thumbnail is often made from a photo that was
+                never a video - and with an empty library this row used to be a dead end
+                telling you to go and make a video first. */}
+            <TouchableOpacity style={styles.upload} onPress={pickFromDevice} disabled={uploading}>
+              {uploading
+                ? <ActivityIndicator color="#2ECC71" size="small" />
+                : <MaterialIcons name="add-photo-alternate" size={20} color="#2ECC71" />}
+              <Text style={styles.uploadText}>{uploading ? 'Uploading' : 'Upload'}</Text>
+            </TouchableOpacity>
             {videos.map(v => (
               <TouchableOpacity
                 key={v.id}
@@ -403,6 +461,9 @@ export default function ThumbnailScreen({ navigation }) {
           minimumTrackTintColor="#00d4d4" maximumTrackTintColor="#2a2a2a" thumbTintColor="#00d4d4"
         />
 
+        {/* A photo has no timeline to scrub. maxSeconds is already 0 for one - its
+            record carries durationSeconds 0 and the server probes ~0.04s, which floors
+            to 0 - so this needs no separate check for image sources. */}
         {maxSeconds > 0 && (
           <>
             <Text style={styles.sliderLabel}>Frame at · {atSeconds.toFixed(1)}s</Text>
@@ -479,13 +540,13 @@ const styles = StyleSheet.create({
   backText: { color: '#fff', fontSize: 13 },
   title: { color: '#fff', fontSize: 16, fontWeight: '700' },
   step: { color: '#fff', fontSize: 13, fontWeight: '700', marginTop: 18, marginBottom: 8 },
-  empty: { backgroundColor: '#111', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#2a2a2a' },
-  emptyText: { color: '#888', fontSize: 12, lineHeight: 18 },
   // The four-part horizontal row: flexGrow/flexShrink on style, alignItems and padding
   // on the content container. Three of the four get forgotten when this is written from
   // scratch rather than copied - see the flex traps note in CLAUDE.md.
   pickRow: { flexGrow: 0, flexShrink: 0 },
   pickRowContent: { alignItems: 'center', paddingHorizontal: 2, gap: 8 },
+  upload: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#111', borderWidth: 1, borderColor: '#2ECC71', borderStyle: 'dashed', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  uploadText: { color: '#2ECC71', fontSize: 12, fontWeight: '700' },
   pick: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, maxWidth: 190 },
   pickOn: { backgroundColor: '#2ECC71', borderColor: '#2ECC71' },
   pickText: { color: '#cfcfcf', fontSize: 12, fontWeight: '600', flexShrink: 1 },
