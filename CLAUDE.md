@@ -2669,12 +2669,10 @@ nothing to aim at.
     happens on tap.**
 
     **Untested on device.** ~~Also still not built from this group: **Beats / Beat Sync**~~ -
-    **BUILT, see item 36.** Still not built: **Thumbnail**, which the Dashboard
-    still marks "soon": it is genuinely buildable for free - frame extraction, the 138 caption
-    styles and ImageMagick are all present - but the app has **no view-capture library**
-    (`react-native-view-shot`/Skia are both absent), so an in-app compositor would need a new
-    binary, and the server-side text renderer is a set of closures inside the `media-to-video`
-    handler rather than a module either path can call.
+    **BUILT, see item 36.** ~~**Thumbnail**~~ - **BUILT, see item 37.** The Dashboard
+    no longer marks it "soon". The blocker recorded here - no view-capture library, and a
+    text renderer trapped as closures inside the `media-to-video` handler - was resolved by
+    extracting the renderer rather than by adding a binary.
 
 36. **Beat Sync** (Aug 21 2026; app published as update group
     `ef2bca23-c176-403a-ad6a-da6ae59c756b`, runtime 1.1.0; backend `/api/detect-beats` +
@@ -2737,6 +2735,76 @@ nothing to aim at.
     Premium, matching the clip-side `beats` tool and the real cost: ~6 seconds of a core per
     track. Synchronous, like `/api/extract-audio` and unlike `/api/translate-video` - 5-7s
     measured against nginx's 600s `proxy_read_timeout`.
+
+    **Untested on device.**
+
+37. **Thumbnail, and the renderer extraction that made it possible** (Aug 21 2026; backend
+    `textRender.js` + `/api/thumbnail`; app published as update group
+    `7ce58089-ece7-427c-9c75-950fe2e89050`, runtime 1.1.0).
+
+    **The choice, and why it is the durable one.** A thumbnail needs a frame with styled
+    text on it, and there were two routes: `react-native-view-shot` (capture the existing
+    `CaptionText` component in-app) or render it server-side. View-shot is a **native
+    module**, so it needs a new binary and a review cycle, and it would have left **two
+    renderers** for one thing. Server-side reuse needed the export's text renderer, which
+    was ~550 lines of closures **inside the `/api/media-to-video` handler** and therefore
+    callable by nothing. Extracting it was the larger job and the right one: it ships over
+    the air, and it means one definition of what a caption looks like across the editor
+    canvas, the style picker, the export and now thumbnails.
+
+    **`backend/textRender.js` is a verbatim move**, `createTextRenderer({...})`. Values the
+    handler had in scope (`W`, `H`, export scale, font map) became arguments; per-overlay
+    progress became a callback instead of a direct `updateJob`. Helpers are **injected, not
+    imported from `server.js`** - no circular import, the module is independently testable,
+    and there is still exactly one definition of `run`/`uniqueName`/`mapWithConcurrency`/
+    `num`/`safeColor`.
+
+    **The boundary is the part to get right, and getting it wrong is the mistake this move
+    made.** The module renders each overlay to a PNG and says **where it goes**; it does not
+    composite. The ffmpeg overlay chain pushes into the handler's own `inputs`/`filterParts`
+    and is the *export's* way of using that output - a thumbnail uses one `composite` per
+    overlay instead. Taking it along produced `inputs is not defined`, caught by a real
+    render rather than by reading the diff.
+
+    **Verified by A/B against the live server, which is the only proof worth having for a
+    refactor of a working hot path**: rendered one request through the old code, deployed,
+    rendered the identical request, compared frames. **Absolute pixel difference 0, RMSE 0,
+    byte-identical frame size.** The fixture exercised what a move is most likely to break -
+    a stroked and glowing spec, a box with a corner radius, letter tracking, and a second
+    overlay with `boxWidthPercent`, which is the measured-wrap path.
+
+    **`/api/thumbnail`** takes a frame (`-ss` before `-i`, so ffmpeg seeks rather than
+    decoding up to the timestamp), scales and crops to **fill** rather than letterbox, burns
+    the overlays through the shared renderer, and writes JPEG q92. Three sizes: 16:9, 9:16,
+    1:1. Seeking past the end of a file produces **no frame and no ffmpeg error**, so the
+    missing output is checked for explicitly rather than becoming a 500.
+
+    **`previewWidth` is measured with `onLayout` and sent, never hardcoded.** Every length in
+    a caption spec is points at the app's 18pt base and the renderer scales by
+    `output width / previewWidth`, so **previewWidth is the app telling the server what the
+    numbers on screen were drawn against**. A constant 360 against a stage that is 380 on a
+    wider phone puts every thumbnail's text ~5% off its own preview.
+
+    **The instrument was wrong again, and this one is worth keeping** because the first
+    reading looked like a real bug. Halving `previewWidth` should double the rendered text;
+    measured on a **glowing** overlay at size 34 it grew only **1.22x**, which reads exactly
+    like broken scaling. It was the **safe-zone shrink from item 14** doing its job: at 2x
+    the text overflowed the frame and was scaled to fit. Re-measured with **no glow and a
+    size below the clamp**, it is 33x62 -> 65x122 px - **1.97x, exact**. *A measurement taken
+    where a clamp is active measures the clamp.*
+
+    **Also:** the source duration comes back in the response, because only two of the three
+    `userVideos` writers store `durationSeconds` and the one that does not is Idea-to-Video -
+    where most of these videos come from. Relying on the record would hide the frame slider
+    and pin every thumbnail to frame zero. `utils/saveVideo.js` gained `saveImageToDevice`,
+    kept separate from the audio one because a `createAssetAsync` failure means different
+    things for an image than an mp3.
+
+    **Three prop mistakes lint could not see**, caught by reading the components instead of
+    assuming: `CaptionText` takes `style` (the spec) plus a separate `color`, not `spec`;
+    `ProgressButton`'s outline is `variant="outline"`, not a boolean; a caption style's
+    display name is `label`, not `name`. **`no-undef` proves an identifier exists, never that
+    a prop name is the one the component reads.**
 
     **Untested on device.**
 
