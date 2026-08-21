@@ -142,7 +142,10 @@ const styles = StyleSheet.create({
   // rather than insetting what is in it. alignItems keeps the chips at their own height
   // instead of stretching to the row - the pair that clipped the My Videos chips
   // through the middle.
-  catRow: { flexGrow: 0, marginBottom: 12 },
+  // flexShrink: 0 as well as flexGrow: 0 - a FlatList of 128 tiles below will
+  // otherwise compress this row toward nothing. Same omission that broke the music
+  // filters and, before them, the My Videos chips.
+  catRow: { flexGrow: 0, flexShrink: 0, marginBottom: 12 },
   catRowContent: { paddingHorizontal: 2, gap: 8, alignItems: 'center' },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a' },
   // Teal: this switches which part of the catalogue you are looking at, it does not

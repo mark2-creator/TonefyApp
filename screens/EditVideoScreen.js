@@ -5406,7 +5406,7 @@ export default function EditVideoScreen({ navigation, route }) {
                     {musicFiltered.length} of {musicLibraryTracks.length} tracks
                   </Text>
 
-                  <ScrollView>
+                  <ScrollView style={styles.musicList}>
                     {musicFiltered.map(track => (
                       <TouchableOpacity key={track.id} onPress={() => addMusicTrackFromLibrary(track)}
                         style={styles.musicRow}>
@@ -5758,13 +5758,25 @@ const styles = StyleSheet.create({
   barWithAction: { flexDirection: 'row', alignItems: 'center' },
   // paddingHorizontal on the CONTENT container: on a horizontal ScrollView `style` is
   // the clipping box, and padding there shrinks what is visible instead of insetting it.
-  musicFilterRow: { flexGrow: 0, marginBottom: 8 },
-  musicFilterContent: { alignItems: 'center', gap: 6, paddingHorizontal: 2 },
+  // All four of these are load-bearing, and this is the SECOND time the same row has
+  // been built with one missing - see the My Videos filter chips in CLAUDE.md.
+  //   flexGrow 0    it must not expand to fill the sheet
+  //   flexShrink 0  and a 68-track list below must not be able to compress it to
+  //                 nothing, which is what was wrong here
+  //   alignItems    on the CONTENT, or it defaults to stretch and each chip takes the
+  //                 row's height instead of defining it - which clips them mid-chip
+  //   padding       on the CONTENT, because on a horizontal ScrollView `style` is the
+  //                 clipping box and padding there shrinks what is visible
+  musicFilterRow: { flexGrow: 0, flexShrink: 0, marginBottom: 8 },
+  musicFilterContent: { alignItems: 'center', gap: 6, paddingHorizontal: 2, paddingVertical: 2 },
   musicChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a' },
   musicChipActive: { backgroundColor: 'rgba(0,212,212,0.12)', borderColor: '#00d4d4' },
   musicChipText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   musicChipTextActive: { color: '#00d4d4' },
   musicCount: { color: '#fff', fontSize: 10, marginBottom: 8, opacity: 0.6 },
+  // flex 1 so the list takes what is left after the two chip rows, instead of both
+  // sides negotiating for the same space.
+  musicList: { flex: 1 },
   musicRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: 8, padding: 12, marginBottom: 8 },
   musicPlay: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   musicPlayOn: { backgroundColor: '#00d4d4' },
