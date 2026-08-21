@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 
 // Stacking order for the things drawn on top of the video.
 //
@@ -15,6 +15,7 @@ import SheetHeader from './SheetHeader';
 // reason - people read a layers panel top-down as front-to-back, and a panel that lists
 // the backmost item first invites exactly the wrong drag.
 export default function LayersSheet({ visible, overlays, onReorder, onClose }) {
+  const sheetInset = useSheetInset(16);
   const shown = [...(overlays || [])].reverse();
 
   // Indices are into the ORIGINAL array; the arrows are labelled by what the user sees.
@@ -31,7 +32,7 @@ export default function LayersSheet({ visible, overlays, onReorder, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title="Layers" onClose={onClose} />
           {shown.length === 0 ? (
             <Text style={styles.blurb}>

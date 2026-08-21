@@ -5,11 +5,13 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { COUNTRIES } from '../constants/countries';
 import { useTheme } from '../context/ThemeContext';
+import { useSheetInset } from './SheetHeader';
 
 // A searchable list, not a free-text field. Three sign-ups typing "USA", "United
 // States" and "US" would leave three values with nothing that can group them later;
 // picking from one fixed list gives the same value every time.
 export default function CountrySheet({ visible, value, onSelect, onClose }) {
+  const sheetInset = useSheetInset(16);
   const { theme } = useTheme();
   const [query, setQuery] = useState('');
 
@@ -22,7 +24,7 @@ export default function CountrySheet({ visible, value, onSelect, onClose }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheet, { backgroundColor: theme.settingBg }]}>
+        <View style={[styles.sheet, sheetInset, { backgroundColor: theme.settingBg }]}>
           <View style={[styles.grabber, { backgroundColor: theme.handle }]} />
           <View style={styles.headerRow}>
             <Text style={[styles.title, { color: theme.text }]}>Country</Text>

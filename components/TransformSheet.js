@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 
 // Geometry and opacity, as two sheets from one file because they share every control
 // pattern and differ only in which numbers they set.
@@ -32,6 +32,7 @@ function Row({ label, value, min, max, step, onChange, format }) {
 }
 
 export function TransformSheet({ visible, value, rotate = 0, onChange, onRotate, onClose }) {
+  const sheetInset = useSheetInset(16);
   const t = { ...DEFAULT_TRANSFORM, ...(value || {}) };
   const set = (patch) => onChange({ ...t, ...patch });
   const touched = t.zoom !== 1 || t.x !== 0 || t.y !== 0 || rotate !== 0;
@@ -39,7 +40,7 @@ export function TransformSheet({ visible, value, rotate = 0, onChange, onRotate,
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title="Transform" onClose={onClose} />
           <Text style={styles.blurb}>
             Zoom into the shot and choose what stays in frame. Applied when you export.
@@ -95,11 +96,12 @@ export function TransformSheet({ visible, value, rotate = 0, onChange, onRotate,
 }
 
 export function TransparencySheet({ visible, value, onChange, onClose }) {
+  const sheetInset = useSheetInset(16);
   const o = value == null ? 1 : value;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title="Transparency" onClose={onClose} />
           <Text style={styles.blurb}>
             Fades the clip toward black. Useful under text, or to open and close on

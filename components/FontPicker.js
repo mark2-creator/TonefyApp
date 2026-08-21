@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 import { FONT_GROUPS, FONT_NAMES, fontFamilyFor } from '../constants/fonts';
 import { useAppFonts } from '../constants/fontLoader';
 
@@ -94,6 +94,7 @@ function toRows(names, keyPrefix) {
 }
 
 export default function FontPicker({ value, onChange }) {
+  const sheetInset = useSheetInset(16);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ready = useAppFonts();
@@ -158,7 +159,7 @@ export default function FontPicker({ value, onChange }) {
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, sheetInset]}>
             <SheetHeader title="Font" onClose={() => setOpen(false)} />
             <View style={styles.searchWrap}>
               <MaterialIcons name="search" size={18} color="#666" />

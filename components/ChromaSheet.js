@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 
 // Green screen, and it says which problem it solves.
 //
@@ -18,6 +18,7 @@ const KEYS = [
 const DEFAULTS = { colour: '#00b140', similarity: 0.30, blend: 0.10 };
 
 export default function ChromaSheet({ visible, value, onChange, onClose }) {
+  const sheetInset = useSheetInset(12);
   const v = value || DEFAULTS;
   const on = !!value;
   const set = (patch) => onChange({ ...v, ...patch });
@@ -25,7 +26,7 @@ export default function ChromaSheet({ visible, value, onChange, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title="Green screen" onClose={onClose} />
 
           <Text style={styles.blurb}>

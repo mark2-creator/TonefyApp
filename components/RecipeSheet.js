@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 
 // One sheet for the two catalogues that cannot be shown as a still picture.
 //
@@ -70,6 +70,7 @@ export default function RecipeSheet({
   visible, title, items, categories, previewBase, version,
   value, isPremium, onSelect, onLocked, onClose,
 }) {
+  const sheetInset = useSheetInset(8);
   const [cat, setCat] = useState('All');
   const cats = useMemo(() => ['All', ...categories], [categories]);
   const shown = useMemo(
@@ -96,7 +97,7 @@ export default function RecipeSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title={title} onClose={onClose} />
 
           <ScrollView

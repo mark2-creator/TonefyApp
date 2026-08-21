@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, Modal, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 import CaptionText from './CaptionText';
 import { useAppFonts } from '../constants/fontLoader';
 import {
@@ -63,6 +63,7 @@ function StyleTile({ style, selected, ready, onPress }) {
 const MemoTile = React.memo(StyleTile);
 
 export function CaptionStyleSheet({ visible, value, onChange, onClose }) {
+  const sheetInset = useSheetInset(16);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(ALL);
   const ready = useAppFonts();
@@ -101,7 +102,7 @@ export function CaptionStyleSheet({ visible, value, onChange, onClose }) {
   return (
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
         <View style={styles.modalOverlay}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, sheetInset]}>
             <SheetHeader title={`Caption Style · ${CAPTION_STYLES.length}`} onClose={onClose} />
 
             <View style={styles.searchWrap}>

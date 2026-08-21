@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 import { AUDIO_FX, AUDIO_FX_CATEGORIES } from '../constants/audioFx';
 
 // One audio effect at a time, for a clip's own sound or for an audio track.
@@ -36,6 +36,7 @@ function Row({ item, active, locked, onPress }) {
 const MemoRow = React.memo(Row);
 
 export default function AudioFxSheet({ visible, title, value, isPremium, onSelect, onLocked, onClose }) {
+  const sheetInset = useSheetInset(16);
   const [cat, setCat] = useState('All');
   const cats = useMemo(() => ['All', ...AUDIO_FX_CATEGORIES], []);
   const shown = useMemo(
@@ -58,7 +59,7 @@ export default function AudioFxSheet({ visible, title, value, isPremium, onSelec
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title={title || 'Audio effects'} onClose={onClose} />
 
           <Text style={styles.blurb}>

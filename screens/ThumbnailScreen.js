@@ -172,7 +172,12 @@ export default function ThumbnailScreen({ navigation }) {
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      {/* The bottom inset matters as much as the top here and was missing: this screen
+          ends in the Generate and Save buttons, and under Android's gesture navigation
+          the bar is drawn OVER the content, so a fixed padding puts the primary action
+          underneath it. insets.bottom is 0 on a device with hardware keys, so the 40
+          stays the floor rather than being replaced by it. */}
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 + insets.bottom }}>
         {/* 1 - the frame it is made from */}
         <Text style={styles.step}>Choose a video</Text>
         {loading ? (

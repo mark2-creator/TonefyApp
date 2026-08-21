@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
-import SheetHeader from './SheetHeader';
+import SheetHeader, { useSheetInset } from './SheetHeader';
 
 // Shape masks. The ids must match MASK_SHAPES in server.js - an unknown shape renders
 // no mask at all rather than failing, so a typo here is silent.
@@ -14,13 +14,14 @@ const SHAPES = [
 ];
 
 export default function MaskSheet({ visible, value, onChange, onClose }) {
+  const sheetInset = useSheetInset(16);
   const shape = value?.shape || null;
   const feather = value?.feather ?? 40;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, sheetInset]}>
           <SheetHeader title="Mask" onClose={onClose} />
           <Text style={styles.blurb}>
             Keeps the shape and fades everything outside it to black. Applied when you
