@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, StatusBar, TextInput
@@ -6,26 +6,95 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+
+const BACKEND = 'https://api.fitlifesolutions.site';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import { showAlert } from '../components/BrandedAlert';
+import { getAuth } from 'firebase/auth';
 import ProgressButton from '../components/ProgressButton';
+import FilterSheet from '../components/FilterPicker';
+import AdjustSheet from '../components/AdjustSheet';
+import MotionPicker from '../components/MotionPicker';
+import EffectPicker from '../components/EffectPicker';
+import { resolveFilter, filterCss, filterSpec } from '../constants/filters';
+import { resolveEffect, effectCss, effectChain } from '../constants/effects';
+import { resolveMotion, motionChain } from '../constants/motions';
+import { adjustChain } from '../constants/adjustments';
+import { usePlan } from '../constants/plan';
 
 export default function PostRecordingScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   // The clip that was just recorded. This screen used to receive nothing at all and
   // drew a videocam icon on a grey rectangle in place of the footage.
-  const uri = route?.params?.uri || null;
+  const recordedUri = route?.params?.uri || null;
+  const [enhancedUri, setEnhancedUri] = useState(null);
+  const uri = enhancedUri || recordedUri;
   const recordedSeconds = Number(route?.params?.seconds) || 0;
   const [refinement, setRefinement] = useState('');
   const [saving, setSaving] = useState(false);
   const [savePct, setSavePct] = useState(0);
+  const { isPremium } = usePlan();
+
+  // The clip's own settings, held here and passed to the same sheets the editor uses.
+  // These were four Switches bound to booleans nothing read.
+  const [filter, setFilter] = useState('None');
+  const [adjust, setAdjust] = useState(null);
+  const [effect, setEffect] = useState('none');
+  const [motion, setMotion] = useState('none');
+  const [sheet, setSheet] = useState(null);   // 'filter' | 'adjust' | 'effect' | 'motion'
+  const [position, setPosition] = useState(0);
 
   const player = useVideoPlayer(uri || null, p => { if (p) p.loop = false; });
   const soonRef = useRef(null);
 
   const soon = (what) => showAlert(what, 'Coming soon.');
+
+  // The same live preview the editor canvas runs. RN 0.81's `filter` style compiles to
+  // a ColorMatrixColorFilter on Android, so a grade and a colour effect show on the
+  // real footage rather than being described in a label.
+  const liveFilter = useMemo(() => {
+    const parts = [];
+    const f = filter !== 'None' ? filterCss(filter) : null;
+    if (f) parts.push(f);
+    const e = effect !== 'none' ? effectCss(effect, position) : null;
+    if (e) parts.push(e);
+    return parts.length ? parts.join(' ') : null;
+  }, [filter, effect, position]);
+
+  // A clock for the time-varying effects, only while something needs one.
+  useEffect(() => {
+    if (effect === 'none' && motion === 'none') return undefined;
+    const t = setInterval(() => setPosition(p => p + 0.1), 100);
+    return () => clearInterval(t);
+  }, [effect, motion]);
+
+  const motionTransform = useMemo(() => {
+    const p = motion !== 'none' ? resolveMotion(motion).preview : null;
+    if (!p) return null;
+    const t = position, prog = Math.max(0, Math.min(1, p.hold ? t / p.hold : (t % 5) / 5));
+    const out = []; let scale = 1;
+    if (p.zoom) scale = p.zoom[0] + (p.zoom[1] - p.zoom[0]) * prog;
+    if (p.osc) scale = p.osc[0] + p.osc[1] * Math.sin(p.osc[2] * t);
+    if (p.shake) {
+      out.push({ translateX: p.shake.ax * Math.sin(p.shake.fx * t) });
+      out.push({ translateY: p.shake.ay * Math.cos(p.shake.fy * t) });
+    }
+    if (p.spin) out.push({ rotate: `${(p.spin[0] * Math.sin(p.spin[1] * t) * 180 / Math.PI).toFixed(2)}deg` });
+    if (scale !== 1) out.push({ scale });
+    return out.length ? out : null;
+  }, [motion, position]);
+
+  // Rows rather than switches, and each opens the sheet the editor already uses -
+  // 155 grades, 10 adjustments, 129 effects, 66 camera moves. They were four toggles
+  // that named a capability and did nothing with it.
+  const enhanceRows = [
+    { key: 'filter', icon: 'photo-filter', label: 'Filter', value: resolveFilter(filter).label, onPress: () => setSheet('filter') },
+    { key: 'adjust', icon: 'tune', label: 'Adjust', value: adjust ? 'Custom' : 'Default', onPress: () => setSheet('adjust') },
+    { key: 'effect', icon: 'auto-awesome', label: 'Effects', value: resolveEffect(effect).label, onPress: () => setSheet('effect') },
+    { key: 'motion', icon: 'animation', label: 'Motion', value: resolveMotion(motion).label, onPress: () => setSheet('motion') },
+  ];
 
   async function saveRaw() {
     if (!uri || saving) return;
@@ -38,10 +107,72 @@ export default function PostRecordingScreen({ navigation, route }) {
     } finally { setSaving(false); }
   }
 
-  function openInEditor() {
-    if (!uri) return;
-    // The editor already knows how to take a clip handed to it this way.
-    navigation.navigate('EditVideo', { useVideo: { uri, seconds: recordedSeconds } });
+  const [applying, setApplying] = useState(false);
+  const [applyPct, setApplyPct] = useState(0);
+  const [applyMsg, setApplyMsg] = useState('');
+
+  const anythingChosen = filter !== 'None' || !!adjust || effect !== 'none' || motion !== 'none';
+
+  // Renders the choices onto the clip HERE, rather than handing it to another screen.
+  // Same endpoint the editor exports through, and the same per-clip fields - so a grade
+  // picked on this screen and the same grade picked in the editor produce the same file.
+  async function applyEnhancements() {
+    if (!uri || applying) return;
+    setApplying(true); setApplyPct(0); setApplyMsg('Uploading…');
+    try {
+      const token = await getAuth().currentUser?.getIdToken();
+      if (!token) throw new Error('Please sign in again.');
+
+      const form = new FormData();
+      form.append('files', { uri, name: 'recording.mp4', type: 'video/mp4' });
+      const up = await (await fetch(`${BACKEND}/api/upload-media`, {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+      })).json();
+      const remote = up.items?.[0]?.url;
+      if (!remote) throw new Error(up.error || 'The upload did not complete.');
+
+      setApplyMsg('Applying…');
+      const body = {
+        mediaItems: [{
+          url: remote, type: 'video', trimStart: 0,
+          trimEnd: recordedSeconds || undefined, speed: 1,
+          filter,
+          filterSpec: [...(filterSpec(filter) || []), ...adjustChain(adjust)].slice(0, 20),
+          motionSpec: motionChain(motion) || undefined,
+          effectSpec: effectChain(effect) || undefined,
+          volume: 1, muted: false, transition: 'none',
+        }],
+        aspectRatio: '9:16', resolution: '1080p', transition: 'none',
+      };
+      const start = await (await fetch(`${BACKEND}/api/media-to-video`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify(body),
+      })).json();
+      if (!start.jobId) throw new Error(start.error || 'Could not start the render.');
+
+      let job = null;
+      for (let i = 0; i < 180; i += 1) {
+        await new Promise(r => setTimeout(r, 2000));
+        job = await (await fetch(`${BACKEND}/api/job/${start.jobId}`, {
+          headers: { Authorization: 'Bearer ' + token },
+        })).json();
+        if (typeof job.progress === 'number') setApplyPct(job.progress);
+        if (job.message) setApplyMsg(job.message);
+        if (job.status === 'done' || job.status === 'error') break;
+      }
+      if (job?.status !== 'done' || !job.videoUrl) throw new Error(job?.error || 'The render did not finish.');
+
+      // The enhanced file becomes the clip on this screen: the preview, and what Save
+      // Raw now saves. The choices are cleared because they are baked in - leaving them
+      // set would apply them a second time on a second pass.
+      setEnhancedUri(`${BACKEND}${job.videoUrl}`);
+      setFilter('None'); setAdjust(null); setEffect('none'); setMotion('none');
+      showAlert('Done', 'Your recording has been enhanced.');
+    } catch (e) {
+      showAlert('Could not enhance', e?.message || 'Something went wrong.');
+    } finally {
+      setApplying(false); setApplyMsg('');
+    }
   }
 
   return (
@@ -65,7 +196,10 @@ export default function PostRecordingScreen({ navigation, route }) {
             {uri ? (
               // expo-video's own controls, rather than a play button and a timecode of
               // "0:12 / 0:45" that were painted on and wired to nothing.
-              <VideoView player={player} style={StyleSheet.absoluteFill}
+              <VideoView player={player}
+                style={[StyleSheet.absoluteFill,
+                  motionTransform ? { transform: motionTransform } : null,
+                  liveFilter ? { filter: liveFilter } : null]}
                 nativeControls allowsFullscreen contentFit="contain" />
             ) : (
               <>
@@ -82,27 +216,24 @@ export default function PostRecordingScreen({ navigation, route }) {
         {/* Quick Edit Toggles */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: theme.subtext }]}>QUICK EDITS</Text>
-          {/* These were four Switches bound to four useStates that nothing anywhere
-              read - flicking one changed a boolean and then nothing. Dimmed and
-              labelled, per the rule that an unbuilt control must not look live.
-              Reduce noise genuinely exists, but on a clip in the editor rather than as
-              a toggle here, so it points there instead of claiming to do it. */}
           <View style={[styles.toggleGrid, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {[
-              { label: 'Noise Reduction', where: 'editor' },
-              { label: 'Face Retouch', where: 'soon' },
-              { label: 'Auto-Levels', where: 'soon' },
-              { label: 'Eye Contact Fix', where: 'soon' },
-            ].map(item => (
-              <TouchableOpacity
-                key={item.label}
-                style={styles.toggleItem}
-                onPress={() => (item.where === 'editor'
-                  ? showAlert(item.label, 'Open this clip in the editor and use Reduce noise on it.')
-                  : soon(item.label))}
-              >
-                <Text style={[styles.toggleItemLabel, { color: '#5a5a5a' }]}>{item.label}</Text>
-                <Text style={styles.soonTag}>{item.where === 'editor' ? 'IN EDITOR' : 'SOON'}</Text>
+            {enhanceRows.map(r => (
+              <TouchableOpacity key={r.key} style={styles.enhanceRow} onPress={r.onPress}>
+                <MaterialIcons name={r.icon} size={20} color={theme.icon} />
+                <Text style={[styles.enhanceLabel, { color: theme.text }]}>{r.label}</Text>
+                <Text style={[styles.enhanceValue, { color: theme.subtext }]} numberOfLines={1}>{r.value}</Text>
+                <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
+              </TouchableOpacity>
+            ))}
+            {/* Two that genuinely do not exist. Face retouch and eye contact need real
+                models, not an ffmpeg filter, and this app's own product notes put them
+                in a separately funded tier - so they say so rather than being drawn as
+                a row that opens nothing. */}
+            {['Face Retouch', 'Eye Contact Fix'].map(label => (
+              <TouchableOpacity key={label} style={styles.enhanceRow} onPress={() => soon(label)}>
+                <MaterialIcons name="face-retouching-natural" size={20} color="#5a5a5a" />
+                <Text style={[styles.enhanceLabel, { color: '#5a5a5a' }]}>{label}</Text>
+                <Text style={styles.soonTag}>SOON</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -164,10 +295,16 @@ export default function PostRecordingScreen({ navigation, route }) {
           {/* The primary action is the editor, where the tools this screen only named
               actually exist - filters, motion, effects, captions and Reduce noise. It
               was "Enhance with AI" and did nothing. */}
-          <TouchableOpacity style={styles.enhanceBtn} onPress={openInEditor} disabled={!uri}>
-            <MaterialIcons name="auto-fix-high" size={20} color="#04211f" />
-            <Text style={styles.enhanceBtnText}>Edit this clip</Text>
-          </TouchableOpacity>
+          <ProgressButton
+            label={applying ? (applyMsg || 'Applying…') : 'Apply to recording'}
+            hint={applying && applyPct ? `${applyPct}%` : ''}
+            progress={applyPct}
+            busy={applying}
+            icon="auto-fix-high"
+            disabled={!uri || !anythingChosen}
+            onPress={applyEnhancements}
+            style={styles.applyBtn}
+          />
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -203,8 +340,38 @@ export default function PostRecordingScreen({ navigation, route }) {
             </View>
           </View>
         </View>
+      <EnhanceSheets
+        sheet={sheet}
+        close={() => setSheet(null)}
+        backend={BACKEND}
+        isPremium={isPremium}
+        state={{ filter, adjust, effect, motion }}
+        set={{ filter: setFilter, adjust: setAdjust, effect: setEffect, motion: setMotion }}
+      />
       </ScrollView>
     </View>
+  );
+}
+
+// Mounted once, outside the ScrollView, exactly as the editor mounts the same four.
+function EnhanceSheets({ sheet, close, backend, isPremium, state, set }) {
+  return (
+    <>
+      <FilterSheet visible={sheet === 'filter'} value={state.filter} backend={backend}
+        isPremium={isPremium} onSelect={(id) => { set.filter(id); close(); }}
+        onLocked={(f) => showAlert(f.label, 'Available on the Pro and Creator plans.')}
+        onClose={close} />
+      <AdjustSheet visible={sheet === 'adjust'} value={state.adjust}
+        onChange={set.adjust} onClose={close} />
+      <EffectPicker visible={sheet === 'effect'} value={state.effect} backend={backend}
+        isPremium={isPremium} onSelect={(id) => { set.effect(id); close(); }}
+        onLocked={(e) => showAlert(e.label, 'Available on the Pro and Creator plans.')}
+        onClose={close} />
+      <MotionPicker visible={sheet === 'motion'} value={state.motion} backend={backend}
+        isPremium={isPremium} onSelect={(id) => { set.motion(id); close(); }}
+        onLocked={(m) => showAlert(m.label, 'Available on the Pro and Creator plans.')}
+        onClose={close} />
+    </>
   );
 }
 
@@ -230,6 +397,10 @@ const styles = StyleSheet.create({
   toggleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, backgroundColor: '#111', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#2a2a2a' },
   toggleItem: { width: '46%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   soonTag: { color: '#5a5a5a', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  applyBtn: { borderRadius: 12, minHeight: 50, marginBottom: 10 },
+  enhanceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 14 },
+  enhanceLabel: { fontSize: 14, flex: 1 },
+  enhanceValue: { fontSize: 12, maxWidth: 130, textAlign: 'right' },
   noClipText: { color: '#5a5a5a', fontSize: 12, marginTop: 6 },
   saveRawBtn: { flex: 1, minHeight: 46, borderRadius: 10 },
   saveRawLabel: { fontSize: 13 },
