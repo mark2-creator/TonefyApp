@@ -41,6 +41,7 @@ import { ASPECT_RATIOS, DEFAULT_ASPECT, resolveAspect, fitAspect } from '../cons
 import StickerSheet, { stickerUri } from '../components/StickerPicker';
 import BackgroundSheet from '../components/BackgroundSheet';
 import CropSheet from '../components/CropSheet';
+import AudioFxSheet from '../components/AudioFxSheet';
 import { DEFAULT_BACKGROUND, normaliseBackground } from '../constants/background';
 import { TRANSITION_PREVIEW_VERSION } from '../constants/transitionPreviewVersion';
 import {
@@ -483,6 +484,7 @@ const AUDIO_TOOLS = [
   { key: 'volume', icon: 'volume-up', label: 'Volume' },
   { key: 'more', icon: 'more-horiz', label: 'More' },
   { key: 'beatsync', icon: 'av-timer', label: 'Beat Sync' },
+  { key: 'audiofx', icon: 'equalizer', label: 'Effects', premium: true },
   { key: 'enhance', icon: 'auto-fix-high', label: 'Enhance voice', premium: true },
   { key: 'captions', icon: 'closed-caption', label: 'Captions' },
 ];
@@ -1383,6 +1385,11 @@ export default function EditVideoScreen({ navigation, route }) {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showMotionSheet, setShowMotionSheet] = useState(false);
   const [showChromaSheet, setShowChromaSheet] = useState(false);
+  // Which object the audio-effects sheet is editing: null (closed), 'clip', or a track
+  // key. Not a boolean plus a separate "current target" - two pieces of state for one
+  // question drift, and the sheet then edits whatever was selected last rather than
+  // what was tapped.
+  const [audioFxTarget, setAudioFxTarget] = useState(null);
   const [showEffectSheet, setShowEffectSheet] = useState(false);
   const [showAdjustSheet, setShowAdjustSheet] = useState(false);
   const [showAspectSheet, setShowAspectSheet] = useState(false);
@@ -2561,6 +2568,8 @@ export default function EditVideoScreen({ navigation, route }) {
         motionBlur: !!items[i].motionBlur,
         stabilize: !!items[i].stabilize,
         enhanceVoice: !!items[i].enhanceVoice,
+        // An id, never a filter string - the chain lives in AUDIO_FX on the server.
+        audioFx: items[i].audioFx || undefined,
         // Seconds of held final frame. The server clamps it to 5 - it is duration the
         // client asks the server to invent, and duration the credit check did not count.
         freezeEnd: Number(items[i].freezeEnd) || 0,
@@ -2640,6 +2649,7 @@ export default function EditVideoScreen({ navigation, route }) {
         // Broadcast voice chain on the server. Sent here rather than baked into the
         // file, so it can be turned off again on a track already on the timeline.
         enhanceVoice: !!track.enhanceVoice,
+        audioFx: track.audioFx || undefined,
         startOffset: track.startOffset ?? 0,
         trimStart: track.trimStart ?? 0,
         trimEnd: track.trimEnd ?? track.sourceDuration ?? null,
@@ -3886,6 +3896,20 @@ export default function EditVideoScreen({ navigation, route }) {
     // BG Remover opens the green-screen sheet, which says plainly that it needs a real
     // screen. Cutting a person out of an ordinary room needs a model; keying a known
     // colour does not, and only one of those is free.
+    extractaudio: () => selectedItem && extractClipAudio(selectedItem),
+    audioeffects: () => {
+      if (!selectedItem) return;
+      if (selectedItem.type === 'image') {
+        return showAlert('Audio effects', 'A photo has no sound to work on.');
+      }
+      if (selectedItem.muted) {
+        // Silently applying an effect to a muted clip produces a render identical to
+        // not applying it, which reads as the effect being broken rather than as the
+        // clip being off.
+        return showAlert('Audio effects', 'This clip is muted. Turn its volume up first.');
+      }
+      setAudioFxTarget('clip');
+    },
     bgremover: () => {
       if (!selectedItem) return;
       if (selectedItem.type === 'image') {
@@ -4005,6 +4029,74 @@ export default function EditVideoScreen({ navigation, route }) {
   // Transcribe -> translate -> speak, all on the server. The result arrives as an
   // audio URL and goes onto the timeline as a voiceover, with the clip's own sound
   // muted - otherwise the original narration plays underneath the translation.
+  // Pull a clip's own sound out into a track of its own.
+  //
+  // Deliberately does NOT mute the source, unlike Translate - which must, or the
+  // original narration plays under the translation. Here the extracted audio is the
+  // SAME sound, so muting would leave the timeline sounding identical while looking
+  // changed, and un-muting is not obviously the fix for that. Detaching sound from
+  // picture is a means to an end (fade it, move it, keep it past the clip), and which
+  // of those the user wants is theirs to choose next.
+  const extractClipAudio = useCallback(async (item) => {
+    if (item.type === 'image') {
+      return showAlert('Extract audio', 'A photo has no sound to extract.');
+    }
+    try {
+      setUploading(true); setProgress(0); setMessage('Preparing clip...');
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      const token = await user.getIdToken();
+
+      // Same on-demand upload as Translate: the clip lives on the device until an
+      // export sends it, and the server cannot read what it has never received. The
+      // URL is kept on the item so a second extraction does not re-send it.
+      let url = item.remoteUrl;
+      if (!url) {
+        const form = new FormData();
+        form.append('files', { uri: item.uri, name: 'clip.mp4', type: 'video/mp4' });
+        const upRes = await fetch(BACKEND + '/api/upload-media', {
+          method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form,
+        });
+        const upData = await readJson(upRes);
+        if (upData.error) throw new Error(upData.error);
+        url = upData.items?.[0]?.url;
+        if (!url) throw new Error('That clip could not be uploaded.');
+        setItems(prev => prev.map(i => (i.key === item.key ? { ...i, remoteUrl: url } : i)));
+      }
+
+      setMessage('Extracting audio...');
+      const res = await apiFetch('/api/extract-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await readJson(res);
+      if (data.error || !data.audioUrl) throw new Error(data.error || 'Could not extract the audio.');
+
+      // Cached locally before it goes on the timeline: left remote, expo-av streams it
+      // while the video is also decoding and the playback breaks up mid-sentence.
+      // remoteUrl keeps the export pointed at the copy the server already has.
+      const remote = BACKEND + data.audioUrl;
+      const audId = newMediaId('vo');
+      const local = await cacheRemoteMedia(remote, audId, 'mp3');
+      addVoiceoverTrack({
+        key: String(Date.now()) + '_extract',
+        mediaId: audId,
+        uri: local || remote,
+        remoteUrl: remote,
+        name: `${item.name || 'Clip'} audio`,
+        volume: 1,
+      });
+
+      setUploading(false);
+      showAlert('Audio extracted',
+        'The clip’s sound is now its own track. Mute the clip if you want only the track to play.');
+    } catch (e) {
+      setUploading(false);
+      showAlert('Extract audio', e.message || 'Could not extract the audio from this clip.');
+    }
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const runTranslate = useCallback(async (lang) => {
     setTranslateSheet(false);
     const item = items.find(i => i.key === selectedKey);
@@ -4165,6 +4257,7 @@ export default function EditVideoScreen({ navigation, route }) {
     volume: () => setAudioSheetKey(selectedAudioTrackKey),
     captions: openCaptionModal,
     fade: () => setFadeSheetKey(selectedAudioTrackKey),
+    audiofx: () => selectedAudioTrackKey && setAudioFxTarget(selectedAudioTrackKey),
     slip: () => setSlipSheetKey(selectedAudioTrackKey),
   };
 
@@ -5616,6 +5709,26 @@ export default function EditVideoScreen({ navigation, route }) {
         onSelect={(id) => { applyEffect(id); setShowEffectSheet(false); }}
         onLocked={(e) => promptUpgrade(e.label)}
         onClose={() => setShowEffectSheet(false)}
+      />
+
+      <AudioFxSheet
+        visible={audioFxTarget !== null}
+        title={audioFxTarget === 'clip' ? 'Clip audio effects' : 'Track audio effects'}
+        value={audioFxTarget === 'clip'
+          ? (selectedItem?.audioFx || null)
+          : (audioTracks.find(t => t.key === audioFxTarget)?.audioFx || null)}
+        isPremium={isPremium}
+        onSelect={(id) => {
+          if (audioFxTarget === 'clip') {
+            setItems(prev => prev.map(i => (
+              i.key === selectedKey ? { ...i, audioFx: id || undefined } : i
+            )));
+          } else {
+            setTrackField(audioFxTarget, { audioFx: id || undefined });
+          }
+        }}
+        onLocked={(fx) => promptUpgrade(fx.label, 'Audio effects are available on the Pro and Creator plans.')}
+        onClose={() => setAudioFxTarget(null)}
       />
 
       <ChromaSheet

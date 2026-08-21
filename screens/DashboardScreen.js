@@ -30,7 +30,7 @@ const sections = [
     icon: 'headphones',
     color: '#92ccff',
     cards: [
-      { title: 'Empty Audio', desc: 'Start creating audio from a blank file.', icon: 'add-box', color: '#555' },
+      { title: 'Empty Audio', desc: 'Write your own script and voice it.', icon: 'add-box', color: '#92ccff' },
       { title: 'Idea to Audio', desc: 'Transform your ideas into stunning audio.', icon: 'auto-awesome', color: '#2ecc71' },
       { title: 'Script to Audio', desc: 'Transform your scripts into engaging voiceover.', icon: 'description', color: '#58e5c2' },
     ],
@@ -76,7 +76,11 @@ export default function DashboardScreen({ navigation }) {
     else if (title === 'Idea to Audio') navigation.navigate('IdeaToAudio');
     else if (title === 'Script to Audio') navigation.navigate('ScriptToAudio');
     else if (title === 'Record to Video') navigation.navigate('RecordToVideo');
-    else if (title === 'Empty Audio') navigation.navigate('IdeaToAudio');
+    // Script to Audio with nothing in the box IS the blank file this card describes.
+    // It used to open Idea to Audio, which asks for an idea and writes the script for
+    // you - the opposite of starting from blank, and a card whose description and
+    // destination disagreed.
+    else if (title === 'Empty Audio') navigation.navigate('ScriptToAudio', { script: '' });
   };
 
   return (
