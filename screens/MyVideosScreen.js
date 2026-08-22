@@ -30,7 +30,7 @@ function formatDate(iso) {
   }
 }
 
-function VideoCard({ video, onPress, onUse, onDownload, downloading, downloadPct, preparing }) {
+function VideoCard({ video, onPress, onUse, onPost, onDownload, downloading, downloadPct, preparing }) {
   const { theme } = useTheme();
   const url = video.downloadUrl || video.localUrl || '';
   const player = useVideoPlayer(url, (p) => {
@@ -55,10 +55,21 @@ function VideoCard({ video, onPress, onUse, onDownload, downloading, downloadPct
         <Text style={[styles.prompt, { color: theme.text }]} numberOfLines={1}>{video.prompt || 'Generated video'}</Text>
       </View>
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.btnUse} onPress={() => onUse(video)} disabled={preparing}>
+        {/* Post is the primary action on a FINISHED video - publishing is what it is
+            for - so it takes the green. Use opens the editor, which is navigation
+            rather than a commit, and by this app's own colour rule navigation is not
+            green. Use was green only because it was the sole button here. */}
+        <TouchableOpacity style={styles.btnPost} onPress={() => onPost(video)}>
+          <Text style={styles.btnPostText}>Post</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btnUse, { borderColor: theme.border }]}
+          onPress={() => onUse(video)}
+          disabled={preparing}
+        >
           {preparing
-            ? <ActivityIndicator size="small" color="#04211f" />
-            : <Text style={styles.btnUseText}>Use</Text>}
+            ? <ActivityIndicator size="small" color={theme.text} />
+            : <Text style={[styles.btnUseText, { color: theme.text }]}>Use</Text>}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.btnDl, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -157,6 +168,20 @@ export default function MyVideosScreen({ navigation }) {
   // `item.uri` for every item, and maps the server's replies back by position, so a
   // remote uri in that list would upload nothing usable and shift everything after
   // it.
+  const BACKEND = 'https://api.fitlifesolutions.site';
+
+  function handlePost(video) {
+    const url = video.downloadUrl || video.localUrl;
+    if (!url) return showAlert('Post', 'This video has no file to post.');
+    // EditPostVideoScreen builds its upload as `${BACKEND}${videoPath}`, so videoPath has
+    // to be server-RELATIVE - handing it a full URL produces a doubled host and a 404
+    // that looks like the video is missing.
+    navigation.navigate('EditPostVideo', {
+      videoUrl: url,
+      videoPath: url.startsWith(BACKEND) ? url.slice(BACKEND.length) : url,
+    });
+  }
+
   async function handleUse(video) {
     const url = video.downloadUrl || video.localUrl;
     if (!url) return showAlert('Use video', 'This video has no file to open.');
@@ -277,7 +302,7 @@ export default function MyVideosScreen({ navigation }) {
           columnWrapperStyle={{ gap: 12 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ecc71" />}
           renderItem={({ item }) => (
-            <VideoCard video={item} onPress={openModal} onUse={handleUse} onDownload={handleDownload} downloading={downloading === item.id} downloadPct={downloadPct} preparing={preparing === item.id} />
+            <VideoCard video={item} onPress={openModal} onUse={handleUse} onPost={handlePost} onDownload={handleDownload} downloading={downloading === item.id} downloadPct={downloadPct} preparing={preparing === item.id} />
           )}
         />
       )}
@@ -364,8 +389,10 @@ const styles = StyleSheet.create({
   date: { color: '#888', fontSize: 11, marginBottom: 4 },
   prompt: { color: '#fff', fontSize: 13, fontWeight: '600' },
   actionsRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 10, paddingBottom: 10 },
-  btnUse: { flex: 1, backgroundColor: '#2ecc71', borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
-  btnUseText: { color: '#000', fontSize: 12, fontWeight: '700' },
+  btnPost: { flex: 1, backgroundColor: '#2ecc71', borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
+  btnPostText: { color: '#000', fontSize: 12, fontWeight: '700' },
+  btnUse: { flex: 1, borderWidth: 1, borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
+  btnUseText: { fontSize: 12, fontWeight: '700' },
   btnDl: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
   btnDlText: { color: '#fff', fontSize: 12 },
   emptyText: { color: '#888', textAlign: 'center', marginTop: 40 },

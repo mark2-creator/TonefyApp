@@ -52,7 +52,16 @@ export default function CalendarScreen({ navigation }) {
   }
 
   function editPost(post) {
-    navigation.navigate('EditPostVideo', { videoUrl: post.videoUrl, videoPath: '' });
+    // videoPath was an empty string, which made posting from here impossible: the post
+    // screen guards on `if (!videoPath)` and refuses with "There is no video to post
+    // yet" - on a screen whose whole purpose is posts. It must be server-relative,
+    // since the upload is built as `${BACKEND}${videoPath}`.
+    const B = 'https://api.fitlifesolutions.site';
+    const u = post.videoUrl || '';
+    navigation.navigate('EditPostVideo', {
+      videoUrl: u,
+      videoPath: u.startsWith(B) ? u.slice(B.length) : u,
+    });
   }
 
   // Calendar helpers
