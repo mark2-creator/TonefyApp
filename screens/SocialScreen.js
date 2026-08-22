@@ -20,11 +20,27 @@ import { useTheme } from '../context/ThemeContext';
 // The counts are a plain read of the same `scheduledPosts` collection Calendar reads, so
 // there is no second source of truth to drift - if the two ever disagree, one of them is
 // reading wrong rather than one of them being stale.
-const PLATFORMS = [
-  { id: 'tiktok', label: 'TikTok', icon: 'tiktok', colour: '#000000', live: true },
-  { id: 'facebook', label: 'Facebook', icon: 'facebook', colour: '#1877F2', live: false },
-  { id: 'instagram', label: 'Instagram', icon: 'instagram', colour: '#E4405F', live: false },
-  { id: 'x', label: 'X', icon: 'x-twitter', colour: '#000000', live: false },
+const BACKEND = 'https://api.fitlifesolutions.site';
+
+// Icon and colour only. WHICH platforms exist and whether each is live comes from the
+// server's /api/platforms, so a platform coming online is a credential and a restart
+// rather than an app update - which matters because this list would otherwise be a
+// constant compiled into a bundle.
+const LOOK = {
+  tiktok: { icon: 'tiktok', colour: '#000000' },
+  youtube: { icon: 'youtube', colour: '#FF0000' },
+  pinterest: { icon: 'pinterest', colour: '#E60023' },
+  facebook: { icon: 'facebook', colour: '#1877F2' },
+  instagram: { icon: 'instagram', colour: '#E4405F' },
+  x: { icon: 'x-twitter', colour: '#000000' },
+};
+
+// Shown until the server answers, and as the fallback if it cannot be reached - so the
+// screen is never empty and never claims a platform is missing because a request failed.
+const FALLBACK_PLATFORMS = [
+  { id: 'tiktok', label: 'TikTok', enabled: true },
+  { id: 'youtube', label: 'YouTube', enabled: false },
+  { id: 'pinterest', label: 'Pinterest', enabled: false },
 ];
 
 export default function SocialScreen({ navigation }) {
@@ -35,6 +51,7 @@ export default function SocialScreen({ navigation }) {
   const [connected, setConnected] = useState({});
   const [queued, setQueued] = useState([]);
   const [postedCount, setPostedCount] = useState(0);
+  const [platforms, setPlatforms] = useState(FALLBACK_PLATFORMS);
 
   // useFocusEffect rather than a mount effect: connecting an account happens on ANOTHER
   // screen (and, for TikTok, in a browser), so arriving back here is exactly the moment
@@ -45,12 +62,16 @@ export default function SocialScreen({ navigation }) {
       const user = auth.currentUser;
       if (!user) { setLoading(false); return; }
       try {
-        const [acc, posts] = await Promise.all([
+        const token = await user.getIdToken();
+        const [acc, posts, plat] = await Promise.all([
           getDoc(doc(db, 'connectedAccounts', user.uid)),
           getDocs(query(collection(db, 'scheduledPosts'), where('userId', '==', user.uid))),
+          fetch(BACKEND + '/api/platforms', { headers: { Authorization: 'Bearer ' + token } })
+            .then(r => r.json()).catch(() => null),
         ]);
         if (cancelled) return;
         setConnected(acc.exists() ? acc.data() : {});
+        if (plat?.platforms?.length) setPlatforms(plat.platforms);
         const all = posts.docs.map(d => ({ id: d.id, ...d.data() }));
         setQueued(
           all.filter(p => p.status === 'queued')
@@ -69,7 +90,7 @@ export default function SocialScreen({ navigation }) {
     return () => { cancelled = true; };
   }, []));
 
-  const liveCount = PLATFORMS.filter(p => p.live && connected[p.id]).length;
+  const liveCount = platforms.filter(p => p.enabled && connected[p.id]).length;
 
   const fmt = (iso) => {
     if (!iso) return 'No time set';
@@ -99,21 +120,22 @@ export default function SocialScreen({ navigation }) {
             {/* 1 - who you can post as */}
             <Text style={[styles.section, { color: theme.text }]}>Accounts</Text>
             <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              {PLATFORMS.map((p, i) => {
-                const on = p.live && !!connected[p.id];
+              {platforms.map((p, i) => {
+                const on = p.enabled && !!connected[p.id];
+                const look = LOOK[p.id] || { icon: 'share-nodes', colour: '#888888' };
                 return (
                   <TouchableOpacity
                     key={p.id}
                     style={[styles.accRow, i > 0 && { borderTopWidth: 1, borderTopColor: theme.border }]}
-                    disabled={!p.live}
+                    disabled={!p.enabled}
                     onPress={() => navigation.navigate('ConnectAccounts')}>
-                    <View style={[styles.badge, { backgroundColor: p.live ? p.colour : theme.border }]}>
-                      <FontAwesome6 name={p.icon} size={14} color="#fff" />
+                    <View style={[styles.badge, { backgroundColor: p.enabled ? look.colour : theme.border }]}>
+                      <FontAwesome6 name={look.icon} size={14} color="#fff" />
                     </View>
-                    <Text style={[styles.accLabel, { color: p.live ? theme.text : theme.subtext }]}>
+                    <Text style={[styles.accLabel, { color: p.enabled ? theme.text : theme.subtext }]}>
                       {p.label}
                     </Text>
-                    {!p.live ? (
+                    {!p.enabled ? (
                       <Text style={[styles.accState, { color: theme.subtext }]}>Coming soon</Text>
                     ) : on ? (
                       <Text style={[styles.accState, styles.accOn]}>
