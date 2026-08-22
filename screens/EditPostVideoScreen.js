@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Alert, StatusBar
+  StyleSheet, ActivityIndicator, Alert, StatusBar, Linking, AppState
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
@@ -66,7 +66,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokName, setTiktokName] = useState('');
   const [ttOn, setTtOn] = useState(false);
   const [youtube, setYoutube] = useState(null);
-  const [ytOn, setYtOn] = useState(false);
+  // No toggle. A toggle asks the user to express an intention and then do a SECOND
+  // thing to act on it - and on this row the second thing was far away at the bottom of
+  // the screen, so flipping it appeared to do nothing at all. One button that runs the
+  // whole sequence is what was actually wanted.
+  const [ytPosting, setYtPosting] = useState(false);
+  // Set before the browser opens, so returning from a completed consent CONTINUES to the
+  // upload instead of dumping the user back on a screen where nothing has happened.
+  const ytPendingRef = useRef(false);
   const { isPremium } = usePlan();
   // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
   // schedMode existed and was never read - the queue had no notion of "when", so every
@@ -83,6 +90,24 @@ export default function EditPostVideoScreen({ navigation, route }) {
   useEffect(() => {
     loadTikTok();
     loadYouTube();
+    // Returning from the browser BACKGROUNDS the app rather than navigating away, so
+    // AppState is the signal - a navigation focus effect would never fire.
+    const sub = AppState.addEventListener('change', async (next) => {
+      if (next !== 'active') return;
+      await loadYouTube();
+      if (!ytPendingRef.current) return;
+      ytPendingRef.current = false;
+      // Re-asked rather than assumed: the consent may have been cancelled, and a failed
+      // connect must not be followed by an upload attempt that reports a confusing error.
+      try {
+        const token = await user.getIdToken();
+        const r = await fetch(`${BACKEND}/api/youtube/status`, { headers: { Authorization: `Bearer ${token}` } });
+        const st = await r.json();
+        setYoutube(st);
+        if (st?.connected) await uploadToYouTube();
+      } catch (e) { /* the card will show it is still not connected */ }
+    });
+    return () => sub.remove();
     loadQueue();
   }, []);
 
@@ -94,6 +119,69 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const r = await fetch(`${BACKEND}/api/youtube/status`, { headers: { Authorization: `Bearer ${token}` } });
       setYoutube(await r.json());
     } catch (e) { setYoutube(null); }
+  }
+
+  // One button, the whole sequence: plan check, connect if needed, then upload.
+  //
+  // The connect half cannot be awaited - consent happens in a browser and there is no
+  // callback into the app - so the intention is parked in a ref and the AppState
+  // listener below picks it back up. That is the difference between "it opened a browser
+  // and I ended up back where I started" and a flow that finishes what it began.
+  async function postToYouTube() {
+    if (!videoPath) return showAlert('YouTube', 'There is no video to post yet.');
+    if (!isPremium) {
+      return showAlert('YouTube', 'Posting to YouTube is available on the Pro and Creator plans.');
+    }
+    // Asked fresh rather than trusted from render: the connection may have been made or
+    // revoked since this screen loaded.
+    let status = youtube;
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/youtube/status`, { headers: { Authorization: `Bearer ${token}` } });
+      status = await r.json();
+      setYoutube(status);
+    } catch (e) { /* fall through on the state we have */ }
+
+    if (!status?.connected) {
+      ytPendingRef.current = true;
+      try {
+        const token = await user.getIdToken();
+        const r = await fetch(`${BACKEND}/api/youtube/connect`, { headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        if (!d.authUrl) throw new Error(d.error || 'Could not start the connection.');
+        await Linking.openURL(d.authUrl);
+      } catch (e) {
+        ytPendingRef.current = false;
+        showAlert('YouTube', e.message || 'Could not open the YouTube sign-in page.');
+      }
+      return;
+    }
+    await uploadToYouTube();
+  }
+
+  async function uploadToYouTube() {
+    setYtPosting(true);
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/post-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'] }),
+      });
+      const d = await r.json();
+      const result = d.results?.[0];
+      if (!result) throw new Error(d.error || 'The upload failed.');
+      if (!result.ok) throw new Error(result.error);
+      // Said here rather than discovered later: the video really is on the channel, and
+      // it really is private until Google's audit clears.
+      showAlert('Posted to YouTube',
+        'It is on your channel as a private video while our YouTube app is under review.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+    } catch (e) {
+      showAlert('YouTube', e.message || 'The upload failed.');
+    } finally {
+      setYtPosting(false);
+    }
   }
 
   async function loadTikTok() {
@@ -126,7 +214,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // record itself, so this no longer does.
   async function postNow() {
     if (!videoPath) { showAlert('Error', 'No video to post'); return; }
-    const platforms = [...(ttOn ? ['tiktok'] : []), ...(ytOn ? ['youtube'] : [])];
+    const platforms = ttOn ? ['tiktok'] : [];
     if (platforms.length === 0) { showAlert('Error', 'Enable at least one platform'); return; }
     setPosting(true);
     try {
@@ -177,7 +265,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '',
-        platforms: [...(ttOn ? ['tiktok'] : []), ...(ytOn ? ['youtube'] : [])],
+        platforms: ttOn ? ['tiktok'] : [],
         scheduledFor: scheduledAt.toISOString(),
         scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
         status: 'queued', createdAt: new Date().toISOString()
@@ -325,29 +413,28 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><YouTubeLogo size={22} /></View>
             <Text style={[styles.platformName, { color: theme.text }]}>YouTube</Text>
-            {!isPremium ? (
-              <View style={styles.ytLocked}>
-                <MaterialIcons name="diamond" size={12} color="#f5c451" />
-                <Text style={[styles.comingSoon, { color: theme.subtext }]}>Pro</Text>
-              </View>
-            ) : youtube?.connected ? (
-              <Text style={styles.connectedText}>Connected</Text>
-            ) : (
-              <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
-                <Text style={styles.connectLink}>Connect</Text>
-              </TouchableOpacity>
-            )}
+            {isPremium && youtube?.connected
+              ? <Text style={styles.connectedText}>Connected</Text>
+              : null}
+            {/* A button, not a toggle. A toggle states an intention and needs a second
+                action to carry it out - and that second action was at the bottom of the
+                screen, so flipping this appeared to do nothing. This runs the whole
+                sequence: plan check, sign in if needed, upload. */}
             <TouchableOpacity
-              style={[styles.toggle, { backgroundColor: theme.border }, ytOn && youtube?.connected && isPremium && styles.toggleOn]}
-              onPress={() => {
-                if (!isPremium) {
-                  return showAlert('YouTube', 'Posting to YouTube is available on the Pro and Creator plans.');
-                }
-                if (!youtube?.connected) return navigation.navigate('ConnectAccounts');
-                setYtOn(!ytOn);
-              }}
+              style={[styles.ytBtn, !isPremium && styles.ytBtnLocked]}
+              onPress={postToYouTube}
+              disabled={ytPosting}
             >
-              <View style={[styles.toggleThumb, ytOn && youtube?.connected && isPremium && styles.toggleThumbOn]} />
+              {ytPosting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  {!isPremium && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
+                  <Text style={styles.ytBtnText}>
+                    {!isPremium ? 'Pro' : youtube?.connected ? 'Post' : 'Connect & post'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -456,7 +543,15 @@ export default function EditPostVideoScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  ytLocked: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ytBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: '#FF0000', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7,
+    minWidth: 96,
+  },
+  // Neutral rather than red when it is an upgrade prompt: the red button means "this
+  // uploads now", and wearing it while refusing would be a lie about what the tap does.
+  ytBtnLocked: { backgroundColor: '#3a3a3a' },
+  ytBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
