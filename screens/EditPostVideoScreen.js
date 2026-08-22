@@ -8,7 +8,8 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
-import { TikTokLogo, InstagramLogo, FacebookLogo } from '../components/BrandLogos';
+import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo } from '../components/BrandLogos';
+import { usePlan } from '../constants/plan';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,6 +65,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
   const [ttOn, setTtOn] = useState(false);
+  const [youtube, setYoutube] = useState(null);
+  const [ytOn, setYtOn] = useState(false);
+  const { isPremium } = usePlan();
   // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
   // schedMode existed and was never read - the queue had no notion of "when", so every
   // post was written with scheduledFor = now whatever the user intended.
@@ -78,8 +82,19 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
   useEffect(() => {
     loadTikTok();
+    loadYouTube();
     loadQueue();
   }, []);
+
+  // Server-side state, like ConnectAccountsScreen: only the backend knows whether the
+  // stored token still works.
+  async function loadYouTube() {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/youtube/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setYoutube(await r.json());
+    } catch (e) { setYoutube(null); }
+  }
 
   async function loadTikTok() {
     try {
@@ -104,26 +119,36 @@ export default function EditPostVideoScreen({ navigation, route }) {
     } catch (e) {}
   }
 
+  // Every enabled platform, through one route. This used to call /tiktok/post-video
+  // directly, which is why a second platform had nowhere to go - /api/post-now publishes
+  // through the same registry and the same publish functions the scheduled sweep uses,
+  // so posting now and posting later cannot drift apart. It also writes the history
+  // record itself, so this no longer does.
   async function postNow() {
     if (!videoPath) { showAlert('Error', 'No video to post'); return; }
-    if (!ttOn) { showAlert('Error', 'Enable at least one platform'); return; }
-    if (!tiktokOpenId) { showAlert('Error', 'Connect TikTok first'); return; }
+    const platforms = [...(ttOn ? ['tiktok'] : []), ...(ytOn ? ['youtube'] : [])];
+    if (platforms.length === 0) { showAlert('Error', 'Enable at least one platform'); return; }
     setPosting(true);
     try {
       const token = await user.getIdToken();
-      const r = await fetch(`${BACKEND}/tiktok/post-video`, {
+      const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ openId: tiktokOpenId, videoUrl: `${BACKEND}${videoPath}`, title: caption })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms }),
       });
       const d = await r.json();
-      if (d.error) throw new Error(d.error);
-      await addDoc(collection(db, 'scheduledPosts'), {
-        userId: user.uid, caption, videoUrl: `${BACKEND}${videoPath}`,
-        platforms: ['tiktok'], scheduledFor: new Date().toISOString(),
-        scheduleMode: 'immediate', status: 'posted', createdAt: new Date().toISOString()
-      });
-      showAlert('Success', 'Posted to TikTok!', [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+      const failed = (d.results || []).filter(x => !x.ok);
+      if (!d.results) throw new Error(d.error || 'The post failed.');
+      if (failed.length === 0) {
+        showAlert('Posted', `Posted to ${platforms.length > 1 ? 'your channels' : platforms[0] === 'youtube' ? 'YouTube' : 'TikTok'}!`,
+          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+      } else if (failed.length < (d.results || []).length) {
+        // Partial success is its own outcome. Reporting it as failure would have someone
+        // retry a platform that already posted.
+        showAlert('Partly posted', failed.map(f => `${f.platform}: ${f.error}`).join('\n'));
+      } else {
+        throw new Error(failed.map(f => f.error).join('\n'));
+      }
     } catch (e) { showAlert('Error', e.message); }
     setPosting(false);
   }
@@ -152,7 +177,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '',
-        platforms: ttOn ? ['tiktok'] : [],
+        platforms: [...(ttOn ? ['tiktok'] : []), ...(ytOn ? ['youtube'] : [])],
         scheduledFor: scheduledAt.toISOString(),
         scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
         status: 'queued', createdAt: new Date().toISOString()
@@ -293,6 +318,39 @@ export default function EditPostVideoScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          {/* YouTube. Live, and a paid benefit - the diamond marks an offer, never a
+              padlock, because everything gated here is on a plan that is for sale.
+              The server refuses a free account inside the publisher regardless, so this
+              is the explanation rather than the enforcement. */}
+          <View style={styles.platformRow}>
+            <View style={styles.platformIcon}><YouTubeLogo size={22} /></View>
+            <Text style={[styles.platformName, { color: theme.text }]}>YouTube</Text>
+            {!isPremium ? (
+              <View style={styles.ytLocked}>
+                <MaterialIcons name="diamond" size={12} color="#f5c451" />
+                <Text style={[styles.comingSoon, { color: theme.subtext }]}>Pro</Text>
+              </View>
+            ) : youtube?.connected ? (
+              <Text style={styles.connectedText}>Connected</Text>
+            ) : (
+              <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+                <Text style={styles.connectLink}>Connect</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.toggle, { backgroundColor: theme.border }, ytOn && youtube?.connected && isPremium && styles.toggleOn]}
+              onPress={() => {
+                if (!isPremium) {
+                  return showAlert('YouTube', 'Posting to YouTube is available on the Pro and Creator plans.');
+                }
+                if (!youtube?.connected) return navigation.navigate('ConnectAccounts');
+                setYtOn(!ytOn);
+              }}
+            >
+              <View style={[styles.toggleThumb, ytOn && youtube?.connected && isPremium && styles.toggleThumbOn]} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <MaterialIcons name="close" size={22} color={theme.text} style={styles.platformIcon} />
             <Text style={[styles.platformName, { color: theme.text }]}>X (Twitter)</Text>
@@ -398,6 +456,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  ytLocked: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

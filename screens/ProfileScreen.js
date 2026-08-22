@@ -26,7 +26,7 @@ function formatResetDate(iso) {
 
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { tier, creditsRemaining, creditsResetAt, caps } = usePlan();
+  const { tier, creditsRemaining, creditsResetAt, caps, isPremium } = usePlan();
   const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
@@ -328,6 +328,28 @@ export default function ProfileScreen({ navigation }) {
                 <Text style={tiktok.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
                   {tiktok.connected ? 'Connected' : 'Connect'}
                 </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          {/* YouTube. Live, and a Pro/Creator benefit - the diamond is an offer, not a
+              refusal, which is the rule for everything gated behind a plan that is for
+              sale. Connection state is not read here: it lives server-side and Connect
+              Accounts is the screen that knows it, so this row routes there rather than
+              asserting something it cannot check. */}
+          <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
+            <View style={[styles.connLogo, { backgroundColor: '#FF0000' }]}>
+              <FontAwesome6 name="youtube" size={16} color="#fff" />
+            </View>
+            <View style={styles.connInfo}>
+              <Text style={[styles.connName, { color: theme.text }]}>YouTube</Text>
+              <Text style={[styles.connStatus, { color: theme.subtext }]}>
+                {isPremium ? 'Upload to your channel' : 'Pro and Creator plans'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+              <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                {!isPremium && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
+                <Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Connect</Text>
               </View>
             </TouchableOpacity>
           </View>
