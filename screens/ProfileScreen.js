@@ -194,7 +194,11 @@ export default function ProfileScreen({ navigation }) {
 
   function handleTikTokPress() {
     if (tiktok.connected) return;
-    showAlert('Connect TikTok', 'TikTok connection in the app is coming soon — you can connect it on the website for now.');
+    // This used to say connection was "coming soon - connect it on the website", which
+    // stopped being true when ConnectAccountsScreen got a real /tiktok/auth flow. A row
+    // that sends someone to a browser for something the app does two taps away is worse
+    // than a dead control, because it is confidently wrong.
+    navigation.navigate('ConnectAccounts');
   }
 
   const initial = (displayName || user?.email || '?')[0].toUpperCase();

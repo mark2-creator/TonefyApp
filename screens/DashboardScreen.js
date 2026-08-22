@@ -45,7 +45,7 @@ const sections = [
       // of adding its branch to handleCardPress and deleting this flag - the
       // card cannot end up live-looking and inert again by accident.
       { title: 'Thumbnail', desc: 'Create stunning thumbnails for your videos.', icon: 'image', color: '#2ecc71' },
-      { title: 'Social', desc: 'Create engaging social posts.', icon: 'people', color: '#92ccff', soon: true },
+      { title: 'Social', desc: 'Post and schedule to your accounts.', icon: 'people', color: '#92ccff' },
     ],
   },
 ];
@@ -82,6 +82,7 @@ export default function DashboardScreen({ navigation }) {
     // destination disagreed.
     else if (title === 'Empty Audio') navigation.navigate('ScriptToAudio', { script: '' });
     else if (title === 'Thumbnail') navigation.navigate('Thumbnail');
+    else if (title === 'Social') navigation.navigate('Social');
   };
 
   return (
@@ -209,16 +210,27 @@ export default function DashboardScreen({ navigation }) {
           </View>
         ))}
 
-        {/* Featured banner */}
+        {/* Featured banner.
+            It used to promote "AI Avatar Generation" behind a button reading "Explore
+            Beta" that only ever said "Coming soon" - the most misleading control in the
+            app, because "Explore Beta" states you can use it today while avatar
+            generation needs a model nothing here has.
+            It now features something REAL and hard to stumble on: Video Translator is
+            built, does 14 languages, and lives in the editor's clip toolbar where
+            nobody would find it. Promo space is worth more pointing at a shipped
+            feature than at an intention. */}
         <View style={[styles.banner, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.bannerContent}>
             <Text style={styles.bannerTag}>FEATURED TOOL</Text>
-            <Text style={[styles.bannerTitle, { color: theme.text }]}>AI Avatar{'\n'}Generation</Text>
-            <TouchableOpacity style={styles.bannerBtn} onPress={() => showAlert('AI Avatar Generation', 'Coming soon.')}>
-              <Text style={styles.bannerBtnText}>Explore Beta</Text>
+            <Text style={[styles.bannerTitle, { color: theme.text }]}>Video{'\n'}Translator</Text>
+            <Text style={[styles.bannerSub, { color: theme.subtext }]}>
+              Re-voice any clip in 14 languages
+            </Text>
+            <TouchableOpacity style={styles.bannerBtn} onPress={() => navigation.navigate('EditVideo')}>
+              <Text style={styles.bannerBtnText}>Try it</Text>
             </TouchableOpacity>
           </View>
-          <MaterialIcons name="smart-toy" size={80} color="#2ecc71" style={{ opacity: 0.15, position: 'absolute', right: 16, bottom: 16 }} />
+          <MaterialIcons name="translate" size={80} color="#2ecc71" style={{ opacity: 0.15, position: 'absolute', right: 16, bottom: 16 }} />
         </View>
 
         <View style={{ height: 100 }} />
@@ -265,6 +277,7 @@ const styles = StyleSheet.create({
   bannerContent: { zIndex: 1 },
   bannerTag: { color: '#2ecc71', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
   bannerTitle: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 28 },
+  bannerSub: { fontSize: 12, marginTop: 4, marginBottom: 10 },
   bannerBtn: { marginTop: 14, backgroundColor: '#2ecc71', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'flex-start' },
   bannerBtnText: { color: '#000', fontWeight: '700', fontSize: 12 },
 

@@ -35,6 +35,7 @@ import RecordingScreen from './screens/RecordingScreen';
 import PostRecordingScreen from './screens/PostRecordingScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import ThumbnailScreen from './screens/ThumbnailScreen';
+import SocialScreen from './screens/SocialScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import SubscriptionScreen from './screens/SubscriptionScreen';
 import AdminScreen from './screens/AdminScreen';
@@ -165,6 +166,7 @@ function App() {
             <Stack.Screen name="ConnectAccounts" component={ConnectAccountsScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Thumbnail" component={ThumbnailScreen} />
+            <Stack.Screen name="Social" component={SocialScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
