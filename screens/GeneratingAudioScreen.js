@@ -51,6 +51,10 @@ export default function GeneratingAudioScreen({ navigation, route }) {
     voiceId = 'gtts-us',
     rate = 1,
     pitch = 0,
+    // Absent on the Idea-to-Audio path, which has no music control - the endpoint
+    // treats a null musicId as "no bed" and costs exactly what it did before.
+    musicId = null,
+    musicVolume = 0.18,
   } = route.params || {};
 
   const [progress, setProgress] = useState(0);
@@ -103,7 +107,7 @@ export default function GeneratingAudioScreen({ navigation, route }) {
         // rate/pitch default to 1/0, which the server treats as "nothing asked for"
         // and skips the shaping pass entirely - so the Idea-to-Audio path, which has
         // no such controls, costs exactly what it did before.
-        const audio = await authFetch('/api/generate-audio', { text: script, voiceId, rate, pitch }, controller.signal);
+        const audio = await authFetch('/api/generate-audio', { text: script, voiceId, rate, pitch, musicId, musicVolume }, controller.signal);
         if (!audio.audioUrl) throw new Error('No audio came back from the server.');
 
         doneRef.current = true;

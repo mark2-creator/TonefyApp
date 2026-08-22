@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, StatusBar
+  StyleSheet, StatusBar, Modal, ActivityIndicator
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -12,6 +12,19 @@ import * as Clipboard from 'expo-clipboard';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { VOICES } from '../constants/voices';
+import SheetHeader, { useSheetInset } from '../components/SheetHeader';
+
+const BACKEND = 'https://api.fitlifesolutions.site';
+
+// Three measured levels rather than a slider. The difference between them is real -
+// measured in the frames where the voice is SILENT, they sit at 5.6x, 10.0x and 16.7x
+// the voice-only floor - and a bed is a decision ("should music be noticeable"), not a
+// number anyone wants to dial in by ear against speech they have not generated yet.
+const MUSIC_LEVELS = [
+  { v: 0.10, label: 'Subtle' },
+  { v: 0.18, label: 'Balanced' },
+  { v: 0.30, label: 'Strong' },
+];
 import VoicePicker from '../components/VoicePicker';
 import VoiceAvatar from '../components/VoiceAvatar';
 import Flag from '../components/Flag';
@@ -54,6 +67,30 @@ export default function ScriptToAudioScreen({ navigation, route }) {
   const [pace, setPace] = useState(1.0);
   const [pitch, setPitch] = useState(0);
   const [voiceId, setVoiceId] = useState(route?.params?.voiceId || 'gtts-us');
+  // null = no bed. The library is fetched lazily, only when the sheet opens, so a
+  // screen nobody adds music on never pays for 68 tracks of metadata.
+  const [musicId, setMusicId] = useState(null);
+  const [musicVolume, setMusicVolume] = useState(0.18);
+  const [showMusic, setShowMusic] = useState(false);
+  const [tracks, setTracks] = useState([]);
+  const [tracksLoading, setTracksLoading] = useState(false);
+
+  const openMusic = async () => {
+    setShowMusic(true);
+    if (tracks.length > 0 || tracksLoading) return;
+    setTracksLoading(true);
+    try {
+      const res = await fetch(BACKEND + '/api/music-tracks');
+      const data = await res.json();
+      setTracks(data.tracks || []);
+    } catch (e) {
+      showAlert('Background Music', 'Could not load the music library.');
+    } finally {
+      setTracksLoading(false);
+    }
+  };
+  const sheetInset = useSheetInset(16);
+  const musicName = musicId ? (tracks.find(t => t.id === musicId)?.name || 'Selected') : 'None';
   const [showVoices, setShowVoices] = useState(false);
 
   const voice = VOICES.find(v => v.id === voiceId) || VOICES[0];
@@ -69,6 +106,8 @@ export default function ScriptToAudioScreen({ navigation, route }) {
       voiceId,
       rate: pace,
       pitch,
+      musicId,
+      musicVolume,
     });
   }
 
@@ -222,15 +261,19 @@ export default function ScriptToAudioScreen({ navigation, route }) {
         {/* Advanced Options */}
         <Text style={[styles.sectionLabel, { color: theme.subtext }]}>ADVANCED OPTIONS</Text>
         <View style={[styles.advancedCard, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <TouchableOpacity
-            style={styles.toggleRow}
-            onPress={() => showAlert('Background Music', 'Coming soon. You can add a music track to this voiceover in the editor today — tap Add to Video on the result screen.')}
-          >
+          <TouchableOpacity style={styles.toggleRow} onPress={openMusic}>
             <View style={styles.toggleLeft}>
-              <MaterialIcons name="music-note" size={20} color="#5a5a5a" />
-              <Text style={[styles.toggleLabel, { color: '#5a5a5a' }]}>Background Music</Text>
+              <MaterialIcons name="music-note" size={20} color={musicId ? '#2ECC71' : theme.subtext} />
+              <Text style={[styles.toggleLabel, { color: theme.text }]}>Background Music</Text>
             </View>
-            <Text style={styles.soonTag}>COMING SOON</Text>
+            <View style={styles.toggleRight}>
+              <Text
+                style={[styles.toggleValue, { color: musicId ? '#2ECC71' : theme.subtext }]}
+                numberOfLines={1}>
+                {musicName}
+              </Text>
+              <MaterialIcons name="chevron-right" size={20} color={theme.subtext} />
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleRow, { borderTopWidth: 1, borderTopColor: theme.border }]}
@@ -264,11 +307,76 @@ export default function ScriptToAudioScreen({ navigation, route }) {
         onSelect={setVoiceId}
         onClose={() => setShowVoices(false)}
       />
+      <Modal visible={showMusic} transparent animationType="slide" onRequestClose={() => setShowMusic(false)}>
+        <View style={styles.musicOverlay}>
+          <View style={[styles.musicSheet, sheetInset, { backgroundColor: theme.card }]}>
+            <SheetHeader title="Background music" onClose={() => setShowMusic(false)} />
+
+            <View style={styles.levelRow}>
+              {MUSIC_LEVELS.map(l => (
+                <TouchableOpacity
+                  key={l.label}
+                  style={[styles.level, { borderColor: theme.border },
+                    Math.abs(musicVolume - l.v) < 0.001 && styles.levelOn]}
+                  onPress={() => setMusicVolume(l.v)}>
+                  <Text style={[styles.levelText,
+                    { color: Math.abs(musicVolume - l.v) < 0.001 ? '#000' : theme.subtext }]}>
+                    {l.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.trackRow, { borderColor: theme.border }, !musicId && styles.trackOn]}
+              onPress={() => { setMusicId(null); setShowMusic(false); }}>
+              <Text style={[styles.trackName, { color: !musicId ? '#000' : theme.text }]}>No music</Text>
+            </TouchableOpacity>
+
+            {tracksLoading ? (
+              <ActivityIndicator color="#2ECC71" style={{ marginVertical: 20 }} />
+            ) : (
+              <ScrollView style={styles.trackList} showsVerticalScrollIndicator={false}>
+                {tracks.map(t => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[styles.trackRow, { borderColor: theme.border }, musicId === t.id && styles.trackOn]}
+                    onPress={() => { setMusicId(t.id); setShowMusic(false); }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.trackName, { color: musicId === t.id ? '#000' : theme.text }]}
+                        numberOfLines={1}>{t.name}</Text>
+                      <Text style={[styles.trackMeta, { color: musicId === t.id ? '#04211f' : theme.subtext }]}>
+                        {[t.mood, t.bpm ? `${t.bpm} BPM` : null].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  toggleRight: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '55%' },
+  toggleValue: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  musicOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  musicSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: '80%' },
+  levelRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexShrink: 0 },
+  level: { flex: 1, alignItems: 'center', borderWidth: 1, borderRadius: 20, paddingVertical: 8 },
+  levelOn: { backgroundColor: '#00d4d4', borderColor: '#00d4d4' },
+  levelText: { fontSize: 12, fontWeight: '700' },
+  // Content-sized, not flex: 1 - a child given flex inside a maxHeight sheet has
+  // nothing definite to flex against and collapses to zero.
+  trackList: { flexGrow: 0 },
+  trackRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 8 },
+  trackOn: { backgroundColor: '#2ECC71', borderColor: '#2ECC71' },
+  trackName: { fontSize: 13, fontWeight: '600' },
+  trackMeta: { fontSize: 11, marginTop: 2 },
   container: { flex: 1, backgroundColor: '#131313' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
