@@ -6,7 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './utils/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Linking } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -132,6 +132,30 @@ function App() {
     });
     return unsub;
   }, []);
+
+  // Coming back from an OAuth consent in the browser.
+  //
+  // The success page sends the user to tonefyai://youtube-connected. While the app is
+  // merely BACKGROUNDED that link only has to foreground it - the screens already
+  // refresh on AppState 'active' and resume any pending upload from there, so nothing
+  // needs parsing. This handles the other case: a COLD start, where those listeners
+  // mount fresh with no idea a connection just happened and the user would land on the
+  // dashboard wondering whether it worked.
+  //
+  // No linking config on NavigationContainer on purpose. One would try to resolve
+  // "youtube-connected" as a route name and fail; this reads the URL and decides.
+  useEffect(() => {
+    const go = (url) => {
+      if (!url || !url.includes('youtube-connected')) return;
+      // Only once the navigator exists AND the user is signed in - ConnectAccounts is
+      // inside the authenticated branch, so navigating before that throws.
+      if (!navigationRef.isReady?.() || !auth.currentUser) return;
+      try { navigationRef.current?.navigate('ConnectAccounts'); } catch (e) {}
+    };
+    Linking.getInitialURL().then(go).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => go(e.url));
+    return () => sub.remove();
+  }, [user]);
 
   if (user === undefined) {
     return null; // native splash screen stays visible during this gap
