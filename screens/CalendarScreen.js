@@ -61,6 +61,9 @@ export default function CalendarScreen({ navigation }) {
     navigation.navigate('EditPostVideo', {
       videoUrl: u,
       videoPath: u.startsWith(B) ? u.slice(B.length) : u,
+      // A queued post already has its caption written - carrying it over means editing
+      // an existing post starts from what it says rather than from blank.
+      defaultCaption: post.caption || '',
     });
   }
 

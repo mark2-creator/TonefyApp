@@ -59,8 +59,14 @@ function VideoPreview({ url }) {
 export default function EditPostVideoScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { videoUrl, videoPath } = route.params || {};
-  const [caption, setCaption] = useState('');
+  const { videoUrl, videoPath, defaultCaption = '' } = route.params || {};
+  // Prefilled from whatever the video is already called, and editable.
+  //
+  // An empty caption used to reach YouTube as the title "Untitled" with no description,
+  // because the title is required and the first line of the caption is what supplies it.
+  // A silent fallback would have fixed the symptom while still publishing something the
+  // user never saw; prefilling shows them the words before they press Post.
+  const [caption, setCaption] = useState(defaultCaption);
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');

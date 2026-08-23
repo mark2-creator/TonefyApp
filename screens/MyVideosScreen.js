@@ -179,6 +179,9 @@ export default function MyVideosScreen({ navigation }) {
     navigation.navigate('EditPostVideo', {
       videoUrl: url,
       videoPath: url.startsWith(BACKEND) ? url.slice(BACKEND.length) : url,
+      // What the video is already called. Without it YouTube gets the title "Untitled",
+      // since the first line of the caption is what supplies a required title.
+      defaultCaption: video.prompt || '',
     });
   }
 
