@@ -38,6 +38,7 @@ export default function ProfileScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const [tiktok, setTiktok] = useState({ connected: false, label: 'Checking...' });
+  const [youtube, setYoutube] = useState({ connected: false, channelTitle: null });
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
@@ -50,6 +51,36 @@ export default function ProfileScreen({ navigation }) {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
   }, []);
+
+  // Both platforms live in ONE document, which this screen was already fetching for
+  // TikTok - so reading YouTube out of it costs no extra request. It used to hardcode
+  // "Connect" on the grounds that the state lives server-side, but a row that always
+  // says Connect is not declining to assert something: it asserts you are disconnected,
+  // and said so while TikTok sat directly above it correctly reading the same document.
+  //
+  // connectedAccounts.youtube is written by the server on connect and deleted on
+  // disconnect, in the same operation that writes and deletes the token, so it tracks
+  // the real state. The one lag: revoking access at Google is only noticed when a post
+  // is next attempted. /api/youtube/status reads these same documents, so Connect
+  // Accounts is no fresher - this is not a weaker reading of the truth than that screen.
+  const loadAccounts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const snap = await getDoc(doc(db, 'connectedAccounts', user.uid));
+      const acc = snap.exists() ? snap.data() : {};
+      setTiktok(acc.tiktok
+        ? { connected: true, label: `@${acc.tiktok.displayName || 'Connected'}` }
+        : { connected: false, label: 'Not connected' });
+      setYoutube({ connected: !!acc.youtube, channelTitle: acc.youtube?.channelTitle || null });
+    } catch (e) {
+      setTiktok({ connected: false, label: 'Not connected' });
+      setYoutube({ connected: false, channelTitle: null });
+    }
+  }, [user]);
+
+  // Connecting happens on ConnectAccounts (and, for YouTube, in a browser), so mount
+  // alone never sees the change - you come BACK to this screen already connected.
+  useEffect(() => navigation.addListener('focus', loadAccounts), [navigation, loadAccounts]);
 
   useEffect(() => {
     if (!user) return;
@@ -80,19 +111,9 @@ export default function ProfileScreen({ navigation }) {
         setStats((s) => ({ ...s, scheduled: 0 }));
       }
 
-      try {
-        const ttSnap = await getDoc(doc(db, 'connectedAccounts', user.uid));
-        if (ttSnap.exists() && ttSnap.data().tiktok) {
-          const tt = ttSnap.data().tiktok;
-          setTiktok({ connected: true, label: `@${tt.displayName || 'Connected'}` });
-        } else {
-          setTiktok({ connected: false, label: 'Not connected' });
-        }
-      } catch (e) {
-        setTiktok({ connected: false, label: 'Not connected' });
-      }
+      await loadAccounts();
     })();
-  }, [user]);
+  }, [user, loadAccounts]);
 
   const joined = user?.metadata?.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -366,23 +387,28 @@ export default function ProfileScreen({ navigation }) {
           </View>
           {/* YouTube. Live, and a Pro/Creator benefit - the diamond is an offer, not a
               refusal, which is the rule for everything gated behind a plan that is for
-              sale. Connection state is not read here: it lives server-side and Connect
-              Accounts is the screen that knows it, so this row routes there rather than
-              asserting something it cannot check. */}
+              sale. The diamond goes once connected: an account you have already linked
+              is not an upsell. */}
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: '#FF0000' }]}>
               <FontAwesome6 name="youtube" size={16} color="#fff" />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: theme.text }]}>YouTube</Text>
-              <Text style={[styles.connStatus, { color: theme.subtext }]}>
-                {isPremium ? 'Upload to your channel' : 'Pro and Creator plans'}
+              <Text style={[styles.connStatus, { color: youtube.connected ? '#2ECC71' : theme.subtext }]}>
+                {youtube.connected
+                  ? (youtube.channelTitle || 'Your channel')
+                  : (isPremium ? 'Upload to your channel' : 'Pro and Creator plans')}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
-              <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                {!isPremium && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
-                <Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Connect</Text>
+              <View style={youtube.connected
+                ? styles.badgeConnected
+                : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                {!isPremium && !youtube.connected && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
+                <Text style={youtube.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
+                  {youtube.connected ? 'Connected' : 'Connect'}
+                </Text>
               </View>
             </TouchableOpacity>
           </View>
