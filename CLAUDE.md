@@ -2808,6 +2808,71 @@ nothing to aim at.
 
     **Untested on device.**
 
+38. **Deleting an account left the YouTube refresh token behind forever** (Aug 26 2026;
+    backend `~/Tonefy-react@03d49128`, deployed via `pm2 restart` 12:53:11, confirmed
+    postdating the 12:51:27 edit; app `295f858d`, **not yet published**).
+
+    **The defect.** `handleDelete` in `ProfileScreen.js` deleted `users/{uid}` and the
+    Auth user, which is everything the client is *permitted* to reach. `youtubeTokens`
+    and `tiktokTokens` are Admin-SDK-only by construction - no security rule mentions
+    either, and Firestore denies where no rule matches. That is the right home for a
+    bearer credential and it is exactly why the client could never clean them up. So a
+    deleted account left a live, refreshable YouTube refresh token in Firestore
+    permanently, with no path anywhere to remove it, alongside the channel id/title, the
+    `scheduledPosts` the sweep then retried every five minutes forever, and the
+    `userVideos` records.
+
+    **Blast radius, measured rather than assumed:** nothing could be POSTED with it.
+    `publishToYouTube`'s plan gate reads `users/{uid}`, which is gone by then, and fails
+    closed. The credential simply persisted. That is smaller than it first looks and
+    still not acceptable.
+
+    **Why it mattered on that particular day:** privacy policy section 6(g) states that
+    deleting your account deletes the tokens immediately and that no copy is kept after
+    revocation - in the section the **YouTube API Services audit reads**. The policy
+    described the behaviour we want, so the code was what was wrong. Fixing the code
+    rather than softening the policy is the direction that generalises: **when a document
+    and an implementation disagree, decide which one states the intent before deciding
+    which one to change.**
+
+    `POST /api/account/delete` purges all six collections and **revokes the refresh token
+    at Google** rather than merely dropping our copy - a token we forget is still a token
+    that works. Revocation is best effort and logged, since an already-dead token answers
+    400 and must not stop us deleting our own row.
+
+    **Two ordering rules, both load-bearing and commented at both ends:** it runs BEFORE
+    the client deletes the Auth user, because `verifyToken` needs a live ID token; and if
+    any step fails it returns 500 so the caller **leaves the login alone**. Deleting it
+    would destroy the only key those leftovers are filed under - causing the exact failure
+    the endpoint exists to prevent. A destructive endpoint that reports partial success as
+    success is the same class of lie as the bug it is fixing.
+
+    Deleting the `userVideos` records does not strand files on disk: `getOwnerPlan`
+    returns `'free'` when `snap.empty`, so the sweep removes them at 72h. Checked, not
+    assumed.
+
+    **Verified against the deployed server** with a disposable account seeded into all six
+    collections: HTTP 200, `{users,youtubeTokens,connectedAccounts,tiktokTokens,
+    scheduledPosts,userVideos}` all zero afterwards, unauthenticated refused 401, and the
+    revoke-failure branch exercised for real (`[account-delete] youtube revoke:
+    invalid_token` logged, purge completed regardless). Test account and every fixture
+    removed.
+
+    **The app half is committed but NOT published, deliberately.** `production` is the
+    channel the 12 closed testers are on, and CLAUDE.md's standing "publish freely"
+    permission was written when Ahumuza was the only user - a premise that no longer holds
+    for that channel. The pre-update `package.json` diff against build 11 (`17fd20a9`) is
+    clean: eslint devDependencies and a script, no runtime or native module. One command
+    when wanted: `eas update --branch production -m "Delete Account purges server data"`.
+    **Until it ships the endpoint exists and nothing calls it**, so the policy
+    contradiction is still live.
+
+    **Also fixed on the site the same day** (`tonefy-website@2614729`): the homepage was
+    the only surface still badging Instagram, Facebook and X as **"Connected"** when none
+    has any integration - every other page and the app already said "Coming soon". It is
+    the page a Google reviewer lands on, and a false claim about one platform is a poor
+    advertisement for the truthfulness of the claims about YouTube.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
