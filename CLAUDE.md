@@ -2858,14 +2858,47 @@ nothing to aim at.
     invalid_token` logged, purge completed regardless). Test account and every fixture
     removed.
 
-    **The app half is committed but NOT published, deliberately.** `production` is the
-    channel the 12 closed testers are on, and CLAUDE.md's standing "publish freely"
-    permission was written when Ahumuza was the only user - a premise that no longer holds
-    for that channel. The pre-update `package.json` diff against build 11 (`17fd20a9`) is
-    clean: eslint devDependencies and a script, no runtime or native module. One command
-    when wanted: `eas update --branch production -m "Delete Account purges server data"`.
-    **Until it ships the endpoint exists and nothing calls it**, so the policy
-    contradiction is still live.
+    **Published Aug 26 2026** to `production` as update group
+    `a36dec11-0cfb-46ea-ad9a-cb7fb0fed42a` (commit `d2e4da75`, runtime 1.1.0), alongside
+    item 39's Profile fix - channel confirmed serving it. Held back at first because
+    `production` is the channel the 12 closed testers are on and CLAUDE.md's standing
+    "publish freely" permission was written when Ahumuza was the only user, a premise that
+    no longer holds there; published on his explicit say-so. The pre-update `package.json`
+    diff against build 11 (`17fd20a9`) was clean - eslint devDependencies and a script, no
+    runtime or native module. **Untested on device.**
+
+39. **Profile's YouTube row hardcoded "Connect" and never changed** (Aug 26 2026, app
+    `d2e4da75`, published in the group named in item 38). Reported from a device: the row
+    said Connect whether or not the account was connected.
+
+    The row carried a comment justifying it - connection state lives server-side, so the
+    row "routes there rather than asserting something it cannot check". **It was
+    asserting.** "Connect" is a claim that you are not connected, and it was wrong for
+    anyone who was. Declining to know would have been a row with no badge at all. TikTok,
+    directly above it, was reading `connectedAccounts/{uid}` correctly the whole time -
+    and YouTube lives in that same document, which this screen had already fetched, so
+    the state was one property access away at zero extra cost.
+
+    Also now reloads on `focus`. Connecting happens on ConnectAccounts and, for YouTube,
+    in a browser, so a mount-only effect never sees it: you come BACK to the screen
+    already connected. Same reasoning `SocialScreen` had already written down for its own
+    `useFocusEffect`.
+
+    **Audited all eleven files mentioning YouTube; Profile was the only one wrong.**
+    Social reads `/api/platforms` plus `connectedAccounts` on focus, Connect Accounts and
+    Edit & Post both read `/api/youtube/status`. The rest - Thumbnail, Landing, the three
+    generation screens, My Videos - say "YouTube" as a 16:9 aspect-ratio label or a
+    marketing link, and have no connection state to get wrong.
+
+    **Known gap, flagged and not fixed:** the WEBSITE's `profile.html` and
+    `connect-accounts.html` do not list YouTube at all - they know only TikTok, Facebook,
+    Instagram and X. Connect YouTube in the app and the site shows no trace of it.
+
+    **The diagnosis that cost a round trip:** the first device report after the fix still
+    showed "Connect", which reads exactly like the fix not working. The fix had never been
+    published - it was committed and pushed only. `ProfileScreen`'s own Build section said
+    "Update applied", which refers to whatever update last applied and is not evidence that
+    YOURS did. **Item 29's lesson again: check the publish, not just the commit.**
 
     **Also fixed on the site the same day** (`tonefy-website@2614729`): the homepage was
     the only surface still badging Instagram, Facebook and X as **"Connected"** when none
