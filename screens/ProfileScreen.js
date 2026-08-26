@@ -6,12 +6,14 @@ import {
 } from 'react-native';
 import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import QRCode from 'react-native-qrcode-svg';
-import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import * as Updates from 'expo-updates';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
+
+const BACKEND = 'https://api.fitlifesolutions.site';
 
 const PLAN_LABELS = { [TIER_PRO]: 'Pro Plan', [TIER_CREATOR]: 'Creator Plan' };
 
@@ -125,15 +127,46 @@ export default function ProfileScreen({ navigation }) {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            const u = auth.currentUser;
+            if (!u) return;
+
+            // The server purges first, and the login goes only if that succeeded.
+            //
+            // Your YouTube and TikTok tokens live in Admin-SDK-only collections this
+            // app has no permission to touch - deliberately, because they are bearer
+            // credentials - so the client on its own could never finish the job. It
+            // used to delete users/{uid} and the login and stop there, which left a
+            // live, refreshable YouTube token behind for good.
+            //
+            // Order is load-bearing in both directions: the call needs a valid ID
+            // token, so it must happen before deleteUser; and deleting the login
+            // first would destroy the only key those leftovers are filed under.
+            let serverError = null;
             try {
-              const uid = auth.currentUser.uid;
-              // Firestore rules require auth.uid == userId, so this must run
-              // before the Auth user is gone - deleting the Auth user first
-              // would leave this doc permanently unreachable.
-              await deleteDoc(doc(db, 'users', uid));
-              await deleteUser(auth.currentUser);
+              const token = await u.getIdToken();
+              const res = await fetch(BACKEND + '/api/account/delete', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + token },
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.ok) serverError = data.error || 'Could not remove your data.';
             } catch (e) {
-              showToast('Please log out and log back in before deleting.');
+              serverError = 'Could not reach the server. Check your connection and try again.';
+            }
+            if (serverError) {
+              // Deliberately does NOT delete the login: leaving the account intact is
+              // what makes this retryable.
+              showAlert('Delete Account', serverError + ' Your account has been left in place.');
+              return;
+            }
+
+            try {
+              await deleteUser(u);
+            } catch (e) {
+              // Firebase wants a recent sign-in before it will delete a user. The
+              // server-side data is already gone, so signing in again and repeating
+              // this finishes the job rather than starting it over.
+              showToast('Please log out and log back in to finish deleting.');
             }
           },
         },
