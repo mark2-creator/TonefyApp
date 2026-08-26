@@ -2867,6 +2867,12 @@ nothing to aim at.
     diff against build 11 (`17fd20a9`) was clean - eslint devDependencies and a script, no
     runtime or native module. **Untested on device.**
 
+    **Also fixed on the site the same day** (`tonefy-website@2614729`): the homepage was
+    the only surface still badging Instagram, Facebook and X as **"Connected"** when none
+    has any integration - every other page and the app already said "Coming soon". It is
+    the page a Google reviewer lands on, and a false claim about one platform is a poor
+    advertisement for the truthfulness of the claims about YouTube.
+
 39. **Profile's YouTube row hardcoded "Connect" and never changed** (Aug 26 2026, app
     `d2e4da75`, published in the group named in item 38). Reported from a device: the row
     said Connect whether or not the account was connected.
@@ -2900,11 +2906,6 @@ nothing to aim at.
     "Update applied", which refers to whatever update last applied and is not evidence that
     YOURS did. **Item 29's lesson again: check the publish, not just the commit.**
 
-    **Also fixed on the site the same day** (`tonefy-website@2614729`): the homepage was
-    the only surface still badging Instagram, Facebook and X as **"Connected"** when none
-    has any integration - every other page and the app already said "Coming soon". It is
-    the page a Google reviewer lands on, and a false claim about one platform is a poor
-    advertisement for the truthfulness of the claims about YouTube.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
