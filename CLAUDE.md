@@ -2907,6 +2907,86 @@ nothing to aim at.
     YOURS did. **Item 29's lesson again: check the publish, not just the commit.**
 
 
+40. **Submission 1 — the YouTube API Services audit went in** (Aug 27 2026, 07:42, ack
+    received from `youtube-disputes+2jhcu7ixwv9891n@google.com`). What was sent, and the
+    things that cost time getting there.
+
+    **What was filed:** `videos.insert` only, no other endpoint ticked. Quota split across
+    the form's TWO boxes - the first is the total for every endpoint EXCEPT `search.list`
+    and `videos.insert` (set to the 10,000 default, since this app calls nothing else) and
+    the second is the additional ask for `videos.insert` (250,000/day, 30,000/min, about
+    156 uploads a day). Filling both with the same number, which is the obvious mistake,
+    asks for double and claims quota for endpoints that are never called.
+
+    **`requests per day` is not `quota units per day`, and the form asks for both.**
+    One upload is one request but 1,600 units. "10,000 to 100,000 requests per day" was
+    selected at first and would have meant 16,000,000 units - 320x the ask sitting a few
+    fields below it. An internally inconsistent form is what gets an application returned.
+
+    **The consent screen showing `fitlifesolutions.site` instead of "Tonefy AI" is
+    CORRECT and is not a misconfiguration.** This was diagnosed wrong first, and the wrong
+    answer sent the owner to the Branding page to check a setting that was already right.
+    Google **suppresses the app name and logo for unverified apps requesting sensitive
+    scopes** and shows the registered authorised domain instead - otherwise any app could
+    put any brand on a consent screen. It resolves when OAuth verification passes, which
+    is a different submission. **The lesson: "the UI is showing the wrong value" is not
+    evidence the value is set wrong** - check whether the platform is deliberately
+    overriding it before sending anyone to change a setting.
+
+    **The demo account's password did not match what was typed into the form.**
+    `youtube.audit@tonefyai.app` existed with plan `creator` and sample videos, but
+    `TonefyReview2026!` failed with `INVALID_LOGIN_CREDENTIALS` against the real Identity
+    Toolkit endpoint. A reviewer would have been locked out at step one. Reset and
+    re-verified by actually signing in. **Test a credential before handing it to a
+    reviewer; existence of the account is not the claim being made.** `emailVerified` is
+    load-bearing here too - `AuthScreen.js:208` blocks unverified logins and `tonefyai.app`
+    cannot receive mail, so it has to be set with the Admin SDK.
+
+    **Uploads failing was never the 10 MB limit.** Two PNGs (204 KB, 1.2 MB) failed while
+    two PDFs (106 KB, 84 KB) succeeded, which reads like a size threshold - and then three
+    PDFs of 43-58 KB failed later in the same session, which kills that theory. The link
+    was running at 1.2 KB/s and the page had been open two hours; slow uploads and an aged
+    session, not file size. **Two data points either side of a boundary is not a threshold.**
+
+    **Palette quantisation is enormously effective on UI screenshots** and this is worth
+    reusing. The evidence sheet went **1.21 MB -> 94 KB** with the small text still
+    legible, because flat UI uses very few distinct colours. Three measured findings:
+    - **`+dither` (dithering OFF) is both smaller and cleaner.** Dithered 12-colour output
+      had teal speckle across the dark backgrounds that looks like a corrupted file -
+      exactly what the form's "no heavy compression artifacts" standard rejects.
+    - **Fewer colours beat fewer pixels.** Downscaling to 2600px produced a LARGER file
+      (196 KB) than full 3050px at 32 colours (182 KB), because resampling invents
+      intermediate colours. Measured, not assumed.
+    - JPEG was worse than quantised PNG for this content at every quality tried.
+
+    **The evidence sheet's earlier 68% downscale was the real legibility bug.** `compose.py`
+    fitted 1612px-tall screenshots into an 1100px cell. The YouTube Studio panel is a
+    desktop page rendered on a phone, so its text was already small; at 68% it was
+    unreadable. Composing at native size fixed it and made the file *smaller*.
+
+    **Documents produced, all in `~/ytshots/`** (originals of the oversized versions in
+    `~/ytshots/originals/`): the four-panel OAuth/upload evidence sheet, a homepage
+    evidence image (YouTube card + privacy-policy footer link), privacy and terms as
+    vector PDFs rendered with headless chromium, plus an architecture diagram, a user-flow
+    diagram and a "notes for the reviewer" page. The diagrams are hand-written SVG printed
+    to PDF - vector, so they stay sharp at any zoom, which the evidence standards demand.
+    **The first architecture attempt used three columns and every arrow had to cross the
+    backend to reach Google**; one struck through a box and the legend collided with a
+    panel. Two left-to-right flows (connecting, publishing) removed every crossing.
+
+    **Site fixes forced by the evidence itself** (`tonefy-website`): the homepage was
+    badging Instagram/Facebook/X as "Connected" (`2614729`), the footer read © 2024
+    (`5255026`), and every platform card used a Material stand-in rather than the real
+    brand mark - `face_nod` for Facebook, `smart_display` for YouTube (`00b6037`). That
+    last one mattered: the card being submitted as proof of *YouTube branding* did not
+    carry YouTube's mark. Every other surface already had real marks, so these are
+    `profile.html`'s own SVGs reused. The Instagram gradient needed a fresh id, since two
+    SVGs sharing one gradient id on a page resolve to whichever parsed last.
+
+    **Still true and still unfixed:** the website's `profile.html` and
+    `connect-accounts.html` do not list YouTube at all, so connecting in the app leaves no
+    trace on the site.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
