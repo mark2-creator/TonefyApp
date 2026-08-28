@@ -2987,6 +2987,47 @@ nothing to aim at.
     `connect-accounts.html` do not list YouTube at all, so connecting in the app leaves no
     trace on the site.
 
+41. **TikTok: the production app is a blank draft, and the blocker is the Play listing**
+    (Aug 28-29 2026; backend `9bbc55a7`).
+
+    **The note in this file that said "the TikTok credentials are sandbox-only" was stale.**
+    Production credentials were sitting in `.env` all along and are live - both pairs
+    verified against TikTok's `client_credentials` endpoint, HTTP 200. What was actually
+    true is that `server.js` hardcoded the SANDBOX pair two lines below them.
+
+    Now an env switch: `TIKTOK_ENV=production` selects the production app, anything else
+    keeps sandbox, and startup logs which is in use. **Flipping it invalidates every
+    existing connection** - a sandbox-issued token is not accepted by the production app,
+    so each connected account must reconnect. Deployed defaulting to sandbox, so nothing
+    changed.
+
+    **Do not flip it yet.** The production app in TikTok's portal is a **Draft that has
+    never been submitted**: no products, `No scopes yet`, no icon, no URLs. The credentials
+    exist only because TikTok issues them at creation. Switching would authorise nothing.
+
+    **What blocks the submission is not ours to fix with code.** TikTok's Android config
+    requires a **Google Play Store URL**, and
+    `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp` returns **404** -
+    the app is in closed testing and has no public listing. A reviewer clicking a required
+    URL and getting a 404 rejects. So the form is filled and SAVED, not submitted, until
+    the app reaches production on Play.
+
+    **Prepared and ready for when it does** (drafted against the code, not aspirationally):
+    package name `com.ahumuza21213.TonefyApp`, the 107-char description, the 975-char
+    product/scope explanation covering Login Kit + Content Posting API, icon at 1024x1024
+    from `assets/icon.png`, and the existing privacy/terms URLs - whose section 5 already
+    describes draft posting, which is what `video.upload` does, so the two agree.
+
+    **Two things still unverified**, and the first gates the demo video TikTok requires:
+    - **Whether a sandbox post actually completes.** TikTok demands a video of the
+      end-to-end flow and requires sandbox for a never-approved app. If posting fails
+      there, the video cannot be made.
+    - **MD5 and SHA-256 signing fingerprints.** Firebase holds only SHA-1 for this app
+      (`441012e0…`, `e20bd97e…`, `afdd7e07…`); MD5 and SHA-256 live in Play Console under
+      App integrity. **Register the previous app signing key as well as the current one** -
+      the 11 Aug rotation means older installs present the old certificate, which is
+      exactly what broke Google Sign-In in item 28.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
