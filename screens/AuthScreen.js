@@ -22,6 +22,8 @@ import { auth, db } from '../firebase';
 import CountrySheet from '../components/CountryPicker';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import Animated from 'react-native-reanimated';
+import { useAuthIntro, AuthStage } from '../components/AuthIntro';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const MAX_ATTEMPTS = 5;
@@ -29,6 +31,7 @@ const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { figureStyle, armStyle, bagStyle, formStyle } = useAuthIntro();
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -321,6 +324,12 @@ export default function AuthScreen({ navigation }) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+      <AuthStage figureStyle={figureStyle} armStyle={armStyle} bagStyle={bagStyle} />
+
+      {/* Everything the form is made of springs out of the bag as one piece. The
+          modals below stay OUTSIDE it: they are overlays, and scaling or fading a
+          modal with the form would animate them open behind their own backdrop. */}
+      <Animated.View style={[styles.form, formStyle]}>
       <Text style={[styles.logo, { color: theme.accent }]}>Tonefy AI</Text>
       <Text style={[styles.title, { color: theme.text }]}>{isLogin ? 'Login to Tonefy' : 'Create Account'}</Text>
 
@@ -398,6 +407,7 @@ export default function AuthScreen({ navigation }) {
           <Text style={[styles.switchLink, { color: theme.accent }]}>{isLogin ? 'Sign Up' : 'Login'}</Text>
         </Text>
       </TouchableOpacity>
+      </Animated.View>
 
       <Modal visible={showMfaPrompt} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
@@ -441,7 +451,8 @@ export default function AuthScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  content: { padding: 24, paddingTop: 80, alignItems: 'center' },
+  content: { padding: 24, paddingTop: 36, alignItems: 'center' },
+  form: { width: '100%', alignItems: 'center' },
   logo: { color: '#2ecc71', fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
   title: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 32 },
   input: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 14, width: '100%', marginBottom: 14, borderWidth: 1, borderColor: '#333', fontSize: 15 },
