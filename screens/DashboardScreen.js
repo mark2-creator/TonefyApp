@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import GradientBorder from '../components/GradientBorder';
 import {
@@ -52,6 +52,13 @@ const sections = [
 ];
 
 export default function DashboardScreen({ navigation }) {
+  // Re-read the current user every time this tab regains focus. updateProfile (used by
+  // the Profile screen to set a photo or name) mutates auth.currentUser IN PLACE, so it
+  // neither fires onAuthStateChanged reliably nor changes the object's identity - reading
+  // it once at mount left this avatar stale until a full restart. Bumping a tick on focus
+  // forces a re-render that reads the freshly-mutated currentUser below.
+  const [, setFocusTick] = useState(0);
+  useEffect(() => navigation.addListener('focus', () => setFocusTick((t) => t + 1)), [navigation]);
   const user = auth.currentUser;
   const firstName =
     user?.displayName?.split(' ')[0] ||
