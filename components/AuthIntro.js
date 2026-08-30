@@ -58,7 +58,15 @@ const FORM_RISE = 70;         // how far below its resting place the form starts
 // bend, lower, release, straighten.
 const PLACE_AT = WALK_MS;
 
-export function useAuthIntro() {
+/**
+ * `replayKey` re-runs the whole sequence whenever it changes.
+ *
+ * Without it the effect ran once on mount and never again, so switching from Login to
+ * Sign Up found her already standing in her end pose with the bag down - the animation
+ * had played minutes earlier on a screen the user was no longer looking at. Toggling
+ * the form is exactly the moment to play it again.
+ */
+export function useAuthIntro(replayKey) {
   const walk = useSharedValue(WALK_FROM);
   const bob = useSharedValue(0);
   const dip = useSharedValue(0);      // she sinks a little as she bends to place it
@@ -86,6 +94,21 @@ export function useAuthIntro() {
 
   useEffect(() => {
     if (reduced === null) return;   // still asking the OS; do not start on a guess
+
+    // Back to the top before replaying, or a second run would start from wherever the
+    // first one finished and nothing would move.
+    walk.value = WALK_FROM;
+    bob.value = 0;
+    dip.value = 0;
+    legA.value = 0;
+    legB.value = 0;
+    settle.value = 0;
+    arm.value = 0;
+    bagY.value = BAG_FROM;
+    bagOpacity.value = 0;
+    bagSquash.value = 1;
+    lean.value = 0;
+    form.value = 0;
 
     if (reduced) {
       walk.value = 0;
@@ -171,7 +194,7 @@ export function useAuthIntro() {
     lean.value = withDelay(RELEASED + 60, withTiming(LEAN_DEG, {
       duration: LEAN_MS, easing: Easing.inOut(Easing.cubic),
     }));
-  }, [reduced, walk, bob, dip, legA, legB, settle, arm, bagY, bagOpacity, bagSquash, lean, form]);
+  }, [reduced, replayKey, walk, bob, dip, legA, legB, settle, arm, bagY, bagOpacity, bagSquash, lean, form]);
 
   // She pivots on her feet when she leans, not about her middle - which means the origin
   // has to sit on the element that carries the rotation, not on its wrapper.

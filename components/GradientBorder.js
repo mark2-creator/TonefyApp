@@ -47,7 +47,15 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  * where the aspect ratio broke the symmetry. The eye needs one travelling highlight it
  * can follow, which means most of the ring has to be dark.
  */
-const DEFAULT_COLORS = ['#3b1a5c', '#3b1a5c', '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c', '#3b1a5c'];
+// TWO cycles, not one. With a single band and a dark majority, how much colour a card
+// shows depends on its shape: the ring samples a slice of this square, so a tall card
+// (signup) caught the bright middle while a short one (login) caught mostly dark and
+// looked drab beside it. Two cycles put colour on every edge of any shape, and two
+// highlights travelling instead of one reads as richer rather than busier.
+const DEFAULT_COLORS = [
+  '#3b1a5c', '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c',
+  '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c',
+];
 const SPIN_MS = 4200;      // slow. A fast sweep reads as a loading spinner.
 
 /**

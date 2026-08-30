@@ -34,10 +34,6 @@ const LOCKOUT_MINUTES = 15;
 export default function AuthScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const {
-    figureStyle, armStyle, legAStyle, legBStyle,
-    walkLegsStyle, restLegsStyle, bagStyle, formStyle,
-  } = useAuthIntro();
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,6 +41,14 @@ export default function AuthScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [country, setCountry] = useState('');
   const [showCountrySheet, setShowCountrySheet] = useState(false);
+
+  // Must come AFTER isLogin is declared: this is an immediate call, not a callback, so
+  // referencing isLogin above its useState throws at render - the temporal dead zone,
+  // which node --check, eslint and expo export all bundle happily and only a device shows.
+  const {
+    figureStyle, armStyle, legAStyle, legBStyle,
+    walkLegsStyle, restLegsStyle, bagStyle, formStyle,
+  } = useAuthIntro(isLogin);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
