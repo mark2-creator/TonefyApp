@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import AdminPeople from '../components/AdminPeople';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -83,6 +84,11 @@ export default function AdminScreen({ navigation }) {
             <Stat theme={theme} label="Email verified" value={u?.verified ?? '—'}
               hint={u ? `${u.total - u.verified} not yet` : ''} />
           </View>
+
+          {/* The numbers above raise a question the numbers cannot answer: which
+              accounts? Reloading the stats after a plan change keeps the counts above
+              honest, since changing someone's plan moves one of them. */}
+          <AdminPeople theme={theme} onChanged={load} />
 
           <Text style={[styles.section, { color: theme.subtext }]}>REVENUE</Text>
           <View style={styles.row}>
