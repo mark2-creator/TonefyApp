@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  makeMutable,
   useAnimatedStyle,
-  useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
@@ -32,8 +32,36 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  * moving is exactly what that setting exists to switch off.
  */
 
-const DEFAULT_COLORS = ['#00d4d4', '#89C5CC', '#00d4d4'];
+/**
+ * A BRIGHT BAND on a dark ground, not a blend of two brights.
+ *
+ * The first version was ['#00d4d4', '#89C5CC', '#00d4d4'] - symmetric, and every colour
+ * in it light. Rotating a symmetric gradient by 180 degrees gives back an identical
+ * image, so it read as static on a square-ish card and only looked alive on a tall one
+ * where the aspect ratio broke the symmetry. The eye needs one travelling highlight it
+ * can follow, which means most of the ring has to be dark.
+ */
+const DEFAULT_COLORS = ['#0f1a1a', '#0f1a1a', '#00d4d4', '#7ef0f0', '#00d4d4', '#0f1a1a', '#0f1a1a'];
 const SPIN_MS = 4200;      // slow. A fast sweep reads as a loading spinner.
+
+/**
+ * ONE clock for every border in the app.
+ *
+ * Each of these used to own a `withRepeat` that never stopped. That is fine for one
+ * card and wasteful for a screen of them: N borders meant N animations running forever.
+ * A single module-level shared value, started once by whichever border mounts first,
+ * costs the same whether one is on screen or a dozen - and it has the side effect that
+ * every border in the app turns in step, which looks deliberate rather than busy.
+ */
+const spin = makeMutable(0);
+let spinning = false;
+function startSpin() {
+  if (spinning) return;
+  spinning = true;
+  spin.value = withRepeat(withTiming(360, { duration: SPIN_MS, easing: Easing.linear }), -1, false);
+}
+
+let nextId = 0;
 
 export default function GradientBorder({
   children,
@@ -45,7 +73,9 @@ export default function GradientBorder({
   contentStyle,
 }) {
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const angle = useSharedValue(0);
+  // A fixed id per instance: two SVGs sharing one gradient id resolve to whichever the
+  // renderer saw last, so a screen of borders would all wear the first one's colours.
+  const [gid] = useState(() => `gb${nextId++}`);
 
   const [reduced, setReduced] = useState(null);
   useEffect(() => {
@@ -58,15 +88,11 @@ export default function GradientBorder({
 
   useEffect(() => {
     if (reduced === null || reduced) return;
-    angle.value = withRepeat(
-      withTiming(360, { duration: SPIN_MS, easing: Easing.linear }),
-      -1,
-      false,
-    );
-  }, [reduced, angle]);
+    startSpin();
+  }, [reduced]);
 
   const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${angle.value}deg` }],
+    transform: [{ rotate: `${spin.value}deg` }],
   }));
 
   // Cover every rotation: a square of side = diagonal, centred on the container.
@@ -91,13 +117,13 @@ export default function GradientBorder({
         >
           <Svg width="100%" height="100%">
             <Defs>
-              <LinearGradient id="gb" x1="0" y1="0" x2="1" y2="1">
+              <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
                 {colors.map((c, i) => (
                   <Stop key={c + i} offset={`${(i / (colors.length - 1)) * 100}%`} stopColor={c} />
                 ))}
               </LinearGradient>
             </Defs>
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#gb)" />
+            <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gid})`} />
           </Svg>
         </Animated.View>
       )}

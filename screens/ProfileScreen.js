@@ -279,9 +279,9 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.total}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total Videos</Text></View>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></View>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.scheduled}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text></View>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.total}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Total Videos</Text></GradientBorder>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text></GradientBorder>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.scheduled}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text></GradientBorder>
         </View>
 
         <GradientBorder radius={14} backgroundColor={theme.card} style={styles.planCard}>
@@ -328,7 +328,7 @@ export default function ProfileScreen({ navigation }) {
           )}
         </GradientBorder>
 
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.section}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Account</Text>
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <MaterialIcons name="person" size={18} color={theme.icon} style={styles.rowIcon} />
@@ -368,9 +368,9 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[styles.rowValue, { color: theme.subtext }]}>{joined}</Text>
             </View>
           </View>
-        </View>
+        </GradientBorder>
 
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.section}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Connected Accounts</Text>
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: '#000' }]}>
@@ -435,9 +435,9 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}><Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Soon</Text></View>
           </View>
-        </View>
+        </GradientBorder>
 
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.section}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Security</Text>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
             <View style={[styles.connLogo, { backgroundColor: isDark ? '#1a2a1e' : '#e0f5e9' }]}>
@@ -459,7 +459,7 @@ export default function ProfileScreen({ navigation }) {
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </GradientBorder>
 
         {/* Which bundle is actually running.
             "Is the fix on the phone yet?" has been answered by inference three times in
@@ -468,7 +468,7 @@ export default function ProfileScreen({ navigation }) {
             text and it turns that question into a glance.
             isEmbeddedLaunch is the part that matters: true means the JS baked into the
             APK, so no update has been applied at all. */}
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.section}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Build</Text>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
             <View style={styles.connInfo}>
@@ -481,7 +481,7 @@ export default function ProfileScreen({ navigation }) {
               </Text>
             </View>
           </View>
-        </View>
+        </GradientBorder>
 
         <Modal visible={showMfaSetup} transparent animationType="slide">
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
@@ -544,10 +544,10 @@ const styles = StyleSheet.create({
   planBadge: { backgroundColor: '#0d2018', borderWidth: 1, borderColor: '#2ecc71', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
   planBadgeText: { color: '#2ecc71', fontSize: 12, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, padding: 14, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, alignItems: 'center' },
   statNum: { color: '#2ecc71', fontSize: 22, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 4 },
-  section: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
+  section: { backgroundColor: '#1a1a1a', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
   planCard: { marginBottom: 16 },
   sectionHeader: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#2a2a2a', color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
   row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#2a2a2a', gap: 12 },
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
   connStatusOk: { color: '#2ecc71' },
   badgeConnected: { backgroundColor: '#0d2018', borderWidth: 1, borderColor: '#2ecc71', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   badgeConnectedText: { color: '#2ecc71', fontSize: 11, fontWeight: '700' },
-  badgeSoon: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  badgeSoon: { backgroundColor: '#1a1a1a', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   badgeSoonText: { color: '#888', fontSize: 11, fontWeight: '600' },
   btnLogout: { backgroundColor: '#2a1212', borderWidth: 1, borderColor: '#5a2020', borderRadius: 14, padding: 15, alignItems: 'center', marginBottom: 10 },
   btnLogoutText: { color: '#f87171', fontSize: 15, fontWeight: '700' },

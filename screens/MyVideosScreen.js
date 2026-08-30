@@ -9,6 +9,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
+import GradientBorder from '../components/GradientBorder';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice, downloadVideoToCache } from '../utils/saveVideo';
 import ProgressRing from '../components/ProgressRing';
@@ -262,9 +263,9 @@ export default function MyVideosScreen({ navigation }) {
             "26.5MB" was breaking across two lines as "26.5M" / "B" on a device with a
             larger system font scale, which reads as a rendering fault rather than a
             number. */}
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{allVideos.length}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Total</Text></View>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>This Month</Text></View>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Stored</Text></View>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{allVideos.length}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Total</Text></GradientBorder>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{thisMonth}</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>This Month</Text></GradientBorder>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}><Text style={styles.statNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{totalMB}MB</Text><Text style={[styles.statLabel, { color: theme.subtext }]} numberOfLines={1}>Stored</Text></GradientBorder>
       </View>
 
       <ScrollView
@@ -357,7 +358,7 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
   totalCount: { color: '#2ecc71', fontSize: 12 },
   statsRow: { flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 0 },
-  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, padding: 14, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, alignItems: 'center' },
   statNum: { color: '#2ecc71', fontSize: 22, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 4 },
   // Three things had to be right together, and removing the old `maxHeight: 44`
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   // over-constrained, and the row is what gives way.
   filterRow: { marginTop: 16, marginBottom: 4, flexGrow: 0, flexShrink: 0 },
   filterRowContent: { paddingHorizontal: 16, alignItems: 'center', paddingVertical: 2 },
-  filterBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a', marginRight: 8 },
+  filterBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
   filterBtnActive: { backgroundColor: '#2ecc71', borderColor: '#2ecc71' },
   filterText: { color: '#888', fontSize: 13, fontWeight: '600' },
   filterTextActive: { color: '#000' },
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   // the column and the row above is what gets compressed.
   list: { flex: 1 },
   grid: { padding: 16, gap: 12 },
-  card: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
+  card: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, overflow: 'hidden', marginBottom: 12 },
   thumbWrap: { width: '100%', aspectRatio: 9 / 16, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
   thumb: { width: '100%', height: '100%' },
   playIcon: { position: 'absolute', fontSize: 28, opacity: 0.85 },
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   btnPostText: { color: '#000', fontSize: 12, fontWeight: '700' },
   btnUse: { flex: 1, borderWidth: 1, borderRadius: 20, paddingVertical: 8, alignItems: 'center' },
   btnUseText: { fontSize: 12, fontWeight: '700' },
-  btnDl: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
+  btnDl: { backgroundColor: '#1a1a1a', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12 },
   btnDlText: { color: '#fff', fontSize: 12 },
   emptyText: { color: '#888', textAlign: 'center', marginTop: 40 },
   emptyState: { alignItems: 'center', padding: 40 },
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
   modalVideo: { width: '100%', height: 400, backgroundColor: '#000' },
   modalInfo: { color: '#888', fontSize: 13, padding: 16 },
   modalActions: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 0 },
-  modalBtnOutline: { flex: 1, borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
+  modalBtnOutline: { flex: 1, borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   modalBtnOutlineText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   modalBtnGreen: { flex: 1, backgroundColor: '#2ecc71', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   // Height/radius matched to its two neighbours by hand - ProgressButton's own 54pt

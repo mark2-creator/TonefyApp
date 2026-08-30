@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
+import GradientBorder from '../components/GradientBorder';
 import { showAlert } from '../components/BrandedAlert';
 
 
@@ -107,22 +108,22 @@ export default function CalendarScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}>
             <Text style={styles.statNum}>{scheduled}</Text>
             <Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          </GradientBorder>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}>
             <Text style={styles.statNum}>{posted}</Text>
             <Text style={[styles.statLabel, { color: theme.subtext }]}>Posted</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          </GradientBorder>
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.statCard}>
             <Text style={styles.statNum}>{thisMonth}</Text>
             <Text style={[styles.statLabel, { color: theme.subtext }]}>This Month</Text>
-          </View>
+          </GradientBorder>
         </View>
 
         {/* Calendar */}
-        <View style={[styles.calCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.calCard}>
           <View style={styles.calHeader}>
             <TouchableOpacity onPress={prevMonth} style={[styles.calNav, { borderColor: theme.border }]}>
               <Text style={[styles.calNavText, { color: theme.text }]}>‹</Text>
@@ -155,7 +156,7 @@ export default function CalendarScreen({ navigation }) {
               );
             })}
           </View>
-        </View>
+        </GradientBorder>
 
         {/* Filter tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterWrap}>
@@ -221,13 +222,13 @@ const styles = StyleSheet.create({
   header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   title: { color: '#fff', fontSize: 20, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, padding: 16 },
-  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, padding: 12, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 12, alignItems: 'center' },
   statNum: { color: '#2ecc71', fontSize: 24, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 2 },
-  calCard: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, margin: 16, padding: 14 },
+  calCard: { backgroundColor: '#1a1a1a', borderRadius: 14, margin: 16, padding: 14 },
   calHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   calMonth: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  calNav: { width: 32, height: 32, borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  calNav: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   calNavText: { color: '#fff', fontSize: 18 },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   calDow: { width: '14.28%', textAlign: 'center', color: '#888', fontSize: 11, fontWeight: '700', paddingBottom: 8 },
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   calDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#2ecc71', position: 'absolute', bottom: 3 },
   calDotToday: { backgroundColor: '#000' },
   filterWrap: { paddingHorizontal: 16, marginBottom: 12 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a', marginRight: 8 },
+  filterTab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, marginRight: 8 },
   filterTabActive: { backgroundColor: '#2ecc71', borderColor: '#2ecc71' },
   filterTabText: { color: '#888', fontSize: 13, fontWeight: '600' },
   filterTabTextActive: { color: '#000' },
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
   emptySub: { color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 16 },
   btnCreate: { backgroundColor: '#2ecc71', borderRadius: 25, paddingHorizontal: 24, paddingVertical: 12 },
   btnCreateText: { color: '#000', fontWeight: '700', fontSize: 14 },
-  postCard: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, marginHorizontal: 16, marginBottom: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#2ecc71' },
+  postCard: { backgroundColor: '#1a1a1a', borderRadius: 14, marginHorizontal: 16, marginBottom: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#2ecc71' },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   postPlatform: { color: '#2ecc71', fontSize: 13, fontWeight: '700' },
   postTime: { color: '#888', fontSize: 13 },
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   postStatusText: { color: '#2ecc71', fontSize: 11, fontWeight: '700' },
   postStatusPostedText: { color: '#86efac' },
   postActions: { flexDirection: 'row', gap: 8 },
-  btnEdit: { flex: 1, padding: 10, borderRadius: 20, borderWidth: 1, borderColor: '#2a2a2a', alignItems: 'center' },
+  btnEdit: { flex: 1, padding: 10, borderRadius: 20, alignItems: 'center' },
   btnEditText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   btnDelete: { flex: 1, padding: 10, borderRadius: 20, borderWidth: 1, borderColor: '#5a2020', backgroundColor: '#2a1212', alignItems: 'center' },
   btnDeleteText: { color: '#f87171', fontSize: 13, fontWeight: '600' },

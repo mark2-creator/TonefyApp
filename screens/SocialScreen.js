@@ -8,6 +8,7 @@ import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
+import GradientBorder from '../components/GradientBorder';
 
 // The social hub: what is connected, what is queued, and one way in to posting.
 //
@@ -119,7 +120,7 @@ export default function SocialScreen({ navigation }) {
           <>
             {/* 1 - who you can post as */}
             <Text style={[styles.section, { color: theme.text }]}>Accounts</Text>
-            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <GradientBorder radius={12} backgroundColor={theme.card} style={styles.card}>
               {platforms.map((p, i) => {
                 const on = p.enabled && !!connected[p.id];
                 const look = LOOK[p.id] || { icon: 'share-nodes', colour: '#888888' };
@@ -147,27 +148,27 @@ export default function SocialScreen({ navigation }) {
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </GradientBorder>
 
             {/* 2 - what is going out, and what already has */}
             <Text style={[styles.section, { color: theme.text }]}>Queue</Text>
             <View style={styles.stats}>
-              <View style={[styles.stat, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <GradientBorder radius={12} backgroundColor={theme.card} style={styles.stat}>
                 <Text style={styles.statNum}>{queued.length}</Text>
                 <Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text>
-              </View>
-              <View style={[styles.stat, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              </GradientBorder>
+              <GradientBorder radius={12} backgroundColor={theme.card} style={styles.stat}>
                 <Text style={styles.statNum}>{postedCount}</Text>
                 <Text style={[styles.statLabel, { color: theme.subtext }]}>Posted</Text>
-              </View>
-              <View style={[styles.stat, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              </GradientBorder>
+              <GradientBorder radius={12} backgroundColor={theme.card} style={styles.stat}>
                 <Text style={styles.statNum}>{liveCount}</Text>
                 <Text style={[styles.statLabel, { color: theme.subtext }]}>Connected</Text>
-              </View>
+              </GradientBorder>
             </View>
 
             {queued.length > 0 ? (
-              <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <GradientBorder radius={12} backgroundColor={theme.card} style={styles.card}>
                 {queued.map((p, i) => (
                   <TouchableOpacity
                     key={p.id}
@@ -185,7 +186,7 @@ export default function SocialScreen({ navigation }) {
                     <MaterialIcons name="chevron-right" size={20} color={theme.subtext} />
                   </TouchableOpacity>
                 ))}
-              </View>
+              </GradientBorder>
             ) : (
               <View style={[styles.card, styles.emptyCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.emptyText, { color: theme.subtext }]}>
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   backText: { fontSize: 13 },
   title: { fontSize: 16, fontWeight: '700' },
   section: { fontSize: 13, fontWeight: '700', marginTop: 18, marginBottom: 8 },
-  card: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  card: { borderRadius: 12, overflow: 'hidden' },
   accRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 13 },
   badge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   accLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
   accOn: { color: '#2ECC71', fontWeight: '600' },
   accConnect: { color: '#00d4d4', fontWeight: '700' },
   stats: { flexDirection: 'row', gap: 8 },
-  stat: { flex: 1, alignItems: 'center', borderRadius: 12, borderWidth: 1, paddingVertical: 14 },
+  stat: { flex: 1, alignItems: 'center', borderRadius: 12, paddingVertical: 14 },
   statNum: { color: '#2ECC71', fontSize: 20, fontWeight: '800' },
   statLabel: { fontSize: 11, marginTop: 2 },
   queueRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },

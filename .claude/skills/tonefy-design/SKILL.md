@@ -174,10 +174,28 @@ distinguishes it. Teal is the default: bright on the dark ground, already brand,
 is not claiming to be a control. `colors` exists for a deliberate exception, not for
 decoration.
 
-**Use it on one surface at a time.** It is ambient motion that never stops, so it costs
-a little battery wherever it is mounted and it stops meaning anything if everything has
-one. A screen's most important card, not every card on it. Two of these on screen
-together compete, and the eye picks neither.
+**It is the app's standard treatment for a bordered CARD.** Sections, stat tiles, video
+cards, panels - if a surface is a bordered container of content, it wears this rather
+than a static `borderWidth: 1`. Remove the static border when you add it, or the card
+carries two.
+
+**It is not for inputs, chips, buttons or rows.** A moving border on a text field
+competes with the caret and makes typing feel unstable; on a 30px chip a 1.5px sweep is
+noise rather than decoration; and a button already says what it is through its fill, so
+a border crawling round it blurs the one thing that was clear. Those keep their static
+borders.
+
+**One clock drives all of them.** The spin is a single module-level shared value started
+by whichever border mounts first, so twenty on a screen cost the same as one - and they
+all turn in step, which reads as deliberate rather than as twenty separate animations.
+Each instance still needs its own gradient id: two SVGs sharing one resolve to whichever
+the renderer saw last, and a screen of borders would all wear the first one's colours.
+
+**The gradient needs a dark majority.** The first version was three light teals and
+symmetric; rotating a symmetric gradient by 180 degrees returns an identical image, so
+it read as completely static on a square card and only looked alive on a tall one where
+the aspect ratio broke the symmetry. The eye needs one bright band it can follow around
+a dark ring.
 
 Defaults: `radius: 16`, `width: 1.5`, `SPIN_MS: 4200`. The spin is deliberately slow —
 faster reads as a loading spinner, which is a different promise entirely.

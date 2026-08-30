@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import GradientBorder from '../components/GradientBorder';
 import {
   View, Text, ScrollView, TouchableOpacity, Image,
   StyleSheet, StatusBar, Modal, Switch
@@ -220,7 +221,7 @@ export default function DashboardScreen({ navigation }) {
             built, does 14 languages, and lives in the editor's clip toolbar where
             nobody would find it. Promo space is worth more pointing at a shipped
             feature than at an intention. */}
-        <View style={[styles.banner, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.banner}>
           <View style={styles.bannerContent}>
             <Text style={styles.bannerTag}>FEATURED TOOL</Text>
             <Text style={[styles.bannerTitle, { color: theme.text }]}>Video{'\n'}Translator</Text>
@@ -232,7 +233,7 @@ export default function DashboardScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <MaterialIcons name="translate" size={80} color="#2ecc71" style={{ opacity: 0.15, position: 'absolute', right: 16, bottom: 16 }} />
-        </View>
+        </GradientBorder>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
 
   // Grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  card: { backgroundColor: '#141414', borderRadius: 14, padding: 14, width: '47%', borderWidth: 1, borderColor: '#1e1e1e' },
+  card: { backgroundColor: '#141414', borderRadius: 14, padding: 14, width: '47%' },
   cardIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   cardTitle: { color: '#e5e2e1', fontWeight: '700', fontSize: 13, marginBottom: 4 },
   cardDesc: { color: '#555', fontSize: 11, lineHeight: 15 },
