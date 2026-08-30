@@ -189,7 +189,7 @@ export default function AdminPeople({ theme, onChanged, count }) {
 
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.overlay}>
-          <View style={[styles.sheet, { paddingBottom: sheetInset }]}>
+          <View style={[styles.sheet, sheetInset]}>
             <SheetHeader title={selected?.email || selected?.uid || ''} onClose={() => setSelected(null)} />
 
             <Text style={styles.sheetMeta}>

@@ -4960,7 +4960,7 @@ export default function EditVideoScreen({ navigation, route }) {
       {/* TRANSLATE LANGUAGE PICKER */}
       <Modal visible={translateSheet} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { paddingBottom: sheetInset }]}>
+          <View style={[styles.modalSheet, sheetInset]}>
             <SheetHeader title="Translate video" onClose={() => setTranslateSheet(false)} />
             <Text style={styles.translateHint}>
               The speech in this clip is transcribed, translated, and spoken back in the
