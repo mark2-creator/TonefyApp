@@ -336,7 +336,7 @@ export default function AuthScreen({ navigation }) {
         // The stack sets headerShown:false for every screen, so nothing above us
         // reserves the status bar - each screen has to do it itself. A hardcoded
         // paddingTop only ever looks right on the phone it was tuned on.
-        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+        { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 },
       ]}
     >
       {/* Everything the form is made of springs out of the bag as one piece. The
@@ -427,6 +427,7 @@ export default function AuthScreen({ navigation }) {
       {/* She stands BELOW the form. That is what lets the form grow upward out of her
           bag: with the stage above it, the form could only unfold downwards. */}
       <AuthStage
+        compact={!isLogin}
         figureStyle={figureStyle}
         armStyle={armStyle}
         legAStyle={legAStyle}
@@ -478,24 +479,24 @@ export default function AuthScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  content: { padding: 24, alignItems: 'center' },
+  content: { padding: 16, alignItems: 'center' },
   form: { width: '100%', alignItems: 'center' },
   formCard: { width: '100%' },
-  formCardInner: { padding: 20, alignItems: 'center' },
-  logo: { color: '#2ecc71', fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
-  title: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 32 },
-  input: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 14, width: '100%', marginBottom: 14, borderWidth: 1, borderColor: '#333', fontSize: 15 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 14 },
+  formCardInner: { padding: 16, alignItems: 'center' },
+  logo: { color: '#2ecc71', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
+  title: { color: '#fff', fontSize: 19, fontWeight: 'bold', marginBottom: 16 },
+  input: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 11, width: '100%', marginBottom: 9, borderWidth: 1, borderColor: '#333', fontSize: 15 },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 9 },
   eyeBtn: { padding: 14, backgroundColor: '#1a1a1a', borderRadius: 10, marginLeft: 8, borderWidth: 1, borderColor: '#333' },
   eyeText: { fontSize: 18 },
-  forgotText: { color: '#2ecc71', alignSelf: 'flex-end', marginBottom: 20, fontSize: 13 },
-  submitBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 16, width: '100%', alignItems: 'center', marginBottom: 20 },
+  forgotText: { color: '#2ecc71', alignSelf: 'flex-end', marginBottom: 12, fontSize: 13 },
+  submitBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 13, width: '100%', alignItems: 'center', marginBottom: 12 },
   submitText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
   disabledBtn: { opacity: 0.4 },
-  divider: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 20 },
+  divider: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#333' },
   dividerText: { color: '#666', marginHorizontal: 12, fontSize: 13 },
-  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 25, padding: 14, width: '100%', marginBottom: 24 },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderRadius: 25, padding: 11, width: '100%', marginBottom: 12 },
   googleText: { color: '#333', fontWeight: 'bold', fontSize: 15 },
   switchText: { color: '#aaa', fontSize: 14, textAlign: 'center' },
   switchLink: { color: '#2ecc71', fontWeight: 'bold' },

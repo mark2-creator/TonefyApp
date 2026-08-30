@@ -168,11 +168,15 @@ React Native has no animated border colour; this needs no native module. The squ
 sized to the container's **diagonal**, measured with `onLayout` — anything smaller
 leaves the corners bare at 45 degrees, which is the one bug this component can have.
 
-**The sweep must not use green.** Green means *this action commits*, and a green light
-travelling around a card that CONTAINS the commit button spends the only colour that
-distinguishes it. Teal is the default: bright on the dark ground, already brand, and it
-is not claiming to be a control. `colors` exists for a deliberate exception, not for
-decoration.
+**The sweep is violet into pink, on a deep purple ring — deliberately NOT a brand
+colour.** That is the point rather than a compromise. Green means *this action commits*
+and teal means *you are handling media*; a border wearing either is making a claim about
+state it cannot honour, and a green light circling a card that CONTAINS the commit button
+spends the one colour that distinguishes it. A hue the app uses for nothing else can only
+read as decoration, which is exactly what this is.
+
+The ring is deep purple rather than near-black: on a dark screen a black ring read as a
+shadow rather than a border, and the card looked unfinished on three of its four sides.
 
 **It is the app's standard treatment for a bordered CARD.** Sections, stat tiles, video
 cards, panels - if a surface is a bordered container of content, it wears this rather

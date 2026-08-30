@@ -22,11 +22,17 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  * smaller leaves the corners bare at 45 degrees - the one bug this component can have,
  * and the reason it measures rather than guessing a size.
  *
- * COLOURS: the sweep must not use green. Green in this app means "this action commits"
- * (see tonefy-design), and a green light travelling around a card that CONTAINS the
- * commit button spends the one colour that distinguishes it. Teal is the default because
- * it is bright on the dark ground and already brand. Pass `colors` for a deliberate
- * exception, not to decorate.
+ * COLOURS: violet into pink, on a deep purple ring rather than a near-black one.
+ *
+ * It is deliberately NOT a brand colour, and that turns out to be the right answer
+ * rather than a compromise. Green means "this action commits" and teal means "you are
+ * handling media" (see tonefy-design); a border wearing either is making a claim about
+ * state that it cannot honour. A colour the app uses for nothing else can only read as
+ * decoration, which is what this is. It also keeps green scarce, which is what makes
+ * the sign-in button read as THE commit.
+ *
+ * The ring is deep purple, not black: a dark ring on a dark screen looked like the card
+ * had a shadow rather than a border.
  *
  * Honours Reduce Motion by holding still rather than spinning. A border that never stops
  * moving is exactly what that setting exists to switch off.
@@ -41,7 +47,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  * where the aspect ratio broke the symmetry. The eye needs one travelling highlight it
  * can follow, which means most of the ring has to be dark.
  */
-const DEFAULT_COLORS = ['#0f1a1a', '#0f1a1a', '#00d4d4', '#7ef0f0', '#00d4d4', '#0f1a1a', '#0f1a1a'];
+const DEFAULT_COLORS = ['#3b1a5c', '#3b1a5c', '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c', '#3b1a5c'];
 const SPIN_MS = 4200;      // slow. A fast sweep reads as a loading spinner.
 
 /**

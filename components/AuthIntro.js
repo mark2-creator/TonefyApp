@@ -218,13 +218,13 @@ export function useAuthIntro() {
 }
 
 /** The ground she walks onto. Fixed height so the form below it never shifts. */
-export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, walkLegsStyle, restLegsStyle, bagStyle }) {
+export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, walkLegsStyle, restLegsStyle, bagStyle, compact }) {
   return (
-    <View style={styles.stage} pointerEvents="none">
+    <View style={[styles.stage, compact && styles.stageCompact]} pointerEvents="none">
       {/* The bag paints BEFORE her, so her planted foot sits in front of it. Drawn on
           top it read as a bag stuck to her shin. */}
-      <AuthBag style={[styles.bagSlot, bagStyle]} />
-      <View style={styles.figureSlot}>
+      <AuthBag style={[styles.bagSlot, compact && styles.bagCompact, bagStyle]} />
+      <View style={[styles.figureSlot, compact && styles.figureCompact]}>
         <AuthCharacter
           style={figureStyle}
           armStyle={armStyle}
@@ -239,8 +239,13 @@ export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, walkLeg
 }
 
 const styles = StyleSheet.create({
-  stage: { width: '100%', height: 196, marginTop: 4 },
-  figureSlot: { position: 'absolute', left: 0, bottom: 0 },
+  // Sized so the whole form clears the safe area without scrolling. Signup carries
+  // three more fields than login, so it gets the compact figure rather than a scrollbar.
+  stage: { width: '100%', height: 150, marginTop: 2 },
+  stageCompact: { height: 92 },
+  figureSlot: { position: 'absolute', left: 0, bottom: 0, transform: [{ scale: 0.78 }], transformOrigin: '0% 100%' },
+  figureCompact: { transform: [{ scale: 0.48 }] },
   // Just past her planted foot, and behind her, so it reads as set down beside her.
-  bagSlot: { position: 'absolute', left: 138, bottom: 2 },
+  bagSlot: { position: 'absolute', left: 108, bottom: 2 },
+  bagCompact: { left: 68, bottom: 1, transform: [{ scale: 0.62 }], transformOrigin: '0% 100%' },
 });
