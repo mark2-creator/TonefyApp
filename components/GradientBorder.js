@@ -193,5 +193,11 @@ const styles = StyleSheet.create({
   // overflow:hidden is what clips the spinning square to the card's rounded shape.
   wrap: { overflow: 'hidden' },
   spinner: { position: 'absolute' },
-  inner: { flex: 1, overflow: 'hidden' },
+  // alignSelf:stretch, NOT flex:1. The inner must fill the card's WIDTH (so no gradient
+  // shows down the sides when the caller's style centred content) but keep its height
+  // driven by its content. flex:1 does the width job too, but it also makes the panel try
+  // to fill a height its parent never defines - which on a content-sized card resolves to
+  // zero and hid the stat numbers entirely. Same trap CLAUDE.md records for maxHeight
+  // sheets: flex:1 against an undefined height collapses.
+  inner: { alignSelf: 'stretch', overflow: 'hidden' },
 });
