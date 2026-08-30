@@ -21,30 +21,39 @@ import AuthCharacter, { AuthBag, HIP_ORIGIN, SHOULDER_ORIGIN } from './AuthChara
  * Beats, in milliseconds from mount. They overlap on purpose - a sequence where each
  * step waits for the last reads as a slideshow rather than one continuous action:
  *
- *     0  850   she walks in, legs stepping
- *   650 1000   the arm lowers
- *   700 1080   the bag travels from her hand to the ground
- *  1080        the bag lands and squashes
- *  1150        the FORM springs UP out of it
- *  1200 1700   she straightens into the lean
+ *     0 1250   she walks in, legs stepping
+ *  1063        the legs crossfade to a planted stance
+ *  1130 1550   she bends: the arm reaches down and her body sinks with it
+ *  1310 1930   the bag descends slowly and settles
+ *  1550 2030   she straightens back up
+ *  2020        the FORM springs UP out of the bag
+ *  2080 2600   she settles into the lean
  */
 
-const WALK_MS = 850;
-const STEP_MS = 212;          // one half-stride; four of them fill the walk
-const BAG_MS = 380;
-const LEAN_MS = 500;
+// She was reading as running: four half-strides in 850ms is a jog, not a walk. Longer
+// steps, shallower swing and less bob turn the same motion into an amble.
+const WALK_MS = 1250;
+const STEP_MS = 312;          // one half-stride; four of them fill the walk
+const BAG_MS = 620;           // the bag descends slowly - see the easing below
+const LEAN_MS = 520;
 
 const WALK_FROM = -170;       // negative: she enters from the left
 const BAG_FROM = -34;         // the bag starts at hand height
 const LEAN_DEG = 5;           // a few degrees is a lean; more is a stumble
-const ARM_DEG = 14;
-const STEP_DEG = 12;          // how far each leg swings from the base stride
-const BOB_PX = 4;             // the rise and fall that makes it a walk, not a glide
+const ARM_DEG = 30;           // a real reach toward the ground, not a twitch
+const STEP_DEG = 9;           // how far each leg swings from the base stride
+const BOB_PX = 3;             // the rise and fall that makes it a walk, not a glide
+const DIP_PX = 9;             // how far she sinks while setting the bag down
 const FORM_RISE = 70;         // how far below its resting place the form starts
+
+// When she stops walking and starts placing. Everything after this is one movement:
+// bend, lower, release, straighten.
+const PLACE_AT = WALK_MS;
 
 export function useAuthIntro() {
   const walk = useSharedValue(WALK_FROM);
   const bob = useSharedValue(0);
+  const dip = useSharedValue(0);      // she sinks a little as she bends to place it
   const legA = useSharedValue(0);
   const legB = useSharedValue(0);
   const settle = useSharedValue(0);   // 0 = walking legs, 1 = both feet planted
@@ -73,6 +82,7 @@ export function useAuthIntro() {
     if (reduced) {
       walk.value = 0;
       bob.value = 0;
+      dip.value = 0;
       legA.value = 0;
       legB.value = 0;
       settle.value = 1;
@@ -118,31 +128,42 @@ export function useAuthIntro() {
       duration: 260, easing: Easing.inOut(Easing.quad),
     }));
 
-    // Down, then most of the way back: an arm that stays down looks broken, and one
-    // that returns fully looks like it never moved.
-    arm.value = withDelay(650, withSequence(
-      withTiming(ARM_DEG, { duration: 350, easing: Easing.out(Easing.quad) }),
-      withDelay(180, withTiming(3, { duration: 420, easing: Easing.inOut(Easing.quad) })),
+    // She BENDS to place it. The arm reaches down and stays down while the bag travels,
+    // then returns once it has let go. Previously the arm flicked and the bag fell on
+    // its own, which is what read as throwing it.
+    arm.value = withDelay(PLACE_AT - 120, withSequence(
+      withTiming(ARM_DEG, { duration: 420, easing: Easing.inOut(Easing.quad) }),
+      withDelay(BAG_MS - 180, withTiming(2, { duration: 480, easing: Easing.inOut(Easing.quad) })),
     ));
 
-    bagOpacity.value = withDelay(700, withTiming(1, { duration: 120 }));
-    bagY.value = withDelay(700, withTiming(0, {
-      duration: BAG_MS,
-      easing: Easing.bezier(0.4, 0, 0.9, 1),   // gathers speed, like something dropped
+    // Her whole body sinks with the reach and rises again after. A hand that goes down
+    // while the body stays put is a throw; the dip is what makes it a placement.
+    dip.value = withDelay(PLACE_AT - 120, withSequence(
+      withTiming(DIP_PX, { duration: 420, easing: Easing.inOut(Easing.quad) }),
+      withDelay(BAG_MS - 180, withTiming(0, { duration: 480, easing: Easing.inOut(Easing.quad) })),
+    ));
+
+    bagOpacity.value = withDelay(PLACE_AT - 60, withTiming(1, { duration: 140 }));
+    // DECELERATING into the ground. The old easing gathered speed on the way down,
+    // which is exactly how a dropped object moves and exactly not how a placed one does.
+    bagY.value = withDelay(PLACE_AT + 60, withTiming(0, {
+      duration: BAG_MS, easing: Easing.out(Easing.cubic),
     }));
-    // The squash is what sells the landing. Brief, and it recovers.
-    bagSquash.value = withDelay(1080, withSequence(
-      withTiming(0.82, { duration: 90, easing: Easing.out(Easing.quad) }),
-      withSpring(1, { damping: 7, stiffness: 260 }),
+    // Barely any squash. Something set down gently does not bounce; this is just enough
+    // to register contact with the ground.
+    bagSquash.value = withDelay(PLACE_AT + 60 + BAG_MS, withSequence(
+      withTiming(0.96, { duration: 110, easing: Easing.out(Easing.quad) }),
+      withSpring(1, { damping: 14, stiffness: 180 }),
     ));
 
-    // The form leaves the bag the instant it lands, overshooting before it settles.
-    form.value = withDelay(1150, withSpring(1, { damping: 12, stiffness: 130, mass: 0.9 }));
+    // The form leaves the bag once she has let go of it, overshooting before it settles.
+    const RELEASED = PLACE_AT + 60 + BAG_MS + 90;
+    form.value = withDelay(RELEASED, withSpring(1, { damping: 12, stiffness: 130, mass: 0.9 }));
 
-    lean.value = withDelay(1200, withTiming(LEAN_DEG, {
+    lean.value = withDelay(RELEASED + 60, withTiming(LEAN_DEG, {
       duration: LEAN_MS, easing: Easing.inOut(Easing.cubic),
     }));
-  }, [reduced, walk, bob, legA, legB, settle, arm, bagY, bagOpacity, bagSquash, lean, form]);
+  }, [reduced, walk, bob, dip, legA, legB, settle, arm, bagY, bagOpacity, bagSquash, lean, form]);
 
   // She pivots on her feet when she leans, not about her middle - which means the origin
   // has to sit on the element that carries the rotation, not on its wrapper.
@@ -150,7 +171,7 @@ export function useAuthIntro() {
     transformOrigin: '50% 100%',
     transform: [
       { translateX: walk.value },
-      { translateY: bob.value },
+      { translateY: bob.value + dip.value },
       { rotate: `${lean.value}deg` },
     ],
   }));

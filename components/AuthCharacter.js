@@ -161,17 +161,21 @@ function Coat() {
 }
 
 /**
- * The bag. Drawn here rather than sourced: the Humaaans pack has no bag, and this one
- * uses her navy and the coat's teal so it reads as hers rather than borrowed.
+ * The bag. Drawn here rather than sourced, since the Humaaans pack has no bag.
+ *
+ * It takes the COAT'S teal for its body rather than her navy. Navy is nearly invisible
+ * on this screen's near-black ground - it read as a dark hole at her feet - and teal is
+ * the brightest colour she already wears. Not green: green is the sign-in button's, and
+ * a bright green object beside it would compete with the only control that commits.
  */
 export function AuthBag({ style }) {
   return (
     <Animated.View style={[styles.bag, style]} pointerEvents="none">
       <Svg viewBox="0 0 120 96" style={StyleSheet.absoluteFill}>
-        <Path d="M42 34 C42 16, 78 16, 78 34 L70 34 C70 24, 50 24, 50 34 Z" fill="#191847" />
-        <Path d="M14 36 h92 a6 6 0 0 1 6 6 v40 a8 8 0 0 1 -8 8 h-88 a8 8 0 0 1 -8 -8 v-40 a6 6 0 0 1 6 -6 z" fill="#2F3A6B" />
-        <Path d="M14 36 h92 a6 6 0 0 1 6 6 v10 h-104 v-10 a6 6 0 0 1 6 -6 z" fill="#191847" />
-        <Path d="M52 46 h16 a3 3 0 0 1 3 3 v4 a3 3 0 0 1 -3 3 h-16 a3 3 0 0 1 -3 -3 v-4 a3 3 0 0 1 3 -3 z" fill="#89C5CC" />
+        <Path d="M42 34 C42 16, 78 16, 78 34 L70 34 C70 24, 50 24, 50 34 Z" fill="#69A1AC" />
+        <Path d="M14 36 h92 a6 6 0 0 1 6 6 v40 a8 8 0 0 1 -8 8 h-88 a8 8 0 0 1 -8 -8 v-40 a6 6 0 0 1 6 -6 z" fill="#89C5CC" />
+        <Path d="M14 36 h92 a6 6 0 0 1 6 6 v10 h-104 v-10 a6 6 0 0 1 6 -6 z" fill="#69A1AC" />
+        <Path d="M52 46 h16 a3 3 0 0 1 3 3 v4 a3 3 0 0 1 -3 3 h-16 a3 3 0 0 1 -3 -3 v-4 a3 3 0 0 1 3 -3 z" fill="#191847" />
       </Svg>
     </Animated.View>
   );
