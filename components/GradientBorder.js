@@ -39,19 +39,21 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  */
 
 /**
- * A BRIGHT BAND on a dark ground, not a blend of two brights.
+ * TWO cycles of bright band on a dark ring, arrived at through two wrong versions.
  *
- * The first version was ['#00d4d4', '#89C5CC', '#00d4d4'] - symmetric, and every colour
- * in it light. Rotating a symmetric gradient by 180 degrees gives back an identical
- * image, so it read as static on a square-ish card and only looked alive on a tall one
- * where the aspect ratio broke the symmetry. The eye needs one travelling highlight it
- * can follow, which means most of the ring has to be dark.
+ * First was ['#00d4d4','#89C5CC','#00d4d4'] - symmetric, and every colour in it light.
+ * Rotating a symmetric gradient by 180 degrees returns an identical image, so it read as
+ * completely static on a square-ish card and only looked alive on a tall one where the
+ * aspect ratio broke the symmetry.
+ *
+ * Second was one cycle with a dark majority. That gave a band to follow, but the ring
+ * samples a SLICE of this square, so how much colour a card shows depends on its shape:
+ * a tall card caught the bright middle while a short one caught mostly dark and looked
+ * drab next to it.
+ *
+ * Two cycles put colour on every edge of any shape, and two highlights travelling reads
+ * as richer rather than busier.
  */
-// TWO cycles, not one. With a single band and a dark majority, how much colour a card
-// shows depends on its shape: the ring samples a slice of this square, so a tall card
-// (signup) caught the bright middle while a short one (login) caught mostly dark and
-// looked drab beside it. Two cycles put colour on every edge of any shape, and two
-// highlights travelling instead of one reads as richer rather than busier.
 const DEFAULT_COLORS = [
   '#3b1a5c', '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c',
   '#8b5cf6', '#ec4899', '#a855f7', '#3b1a5c',
@@ -112,9 +114,40 @@ export default function GradientBorder({
   // Cover every rotation: a square of side = diagonal, centred on the container.
   const side = Math.ceil(Math.hypot(size.w, size.h)) || 0;
 
+  /**
+   * Split the caller's style: PADDING has to move to the inner panel, everything else
+   * stays on the wrap.
+   *
+   * The border's thickness is the wrap's padding - that gap is the only part of the
+   * spinning square anyone sees. So a caller passing an existing card style with
+   * `padding: 14` or `paddingVertical: 14` was overriding `padding: 1.5` and turning a
+   * hairline into a 14px slab of moving gradient. Every card in the app that had its own
+   * padding got one.
+   *
+   * Border props are dropped rather than moved: a card that already had borderWidth: 1
+   * would otherwise wear a static border AND a moving one.
+   */
+  const flat = StyleSheet.flatten(style) || {};
+  const {
+    padding: cp, paddingHorizontal: cph, paddingVertical: cpv,
+    paddingTop: cpt, paddingBottom: cpb, paddingLeft: cpl, paddingRight: cpr,
+    paddingStart: cps, paddingEnd: cpe,
+    alignItems: cai, justifyContent: cjc, flexDirection: cfd, gap: cgap,
+    borderWidth: _bw, borderColor: _bc, ...outer
+  } = flat;
+  // Padding AND content layout. `alignItems: 'center'` left on the wrap makes the inner
+  // panel shrink to its content instead of filling the card, which exposes gradient down
+  // both sides as well - the same visible symptom from a second cause.
+  const innerLayout = {
+    padding: cp, paddingHorizontal: cph, paddingVertical: cpv,
+    paddingTop: cpt, paddingBottom: cpb, paddingLeft: cpl, paddingRight: cpr,
+    paddingStart: cps, paddingEnd: cpe,
+    alignItems: cai, justifyContent: cjc, flexDirection: cfd, gap: cgap,
+  };
+
   return (
     <View
-      style={[styles.wrap, { borderRadius: radius, padding: width }, style]}
+      style={[styles.wrap, outer, { borderRadius: radius, padding: width }]}
       onLayout={(e) => {
         const { width: w, height: h } = e.nativeEvent.layout;
         if (w !== size.w || h !== size.h) setSize({ w, h });
@@ -142,7 +175,14 @@ export default function GradientBorder({
         </Animated.View>
       )}
 
-      <View style={[styles.inner, { borderRadius: Math.max(0, radius - width), backgroundColor }, contentStyle]}>
+      <View
+        style={[
+          styles.inner,
+          { borderRadius: Math.max(0, radius - width), backgroundColor },
+          innerLayout,
+          contentStyle,
+        ]}
+      >
         {children}
       </View>
     </View>
@@ -153,5 +193,5 @@ const styles = StyleSheet.create({
   // overflow:hidden is what clips the spinning square to the card's rounded shape.
   wrap: { overflow: 'hidden' },
   spinner: { position: 'absolute' },
-  inner: { overflow: 'hidden' },
+  inner: { flex: 1, overflow: 'hidden' },
 });
