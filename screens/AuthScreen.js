@@ -388,7 +388,7 @@ export default function AuthScreen({ navigation }) {
       )}
 
       <View style={styles.passwordRow}>
-        <TextInput style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Password" placeholderTextColor={theme.subtext} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+        <TextInput style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Password" placeholderTextColor={theme.subtext} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={[styles.eyeBtn, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
           <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={theme.icon} />
         </TouchableOpacity>
@@ -490,9 +490,8 @@ const styles = StyleSheet.create({
   logo: { color: '#2ecc71', fontSize: 26, fontWeight: 'bold', marginBottom: 2 },
   title: { color: '#fff', fontSize: 19, fontWeight: 'bold', marginBottom: 16 },
   input: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 11, width: '100%', marginBottom: 9, borderWidth: 1, borderColor: '#333', fontSize: 15 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 9 },
-  eyeBtn: { padding: 14, backgroundColor: '#1a1a1a', borderRadius: 10, marginLeft: 8, borderWidth: 1, borderColor: '#333' },
-  eyeText: { fontSize: 18 },
+  passwordRow: { flexDirection: 'row', alignItems: 'stretch', width: '100%', marginBottom: 9 },
+  eyeBtn: { width: 52, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 10, marginLeft: 8, borderWidth: 1, borderColor: '#333' },
   forgotText: { color: '#2ecc71', alignSelf: 'flex-end', marginBottom: 12, fontSize: 13 },
   submitBtn: { backgroundColor: '#2ecc71', borderRadius: 25, padding: 13, width: '100%', alignItems: 'center', marginBottom: 12 },
   submitText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
