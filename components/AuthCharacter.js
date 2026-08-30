@@ -95,6 +95,31 @@ function LegB() {
   );
 }
 
+/**
+ * The resting legs: both feet planted. Bottom/Standing/Sweatpants from the same pack,
+ * recoloured to her exact trousers, skin and shoes so only the POSE changes when the
+ * two crossfade. Without this she froze mid-stride and leant on the form with one foot
+ * in the air, which is not how anyone stands against anything.
+ */
+function LegsRest() {
+  return (
+    <Layer>
+      <G transform="translate(0.000000, 211.706546)">
+        <Polygon fill="#BA8B72" points="128 9.9475983e-14 164.630838 126.226909 181.860154 221 199.153197 221 181.890974 9.9475983e-14" />
+        <Path d="M111.537727,0 C114.093705,65.5742244 113.085665,101.340188 112.513606,107.297892 C111.941548,113.255595 108.69393,153.156298 86.5636874,223 L104.549973,223 C133.85784,155.996902 144.088936,116.096199 147.450326,107.297892 C150.811717,98.4995844 160.739403,62.7336205 175.233385,0 L111.537727,0 Z" fill="#D4A181" />
+        <Path d="M127.213639,1.13686838e-13 C136.741891,43.4350253 153.221683,112.768359 176.653017,208 L201.946059,208 C203.814239,110.253828 195.86709,45.9204947 182.104613,1.13686838e-13 L127.213639,1.13686838e-13 Z" fill="#DB2721" />
+        <Path d="M111.409919,0 C113.913164,65.5742244 107.425844,130.177256 87.3305078,209.020958 L114.316793,209.020958 C143.678541,143.017859 164.723052,78.7336205 179.105577,0 L111.409919,0 Z" fill="#FF4133" />
+        <G transform="translate(84.000000, 199.000000)" fill="#E4E4E4">
+        <Path d="M0,37 L0.99242267,21 C6.8029179,22.6994251 14.0806841,22.0327584 22.8257214,19 C32.2287535,25.660617 44.0659431,30.2086712 58.3372903,32.6441626 L58.3372863,32.6441862 C59.4261013,32.829999 60.1581292,33.8632891 59.9723163,34.9521041 C59.9602834,35.0226139 59.9444765,35.0924273 59.9249637,35.1612435 L58.5529375,40 L22.8257214,40 L1.98484534,40 L0,37 Z" />
+        </G>
+        <G transform="translate(178.000000, 199.000000)" fill="#E4E4E4">
+        <Path d="M0,37 L0.99242267,21 C6.8029179,22.6994251 14.0806841,22.0327584 22.8257214,19 C32.2287535,25.660617 44.0659431,30.2086712 58.3372903,32.6441626 L58.3372863,32.6441862 C59.4261013,32.829999 60.1581292,33.8632891 59.9723163,34.9521041 C59.9602834,35.0226139 59.9444765,35.0924273 59.9249637,35.1612435 L58.5529375,40 L22.8257214,40 L1.98484534,40 L0,37 Z" />
+        </G>
+      </G>
+    </Layer>
+  );
+}
+
 function NearHand() {
   return (
     <Layer>
@@ -152,12 +177,17 @@ export function AuthBag({ style }) {
   );
 }
 
-export default function AuthCharacter({ style, armStyle, legAStyle, legBStyle }) {
+export default function AuthCharacter({ style, armStyle, legAStyle, legBStyle, walkLegsStyle, restLegsStyle }) {
   return (
     <Animated.View style={[styles.figure, style]} pointerEvents="none">
       <Head />
-      <Animated.View style={[StyleSheet.absoluteFill, legAStyle]} pointerEvents="none"><LegA /></Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, legBStyle]} pointerEvents="none"><LegB /></Animated.View>
+      {/* Two leg sets in the same z-slot, crossfading: the walking pair while she moves,
+          the planted pair once she stops. */}
+      <Animated.View style={[StyleSheet.absoluteFill, walkLegsStyle]} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, legAStyle]} pointerEvents="none"><LegA /></Animated.View>
+        <Animated.View style={[StyleSheet.absoluteFill, legBStyle]} pointerEvents="none"><LegB /></Animated.View>
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, restLegsStyle]} pointerEvents="none"><LegsRest /></Animated.View>
       <NearHand />
       <Animated.View style={[StyleSheet.absoluteFill, armStyle]} pointerEvents="none"><Arm /></Animated.View>
       <Coat />

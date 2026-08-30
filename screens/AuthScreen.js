@@ -31,7 +31,10 @@ const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { figureStyle, armStyle, legAStyle, legBStyle, bagStyle, formStyle } = useAuthIntro();
+  const {
+    figureStyle, armStyle, legAStyle, legBStyle,
+    walkLegsStyle, restLegsStyle, bagStyle, formStyle,
+  } = useAuthIntro();
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -324,14 +327,6 @@ export default function AuthScreen({ navigation }) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
-      <AuthStage
-        figureStyle={figureStyle}
-        armStyle={armStyle}
-        legAStyle={legAStyle}
-        legBStyle={legBStyle}
-        bagStyle={bagStyle}
-      />
-
       {/* Everything the form is made of springs out of the bag as one piece. The
           modals below stay OUTSIDE it: they are overlays, and scaling or fading a
           modal with the form would animate them open behind their own backdrop. */}
@@ -415,6 +410,18 @@ export default function AuthScreen({ navigation }) {
       </TouchableOpacity>
       </Animated.View>
 
+      {/* She stands BELOW the form. That is what lets the form grow upward out of her
+          bag: with the stage above it, the form could only unfold downwards. */}
+      <AuthStage
+        figureStyle={figureStyle}
+        armStyle={armStyle}
+        legAStyle={legAStyle}
+        legBStyle={legBStyle}
+        walkLegsStyle={walkLegsStyle}
+        restLegsStyle={restLegsStyle}
+        bagStyle={bagStyle}
+      />
+
       <Modal visible={showMfaPrompt} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <View style={{ backgroundColor: theme.settingBg, borderRadius: 20, padding: 24, width: '100%', alignItems: 'center' }}>
@@ -457,7 +464,7 @@ export default function AuthScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  content: { padding: 24, paddingTop: 36, alignItems: 'center' },
+  content: { padding: 24, paddingTop: 64, alignItems: 'center' },
   form: { width: '100%', alignItems: 'center' },
   logo: { color: '#2ecc71', fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
   title: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 32 },

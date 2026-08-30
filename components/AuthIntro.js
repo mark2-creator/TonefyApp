@@ -47,6 +47,7 @@ export function useAuthIntro() {
   const bob = useSharedValue(0);
   const legA = useSharedValue(0);
   const legB = useSharedValue(0);
+  const settle = useSharedValue(0);   // 0 = walking legs, 1 = both feet planted
   const arm = useSharedValue(0);
   const bagY = useSharedValue(BAG_FROM);
   const bagOpacity = useSharedValue(0);
@@ -74,6 +75,7 @@ export function useAuthIntro() {
       bob.value = 0;
       legA.value = 0;
       legB.value = 0;
+      settle.value = 1;
       arm.value = 0;
       bagY.value = 0;
       bagOpacity.value = 1;
@@ -109,6 +111,13 @@ export function useAuthIntro() {
       withTiming(0, { duration: STEP_MS * 1.5, easing: Easing.out(Easing.quad) }),
     );
 
+    // She stops walking, so she stops being mid-stride. The crossfade starts a little
+    // before the last half-step lands, which hides the swap inside the movement instead
+    // of popping once she is already still.
+    settle.value = withDelay(WALK_MS - STEP_MS * 0.6, withTiming(1, {
+      duration: 260, easing: Easing.inOut(Easing.quad),
+    }));
+
     // Down, then most of the way back: an arm that stays down looks broken, and one
     // that returns fully looks like it never moved.
     arm.value = withDelay(650, withSequence(
@@ -133,7 +142,7 @@ export function useAuthIntro() {
     lean.value = withDelay(1200, withTiming(LEAN_DEG, {
       duration: LEAN_MS, easing: Easing.inOut(Easing.cubic),
     }));
-  }, [reduced, walk, bob, legA, legB, arm, bagY, bagOpacity, bagSquash, lean, form]);
+  }, [reduced, walk, bob, legA, legB, settle, arm, bagY, bagOpacity, bagSquash, lean, form]);
 
   // She pivots on her feet when she leans, not about her middle - which means the origin
   // has to sit on the element that carries the rotation, not on its wrapper.
@@ -156,6 +165,9 @@ export function useAuthIntro() {
     transform: [{ rotate: `${legB.value}deg` }],
   }));
 
+  const walkLegsStyle = useAnimatedStyle(() => ({ opacity: 1 - settle.value }));
+  const restLegsStyle = useAnimatedStyle(() => ({ opacity: settle.value }));
+
   // Rotating about the shoulder rather than the layer's centre is the whole reason the
   // arm reads as hinged instead of sliding.
   const armStyle = useAnimatedStyle(() => ({
@@ -168,23 +180,24 @@ export function useAuthIntro() {
     transform: [{ translateY: bagY.value }, { scaleY: bagSquash.value }],
   }));
 
-  // It has to rise. The form sits BELOW the bag on a phone, so scaling it in place read
-  // as unfolding downwards - the opposite of springing out. Starting it low and lifting
-  // it into place, scaled from its own top edge, is what makes it come UP out of the bag.
+  // The character now stands BELOW the form, so the bag is below it too and the form
+  // genuinely grows upward out of it. Scaling from its own BOTTOM edge is what does
+  // that: the bottom stays put next to the bag while the rest unfolds upwards. With a
+  // top origin it unfolded downwards, which is the opposite of springing out.
   const formStyle = useAnimatedStyle(() => ({
     opacity: form.value,
-    transformOrigin: '50% 0%',
+    transformOrigin: '50% 100%',
     transform: [
       { translateY: FORM_RISE * (1 - form.value) },
-      { scale: 0.55 + 0.45 * form.value },
+      { scale: 0.45 + 0.55 * form.value },
     ],
   }));
 
-  return { figureStyle, armStyle, legAStyle, legBStyle, bagStyle, formStyle };
+  return { figureStyle, armStyle, legAStyle, legBStyle, walkLegsStyle, restLegsStyle, bagStyle, formStyle };
 }
 
 /** The ground she walks onto. Fixed height so the form below it never shifts. */
-export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, bagStyle }) {
+export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, walkLegsStyle, restLegsStyle, bagStyle }) {
   return (
     <View style={styles.stage} pointerEvents="none">
       {/* The bag paints BEFORE her, so her planted foot sits in front of it. Drawn on
@@ -196,6 +209,8 @@ export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, bagStyl
           armStyle={armStyle}
           legAStyle={legAStyle}
           legBStyle={legBStyle}
+          walkLegsStyle={walkLegsStyle}
+          restLegsStyle={restLegsStyle}
         />
       </View>
     </View>
@@ -203,7 +218,7 @@ export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, bagStyl
 }
 
 const styles = StyleSheet.create({
-  stage: { width: '100%', height: 196, marginBottom: 4 },
+  stage: { width: '100%', height: 196, marginTop: 4 },
   figureSlot: { position: 'absolute', left: 0, bottom: 0 },
   // Just past her planted foot, and behind her, so it reads as set down beside her.
   bagSlot: { position: 'absolute', left: 138, bottom: 2 },
