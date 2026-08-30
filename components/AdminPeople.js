@@ -18,9 +18,13 @@ const PLANS = ['free', 'pro', 'creator'];
  * The list is server-aggregated. Counting 24 accounts on a phone would mean shipping
  * every user record to it, which is both slow and the wrong place for that data.
  *
- * Search runs on the SERVER too, against the full set, not over the fifty rows that
+ * Search runs on the SERVER too, against the full set, not over the sixty rows that
  * happen to have been fetched - otherwise looking someone up would only find them if
  * they were recent enough to be in the page already.
+ *
+ * Collapsed by default, and nothing is fetched until it is opened. The count in the
+ * header comes from the stats already on screen, so the section can say how many
+ * accounts there are without asking for any of them.
  */
 
 function planColour(plan) {
@@ -64,11 +68,12 @@ function Row({ item, theme, onPress }) {
   );
 }
 
-export default function AdminPeople({ theme, onChanged }) {
+export default function AdminPeople({ theme, onChanged, count }) {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const sheetInset = useSheetInset();
@@ -90,14 +95,14 @@ export default function AdminPeople({ theme, onChanged }) {
     }
   }, []);
 
-  useEffect(() => { load(''); }, [load]);
-
-  // Typing waits before it asks. Without this every keystroke is a request that walks
-  // the whole auth list server-side.
+  // Nothing is fetched until the section is opened. Listing accounts walks the entire
+  // auth list and every video document server-side, and doing that on a screen nobody
+  // expanded is work spent on a question nobody asked.
   useEffect(() => {
-    const t = setTimeout(() => load(q.trim()), 400);
+    if (!open) return;
+    const t = setTimeout(() => load(q.trim()), q ? 400 : 0);
     return () => clearTimeout(t);
-  }, [q, load]);
+  }, [open, q, load]);
 
   async function setPlan(plan) {
     if (!selected || plan === selected.plan) return setSelected(null);
@@ -127,6 +132,20 @@ export default function AdminPeople({ theme, onChanged }) {
 
   return (
     <View style={styles.wrap}>
+      <TouchableOpacity
+        style={[styles.toggle, { backgroundColor: theme.card, borderColor: theme.border }]}
+        onPress={() => setOpen((v) => !v)}
+      >
+        <MaterialIcons name="people" size={20} color={theme.icon} />
+        <Text style={[styles.toggleLabel, { color: theme.text }]}>Accounts</Text>
+        <Text style={[styles.toggleCount, { color: theme.subtext }]}>
+          {count || total || ''}
+        </Text>
+        <MaterialIcons name={open ? 'expand-less' : 'expand-more'} size={20} color={theme.icon} />
+      </TouchableOpacity>
+
+      {!open ? null : (
+      <>
       <View style={[styles.search, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
         <MaterialIcons name="search" size={20} color={theme.subtext} />
         <TextInput
@@ -164,6 +183,8 @@ export default function AdminPeople({ theme, onChanged }) {
             scrollEnabled={false}
           />
         </>
+      )}
+      </>
       )}
 
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
@@ -222,6 +243,12 @@ export default function AdminPeople({ theme, onChanged }) {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 4 },
+  toggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 13, marginBottom: 10,
+  },
+  toggleLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  toggleCount: { fontSize: 13, fontWeight: '600' },
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 10,

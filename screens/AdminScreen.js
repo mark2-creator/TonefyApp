@@ -88,7 +88,7 @@ export default function AdminScreen({ navigation }) {
           {/* The numbers above raise a question the numbers cannot answer: which
               accounts? Reloading the stats after a plan change keeps the counts above
               honest, since changing someone's plan moves one of them. */}
-          <AdminPeople theme={theme} onChanged={load} />
+          <AdminPeople theme={theme} onChanged={load} count={u?.total} />
 
           <Text style={[styles.section, { color: theme.subtext }]}>REVENUE</Text>
           <View style={styles.row}>
