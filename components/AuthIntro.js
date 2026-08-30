@@ -9,11 +9,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import AuthCharacter, { AuthBag, SHOULDER_ORIGIN } from './AuthCharacter';
+import AuthCharacter, { AuthBag, HIP_ORIGIN, SHOULDER_ORIGIN } from './AuthCharacter';
 
 /**
  * The opening of the auth screen: she walks in from the left, sets her bag down, the
- * form springs out of it, and she settles into a lean beside it.
+ * form springs up out of it, and she settles into a lean beside it.
  *
  * The choreography lives here rather than in AuthScreen so that screen keeps reading as
  * a form. It owns WHEN things move; AuthCharacter owns how they are drawn.
@@ -21,28 +21,32 @@ import AuthCharacter, { AuthBag, SHOULDER_ORIGIN } from './AuthCharacter';
  * Beats, in milliseconds from mount. They overlap on purpose - a sequence where each
  * step waits for the last reads as a slideshow rather than one continuous action:
  *
- *     0  850   she walks in
+ *     0  850   she walks in, legs stepping
  *   650 1000   the arm lowers
  *   700 1080   the bag travels from her hand to the ground
- *  1080         the bag lands and squashes
- *  1150         the FORM springs out of it
+ *  1080        the bag lands and squashes
+ *  1150        the FORM springs UP out of it
  *  1200 1700   she straightens into the lean
  */
 
 const WALK_MS = 850;
+const STEP_MS = 212;          // one half-stride; four of them fill the walk
 const BAG_MS = 380;
 const LEAN_MS = 500;
 
-// How far off-screen she starts. Negative because she enters from the left.
-const WALK_FROM = -170;
-// The bag starts at hand height and falls to the ground.
-const BAG_FROM = -34;
-// A few degrees is a lean; more is a stumble.
-const LEAN_DEG = 5;
+const WALK_FROM = -170;       // negative: she enters from the left
+const BAG_FROM = -34;         // the bag starts at hand height
+const LEAN_DEG = 5;           // a few degrees is a lean; more is a stumble
 const ARM_DEG = 14;
+const STEP_DEG = 12;          // how far each leg swings from the base stride
+const BOB_PX = 4;             // the rise and fall that makes it a walk, not a glide
+const FORM_RISE = 70;         // how far below its resting place the form starts
 
 export function useAuthIntro() {
   const walk = useSharedValue(WALK_FROM);
+  const bob = useSharedValue(0);
+  const legA = useSharedValue(0);
+  const legB = useSharedValue(0);
   const arm = useSharedValue(0);
   const bagY = useSharedValue(BAG_FROM);
   const bagOpacity = useSharedValue(0);
@@ -67,6 +71,9 @@ export function useAuthIntro() {
 
     if (reduced) {
       walk.value = 0;
+      bob.value = 0;
+      legA.value = 0;
+      legB.value = 0;
       arm.value = 0;
       bagY.value = 0;
       bagOpacity.value = 1;
@@ -75,8 +82,32 @@ export function useAuthIntro() {
       return;
     }
 
-    const ease = { duration: WALK_MS, easing: Easing.out(Easing.cubic) };
-    walk.value = withTiming(0, ease);
+    walk.value = withTiming(0, { duration: WALK_MS, easing: Easing.out(Easing.cubic) });
+
+    // The legs are what make this a walk. Translating a fixed pose across the screen
+    // reads as sliding no matter how good the easing is - which is exactly what the
+    // first version on a real device looked like. Each leg swings about the pelvis in
+    // ANTIPHASE with the other, four half-strides across the walk, decaying to the
+    // resting pose so she does not stop mid-step.
+    const step = (dir) => withSequence(
+      withTiming(dir * STEP_DEG, { duration: STEP_MS, easing: Easing.inOut(Easing.sin) }),
+      withTiming(-dir * STEP_DEG, { duration: STEP_MS, easing: Easing.inOut(Easing.sin) }),
+      withTiming(dir * STEP_DEG * 0.55, { duration: STEP_MS, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0, { duration: STEP_MS, easing: Easing.out(Easing.quad) }),
+    );
+    legA.value = step(-1);
+    legB.value = step(1);
+
+    // A walking body rises and falls twice per stride. Without it the legs move and the
+    // torso floats, which looks worse than not animating the legs at all.
+    bob.value = withSequence(
+      withTiming(-BOB_PX, { duration: STEP_MS / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0, { duration: STEP_MS / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(-BOB_PX, { duration: STEP_MS / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0, { duration: STEP_MS / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(-BOB_PX * 0.6, { duration: STEP_MS / 2, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0, { duration: STEP_MS * 1.5, easing: Easing.out(Easing.quad) }),
+    );
 
     // Down, then most of the way back: an arm that stays down looks broken, and one
     // that returns fully looks like it never moved.
@@ -102,13 +133,27 @@ export function useAuthIntro() {
     lean.value = withDelay(1200, withTiming(LEAN_DEG, {
       duration: LEAN_MS, easing: Easing.inOut(Easing.cubic),
     }));
-  }, [reduced, walk, arm, bagY, bagOpacity, bagSquash, lean, form]);
+  }, [reduced, walk, bob, legA, legB, arm, bagY, bagOpacity, bagSquash, lean, form]);
 
-  // She pivots on her feet when she leans, not about her middle - which means the
-  // origin has to sit on the element that carries the rotation, not on its wrapper.
+  // She pivots on her feet when she leans, not about her middle - which means the origin
+  // has to sit on the element that carries the rotation, not on its wrapper.
   const figureStyle = useAnimatedStyle(() => ({
     transformOrigin: '50% 100%',
-    transform: [{ translateX: walk.value }, { rotate: `${lean.value}deg` }],
+    transform: [
+      { translateX: walk.value },
+      { translateY: bob.value },
+      { rotate: `${lean.value}deg` },
+    ],
+  }));
+
+  const legAStyle = useAnimatedStyle(() => ({
+    transformOrigin: HIP_ORIGIN,
+    transform: [{ rotate: `${legA.value}deg` }],
+  }));
+
+  const legBStyle = useAnimatedStyle(() => ({
+    transformOrigin: HIP_ORIGIN,
+    transform: [{ rotate: `${legB.value}deg` }],
   }));
 
   // Rotating about the shoulder rather than the layer's centre is the whole reason the
@@ -123,25 +168,36 @@ export function useAuthIntro() {
     transform: [{ translateY: bagY.value }, { scaleY: bagSquash.value }],
   }));
 
-  // Scaled from its own bottom-left, which is where the bag is, so it reads as coming
-  // OUT of the bag rather than fading in over it.
+  // It has to rise. The form sits BELOW the bag on a phone, so scaling it in place read
+  // as unfolding downwards - the opposite of springing out. Starting it low and lifting
+  // it into place, scaled from its own top edge, is what makes it come UP out of the bag.
   const formStyle = useAnimatedStyle(() => ({
     opacity: form.value,
-    transformOrigin: '18% 0%',
-    transform: [{ scale: 0.35 + 0.65 * form.value }],
+    transformOrigin: '50% 0%',
+    transform: [
+      { translateY: FORM_RISE * (1 - form.value) },
+      { scale: 0.55 + 0.45 * form.value },
+    ],
   }));
 
-  return { figureStyle, armStyle, bagStyle, formStyle };
+  return { figureStyle, armStyle, legAStyle, legBStyle, bagStyle, formStyle };
 }
 
 /** The ground she walks onto. Fixed height so the form below it never shifts. */
-export function AuthStage({ figureStyle, armStyle, bagStyle }) {
+export function AuthStage({ figureStyle, armStyle, legAStyle, legBStyle, bagStyle }) {
   return (
     <View style={styles.stage} pointerEvents="none">
-      <View style={styles.figureSlot}>
-        <AuthCharacter style={figureStyle} armStyle={armStyle} />
-      </View>
+      {/* The bag paints BEFORE her, so her planted foot sits in front of it. Drawn on
+          top it read as a bag stuck to her shin. */}
       <AuthBag style={[styles.bagSlot, bagStyle]} />
+      <View style={styles.figureSlot}>
+        <AuthCharacter
+          style={figureStyle}
+          armStyle={armStyle}
+          legAStyle={legAStyle}
+          legBStyle={legBStyle}
+        />
+      </View>
     </View>
   );
 }
@@ -149,5 +205,6 @@ export function AuthStage({ figureStyle, armStyle, bagStyle }) {
 const styles = StyleSheet.create({
   stage: { width: '100%', height: 196, marginBottom: 4 },
   figureSlot: { position: 'absolute', left: 0, bottom: 0 },
-  bagSlot: { position: 'absolute', left: 104, bottom: 2 },
+  // Just past her planted foot, and behind her, so it reads as set down beside her.
+  bagSlot: { position: 'absolute', left: 138, bottom: 2 },
 });

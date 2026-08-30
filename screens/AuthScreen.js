@@ -31,7 +31,7 @@ const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { figureStyle, armStyle, bagStyle, formStyle } = useAuthIntro();
+  const { figureStyle, armStyle, legAStyle, legBStyle, bagStyle, formStyle } = useAuthIntro();
   const [isLogin, setIsLogin] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -324,7 +324,13 @@ export default function AuthScreen({ navigation }) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
-      <AuthStage figureStyle={figureStyle} armStyle={armStyle} bagStyle={bagStyle} />
+      <AuthStage
+        figureStyle={figureStyle}
+        armStyle={armStyle}
+        legAStyle={legAStyle}
+        legBStyle={legBStyle}
+        bagStyle={bagStyle}
+      />
 
       {/* Everything the form is made of springs out of the bag as one piece. The
           modals below stay OUTSIDE it: they are overlays, and scaling or fading a
