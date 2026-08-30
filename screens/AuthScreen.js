@@ -22,6 +22,8 @@ import { auth, db } from '../firebase';
 import CountrySheet from '../components/CountryPicker';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import GradientBorder from '../components/GradientBorder';
 import Animated from 'react-native-reanimated';
 import { useAuthIntro, AuthStage } from '../components/AuthIntro';
 
@@ -31,6 +33,7 @@ const LOCKOUT_MINUTES = 15;
 
 export default function AuthScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const {
     figureStyle, armStyle, legAStyle, legBStyle,
     walkLegsStyle, restLegsStyle, bagStyle, formStyle,
@@ -326,11 +329,21 @@ export default function AuthScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      contentContainerStyle={[
+        styles.content,
+        // The stack sets headerShown:false for every screen, so nothing above us
+        // reserves the status bar - each screen has to do it itself. A hardcoded
+        // paddingTop only ever looks right on the phone it was tuned on.
+        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+      ]}
+    >
       {/* Everything the form is made of springs out of the bag as one piece. The
           modals below stay OUTSIDE it: they are overlays, and scaling or fading a
           modal with the form would animate them open behind their own backdrop. */}
       <Animated.View style={[styles.form, formStyle]}>
+      <GradientBorder radius={20} backgroundColor={theme.card} style={styles.formCard} contentStyle={styles.formCardInner}>
       <Text style={[styles.logo, { color: theme.accent }]}>Tonefy AI</Text>
       <Text style={[styles.title, { color: theme.text }]}>{isLogin ? 'Login to Tonefy' : 'Create Account'}</Text>
 
@@ -408,6 +421,7 @@ export default function AuthScreen({ navigation }) {
           <Text style={[styles.switchLink, { color: theme.accent }]}>{isLogin ? 'Sign Up' : 'Login'}</Text>
         </Text>
       </TouchableOpacity>
+      </GradientBorder>
       </Animated.View>
 
       {/* She stands BELOW the form. That is what lets the form grow upward out of her
@@ -464,8 +478,10 @@ export default function AuthScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  content: { padding: 24, paddingTop: 64, alignItems: 'center' },
+  content: { padding: 24, alignItems: 'center' },
   form: { width: '100%', alignItems: 'center' },
+  formCard: { width: '100%' },
+  formCardInner: { padding: 20, alignItems: 'center' },
   logo: { color: '#2ecc71', fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
   title: { color: '#fff', fontSize: 22, fontWeight: 'bold', marginBottom: 32 },
   input: { backgroundColor: '#1a1a1a', color: '#fff', borderRadius: 10, padding: 14, width: '100%', marginBottom: 14, borderWidth: 1, borderColor: '#333', fontSize: 15 },

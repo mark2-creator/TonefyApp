@@ -155,6 +155,36 @@ A sheet whose contents depend on state should store *which* sheet is open, not a
 snapshot of its options, so the options rebuild from live state and cannot show a stale
 selection.
 
+## Spinning gradient border
+
+`components/GradientBorder.js` wraps a surface in a border whose gradient slowly turns.
+It is the app's one piece of ambient motion, and it exists to make a focal surface feel
+alive without anything on it blinking or sliding.
+
+**How it works**, because the mechanism is not obvious and the failure mode is: a large
+gradient square spins BEHIND the content, and an opaque panel sits on top inset by the
+border width, so the only part of the square anyone sees is the few pixels at the edge.
+React Native has no animated border colour; this needs no native module. The square is
+sized to the container's **diagonal**, measured with `onLayout` — anything smaller
+leaves the corners bare at 45 degrees, which is the one bug this component can have.
+
+**The sweep must not use green.** Green means *this action commits*, and a green light
+travelling around a card that CONTAINS the commit button spends the only colour that
+distinguishes it. Teal is the default: bright on the dark ground, already brand, and it
+is not claiming to be a control. `colors` exists for a deliberate exception, not for
+decoration.
+
+**Use it on one surface at a time.** It is ambient motion that never stops, so it costs
+a little battery wherever it is mounted and it stops meaning anything if everything has
+one. A screen's most important card, not every card on it. Two of these on screen
+together compete, and the eye picks neither.
+
+Defaults: `radius: 16`, `width: 1.5`, `SPIN_MS: 4200`. The spin is deliberately slow —
+faster reads as a loading spinner, which is a different promise entirely.
+
+Honours Reduce Motion by holding still. A border that never stops moving is exactly what
+that setting exists to switch off.
+
 ## Timeline geometry
 
 `PIXELS_PER_SECOND = 40`. Clip row is `CLIP_H = 56` (+6 padding each side); aux rows
