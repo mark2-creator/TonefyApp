@@ -3,13 +3,13 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   ScrollView, StatusBar, Animated, Dimensions
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Linking } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 
 const { width } = Dimensions.get('window');
-const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 const features = [
   { icon: 'auto-awesome', title: 'Idea to Video', desc: 'Transform ideas into stunning videos instantly', color: '#00e38d' },
@@ -20,6 +20,7 @@ const features = [
 
 export default function LandingScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -40,7 +41,7 @@ export default function LandingScreen({ navigation }) {
   }, []);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.bg} />
 
       {/* Header */}
@@ -191,7 +192,7 @@ export default function LandingScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: STATUSBAR_HEIGHT },
+  container: { flex: 1, backgroundColor: '#000' },
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#ffffff10' },

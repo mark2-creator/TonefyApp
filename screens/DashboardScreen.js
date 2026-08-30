@@ -4,12 +4,12 @@ import {
   View, Text, ScrollView, TouchableOpacity, Image,
   StyleSheet, StatusBar, Modal, Switch
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { showAlert } from '../components/BrandedAlert';
 
-const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 const sections = [
   {
@@ -60,6 +60,7 @@ export default function DashboardScreen({ navigation }) {
 
   const [showSettings, setShowSettings] = useState(false);
   const { theme, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const sheetInset = useSheetInset();
   const darkMode = isDark;
 
@@ -86,7 +87,7 @@ export default function DashboardScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
 
       {/* Header */}
@@ -241,7 +242,7 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },

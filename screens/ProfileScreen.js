@@ -4,6 +4,8 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Image, Alert, ActivityIndicator, Modal
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import GradientBorder from '../components/GradientBorder';
 import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import QRCode from 'react-native-qrcode-svg';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -28,6 +30,7 @@ function formatResetDate(iso) {
 
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { tier, creditsRemaining, creditsResetAt, caps, isPremium } = usePlan();
   const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
@@ -258,7 +261,7 @@ export default function ProfileScreen({ navigation }) {
   const initial = (displayName || user?.email || '?')[0].toUpperCase();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Profile</Text>
 
@@ -281,7 +284,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.statNum, { color: theme.accent }]}>{stats.scheduled}</Text><Text style={[styles.statLabel, { color: theme.subtext }]}>Scheduled</Text></View>
         </View>
 
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <GradientBorder radius={14} backgroundColor={theme.card} style={styles.planCard}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Plan & Credits</Text>
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <MaterialIcons name="bolt" size={18} color={theme.icon} style={styles.rowIcon} />
@@ -323,7 +326,7 @@ export default function ProfileScreen({ navigation }) {
               <MaterialIcons name="chevron-right" size={20} color={theme.icon} />
             </TouchableOpacity>
           )}
-        </View>
+        </GradientBorder>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Account</Text>
@@ -545,6 +548,7 @@ const styles = StyleSheet.create({
   statNum: { color: '#2ecc71', fontSize: 22, fontWeight: '800' },
   statLabel: { color: '#888', fontSize: 11, marginTop: 4 },
   section: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14, marginBottom: 16, overflow: 'hidden' },
+  planCard: { marginBottom: 16 },
   sectionHeader: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#2a2a2a', color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
   row: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#2a2a2a', gap: 12 },
   rowIcon: { fontSize: 18, width: 28, textAlign: 'center' },
