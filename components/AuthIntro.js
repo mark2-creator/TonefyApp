@@ -40,10 +40,18 @@ const LEAN_MS = 520;
 const WALK_FROM = -170;       // negative: she enters from the left
 const BAG_FROM = -34;         // the bag starts at hand height
 const LEAN_DEG = 5;           // a few degrees is a lean; more is a stumble
-const ARM_DEG = 30;           // a real reach toward the ground, not a twitch
+// CAPPED at 15, and the cap is not cosmetic. Her far arm paints BEHIND the coat, so
+// rotating it swings it into the coat body and the coat draws over it: at 22 degrees it
+// is half gone and at the 30 this used to be, it vanishes completely - which is what
+// looked like the arm disappearing mid-drop. Rotating the other way lifts it forward
+// instead of down, so more reach is simply not available without reordering the layers.
+// Verified by rendering the figure at 0/10/14/18/22/26/30 and looking.
+const ARM_DEG = 15;
 const STEP_DEG = 9;           // how far each leg swings from the base stride
 const BOB_PX = 3;             // the rise and fall that makes it a walk, not a glide
-const DIP_PX = 9;             // how far she sinks while setting the bag down
+// The dip does the work the arm cannot. With the arm capped at 15 degrees, the body
+// sinking is what makes the movement read as bending rather than dropping.
+const DIP_PX = 13;
 const FORM_RISE = 70;         // how far below its resting place the form starts
 
 // When she stops walking and starts placing. Everything after this is one movement:
@@ -242,10 +250,13 @@ const styles = StyleSheet.create({
   // Sized so the whole form clears the safe area without scrolling. Signup carries
   // three more fields than login, so it gets the compact figure rather than a scrollbar.
   stage: { width: '100%', height: 150, marginTop: 2 },
-  stageCompact: { height: 92 },
+  stageCompact: { height: 108 },
   figureSlot: { position: 'absolute', left: 0, bottom: 0, transform: [{ scale: 0.78 }], transformOrigin: '0% 100%' },
-  figureCompact: { transform: [{ scale: 0.48 }] },
+  // 0.48 made her a smudge - the walk and the bag placement were invisible at that
+  // size, which is worse than not animating at all. 0.62 is the smallest that still
+  // reads, and costs signup about 16dp.
+  figureCompact: { transform: [{ scale: 0.62 }] },
   // Just past her planted foot, and behind her, so it reads as set down beside her.
   bagSlot: { position: 'absolute', left: 108, bottom: 2 },
-  bagCompact: { left: 68, bottom: 1, transform: [{ scale: 0.62 }], transformOrigin: '0% 100%' },
+  bagCompact: { left: 86, bottom: 1, transform: [{ scale: 0.78 }], transformOrigin: '0% 100%' },
 });
