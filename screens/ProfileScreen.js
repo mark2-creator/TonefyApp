@@ -5,6 +5,7 @@ import {
   ScrollView, Image, Alert, ActivityIndicator, Modal
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import GradientBorder from '../components/GradientBorder';
 import { signOut, updateProfile, deleteUser, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import QRCode from 'react-native-qrcode-svg';
@@ -38,6 +39,8 @@ export default function ProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(user?.displayName || '');
   const [displayName, setDisplayName] = useState(user?.displayName || 'Tonefy User');
+  const [photoURL, setPhotoURL] = useState(user?.photoURL || null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const [tiktok, setTiktok] = useState({ connected: false, label: 'Checking...' });
@@ -135,6 +138,75 @@ export default function ProfileScreen({ navigation }) {
       showToast('Failed to update name');
     }
     setSaving(false);
+  }
+
+  async function pickPhoto() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showAlert('Photo', 'Allow photo access to set a profile picture.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,   // the crop UI, so the user frames their own face
+      aspect: [1, 1],        // the avatar is a circle; a square source fills it cleanly
+      quality: 0.7,          // a profile photo does not need to be a 4MB original
+    });
+    if (res.canceled || !res.assets?.length) return;
+
+    const asset = res.assets[0];
+    setPhotoBusy(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const form = new FormData();
+      form.append('photo', {
+        uri: asset.uri,
+        name: 'avatar.jpg',
+        type: asset.mimeType || 'image/jpeg',
+      });
+      const up = await fetch(`${BACKEND}/api/profile-photo`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
+      });
+      const data = await up.json();
+      if (!up.ok) throw new Error(data.error || 'Could not upload the photo.');
+
+      // Auth is the source of truth - other screens read user.photoURL - but its object
+      // does not refresh until reload, so the local state is what updates the avatar now.
+      await updateProfile(auth.currentUser, { photoURL: data.url });
+      setPhotoURL(data.url);
+      showToast('Profile photo updated');
+    } catch (e) {
+      showAlert('Photo', e.message || 'Could not upload the photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  function changePhoto() {
+    // Remove is offered only when there is one to remove.
+    const buttons = [{ text: 'Choose photo', onPress: pickPhoto }];
+    if (photoURL) buttons.push({ text: 'Remove photo', style: 'destructive', onPress: removePhoto });
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    showAlert('Profile photo', null, buttons);
+  }
+
+  async function removePhoto() {
+    setPhotoBusy(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      await fetch(`${BACKEND}/api/profile-photo/remove`, {
+        method: 'POST', headers: { Authorization: 'Bearer ' + token },
+      });
+      await updateProfile(auth.currentUser, { photoURL: null });
+      setPhotoURL(null);
+      showToast('Profile photo removed');
+    } catch (e) {
+      showAlert('Photo', 'Could not remove the photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   async function handleLogout() {
@@ -266,13 +338,23 @@ export default function ProfileScreen({ navigation }) {
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Profile</Text>
 
         <View style={styles.hero}>
-          <View style={styles.avatar}>
-            {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.avatarImg} />
-            ) : (
-              <Text style={styles.avatarText}>{initial}</Text>
-            )}
-          </View>
+          <TouchableOpacity style={styles.avatarWrap} onPress={changePhoto} disabled={photoBusy} activeOpacity={0.8}>
+            <View style={styles.avatar}>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={styles.avatarImg} />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
+              {photoBusy && (
+                <View style={styles.avatarBusy}><ActivityIndicator color="#fff" /></View>
+              )}
+            </View>
+            {/* A camera badge, not a padlock or a pencil: it says "change the picture",
+                which is the one thing tapping the avatar does. */}
+            <View style={styles.avatarBadge}>
+              <MaterialIcons name="photo-camera" size={15} color="#000" />
+            </View>
+          </TouchableOpacity>
           <Text style={[styles.profileName, { color: theme.text }]}>{displayName}</Text>
           <Text style={[styles.profileEmail, { color: theme.subtext }]}>{user?.email || ''}</Text>
           <View style={styles.planBadge}><Text style={styles.planBadgeText}>{planLabel}</Text></View>
@@ -536,7 +618,10 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 48 },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
   hero: { alignItems: 'center', paddingVertical: 20, marginBottom: 12 },
-  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#2ecc71', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#2a2a2a', overflow: 'hidden', marginBottom: 14 },
+  avatarWrap: { marginBottom: 14 },
+  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#2ecc71', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#2a2a2a', overflow: 'hidden' },
+  avatarBusy: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
+  avatarBadge: { position: 'absolute', right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: '#2ECC71', borderWidth: 3, borderColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' },
   avatarImg: { width: 88, height: 88 },
   avatarText: { fontSize: 32, fontWeight: '800', color: '#000' },
   profileName: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 4 },
