@@ -3115,6 +3115,30 @@ frames while a still has nothing to reveal.
 - Split/Fade audio actions — stubbed "Coming soon" in the original, not present here.
 - Backend ffmpeg `adelay`/`afade` support — separate open item, unaffected by this rebuild.
 
+## Pending native build (as of Aug 31 2026)
+
+Build 11 (versionCode 11, commit `17fd20a9`) is the installed production binary. One
+native change has queued behind it that OTA cannot deliver, so it waits for build 12:
+
+- **`POST_NOTIFICATIONS` in the manifest** (`42522470`-era work is unrelated; this is
+  the Aug 31 commit `20fafb14`). Without it, Android 13+ drops every re-engagement
+  notification and never shows the permission dialog. **This is why no notification has
+  ever appeared.** The JS half (a "Send test notification" button and a settings
+  deep-link on the Notifications screen) shipped OTA so build 12 is verifiable in
+  seconds; the permission itself is native and is not in any installed build.
+
+Audited Aug 31: this is the **only** pending native change. `package.json` adds no new
+runtime module since build 11 (`expo-secure-store` from item 29 is already in 11).
+`READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES` remain correctly ABSENT — the only `READ_MEDIA`
+strings in the manifest are the comment explaining why, unchanged from 11 — so build 12
+will not repeat the build-10 rejection.
+
+**When build 12 is cut** it should also be the one that goes to Play production for the
+TikTok listing (item 41), so the two native needs are served by one build rather than
+two. After installing it: Notifications screen → toggle reminders on → Send a test
+notification. If it appears, the whole chain works; if not, the block is system-settings
+notification permission for Tonefy AI, not the code.
+
 ## Working conventions to keep
 
 - One logical change at a time; verify with a fresh build check after each.
