@@ -3115,17 +3115,21 @@ frames while a still has nothing to reveal.
 - Split/Fade audio actions — stubbed "Coming soon" in the original, not present here.
 - Backend ffmpeg `adelay`/`afade` support — separate open item, unaffected by this rebuild.
 
-## Pending native build (as of Aug 31 2026)
+## Build 12 (Aug 31 2026) and native-build notes
 
-Build 11 (versionCode 11, commit `17fd20a9`) is the installed production binary. One
-native change has queued behind it that OTA cannot deliver, so it waits for build 12:
+Build 12 (versionCode 12) is now on both the `internal` and `alpha` tracks, promoted
+Aug 31 2026 after being verified on device. It carried one native change OTA could not
+deliver:
 
-- **`POST_NOTIFICATIONS` in the manifest** (`42522470`-era work is unrelated; this is
-  the Aug 31 commit `20fafb14`). Without it, Android 13+ drops every re-engagement
-  notification and never shows the permission dialog. **This is why no notification has
-  ever appeared.** The JS half (a "Send test notification" button and a settings
-  deep-link on the Notifications screen) shipped OTA so build 12 is verifiable in
-  seconds; the permission itself is native and is not in any installed build.
+- **`POST_NOTIFICATIONS` — SHIPPED in build 12 (Aug 31 2026).** Manifest commit
+  `20fafb14`. Without it, Android 13+ dropped every re-engagement notification and never
+  showed the permission dialog, which is why no notification had ever appeared in the
+  app's life. **Build 12 (versionCode 12) fixed it and is verified working on device** -
+  the permission dialog now appears and the "Send test notification" button delivers.
+  Cut Aug 31 from commit `20fafb14`, reusing keystore `qMlH7ffwtv` (builds 9-11), AAB
+  checked to carry POST_NOTIFICATIONS and BILLING and to still lack READ_MEDIA_VIDEO.
+  Uploaded to `internal` first, verified on device, then promoted to `alpha` - both
+  tracks now on vc 12. Google Sign-In unaffected (same signing key).
 
 Audited Aug 31: this is the **only** pending native change. `package.json` adds no new
 runtime module since build 11 (`expo-secure-store` from item 29 is already in 11).
@@ -3133,11 +3137,11 @@ runtime module since build 11 (`expo-secure-store` from item 29 is already in 11
 strings in the manifest are the comment explaining why, unchanged from 11 — so build 12
 will not repeat the build-10 rejection.
 
-**When build 12 is cut** it should also be the one that goes to Play production for the
-TikTok listing (item 41), so the two native needs are served by one build rather than
-two. After installing it: Notifications screen → toggle reminders on → Send a test
-notification. If it appears, the whole chain works; if not, the block is system-settings
-notification permission for Tonefy AI, not the code.
+**For Play PRODUCTION (TikTok listing, item 41):** build 12 is on alpha, not production.
+When the closed test completes and the app goes to production on Play, versionCode 12 (or
+a later build) is what unblocks the TikTok Play Store URL. No new native change is needed
+between now and then unless another is added - the notification permission this build
+carries is already the last outstanding one.
 
 ## Working conventions to keep
 
