@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Alert, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Switch, Linking, ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import {
   requestNotificationPermission,
   scheduleReminders,
   cancelReminders,
+  sendTestNotification,
 } from '../utils/notifications';
 import { showAlert } from '../components/BrandedAlert';
 
@@ -33,8 +34,12 @@ export default function NotificationsScreen({ navigation }) {
       const granted = await requestNotificationPermission();
       if (!granted) {
         showAlert(
-          'Notifications Off',
-          'Tonefy AI needs notification permission to send reminders. You can allow it in your phone\'s system settings.'
+          'Notifications are off',
+          'Tonefy AI needs notification permission to send reminders. Android will not ask again once declined, so it has to be turned on in system settings.',
+          [
+            { text: 'Open settings', onPress: () => Linking.openSettings() },
+            { text: 'Not now', style: 'cancel' },
+          ],
         );
         setBusy(false);
         return;
@@ -86,6 +91,28 @@ export default function NotificationsScreen({ navigation }) {
           </View>
         </View>
 
+        {available && enabled && (
+          <TouchableOpacity
+            style={[styles.testRow, { borderColor: theme.border }]}
+            onPress={async () => {
+              const ok = await sendTestNotification();
+              showAlert(
+                ok ? 'Test sent' : 'Could not send',
+                ok
+                  ? 'A test notification will appear in about five seconds. If it does not, notifications are blocked for Tonefy AI in system settings.'
+                  : 'Notification permission is not granted.',
+                ok ? [{ text: 'OK' }] : [
+                  { text: 'Open settings', onPress: () => Linking.openSettings() },
+                  { text: 'OK', style: 'cancel' },
+                ],
+              );
+            }}
+          >
+            <MaterialIcons name="send" size={18} color={theme.accent} />
+            <Text style={[styles.testText, { color: theme.accent }]}>Send a test notification</Text>
+          </TouchableOpacity>
+        )}
+
         {!available && (
           <View style={[styles.noteCard, { backgroundColor: isDark ? '#2a1f00' : '#fff3cd', borderColor: '#ffaa00' }]}>
             <MaterialIcons name="info-outline" size={18} color={isDark ? '#ffcc44' : '#8a6500'} />
@@ -118,6 +145,8 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 15, fontWeight: '600' },
   rowDesc: { fontSize: 12, marginTop: 3, lineHeight: 17 },
   status: { fontSize: 13 },
+  testRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 14, justifyContent: 'center' },
+  testText: { fontSize: 14, fontWeight: '600' },
   noteCard: { flexDirection: 'row', gap: 10, borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 14, alignItems: 'flex-start' },
   noteText: { flex: 1, fontSize: 12, lineHeight: 18 },
   footNote: { fontSize: 12, marginTop: 18, lineHeight: 18, textAlign: 'center' },

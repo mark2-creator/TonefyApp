@@ -168,3 +168,55 @@ export function configureForegroundBehaviour() {
     });
   } catch {}
 }
+
+/**
+ * The live permission state, for a settings screen that wants to show the truth rather
+ * than a guess. Distinguishes the three cases that need different UI:
+ *   'unavailable' - this build has no notification module compiled in
+ *   'granted'     - allowed, notifications will show
+ *   'denied'      - the user said no (canAskAgain tells you whether asking again works)
+ *   'undetermined'- never asked yet
+ */
+export async function notificationStatus() {
+  const N = mod();
+  if (!N) return { state: 'unavailable' };
+  try {
+    const p = await N.getPermissionsAsync();
+    if (p.granted) return { state: 'granted' };
+    if (p.status === 'undetermined' || p.canAskAgain) return { state: 'undetermined', canAskAgain: true };
+    return { state: 'denied', canAskAgain: false };
+  } catch {
+    return { state: 'unavailable' };
+  }
+}
+
+/**
+ * Fire one notification a few seconds from now, so the user can confirm the whole chain
+ * works without waiting a day for the first reminder or exporting a video to schedule
+ * them. If nothing appears after this, the problem is the OS permission or the build,
+ * not the schedule.
+ */
+export async function sendTestNotification() {
+  const N = mod();
+  if (!N) return false;
+  try {
+    const p = await N.getPermissionsAsync();
+    if (!p.granted) return false;
+    await ensureChannel(N);
+    await N.scheduleNotificationAsync({
+      content: {
+        title: '🔔 Tonefy AI',
+        body: 'Notifications are working. This is a test.',
+        data: { kind: 'test' },
+        ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
+      },
+      trigger: {
+        type: N.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

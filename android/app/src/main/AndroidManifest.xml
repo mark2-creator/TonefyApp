@@ -3,6 +3,10 @@
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
+  <!-- Android 13+ runtime permission for re-engagement reminders. Hand-added: this
+       project commits android/, so expo-notifications' config plugin never runs to add
+       it. Without it the OS drops every notification and never shows the ask dialog. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <!-- expo-media-library, deliberately WITHOUT READ_MEDIA_VIDEO/READ_MEDIA_IMAGES.
        Those are what its config plugin would add, and a committed android/ folder means
