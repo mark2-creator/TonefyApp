@@ -3050,6 +3050,55 @@ nothing to aim at.
     (no public listing while the app is closed-testing only). A production listing makes
     that URL resolve. Nothing to do now but wait for Google's email.
 
+43. **YouTube API audit — Google's follow-up answered (Sep 3 2026, reply sent).** After
+    item 40's submission, the YouTube API Services team replied asking for two things: a
+    screencast of a video being uploaded to YouTube, and working demo credentials. Both
+    supplied; reply sent.
+
+    **The correction that matters most for next time: the app HAS been uploading to
+    YouTube successfully, and a confident "it never has" was wrong because I grepped the
+    wrong route name.** The publish route is **`/api/post-now`** (EditPostVideoScreen ->
+    `publishToYouTube` -> `videos.insert`). There is no `/api/publish`; grepping for that
+    found nothing and produced a false "no upload ever ran" claim that nearly sent the
+    owner to record a screencast of a flow believed broken. The source of truth is
+    Firestore `scheduledPosts` where `status:'posted'` carries a real `publishId`: **five
+    real successful uploads** exist - `hEcd6J9PZ5k` (Aug 22), `JdT0QBwYFKo`/`TF4F32U1P0E`
+    (Aug 23), `LBwSuh6JRD0` (Aug 27 10:56), `a9I3eze1h6I` (Aug 27 11:11). **Confirm which
+    route a feature actually calls before concluding from logs that it has never run** -
+    `publishToYouTube` logs only failures (`[youtube] upload failed`), never successes, so
+    absence of an error is not absence of a call; the `scheduledPosts` record is.
+
+    **The screencast was already on the VPS** (`~/ytshots/tonefy-oauth-demo.mp4`) and is a
+    genuine end-to-end demo - its YouTube Studio frame is literally
+    `studio.youtube.com/video/LBwSuh6JRD0/edit`, i.e. one of the five real uploads, not a
+    staged shot. The owner hosted it on his own channel and sent the watch link
+    (`https://www.youtube.com/watch?v=diNcnX-CIKU`, title "Tonefy AI — YouTube OAuth
+    consent flow and video upload", reachable via oEmbed = public/unlisted, not private).
+
+    **Demo credentials, set and VERIFIED by a real sign-in** (item 40's lesson - existence
+    is not the claim): `youtube.audit@tonefyai.app` / `TonefyReview2026!`, uid
+    `bHhCH2XiYWcUfYz6zt9B9Jj7A132`, plan **creator** (so the Pro/Creator YouTube gate
+    passes), emailVerified true, not disabled. Password was (re)set via Admin SDK this
+    session and confirmed against Identity Toolkit `signInWithPassword` (returns a valid
+    idToken). The demo account has **no** YouTube channel connected - a reviewer connects
+    their own in-app to test posting, which is expected.
+
+    **The app requests only the `youtube.upload` scope** (minimal - good for the OAuth
+    review). Consequence: it cannot `videos.delete` or `channels.list` - both return
+    "insufficient authentication scopes", which is why `publishToYouTube`'s channel-title
+    lookup logs `[youtube] channel lookup failed` harmlessly, and why a test upload cannot
+    be auto-deleted. **A private test clip uploaded server-side this session to confirm the
+    pipeline (`Bnn5ltIPBwg`, on the owner's channel `sWyTCf…`) is still there as Private -
+    delete it manually in Studio.** It uploaded fine; only the cleanup couldn't run.
+
+    **Still open / separate:** the OAuth verification (consent screen branding) is a
+    different Google review from this API audit - see item 40. And a separate Google Play
+    email (Sep 3) requires all apps + signing keys **registered for Android developer
+    verification by Sep 30 2026**; >99% auto-registered, so almost certainly Tonefy already
+    is - a 30-second check on the Play Console Home page (filter for unregistered), not yet
+    confirmed. This also dovetails with item 41's need to register the MD5/SHA-256 and the
+    previous app signing key.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
