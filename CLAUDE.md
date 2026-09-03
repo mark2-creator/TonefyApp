@@ -3028,6 +3028,28 @@ nothing to aim at.
       the 11 Aug rotation means older installs present the old certificate, which is
       exactly what broke Google Sign-In in item 28.
 
+42. **Production access APPLIED FOR (Sep 3 2026, 22:23) — in Google's review queue.**
+    All three closed-testing gates were met (12 testers, 14 days, a published closed
+    release), so the Dashboard's "Apply for production" flow opened. Filled its
+    three-step questionnaire (closed test / about the app / production readiness) with
+    honest answers drawn from the real test - the build-12 notification fix, the My
+    Videos download/layout fixes, profile-photo upload, and the real Play Billing
+    purchase that completed end to end (item 30) - selected recruitment "Easy",
+    installs "0-10K". Google says it emails the account owner with a decision, "usually
+    seven days or less."
+
+    **This is application review, not the production launch.** It grants *eligibility*
+    to publish to production; the actual release is a separate step afterwards -
+    promote a build (versionCode 12 is the current one, on alpha, carrying
+    POST_NOTIFICATIONS + BILLING and device-verified) and it goes through its own
+    review. The 12 alpha testers are untouched by this application.
+
+    **What this unblocks once approved and a production release is live:** item 41's
+    TikTok submission, which is stuck only on
+    `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp` returning 404
+    (no public listing while the app is closed-testing only). A production listing makes
+    that URL resolve. Nothing to do now but wait for Google's email.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
