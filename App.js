@@ -37,16 +37,28 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import ThumbnailScreen from './screens/ThumbnailScreen';
 import SocialScreen from './screens/SocialScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
+import PrivacyScreen from './screens/PrivacyScreen';
 import SubscriptionScreen from './screens/SubscriptionScreen';
 import AdminScreen from './screens/AdminScreen';
 import MainTabs from './screens/MainTabs';
 import * as Sentry from '@sentry/react-native';
 import { loadAppFonts } from './constants/fontLoader';
+import { hydrateDiagnostics, shouldSendDiagnostics } from './utils/diagnostics';
+
+// Adopt the user's stored diagnostics choice as early as possible, so the beforeSend gate
+// below reflects an opt-out from the first moment after cold start rather than defaulting
+// on until the Privacy screen is opened.
+hydrateDiagnostics();
 
 Sentry.init({
   dsn: 'https://5e8c412f592386efb8324e760011c7c9@o4511619343122432.ingest.de.sentry.io/4511619368091728',
   tracesSampleRate: 1.0,
   enabled: true,
+  // The real diagnostics opt-out. When the user turns "Share diagnostics & crash reports"
+  // off in Settings -> Privacy, every event is dropped here instead of being sent. This
+  // is what makes the privacy policy's opt-out claim true rather than aspirational.
+  beforeSend: (event) => (shouldSendDiagnostics() ? event : null),
+  beforeSendTransaction: (event) => (shouldSendDiagnostics() ? event : null),
 });
 
 SplashScreen.preventAutoHideAsync();
@@ -193,6 +205,7 @@ function App() {
             <Stack.Screen name="Social" component={SocialScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ presentation: 'modal' }} />
             <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+            <Stack.Screen name="Privacy" component={PrivacyScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
             <Stack.Screen name="IdeaToAudio" component={IdeaToAudioScreen} />
             <Stack.Screen name="GeneratingAudio" component={GeneratingAudioScreen} />

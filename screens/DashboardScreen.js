@@ -167,6 +167,19 @@ export default function DashboardScreen({ navigation }) {
 
             <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
 
+            <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('Privacy'); }}>
+              <View style={styles.settingLeft}>
+                <MaterialIcons name="lock" size={22} color="#2ecc71" />
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Privacy</Text>
+                  <Text style={styles.settingDesc}>Diagnostics and your data</Text>
+                </View>
+              </View>
+              <MaterialIcons name="chevron-right" size={22} color="#555" />
+            </TouchableOpacity>
+
+            <View style={[styles.settingDivider, { backgroundColor: theme.divider }]} />
+
             <TouchableOpacity style={styles.settingRow} onPress={() => { setShowSettings(false); navigation.navigate('HelpSupport'); }}>
               <View style={styles.settingLeft}>
                 <MaterialIcons name="help" size={22} color="#2ecc71" />
