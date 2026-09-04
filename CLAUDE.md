@@ -64,7 +64,10 @@ Live website (tonefy-ai.fitlifesolutions.site)┘         │
 
   ```bash
   git --git-dir=~/tonefy-website.git status      # work-tree is configured already
-  git --git-dir=~/tonefy-website.git add -A && git --git-dir=~/tonefy-website.git commit
+  # stage the SPECIFIC pages, not `add -A`: the work-tree is a live webroot with
+  # unrelated things in it (e.g. a vitablast/ PWA), and `-A` sweeps them in (see item 44)
+  git --git-dir=~/tonefy-website.git add privacy.html terms.html   # etc.
+  git --git-dir=~/tonefy-website.git commit
   git --git-dir=~/tonefy-website.git push
   ```
 
@@ -3098,6 +3101,48 @@ nothing to aim at.
     is - a 30-second check on the Play Console Home page (filter for unregistered), not yet
     confirmed. This also dovetails with item 41's need to register the MD5/SHA-256 and the
     previous app signing key.
+
+44. **Privacy policy / terms aligned with the app, and the one false promise made true**
+    (Sep 4 2026; app `8871df58`, published to production as update group
+    `09df15a6-6bee-4592-8daa-db3f379f45c3`, runtime 1.1.0; website `tonefy-website@917f516`).
+    Audited both legal docs against what the app and backend actually do. Mostly aligned
+    and well written; the gaps found and closed:
+
+    **The material one: the privacy policy promised a "Settings → Privacy" opt-out that did
+    not exist, and claimed "analytics SDKs" the app does not run** (only Sentry, which is
+    crash/diagnostics, not usage analytics). A promised control that isn't there is worse
+    than none. **Chosen fix was to make the promise true, not delete it** (owner asked for
+    the premium/long-term option): new `screens/PrivacyScreen.js` reachable from the
+    Dashboard Settings sheet, with a real **"Share diagnostics & crash reports"** toggle
+    that genuinely gates Sentry. The gate is `utils/diagnostics.js` - a module-level
+    `sendEnabled` flag (default true) that `App.js`'s `Sentry.init` reads in
+    `beforeSend`/`beforeSendTransaction`, dropping every event when off; persisted to
+    AsyncStorage (`tonefy.diagnostics`), hydrated at boot by `hydrateDiagnostics()`. Sync
+    flag rather than a per-event async read because a crash handler cannot await; the cost
+    is a sub-second window at cold start before hydration where an opted-out user could
+    still send, which is the standard trade for a synchronous gate. No new dependency
+    (Sentry + AsyncStorage already in build 12), so it shipped OTA. `lock` icon on the
+    Settings row is correct per the design rule - it means "protected", not "pay".
+
+    **Other alignment fixes (website `privacy.html`/`terms.html`):** country added to the
+    data-collected list (it was collected at signup, undisclosed); §2.2 rewritten from
+    invented usage-analytics to the real diagnostics + functional records + server logs;
+    Google Play Billing named instead of a vague "payment processor"; retention stated
+    honestly as the 72h-free / 30-day-paid split; in-app **Profile → Delete Account**
+    documented (item 38 shipped it; the policy still said "email us"); the YouTube §6(d)
+    channel-**name** claim softened to "confirmation of the connected channel" to match the
+    upload-only scope (the app cannot read the channel name - `channels.list` needs a scope
+    it does not request). **Terms had no mention of YouTube at all** - the live,
+    under-review integration - only TikTok/IG/FB/X; added it to the feature list, the
+    platform-terms clause, and a new **4.3 YouTube API** subsection, renumbering §4.
+
+    **Mistake made and corrected in the same session:** `git --git-dir=~/tonefy-website.git
+    add -A` swept an unrelated `vitablast/` PWA (five files that happen to sit in the
+    webroot `/var/www/tonefy-ai`) into the website repo and it was pushed. Untracked it with
+    `rm -r --cached` (files left on disk) in a follow-up commit. **The website work-tree is
+    a live webroot with unrelated things in it - `add -A` is not safe there; stage the
+    specific pages** (`git ... add privacy.html terms.html`) rather than everything. The
+    CLAUDE.md website-workflow example that shows `add -A` is what led into this.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
