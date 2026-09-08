@@ -15,6 +15,7 @@ import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import TikTokPostSheet from '../components/TikTokPostSheet';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -71,6 +72,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
   const [ttPosting, setTtPosting] = useState(false);
+  const [ttSheet, setTtSheet] = useState(false);
   const [youtube, setYoutube] = useState(null);
   // No toggle. A toggle asks the user to express an intention and then do a SECOND
   // thing to act on it - and on this row the second thing was far away at the bottom of
@@ -194,23 +196,32 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // the backend the way YouTube is, so there is no premium check here. Actual posting
   // still depends on the TikTok app being approved for the Content Posting API and on a
   // live connection - until then the server returns a reason and it surfaces below.
-  async function postToTikTok() {
+  // Tapping Post opens the compliant sheet (privacy selector + disclosures) rather than
+  // posting straight away - TikTok's Direct Post audit requires the user to choose there.
+  function postToTikTok() {
     if (!videoPath) return showAlert('TikTok', 'There is no video to post yet.');
     if (!tiktokConnected) return navigation.navigate('ConnectAccounts');
+    setTtSheet(true);
+  }
+
+  // Runs after the sheet collects the user's choices. `options` is the TikTok post_info
+  // (privacy, comment/duet/stitch, brand disclosure) built to TikTok's spec.
+  async function uploadTikTok(options) {
     setTtPosting(true);
     try {
       const token = await user.getIdToken();
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'] }),
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'], tiktok: options }),
       });
       const d = await r.json();
       const result = d.results?.[0];
       if (!result) throw new Error(d.error || 'The post failed.');
       if (!result.ok) throw new Error(result.error);
+      setTtSheet(false);
       // 'direct' once the app is audited for Direct Post; 'draft' until then (the video
-      // lands in the TikTok inbox for the user to finish). Same button, honest message.
+      // lands in the TikTok inbox for the user to finish).
       if (result.mode === 'direct') {
         showAlert('Posted to TikTok', 'Your video has been posted to your TikTok account.',
           [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
@@ -578,6 +589,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
         ))}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <TikTokPostSheet
+        visible={ttSheet}
+        onClose={() => { if (!ttPosting) setTtSheet(false); }}
+        onConfirm={uploadTikTok}
+        theme={theme}
+        posting={ttPosting}
+      />
     </View>
   );
 }
