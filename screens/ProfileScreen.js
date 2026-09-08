@@ -322,11 +322,11 @@ export default function ProfileScreen({ navigation }) {
   }
 
   function handleTikTokPress() {
-    if (tiktok.connected) return;
-    // This used to say connection was "coming soon - connect it on the website", which
-    // stopped being true when ConnectAccountsScreen got a real /tiktok/auth flow. A row
-    // that sends someone to a browser for something the app does two taps away is worse
-    // than a dead control, because it is confidently wrong.
+    // Always route to ConnectAccounts - it is where BOTH connect and disconnect happen.
+    // The old `if (tiktok.connected) return` made the row dead once connected, so a user
+    // who wanted to disconnect tapped TikTok and nothing happened (while the YouTube row,
+    // which navigates unconditionally, was the only way to reach the disconnect screen -
+    // confusingly surfacing TikTok's disconnect). Both rows now behave the same.
     navigation.navigate('ConnectAccounts');
   }
 
