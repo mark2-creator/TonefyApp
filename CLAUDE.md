@@ -3075,6 +3075,21 @@ nothing to aim at.
       lands on the website homepage instead of deep-linking back into the app. Connection
       still succeeds (token stored before the redirect). Worth fixing (`tiktok-success.html`
       / the callback redirect) but not blocking.
+    - **`spam_risk_too_many_pending_share`** seen on device Sep 8: TikTok's rolling
+      per-window upload quota (tight in SANDBOX) - hit after a burst of test uploads. NOT a
+      bug; deleting the inbox notifications does not clear it (it counts uploads made, not
+      currently-pending), it resets on time (~24h). Real users posting occasionally won't
+      hit it. When recording the demo, do ONE clean post, not repeated attempts.
+    - **TRACKED FOLLOW-UP (do AFTER TikTok approves the single-account flow, not before -
+      don't change the posting path mid-audit): multiple TikTok accounts per user, as a
+      paid-tier benefit.** Today it is ONE TikTok account per Tonefy user - `connectedAccounts/
+      {uid}.tiktok` is a single object, so connecting another REPLACES it (YouTube is
+      likewise one channel per user). The token store `tiktokTokens/{openId}` is already
+      keyed per-account so it can hold several; what is single is the app's "which account"
+      pointer. To support multi-account: store a LIST of connected TikTok accounts, add an
+      account selector at the top of the posting sheet, and gate the count by tier (e.g.
+      Free 1 / Pro 3 / Creator unlimited) - a natural Pro/Creator upsell for a creator tool.
+      Owner wants this built, but only once the current single-account flow is approved.
 
     **Two things still unverified** (historical - the first is now RESOLVED above):
     - **Whether a sandbox post actually completes.** RESOLVED Sep 8 - yes, via the inbox
