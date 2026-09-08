@@ -33,23 +33,18 @@ function formatDate(iso) {
 
 function VideoCard({ video, onPress, onUse, onPost, onDownload, downloading, downloadPct, preparing }) {
   const { theme } = useTheme();
-  const url = video.downloadUrl || video.localUrl || '';
-  const player = useVideoPlayer(url, (p) => {
-    p.muted = true;
-    p.loop = false;
-  });
 
   return (
     <TouchableOpacity style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => onPress(video)} activeOpacity={0.85}>
+      {/* A lightweight poster, NOT a per-card native player. Mounting an expo-video player
+          for every grid card spins up ~10 at once and freezes low-end devices - this is the
+          "My Videos stops responding" ANR. The modal opened on tap owns the only player and
+          handles actual playback. A real per-video thumbnail is a future enhancement
+          (server-generated poster on the record); the placeholder is what stops the freeze. */}
       <View style={styles.thumbWrap}>
-        <VideoView
-          player={player}
-          style={styles.thumb}
-          contentFit="cover"
-          nativeControls={false}
-          pointerEvents="none"
-        />
-        <MaterialIcons name="play-arrow" size={28} color="#fff" style={styles.playIcon} />
+        <View style={styles.posterCircle}>
+          <MaterialIcons name="play-arrow" size={30} color="#fff" />
+        </View>
       </View>
       <View style={styles.info}>
         <Text style={[styles.date, { color: theme.subtext }]}>{formatDate(video.createdAt)}</Text>
@@ -389,6 +384,7 @@ const styles = StyleSheet.create({
   thumbWrap: { width: '100%', aspectRatio: 9 / 16, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
   thumb: { width: '100%', height: '100%' },
   playIcon: { position: 'absolute', fontSize: 28, opacity: 0.85 },
+  posterCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   info: { padding: 10 },
   date: { color: '#888', fontSize: 11, marginBottom: 4 },
   prompt: { color: '#fff', fontSize: 13, fontWeight: '600' },
