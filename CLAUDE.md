@@ -3053,12 +3053,21 @@ nothing to aim at.
       **This auto-upgrades: the moment TikTok audits the app for `video.publish`, direct
       posting goes live with no code change.** Verified today it still falls back to draft
       (HTTP 200, mode:draft).
-    - **What Direct Post approval actually needs (Layer 2, NOT yet built):** TikTok will
-      not approve `video.publish` just because the endpoint is called. Their audit requires
-      a compliant posting UI - query `/v2/post/publish/creator_info/query/` for the
-      creator's allowed privacy levels, make the user pick Public/Friends/Private, and show
-      the required disclosures (comment/duet/stitch, branded-content). That frontend screen
-      is the real gate for Direct Post approval and is the next TikTok build.
+    - **Layer 2 - the compliant posting UI - BUILT Sep 8 2026** (app `95476939`, update
+      group `fe3115a4`; backend `d9a9477d`). This is the screen TikTok's Direct Post audit
+      reviews. New `components/TikTokPostSheet.js`: on open it calls the new
+      `GET /tiktok/creator-info` (which wraps `/v2/post/publish/creator_info/query/`) and
+      shows only the creator's allowed privacy levels with **no default** (Post stays
+      disabled until one is chosen - a TikTok requirement), Comment/Duet/Stitch toggles that
+      respect the account-level disables, and a commercial-content disclosure
+      (**Your brand** = brand_organic, **Branded content** = brand_content) that forbids
+      private branded content and shows the required Music Usage / Branded Content
+      declarations. The TikTok Post button on Edit & Post opens this sheet; the choices ride
+      to `/api/post-now` as `req.body.tiktok` and into `publishToTikTok`'s post_info.
+      Backend verified: creator-info returns the real privacy options for the live sandbox
+      account. **What remains for actual Direct Post is not code - it is TikTok's audit**:
+      submit the app (with this sheet in the demo video) and get `video.publish` approved,
+      after which the direct-first path (Layer 1) goes live automatically.
     - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
       (draft) then the draft appearing in the TikTok app. Two test drafts from this session
       sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
