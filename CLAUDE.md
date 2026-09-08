@@ -3053,6 +3053,13 @@ nothing to aim at.
     (no public listing while the app is closed-testing only). A production listing makes
     that URL resolve. Nothing to do now but wait for Google's email.
 
+    **GRANTED Sep 8 2026.** Google emailed production access approved for
+    `com.ahumuza21213.TonefyApp`. This is eligibility, not a live release - a production
+    release still has to be created (promote a build; versionCode 12 is the current one,
+    on alpha, device-verified, carrying POST_NOTIFICATIONS + BILLING). Once a production
+    release is live, item 41's TikTok Play Store URL resolves and that submission unblocks.
+    **Next action when ready: promote build 12 (or later) to the production track.**
+
 43. **YouTube API audit — Google's follow-up answered (Sep 3 2026, reply sent).** After
     item 40's submission, the YouTube API Services team replied asking for two things: a
     screencast of a video being uploaded to YouTube, and working demo credentials. Both
@@ -3093,6 +3100,32 @@ nothing to aim at.
     be auto-deleted. **A private test clip uploaded server-side this session to confirm the
     pipeline (`Bnn5ltIPBwg`, on the owner's channel `sWyTCf…`) is still there as Private -
     delete it manually in Studio.** It uploaded fine; only the cleanup couldn't run.
+
+    **Follow-ups (the review is iterative - each answer earns the next question):**
+    - **2nd screencast (Sep 5).** Google asked again for the COMPLETE upload process +
+      end result, "English translated version" - the first video (`diNcnX-CIKU`) was the
+      OAuth-verification demo, jumpy and heavy on the consent screen, and did not clearly
+      show the in-app success + the video landing on the channel. Owner recorded a fresh
+      clean take following a 7-step shot list (dashboard -> Connect Accounts shows YouTube
+      Connected -> open a video -> Edit & Post -> select YouTube -> Post Now -> "Posted to
+      YouTube!" -> open YouTube app showing the video). Uploaded Unlisted:
+      `https://youtube.com/shorts/2Dciwsx1vLs`. The "English translated" line was satisfied
+      by a numbered English written walkthrough in the reply, since the app UI is English.
+      **This was accepted** - Google's next email thanked us and moved to a new topic.
+      Note: a 120MB recording could not be scp'd over the owner's ~KB/s link, and YouTube
+      blocks datacenter yt-dlp downloads (bot check) so the video could not be pulled back
+      to verify - uploading straight to YouTube Unlisted from the phone was the working
+      path, verified via the oEmbed title + the auto-thumbnail (which showed the real app).
+    - **Website-usage question (Sep 8).** Google asked whether the API is used on the
+      WEBSITE too. **Verified answer: NO** - the website (`/var/www/tonefy-ai`) has zero
+      YouTube API usage. `connect-accounts.html` offers only TikTok/FB/IG/X, no page calls
+      `videos.insert`/`youtube/connect`, and the only YouTube strings are a "YouTube 16:9"
+      aspect label, legal/marketing copy about the APP's feature, and `youtube-success.html`
+      (a static "Connected, return to the app" landing page shown at the end of the app's
+      OAuth - it makes no API calls). The consent screen shows `fitlifesolutions.site`
+      only because that domain hosts the OAuth redirect / is the authorized domain; the
+      client is used exclusively by the mobile app. Replied confirming the website does
+      not use the API, so there is no website upload flow to record.
 
     **Still open / separate:** the OAuth verification (consent screen branding) is a
     different Google review from this API audit - see item 40. And a separate Google Play
