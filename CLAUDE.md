@@ -3045,10 +3045,27 @@ nothing to aim at.
       `publish_id: v_inbox_file~...`.** App-side success copy updated to say "draft" and
       published to production (update group `a25b5ed3`). The TikTok row also got a one-tap
       Post button matching YouTube (commit `9dfcdb85`, update group `e7cdb8fa`).
-      **If TikTok later audits the app for Direct Post, switch the endpoint back.**
+    - **Then, per owner's decision (Sep 8), Direct Post was made the No.1 path**
+      (`~/Tonefy-react@d99d8c08`): the app is for paying users, so the premium one-step
+      post should be primary and draft the fallback. `publishToTikTok` now **tries Direct
+      Post first and falls back to the inbox draft** if it is refused. Returns
+      `mode:'direct'|'draft'`; the app messages accordingly (update group `a9817d01`).
+      **This auto-upgrades: the moment TikTok audits the app for `video.publish`, direct
+      posting goes live with no code change.** Verified today it still falls back to draft
+      (HTTP 200, mode:draft).
+    - **What Direct Post approval actually needs (Layer 2, NOT yet built):** TikTok will
+      not approve `video.publish` just because the endpoint is called. Their audit requires
+      a compliant posting UI - query `/v2/post/publish/creator_info/query/` for the
+      creator's allowed privacy levels, make the user pick Public/Friends/Private, and show
+      the required disclosures (comment/duet/stitch, branded-content). That frontend screen
+      is the real gate for Direct Post approval and is the next TikTok build.
     - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
       (draft) then the draft appearing in the TikTok app. Two test drafts from this session
       sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
+    - **Cosmetic bug, not fixed:** after connecting TikTok in-browser, the OAuth callback
+      lands on the website homepage instead of deep-linking back into the app. Connection
+      still succeeds (token stored before the redirect). Worth fixing (`tiktok-success.html`
+      / the callback redirect) but not blocking.
 
     **Two things still unverified** (historical - the first is now RESOLVED above):
     - **Whether a sandbox post actually completes.** RESOLVED Sep 8 - yes, via the inbox
