@@ -3075,6 +3075,18 @@ nothing to aim at.
       lands on the website homepage instead of deep-linking back into the app. Connection
       still succeeds (token stored before the redirect). Worth fixing (`tiktok-success.html`
       / the callback redirect) but not blocking.
+    - **Disconnect FIXED Sep 8** (backend `6488d18f`, app update group `26b5b81d`): the
+      app's TikTok disconnect used to only delete `connectedAccounts.tiktok` client-side,
+      leaving the token in `tiktokTokens/{openId}` (Admin-only) AND still valid at TikTok -
+      contradicting privacy policy 5(e) ("deleted immediately on disconnect") and TikTok's
+      audit expectation. New `POST /tiktok/disconnect` (auth-gated, verified 401 unauth)
+      revokes at `/v2/oauth/revoke/` (best-effort), deletes the Firestore token doc, clears
+      the in-memory cache, and removes the display flag. `ConnectAccountsScreen`'s disconnect
+      now calls it. **Switching accounts = disconnect then connect** (the UI shows Disconnect
+      while connected), so the old token is now properly revoked rather than orphaned.
+      Note `getTikTokToken` keeps an in-memory `tiktokTokens{}` cache over the Firestore
+      store - any future token deletion must `delete tiktokTokens[openId]` too or it serves
+      a dead token until restart.
     - **`spam_risk_too_many_pending_share`** seen on device Sep 8: TikTok's rolling
       per-window upload quota (tight in SANDBOX) - hit after a burst of test uploads. NOT a
       bug; deleting the inbox notifications does not clear it (it counts uploads made, not
