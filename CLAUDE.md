@@ -3060,6 +3060,22 @@ nothing to aim at.
     release is live, item 41's TikTok Play Store URL resolves and that submission unblocks.
     **Next action when ready: promote build 12 (or later) to the production track.**
 
+    **RELEASED to production Sep 8 2026 - build 12 (versionCode 12), 100%, all 177
+    countries.** Done via the Play Developer API with the Firebase service account
+    (`edits.insert` -> `tracks.update` track=production, `status:'completed'`,
+    `versionCodes:['12']` -> `validate` -> `commit`), read back as `production: completed
+    | vc 12`. **The gotcha, for next time:** a first production release fails with
+    `403 "Release in track targeting no countries"` until the production track's
+    Countries/regions are set, and you **cannot** set them on a `completed` (full) release
+    via the API - `countryTargeting` is "only supported for staged releases". It is a
+    one-time Console step (Test and release -> Production -> Countries/regions -> Select
+    all); once saved (177 targeted here), the full API commit works. `committed` comes
+    back `undefined` from `edits.commit` - the authoritative confirmation is reading the
+    track back, not that field. Expect a Google review before it is publicly visible
+    ("In review"/"Pending publication" -> "Published"), normal for a first production
+    release. **This is what unblocks item 41's TikTok Play Store URL** once the listing
+    goes live.
+
 43. **YouTube API audit — Google's follow-up answered (Sep 3 2026, reply sent).** After
     item 40's submission, the YouTube API Services team replied asking for two things: a
     screencast of a video being uploaded to YouTube, and working demo credentials. Both
