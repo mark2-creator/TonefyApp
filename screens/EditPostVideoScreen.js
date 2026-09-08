@@ -209,7 +209,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const result = d.results?.[0];
       if (!result) throw new Error(d.error || 'The post failed.');
       if (!result.ok) throw new Error(result.error);
-      showAlert('Posted to TikTok', 'It has been sent to your TikTok account.',
+      showAlert('Sent to TikTok',
+        'Your video is now in your TikTok inbox as a draft. Open TikTok to add your caption and publish it.',
         [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
     } catch (e) {
       showAlert('TikTok', e.message || 'The post failed.');
