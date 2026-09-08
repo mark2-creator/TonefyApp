@@ -118,9 +118,13 @@ export default function ConnectAccountsScreen({ navigation }) {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await updateDoc(doc(db, 'connectedAccounts', user.uid), { tiktok: deleteField() });
+            // Server-side: deletes our stored token AND revokes it at TikTok. The old
+            // client-side deleteField only removed the display flag and left the token
+            // live - which the privacy policy says we don't do.
+            const r = await api('/tiktok/disconnect', { method: 'POST' });
+            if (r?.error) throw new Error(r.error);
             setTiktok(null);
-          } catch (e) { showAlert('Error', e.message); }
+          } catch (e) { showAlert('Error', e.message || 'Could not disconnect.'); }
         }
       }
     ]);
