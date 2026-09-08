@@ -3021,10 +3021,38 @@ nothing to aim at.
     from `assets/icon.png`, and the existing privacy/terms URLs - whose section 5 already
     describes draft posting, which is what `video.upload` does, so the two agree.
 
-    **Two things still unverified**, and the first gates the demo video TikTok requires:
-    - **Whether a sandbox post actually completes.** TikTok demands a video of the
-      end-to-end flow and requires sandbox for a never-approved app. If posting fails
-      there, the video cannot be made.
+    **UPDATE Sep 8 2026 - the Play blocker is gone and TikTok posting now works
+    (sandbox, verified end to end).** The 404 that blocked the submission is resolved: the
+    app is live on production, so `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp`
+    returns 200. And the "does a sandbox post complete" question below is answered - YES,
+    once the real bug was fixed:
+
+    - **The June 17 TikTok connection was stale.** `connectedAccounts/{uid}.tiktok` still
+      said "Connected" (@Fitlifesolutions) but `tiktokTokens` had 0 docs - the token was
+      long gone, so every post returned "TikTok not connected" while the app showed
+      Connected. Same stale-badge class as the YouTube row in item 39. Cleared the dead
+      flag server-side; the user reconnected (sandbox creds, their account is a sandbox
+      Target User) and a fresh token with all three scopes landed.
+    - **The real bug: the code used TikTok's DIRECT POST endpoint, which needs audit
+      approval the app does not have.** `/v2/post/publish/video/init/` on an unaudited app
+      returns `"Please review our integration guidelines"` and posts nothing (seen live).
+      Fixed in `~/Tonefy-react@4b9c4a33`: `publishToTikTok` now uses the INBOX endpoint
+      `/v2/post/publish/inbox/video/init/`, which uploads the video to the user's TikTok
+      inbox as a DRAFT they finish in TikTok - the supported unaudited path, and exactly
+      what the privacy policy/terms already promise ("uploaded as drafts"). Takes
+      source_info only (no post_info; title/privacy are set by the user in TikTok).
+      **Verified end to end through the real `/api/post-now`: HTTP 200, ok:true, draft,
+      `publish_id: v_inbox_file~...`.** App-side success copy updated to say "draft" and
+      published to production (update group `a25b5ed3`). The TikTok row also got a one-tap
+      Post button matching YouTube (commit `9dfcdb85`, update group `e7cdb8fa`).
+      **If TikTok later audits the app for Direct Post, switch the endpoint back.**
+    - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
+      (draft) then the draft appearing in the TikTok app. Two test drafts from this session
+      sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
+
+    **Two things still unverified** (historical - the first is now RESOLVED above):
+    - **Whether a sandbox post actually completes.** RESOLVED Sep 8 - yes, via the inbox
+      endpoint (see update above). Left here for context.
     - **MD5 and SHA-256 signing fingerprints.** Firebase holds only SHA-1 for this app
       (`441012e0…`, `e20bd97e…`, `afdd7e07…`); MD5 and SHA-256 live in Play Console under
       App integrity. **Register the previous app signing key as well as the current one** -
