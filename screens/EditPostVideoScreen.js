@@ -70,7 +70,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
-  const [ttOn, setTtOn] = useState(false);
+  const [ttPosting, setTtPosting] = useState(false);
   const [youtube, setYoutube] = useState(null);
   // No toggle. A toggle asks the user to express an intention and then do a SECOND
   // thing to act on it - and on this row the second thing was far away at the bottom of
@@ -190,6 +190,34 @@ export default function EditPostVideoScreen({ navigation, route }) {
     }
   }
 
+  // Mirrors postToYouTube: one tap runs the whole sequence. TikTok is not plan-gated on
+  // the backend the way YouTube is, so there is no premium check here. Actual posting
+  // still depends on the TikTok app being approved for the Content Posting API and on a
+  // live connection - until then the server returns a reason and it surfaces below.
+  async function postToTikTok() {
+    if (!videoPath) return showAlert('TikTok', 'There is no video to post yet.');
+    if (!tiktokConnected) return navigation.navigate('ConnectAccounts');
+    setTtPosting(true);
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/post-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'] }),
+      });
+      const d = await r.json();
+      const result = d.results?.[0];
+      if (!result) throw new Error(d.error || 'The post failed.');
+      if (!result.ok) throw new Error(result.error);
+      showAlert('Posted to TikTok', 'It has been sent to your TikTok account.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+    } catch (e) {
+      showAlert('TikTok', e.message || 'The post failed.');
+    } finally {
+      setTtPosting(false);
+    }
+  }
+
   async function loadTikTok() {
     try {
       const snap = await getDoc(doc(db, 'connectedAccounts', user.uid));
@@ -220,8 +248,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // record itself, so this no longer does.
   async function postNow() {
     if (!videoPath) { showAlert('Error', 'No video to post'); return; }
-    const platforms = ttOn ? ['tiktok'] : [];
-    if (platforms.length === 0) { showAlert('Error', 'Enable at least one platform'); return; }
+    const platforms = tiktokConnected ? ['tiktok'] : [];
+    if (platforms.length === 0) { showAlert('Error', 'Connect TikTok first, or use the Post buttons above.'); return; }
     setPosting(true);
     try {
       const token = await user.getIdToken();
@@ -271,7 +299,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '',
-        platforms: ttOn ? ['tiktok'] : [],
+        platforms: tiktokConnected ? ['tiktok'] : [],
         scheduledFor: scheduledAt.toISOString(),
         scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
         status: 'queued', createdAt: new Date().toISOString()
@@ -279,7 +307,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       await loadQueue();
       // Says when, because it now actually happens. The queue used to be a list nothing
       // read: this said "Added to queue!" and the post was never sent.
-      showAlert('Queued', !ttOn
+      showAlert('Queued', !tiktokConnected
         ? 'Saved to your queue. Connect TikTok to have it post automatically.'
         : schedMode === 'immediate'
           ? 'It will post to TikTok within about 5 minutes. You can see it on the Calendar.'
@@ -397,18 +425,16 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><TikTokLogo size={22} /></View>
             <Text style={[styles.platformName, { color: theme.text }]}>TikTok</Text>
-            {tiktokConnected ? (
-              <Text style={styles.connectedText}>Connected</Text>
-            ) : (
-              <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
-                <Text style={styles.connectLink}>Connect</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.toggle, { backgroundColor: theme.border }, ttOn && tiktokConnected && styles.toggleOn]}
-              onPress={() => tiktokConnected ? setTtOn(!ttOn) : navigation.navigate('ConnectAccounts')}
-            >
-              <View style={[styles.toggleThumb, ttOn && tiktokConnected && styles.toggleThumbOn]} />
+            {tiktokConnected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {/* A button, not a toggle - the same one-tap flow as YouTube below. Flipping a
+                toggle here appeared to do nothing because the action lived at the bottom of
+                the screen; this runs the whole sequence in one tap. */}
+            <TouchableOpacity style={styles.ttBtn} onPress={postToTikTok} disabled={ttPosting}>
+              {ttPosting ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <Text style={styles.ttBtnText}>{tiktokConnected ? 'Post' : 'Connect & post'}</Text>
+              )}
             </TouchableOpacity>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -558,6 +584,12 @@ const styles = StyleSheet.create({
   // uploads now", and wearing it while refusing would be a lie about what the tap does.
   ytBtnLocked: { backgroundColor: '#3a3a3a' },
   ytBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  ttBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: '#2ECC71', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 7,
+    minWidth: 96,
+  },
+  ttBtnText: { color: '#000', fontSize: 12, fontWeight: '700' },
   container: { flex: 1, backgroundColor: '#0a0a0a', paddingTop: STATUSBAR_HEIGHT },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
