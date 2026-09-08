@@ -3071,6 +3071,12 @@ nothing to aim at.
     - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
       (draft) then the draft appearing in the TikTok app. Two test drafts from this session
       sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
+    - **DEMO VIDEO RECORDED Sep 8** (owner-hosted, Unlisted):
+      `https://youtube.com/shorts/WupTWthv9H0` ("Tonefy AI TikTok integration"). Owner
+      confirmed it shows the compliant posting sheet (privacy Everyone/Friends/Only me +
+      Comment/Duet/Stitch + disclosure) AND a successful result, with English narration -
+      the two things the audit checks. Reachable via oEmbed (public/unlisted). Ready to drop
+      into the TikTok app submission's demo-video field.
     - **Cosmetic bug, not fixed:** after connecting TikTok in-browser, the OAuth callback
       lands on the website homepage instead of deep-linking back into the app. Connection
       still succeeds (token stored before the redirect). Worth fixing (`tiktok-success.html`
