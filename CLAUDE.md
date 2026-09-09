@@ -3303,6 +3303,50 @@ nothing to aim at.
     specific pages** (`git ... add privacy.html terms.html`) rather than everything. The
     CLAUDE.md website-workflow example that shows `add -A` is what led into this.
 
+44. **Facebook + Instagram publishing - being built (Sep 9 2026).** Owner asked to add
+    IG/FB posting. Backend built and deployed (`~/Tonefy-react`, latest `5904b724`); NOT
+    yet usable - blocked on Meta App Review + Business Verification (dev-mode only until
+    then) and on some console activation still pending.
+
+    **Design decision (owner's, for the public):** TWO separate connections, not one, so
+    users aren't forced to own a Facebook Page just to post to Instagram:
+    - **Facebook = Facebook Login -> a Page** (Meta forbids posting to personal profiles).
+      Scopes `pages_show_list, pages_read_engagement, pages_manage_posts`. Tokens in
+      `metaTokens/{uid}`. Publish: `POST /{pageId}/videos` with `file_url`.
+    - **Instagram = direct Instagram Login** (no Page needed - Meta's newer, low-friction
+      path). Its OWN app credentials (Instagram app id/secret, separate from the Facebook
+      app), OAuth on `instagram.com`, host `graph.instagram.com`, scopes
+      `instagram_business_basic, instagram_business_content_publish`. Tokens in
+      `igTokens/{uid}`. Publish: Reels container -> poll status -> media_publish.
+    - App will show two buttons: "Connect Facebook" and "Connect Instagram".
+
+    Both OAuth flows mirror YouTube's HMAC-signed state (`signState`/`readState`). Routes:
+    `/api/facebook/connect` + `/facebook/callback` + `/api/facebook/disconnect`;
+    `/api/instagram/connect` + `/instagram/callback` + `/api/instagram/disconnect`. Both
+    registered in `PUBLISHERS` (`fbConfigured()`/`igConfigured()`), so `/api/post-now` and
+    the sweep route to them. Redirect URIs: `https://api.fitlifesolutions.site/facebook/callback`
+    and `.../instagram/callback`. `facebook-success.html` created on the website as the
+    landing page.
+
+    **The Meta app** is the existing `FitlifeSolutions` app (App ID `2023140918300014`,
+    business "Ahumuza Mark", dev mode). Use cases added: "Manage everything on your Page"
+    (Facebook) + "Manage messaging & content on Instagram" (which we're using via its
+    **Instagram-login** setup, not the Facebook-login one). `.env` has
+    `FACEBOOK_APP_ID/SECRET/REDIRECT_URI`; **still needs `INSTAGRAM_APP_ID/SECRET/REDIRECT_URI`**.
+
+    **Meta gotcha, seen live:** a permission is refused in the OAuth request ("Invalid
+    Scopes ... only shown to developers") until it is ADDED/activated in the use case's
+    Permissions list. `pages_show_list` was active; `pages_manage_posts` +
+    `pages_read_engagement` (Facebook) and the IG permissions need activating in their use
+    cases before the connect works.
+
+    **Still to do:** activate the Facebook Page permissions; add the Instagram app
+    credentials + redirect + activate IG permissions; build the frontend connect buttons +
+    enable the FB/IG Post buttons on Edit & Post (currently "Coming soon" stubs); test each
+    in dev mode; then Business Verification (owner has a bank statement, but it is a
+    PERSONAL account - a business-name document may be needed) + App Review with demos.
+    **`business_management` was dropped** from FB scopes (not needed for posting).
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
