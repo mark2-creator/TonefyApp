@@ -3071,6 +3071,20 @@ nothing to aim at.
     - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
       (draft) then the draft appearing in the TikTok app. Two test drafts from this session
       sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
+    - **SUBMITTED Sep 9 2026 - TikTok app is now "In review."** The production TikTok app
+      (Login Kit + Content Posting API, scopes user.info.basic/video.publish/video.upload,
+      Direct Post ON) was completed and submitted. What went in: app icon 1024, name,
+      Photo&Video category, description, Terms/Privacy URLs, Web platform (site
+      `https://tonefy-ai.fitlifesolutions.site`) + Android platform (package
+      `com.ahumuza21213.TonefyApp`, Play URL, App signature MD5 `209BFA1189F978700A6DDAEBC615C258`,
+      SHA-256 `C1:C5:12:D5:…:6E:09:E7` - the current Classical app-signing key), Login Kit
+      redirect under the WEB tab = `https://api.fitlifesolutions.site/tiktok/callback`
+      (Android tab left empty - the flow is web OAuth, not an App Link), a demo video
+      (compressed to 11MB, shows sign-in + compliant sheet + post), and the ~991-char
+      product/scope explanation. Domain verification skipped (we use FILE_UPLOAD /
+      push_by_file, not pull_by_url). Backend still on SANDBOX creds - when TikTok approves,
+      flip `TIKTOK_ENV=production` and restart, then reconnect accounts. Now waiting on
+      TikTok's review, same as the YouTube + Play reviews.
     - **DEMO VIDEO RECORDED Sep 8** (owner-hosted, Unlisted):
       `https://youtube.com/shorts/WupTWthv9H0` ("Tonefy AI TikTok integration"). Owner
       confirmed it shows the compliant posting sheet (privacy Everyone/Friends/Only me +
