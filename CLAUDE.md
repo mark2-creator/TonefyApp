@@ -3243,6 +3243,15 @@ nothing to aim at.
       only because that domain hosts the OAuth redirect / is the authorized domain; the
       client is used exclusively by the mobile app. Replied confirming the website does
       not use the API, so there is no website upload flow to record.
+    - **Quota-breakdown question (Sep 9).** Google said the quota methodology changed
+      (framed as ~100 quota/day, 1 quota per API call) and asked for an updated per-endpoint
+      breakdown + video size/duration/upload frequency. Replied with the real endpoints
+      (verified in code: `videos.insert` per upload, `channels.list` once per connect - no
+      `search.list` or anything else), realistic new-app numbers (current single-digits/day,
+      projected peak ~150 uploads/day ≈ ~200 quota/day with headroom), and short-form video
+      profile (~30-60s, ~10-30MB, a few uploads/week per active user, never bulk/automated).
+      Deliberately modest and internally consistent - the first submission's inflated
+      250k/day is what triggered this re-assessment. Awaiting their reply.
 
     **Still open / separate:** the OAuth verification (consent screen branding) is a
     different Google review from this API audit - see item 40. And a separate Google Play
