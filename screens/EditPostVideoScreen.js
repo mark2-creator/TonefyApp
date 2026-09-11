@@ -8,7 +8,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
-import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo } from '../components/BrandLogos';
+import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo, PinterestLogo } from '../components/BrandLogos';
 import { usePlan } from '../constants/plan';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -89,6 +89,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [fbPosting, setFbPosting] = useState(false);
   const [instagram, setInstagram] = useState(null);
   const [igPosting, setIgPosting] = useState(false);
+  const [pinterest, setPinterest] = useState(null);
+  const [pinPosting, setPinPosting] = useState(false);
   const { isPremium } = usePlan();
   // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
   // schedMode existed and was never read - the queue had no notion of "when", so every
@@ -107,12 +109,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
     loadYouTube();
     loadFacebook();
     loadInstagram();
+    loadPinterest();
     // Returning from the browser BACKGROUNDS the app rather than navigating away, so
     // AppState is the signal - a navigation focus effect would never fire.
     const sub = AppState.addEventListener('change', async (next) => {
       if (next !== 'active') return;
       loadFacebook();
       loadInstagram();
+      loadPinterest();
       await loadYouTube();
       if (!ytPendingRef.current) return;
       ytPendingRef.current = false;
@@ -219,15 +223,28 @@ export default function EditPostVideoScreen({ navigation, route }) {
     } catch (e) { setInstagram(null); }
   }
 
-  // Post to a browser-OAuth platform (Facebook/Instagram). Not connected -> send them to
-  // ConnectAccounts, exactly like TikTok, rather than opening a browser here and having to
-  // resume mid-post on return. Connected -> publish through the same /api/post-now route.
-  async function postToMetaPlatform(id) {
-    if (!videoPath) return showAlert(id === 'facebook' ? 'Facebook' : 'Instagram', 'There is no video to post yet.');
-    const status = id === 'facebook' ? facebook : instagram;
-    if (!status?.connected) return navigation.navigate('ConnectAccounts');
-    const setPostingFlag = id === 'facebook' ? setFbPosting : setIgPosting;
-    setPostingFlag(true);
+  async function loadPinterest() {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/pinterest/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setPinterest(await r.json());
+    } catch (e) { setPinterest(null); }
+  }
+
+  // Post to a browser-OAuth platform (Facebook/Instagram/Pinterest). Not connected -> send
+  // them to ConnectAccounts, exactly like TikTok, rather than opening a browser here and
+  // having to resume mid-post on return. Connected -> publish through the same /api/post-now
+  // route. One generic handler keyed by platform id so a fourth platform is one map entry.
+  const BROWSER_PLATFORMS = {
+    facebook: { label: 'Facebook', status: facebook, setPosting: setFbPosting, done: 'Your video is live on your Facebook Page.' },
+    instagram: { label: 'Instagram', status: instagram, setPosting: setIgPosting, done: 'Your Reel is live on your Instagram.' },
+    pinterest: { label: 'Pinterest', status: pinterest, setPosting: setPinPosting, done: 'Your video Pin is live on your Pinterest board.' },
+  };
+  async function postToBrowserPlatform(id) {
+    const cfg = BROWSER_PLATFORMS[id];
+    if (!videoPath) return showAlert(cfg.label, 'There is no video to post yet.');
+    if (!cfg.status?.connected) return navigation.navigate('ConnectAccounts');
+    cfg.setPosting(true);
     try {
       const token = await user.getIdToken();
       const r = await fetch(`${BACKEND}/api/post-now`, {
@@ -239,17 +256,12 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const result = d.results?.[0];
       if (!result) throw new Error(d.error || 'The post failed.');
       if (!result.ok) throw new Error(result.error);
-      if (id === 'facebook') {
-        showAlert('Posted to Facebook', 'Your video is live on your Facebook Page.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
-      } else {
-        showAlert('Posted to Instagram', 'Your Reel is live on your Instagram.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
-      }
+      showAlert(`Posted to ${cfg.label}`, cfg.done,
+        [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
     } catch (e) {
-      showAlert(id === 'facebook' ? 'Facebook' : 'Instagram', e.message || 'The post failed.');
+      showAlert(cfg.label, e.message || 'The post failed.');
     } finally {
-      setPostingFlag(false);
+      cfg.setPosting(false);
     }
   }
 
@@ -492,7 +504,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
             <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#1877F2' }]}>Facebook</Text>
             {facebook?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('facebook')} disabled={fbPosting}>
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('facebook')} disabled={fbPosting}>
               {fbPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
@@ -505,11 +517,24 @@ export default function EditPostVideoScreen({ navigation, route }) {
             <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#E4405F' }]}>Instagram</Text>
             {instagram?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('instagram')} disabled={igPosting}>
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('instagram')} disabled={igPosting}>
               {igPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
                 <Text style={styles.ttBtnText}>{instagram?.connected ? 'Post' : 'Connect'}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={styles.platformRow}>
+            <View style={styles.platformIcon}><PinterestLogo size={22} /></View>
+            <Text style={[styles.platformName, { color: '#E60023' }]}>Pinterest</Text>
+            {pinterest?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('pinterest')} disabled={pinPosting}>
+              {pinPosting ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <Text style={styles.ttBtnText}>{pinterest?.connected ? 'Post' : 'Connect'}</Text>
               )}
             </TouchableOpacity>
           </View>

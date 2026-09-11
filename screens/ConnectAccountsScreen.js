@@ -34,6 +34,9 @@ export default function ConnectAccountsScreen({ navigation }) {
   const [instagram, setInstagram] = useState(null);
   const [igLoading, setIgLoading] = useState(true);
   const [igBusy, setIgBusy] = useState(false);
+  const [pinterest, setPinterest] = useState(null);
+  const [pinLoading, setPinLoading] = useState(true);
+  const [pinBusy, setPinBusy] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -41,9 +44,10 @@ export default function ConnectAccountsScreen({ navigation }) {
     loadYouTube();
     loadFacebook();
     loadInstagram();
+    loadPinterest();
     // Re-check on return from the browser, which is exactly when the answer changes.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); }
+      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); loadPinterest(); }
     });
     return () => sub.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -161,6 +165,38 @@ export default function ConnectAccountsScreen({ navigation }) {
             await api('/api/instagram/disconnect', { method: 'POST' });
             setInstagram({ ...(instagram || {}), connected: false, username: null });
           } catch (e) { showAlert('Instagram', 'Could not disconnect.'); }
+        },
+      },
+    ]);
+  }
+
+  async function loadPinterest() {
+    try { setPinterest(await api('/api/pinterest/status')); }
+    catch (e) { setPinterest(null); }
+    finally { setPinLoading(false); }
+  }
+
+  async function connectPinterest() {
+    setPinBusy(true);
+    try {
+      const data = await api('/api/pinterest/connect');
+      if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
+      await Linking.openURL(data.authUrl);
+    } catch (e) {
+      showAlert('Pinterest', e.message || 'Could not open the Pinterest sign-in page.');
+    } finally { setPinBusy(false); }
+  }
+
+  async function disconnectPinterest() {
+    showAlert('Disconnect Pinterest', 'Tonefy will no longer be able to post to your Pinterest.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Disconnect', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api('/api/pinterest/disconnect', { method: 'POST' });
+            setPinterest({ ...(pinterest || {}), connected: false, username: null });
+          } catch (e) { showAlert('Pinterest', 'Could not disconnect.'); }
         },
       },
     ]);
@@ -416,6 +452,52 @@ export default function ConnectAccountsScreen({ navigation }) {
                 </View>
                 <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E4405F' }]} onPress={connectInstagram} disabled={igBusy}>
                   {igBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect Instagram Account</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Pinterest */}
+        {pinterest?.configured !== false && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.cardLogoBadge, { backgroundColor: '#E60023' }]}>
+              <FontAwesome6 name="pinterest" size={26} color="#fff" />
+            </View>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E60023' }}>Pinterest</Text></Text>
+            {pinLoading ? (
+              <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
+            ) : pinterest?.connected ? (
+              <>
+                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#E60023' }]}>
+                    <FontAwesome6 name="pinterest" size={20} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={[styles.connectedName, { color: theme.text }]}>{pinterest.username ? '@' + pinterest.username : 'Your account'}</Text>
+                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Pinterest · Connected</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
+                  onPress={disconnectPinterest}>
+                  <Text style={styles.btnDisconnectText}>Disconnect Pinterest</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardDesc, { color: theme.subtext }]}>To publish your videos to Pinterest, connect your account below</Text>
+                <View style={styles.perms}>
+                  <Text style={[styles.permsTitle, { color: theme.subtext }]}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
+                  {['Create video Pins on your boards', 'See your boards'].map((p, i) => (
+                    <View key={i} style={styles.permRow}>
+                      <MaterialIcons name="check" size={16} color="#2ecc71" />
+                      <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E60023' }]} onPress={connectPinterest} disabled={pinBusy}>
+                  {pinBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect Pinterest Account</Text>}
                 </TouchableOpacity>
               </>
             )}
