@@ -25,14 +25,25 @@ export default function ConnectAccountsScreen({ navigation }) {
   const [youtube, setYoutube] = useState(null);
   const [ytLoading, setYtLoading] = useState(true);
   const [ytBusy, setYtBusy] = useState(false);
+  // Facebook and Instagram are two separate connections (a Page vs a direct IG Business
+  // login), so each has its own status/busy state - same server-authoritative pattern as
+  // YouTube, since the tokens live server-side.
+  const [facebook, setFacebook] = useState(null);
+  const [fbLoading, setFbLoading] = useState(true);
+  const [fbBusy, setFbBusy] = useState(false);
+  const [instagram, setInstagram] = useState(null);
+  const [igLoading, setIgLoading] = useState(true);
+  const [igBusy, setIgBusy] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
     loadTikTok();
     loadYouTube();
+    loadFacebook();
+    loadInstagram();
     // Re-check on return from the browser, which is exactly when the answer changes.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') loadYouTube();
+      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); }
     });
     return () => sub.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,6 +95,72 @@ export default function ConnectAccountsScreen({ navigation }) {
             await api('/api/youtube/disconnect', { method: 'POST' });
             setYoutube({ ...(youtube || {}), connected: false, channelTitle: null });
           } catch (e) { showAlert('YouTube', 'Could not disconnect.'); }
+        },
+      },
+    ]);
+  }
+
+  async function loadFacebook() {
+    try { setFacebook(await api('/api/facebook/status')); }
+    catch (e) { setFacebook(null); }
+    finally { setFbLoading(false); }
+  }
+
+  async function connectFacebook() {
+    setFbBusy(true);
+    try {
+      const data = await api('/api/facebook/connect');
+      if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
+      await Linking.openURL(data.authUrl);
+      // Consent runs in a browser with no callback into the app; AppState refresh (above)
+      // picks up the result when the user returns.
+    } catch (e) {
+      showAlert('Facebook', e.message || 'Could not open the Facebook sign-in page.');
+    } finally { setFbBusy(false); }
+  }
+
+  async function disconnectFacebook() {
+    showAlert('Disconnect Facebook', 'Tonefy will no longer be able to post to your Page.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Disconnect', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api('/api/facebook/disconnect', { method: 'POST' });
+            setFacebook({ ...(facebook || {}), connected: false, pageName: null });
+          } catch (e) { showAlert('Facebook', 'Could not disconnect.'); }
+        },
+      },
+    ]);
+  }
+
+  async function loadInstagram() {
+    try { setInstagram(await api('/api/instagram/status')); }
+    catch (e) { setInstagram(null); }
+    finally { setIgLoading(false); }
+  }
+
+  async function connectInstagram() {
+    setIgBusy(true);
+    try {
+      const data = await api('/api/instagram/connect');
+      if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
+      await Linking.openURL(data.authUrl);
+    } catch (e) {
+      showAlert('Instagram', e.message || 'Could not open the Instagram sign-in page.');
+    } finally { setIgBusy(false); }
+  }
+
+  async function disconnectInstagram() {
+    showAlert('Disconnect Instagram', 'Tonefy will no longer be able to post to your Instagram.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Disconnect', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api('/api/instagram/disconnect', { method: 'POST' });
+            setInstagram({ ...(instagram || {}), connected: false, username: null });
+          } catch (e) { showAlert('Instagram', 'Could not disconnect.'); }
         },
       },
     ]);
@@ -247,8 +324,106 @@ export default function ConnectAccountsScreen({ navigation }) {
           </View>
         )}
 
+        {/* Facebook */}
+        {facebook?.configured !== false && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.cardLogoBadge, { backgroundColor: '#1877F2' }]}>
+              <FontAwesome6 name="facebook-f" size={22} color="#fff" />
+            </View>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect Facebook</Text>
+            {fbLoading ? (
+              <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
+            ) : facebook?.connected ? (
+              <>
+                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#1877F2' }]}>
+                    <FontAwesome6 name="facebook-f" size={18} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={[styles.connectedName, { color: theme.text }]}>{facebook.pageName || 'Your Page'}</Text>
+                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Facebook · Connected</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
+                  onPress={disconnectFacebook}>
+                  <Text style={styles.btnDisconnectText}>Disconnect Facebook</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardDesc, { color: theme.subtext }]}>To post videos to a Facebook Page, connect it below</Text>
+                <View style={styles.perms}>
+                  <Text style={[styles.permsTitle, { color: theme.subtext }]}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
+                  {['Post videos to your Facebook Page', 'See the Pages you manage'].map((p, i) => (
+                    <View key={i} style={styles.permRow}>
+                      <MaterialIcons name="check" size={16} color="#2ecc71" />
+                      <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
+                    </View>
+                  ))}
+                  <Text style={[styles.permText, { color: theme.subtext, marginTop: 8, fontStyle: 'italic' }]}>
+                    Facebook only allows posting to a Page you manage, not a personal profile.
+                  </Text>
+                </View>
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#1877F2' }]} onPress={connectFacebook} disabled={fbBusy}>
+                  {fbBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect Facebook Page</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Instagram */}
+        {instagram?.configured !== false && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.cardLogoBadge, { backgroundColor: '#E4405F' }]}>
+              <FontAwesome6 name="instagram" size={24} color="#fff" />
+            </View>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect Instagram</Text>
+            {igLoading ? (
+              <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
+            ) : instagram?.connected ? (
+              <>
+                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#E4405F' }]}>
+                    <FontAwesome6 name="instagram" size={20} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={[styles.connectedName, { color: theme.text }]}>{instagram.username ? '@' + instagram.username : 'Your account'}</Text>
+                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Instagram · Connected</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
+                  onPress={disconnectInstagram}>
+                  <Text style={styles.btnDisconnectText}>Disconnect Instagram</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardDesc, { color: theme.subtext }]}>To post Reels to Instagram, connect your account below</Text>
+                <View style={styles.perms}>
+                  <Text style={[styles.permsTitle, { color: theme.subtext }]}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
+                  {['Publish Reels to your Instagram', 'See your basic profile info'].map((p, i) => (
+                    <View key={i} style={styles.permRow}>
+                      <MaterialIcons name="check" size={16} color="#2ecc71" />
+                      <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
+                    </View>
+                  ))}
+                  <Text style={[styles.permText, { color: theme.subtext, marginTop: 8, fontStyle: 'italic' }]}>
+                    Instagram posting needs a Professional (Business or Creator) account.
+                  </Text>
+                </View>
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E4405F' }]} onPress={connectInstagram} disabled={igBusy}>
+                  {igBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect Instagram Account</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
         {/* Coming soon platforms */}
-        {['Facebook', 'Instagram', 'X (Twitter)'].map((p, i) => (
+        {['X (Twitter)'].map((p, i) => (
           <View key={i} style={[styles.comingSoonCard, { backgroundColor: isDark ? '#1a1a2e' : '#eef0fa', borderColor: isDark ? '#2a2a4a' : '#d8dcf0' }]}>
             <Text style={[styles.comingSoonTitle, { color: theme.text }]}>{p} Coming Soon</Text>
             <Text style={[styles.comingSoonSub, { color: theme.subtext }]}>{p} integration is in development.</Text>

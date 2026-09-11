@@ -82,6 +82,13 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // Set before the browser opens, so returning from a completed consent CONTINUES to the
   // upload instead of dumping the user back on a screen where nothing has happened.
   const ytPendingRef = useRef(false);
+  // Facebook and Instagram: connected on the ConnectAccounts screen (both need a browser
+  // OAuth), so this row only posts when already connected and otherwise routes there -
+  // the same model as TikTok, which avoids the browser-return-continue dance.
+  const [facebook, setFacebook] = useState(null);
+  const [fbPosting, setFbPosting] = useState(false);
+  const [instagram, setInstagram] = useState(null);
+  const [igPosting, setIgPosting] = useState(false);
   const { isPremium } = usePlan();
   // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
   // schedMode existed and was never read - the queue had no notion of "when", so every
@@ -98,10 +105,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
   useEffect(() => {
     loadTikTok();
     loadYouTube();
+    loadFacebook();
+    loadInstagram();
     // Returning from the browser BACKGROUNDS the app rather than navigating away, so
     // AppState is the signal - a navigation focus effect would never fire.
     const sub = AppState.addEventListener('change', async (next) => {
       if (next !== 'active') return;
+      loadFacebook();
+      loadInstagram();
       await loadYouTube();
       if (!ytPendingRef.current) return;
       ytPendingRef.current = false;
@@ -189,6 +200,56 @@ export default function EditPostVideoScreen({ navigation, route }) {
       showAlert('YouTube', e.message || 'The upload failed.');
     } finally {
       setYtPosting(false);
+    }
+  }
+
+  async function loadFacebook() {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/facebook/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setFacebook(await r.json());
+    } catch (e) { setFacebook(null); }
+  }
+
+  async function loadInstagram() {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/instagram/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setInstagram(await r.json());
+    } catch (e) { setInstagram(null); }
+  }
+
+  // Post to a browser-OAuth platform (Facebook/Instagram). Not connected -> send them to
+  // ConnectAccounts, exactly like TikTok, rather than opening a browser here and having to
+  // resume mid-post on return. Connected -> publish through the same /api/post-now route.
+  async function postToMetaPlatform(id) {
+    if (!videoPath) return showAlert(id === 'facebook' ? 'Facebook' : 'Instagram', 'There is no video to post yet.');
+    const status = id === 'facebook' ? facebook : instagram;
+    if (!status?.connected) return navigation.navigate('ConnectAccounts');
+    const setPostingFlag = id === 'facebook' ? setFbPosting : setIgPosting;
+    setPostingFlag(true);
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/post-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: [id] }),
+      });
+      const d = await r.json();
+      const result = d.results?.[0];
+      if (!result) throw new Error(d.error || 'The post failed.');
+      if (!result.ok) throw new Error(result.error);
+      if (id === 'facebook') {
+        showAlert('Posted to Facebook', 'Your video is live on your Facebook Page.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+      } else {
+        showAlert('Posted to Instagram', 'Your Reel is live on your Instagram.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+      }
+    } catch (e) {
+      showAlert(id === 'facebook' ? 'Facebook' : 'Instagram', e.message || 'The post failed.');
+    } finally {
+      setPostingFlag(false);
     }
   }
 
@@ -430,15 +491,27 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
             <Text style={[styles.platformName, { color: theme.text }]}>Facebook</Text>
-            <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
-            <View style={[styles.toggleOff, { backgroundColor: theme.divider }]} />
+            {facebook?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('facebook')} disabled={fbPosting}>
+              {fbPosting ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <Text style={styles.ttBtnText}>{facebook?.connected ? 'Post' : 'Connect'}</Text>
+              )}
+            </TouchableOpacity>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
             <Text style={[styles.platformName, { color: theme.text }]}>Instagram</Text>
-            <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
-            <View style={[styles.toggleOff, { backgroundColor: theme.divider }]} />
+            {instagram?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('instagram')} disabled={igPosting}>
+              {igPosting ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <Text style={styles.ttBtnText}>{instagram?.connected ? 'Post' : 'Connect'}</Text>
+              )}
+            </TouchableOpacity>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
