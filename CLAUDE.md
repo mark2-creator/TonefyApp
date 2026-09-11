@@ -3340,12 +3340,25 @@ nothing to aim at.
     `pages_read_engagement` (Facebook) and the IG permissions need activating in their use
     cases before the connect works.
 
-    **Still to do:** activate the Facebook Page permissions; add the Instagram app
-    credentials + redirect + activate IG permissions; build the frontend connect buttons +
-    enable the FB/IG Post buttons on Edit & Post (currently "Coming soon" stubs); test each
-    in dev mode; then Business Verification (owner has a bank statement, but it is a
-    PERSONAL account - a business-name document may be needed) + App Review with demos.
-    **`business_management` was dropped** from FB scopes (not needed for posting).
+    **FACEBOOK verified working end to end (Sep 11 2026).** Owner completed the OAuth
+    (Page "Fit life solutions", id `944030155454496`); token stored in `metaTokens/{uid}`.
+    A test video upload to the Page via `/{pageId}/videos` returned HTTP 200 with a video
+    id, done with `published:false` (unpublished, so nothing went live on the real Page)
+    and deleted right after - non-disruptive proof, per the owner's "with care for the
+    public" ask. The `/api/post-now` path uses the same call (published), so it is proven.
+    OAuth gotcha logged: the connect link's signed state lives 10 min; a link opened ~2
+    days later was rejected as expired (landed on the site homepage, not
+    `facebook-success.html`) - regenerate and complete promptly.
+
+    **Still to do:** INSTAGRAM side - add `INSTAGRAM_APP_ID/SECRET/REDIRECT_URI` to `.env`,
+    register the IG redirect `https://api.fitlifesolutions.site/instagram/callback` in the
+    "API setup with Instagram login" settings, activate `instagram_business_basic` +
+    `instagram_business_content_publish`, then connect + test. Then the FRONTEND (connect
+    buttons + enable the FB/IG Post buttons on Edit & Post, currently "Coming soon" stubs).
+    Then Business Verification (owner has a bank statement, but it is a PERSONAL account -
+    a business-name document may be needed) + App Review with demos. `business_management`
+    was dropped from FB scopes (not needed for posting). Cosmetic: `facebook-success.html`
+    still shows the YouTube logo (cloned from `youtube-success.html`).
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
