@@ -3397,11 +3397,61 @@ nothing to aim at.
     (backend paths verified live). `facebook-success.html` cosmetic YouTube logo fixed
     (`tonefy-website@c56c08d`): real FB+IG marks, reads `facebook_error`/`instagram_error`.
 
-    **Still to do:** Meta go-live - **Business Verification** (owner has a bank statement,
-    but it is a PERSONAL account - a business-name document may be needed) + **App Review**
-    with demos, both required before anyone but app admins/testers can connect (dev mode
-    today). `business_management` was dropped from FB scopes (not needed for posting).
-    Then TRACKED, same as TikTok: multiple FB Pages / IG accounts per user as a paid tier.
+    **Still to do:** Meta go-live - **Business Verification** + **App Review** with demos,
+    both required before anyone but app admins/testers can connect (dev mode today).
+    `business_management` was dropped from FB scopes (not needed for posting). Then
+    TRACKED, same as TikTok: multiple FB Pages / IG accounts per user as a paid tier.
+
+    **BLOCKED ON FUNDS (owner, Sep 11 2026): Meta Business Verification needs a document
+    in a BUSINESS's legal name, which the owner does not have - only personal documents.**
+    The fix is a **URSB business-name registration** (Uganda; a sole proprietorship's
+    Certificate of Registration is what Meta/TikTok/Play all accept), but the owner
+    **currently cannot afford the URSB fee and is still raising the money** - so this is
+    parked, not abandoned. Nothing here needs Claude action until then; when funds arrive,
+    the next step is the URSB OBRS registration, then the Meta App Review pack (not yet
+    written - offered and deferred). **What is NOT blocked and works today:** the owner (an
+    app admin/tester) can post to their OWN connected Facebook Page and Instagram in dev
+    mode, verified end to end this session. The same URSB document later unblocks Pinterest
+    and LinkedIn public launch too (see item 45) - it is the one shared gate for opening
+    ANY social platform to real users, so the whole social-posting roadmap waits on it.
+
+45. **Pinterest + LinkedIn backend scaffolded - WRITTEN BUT UNTESTED, gated off**
+    (Sep 11 2026, `~/Tonefy-react/backend@HEAD`, deployed; app side not built yet). Owner
+    asked to keep adding social channels while the URSB/Meta gate (item 44) is parked on
+    funds. Both platforms now have the full registry shape - `/api/{pinterest,linkedin}/
+    connect|callback|disconnect|status`, a `PUBLISHERS` entry with a real `publish()`, and
+    success pages (`pinterest-success.html`, `linkedin-success.html`, brand-coloured per
+    the social-platform rule) - following the exact YouTube/Meta code-flow pattern.
+
+    **Nothing is reachable yet, on purpose.** `enabled()` reads the env, and no credentials
+    are set, so `connect` answers **503** and `/api/platforms` reports `enabled:false` (both
+    verified live). Turning either on is a credential + the platform's own app review, not a
+    build - the same staging Facebook/Instagram had.
+
+    **The publish() flows are drafts to VERIFY, not proven** - written from the v5 /
+    versioned REST docs, never run against the real API (there are no credentials to run
+    them with, and won't be until the funds/registration gate clears). A future session
+    with real credentials MUST test, not trust:
+    - **Pinterest** (`publishToPinterest`, API v5): register media -> upload bytes to the
+      returned URL with Pinterest's own form fields -> poll -> create pin. A video pin
+      requires `cover_image_url`, so we grab frame 0 with ffmpeg and host it under
+      `/videos`. Tokens in `pinterestTokens/{uid}` with a refresh path (`pinValidToken`).
+      Env: `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_REDIRECT_URI`
+      (`.../pinterest/callback`). Needs standard access (trial can't post to a real
+      audience).
+    - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
+      -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
+      part ids -> create a post referencing the video URN. `LinkedIn-Version` (`LI_VERSION`,
+      currently `202405`) and `X-Restli-Protocol-Version: 2.0.0` are mandatory and LinkedIn
+      rejects a stale version - keep it current. Member id/name come from OpenID
+      `/v2/userinfo` (`sub`). Tokens in `linkedinTokens/{uid}`. Env: `LINKEDIN_CLIENT_ID`,
+      `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_REDIRECT_URI` (`.../linkedin/callback`). Needs the
+      "Share on LinkedIn" / Community Management products + app review.
+
+    **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
+    Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
+    they're driven by `/api/platforms` + the per-platform `/status`, so it's the same
+    shape), and the cosmetic redirect deep-link. Both success pages already exist.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
