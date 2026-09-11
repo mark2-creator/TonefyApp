@@ -71,7 +71,12 @@ marketing surface, anywhere:
 
 - **Use the platform's OFFICIAL logo**, never a Material/FontAwesome stand-in *where a
   real mark exists*. A generic glyph in place of a real logo reads as unofficial and, on
-  a review surface (TikTok/Meta/Google audits), as a red flag.
+  a review surface (TikTok/Meta/Google audits), as a red flag. In the app the canonical
+  marks live in **`components/BrandLogos.js`** (`TikTokLogo`, `YouTubeLogo`,
+  `FacebookLogo`, `InstagramLogo`, `PinterestLogo`) - full-colour SVGs; import those, do
+  NOT reach for `FontAwesome6 name="instagram"` etc. (the FontAwesome Instagram glyph is a
+  flat one-colour camera, not the gradient mark, which is exactly what got flagged
+  Sep 11 2026). They sit cleanly on a black badge or the row background.
 - **Write the platform NAME in that platform's own brand colour** (not `#fff`, not a
   theme token, not green/teal), and as close to the brand's own typographic style as the
   available fonts allow — the logo carries the true wordmark, the name echoes it. This is

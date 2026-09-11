@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo } from '../components/BrandLogos';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Image, Alert, ActivityIndicator, Modal
@@ -466,8 +467,8 @@ export default function ProfileScreen({ navigation }) {
         <GradientBorder radius={14} backgroundColor={theme.card} style={styles.section}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Connected Accounts</Text>
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#000' }]}>
-              <FontAwesome6 name="tiktok" size={17} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <TikTokLogo size={30} />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: theme.text }]}>TikTok</Text>
@@ -486,8 +487,8 @@ export default function ProfileScreen({ navigation }) {
               sale. The diamond goes once connected: an account you have already linked
               is not an upsell. */}
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#FF0000' }]}>
-              <FontAwesome6 name="youtube" size={16} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <YouTubeLogo size={30} />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: theme.text }]}>YouTube</Text>
@@ -509,8 +510,8 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#1877F2' }]}>
-              <FontAwesome6 name="facebook-f" size={16} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <FacebookLogo size={30} />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#1877F2' }]}>Facebook</Text>
@@ -527,8 +528,8 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#E4405F' }]}>
-              <FontAwesome6 name="instagram" size={18} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <InstagramLogo size={30} />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#E4405F' }]}>Instagram</Text>
@@ -545,8 +546,8 @@ export default function ProfileScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
-            <View style={[styles.connLogo, { backgroundColor: '#E60023' }]}>
-              <FontAwesome6 name="pinterest" size={18} color="#fff" />
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <PinterestLogo size={30} />
             </View>
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#E60023' }]}>Pinterest</Text>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo } from '../components/BrandLogos';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, AppState,
   StatusBar, Linking, ActivityIndicator, Alert, Image
@@ -262,7 +263,7 @@ export default function ConnectAccountsScreen({ navigation }) {
         {/* TikTok */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.cardLogoBadge}>
-            <FontAwesome6 name="tiktok" size={22} color="#fff" />
+            <TikTokLogo size={40} />
           </View>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Connect TikTok</Text>
           {loading ? (
@@ -270,11 +271,11 @@ export default function ConnectAccountsScreen({ navigation }) {
           ) : tiktok ? (
             <>
               <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' }]}>
-                <View style={styles.connectedAvatar}>
+                <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
                   {tiktok.avatar ? (
                     <Image source={{ uri: tiktok.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
                   ) : (
-                    <FontAwesome6 name="tiktok" size={18} color="#fff" />
+                    <TikTokLogo size={26} />
                   )}
                 </View>
                 <View>
@@ -308,8 +309,8 @@ export default function ConnectAccountsScreen({ navigation }) {
         {/* YouTube */}
         {youtube?.configured !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.cardLogoBadge, { backgroundColor: '#FF0000' }]}>
-              <FontAwesome6 name="youtube" size={22} color="#fff" />
+            <View style={styles.cardLogoBadge}>
+              <YouTubeLogo size={40} />
             </View>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect YouTube</Text>
             {ytLoading ? (
@@ -317,8 +318,8 @@ export default function ConnectAccountsScreen({ navigation }) {
             ) : youtube?.connected ? (
               <>
                 <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#FF0000' }]}>
-                    <FontAwesome6 name="youtube" size={18} color="#fff" />
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    <YouTubeLogo size={26} />
                   </View>
                   <View>
                     {/* channelTitle is often null: reading it needs youtube.readonly, a
@@ -363,8 +364,8 @@ export default function ConnectAccountsScreen({ navigation }) {
         {/* Facebook */}
         {facebook?.configured !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.cardLogoBadge, { backgroundColor: '#1877F2' }]}>
-              <FontAwesome6 name="facebook-f" size={22} color="#fff" />
+            <View style={styles.cardLogoBadge}>
+              <FacebookLogo size={40} />
             </View>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#1877F2' }}>Facebook</Text></Text>
             {fbLoading ? (
@@ -372,8 +373,8 @@ export default function ConnectAccountsScreen({ navigation }) {
             ) : facebook?.connected ? (
               <>
                 <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#1877F2' }]}>
-                    <FontAwesome6 name="facebook-f" size={18} color="#fff" />
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    <FacebookLogo size={26} />
                   </View>
                   <View>
                     <Text style={[styles.connectedName, { color: theme.text }]}>{facebook.pageName || 'Your Page'}</Text>
@@ -412,8 +413,8 @@ export default function ConnectAccountsScreen({ navigation }) {
         {/* Instagram */}
         {instagram?.configured !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.cardLogoBadge, { backgroundColor: '#E4405F' }]}>
-              <FontAwesome6 name="instagram" size={24} color="#fff" />
+            <View style={styles.cardLogoBadge}>
+              <InstagramLogo size={40} />
             </View>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E4405F' }}>Instagram</Text></Text>
             {igLoading ? (
@@ -421,8 +422,8 @@ export default function ConnectAccountsScreen({ navigation }) {
             ) : instagram?.connected ? (
               <>
                 <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#E4405F' }]}>
-                    <FontAwesome6 name="instagram" size={20} color="#fff" />
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    <InstagramLogo size={28} />
                   </View>
                   <View>
                     <Text style={[styles.connectedName, { color: theme.text }]}>{instagram.username ? '@' + instagram.username : 'Your account'}</Text>
@@ -461,8 +462,8 @@ export default function ConnectAccountsScreen({ navigation }) {
         {/* Pinterest */}
         {pinterest?.configured !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={[styles.cardLogoBadge, { backgroundColor: '#E60023' }]}>
-              <FontAwesome6 name="pinterest" size={26} color="#fff" />
+            <View style={styles.cardLogoBadge}>
+              <PinterestLogo size={40} />
             </View>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E60023' }}>Pinterest</Text></Text>
             {pinLoading ? (
@@ -470,8 +471,8 @@ export default function ConnectAccountsScreen({ navigation }) {
             ) : pinterest?.connected ? (
               <>
                 <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#E60023' }]}>
-                    <FontAwesome6 name="pinterest" size={20} color="#fff" />
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    <PinterestLogo size={28} />
                   </View>
                   <View>
                     <Text style={[styles.connectedName, { color: theme.text }]}>{pinterest.username ? '@' + pinterest.username : 'Your account'}</Text>
