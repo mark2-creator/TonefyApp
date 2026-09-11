@@ -3350,15 +3350,44 @@ nothing to aim at.
     days later was rejected as expired (landed on the site homepage, not
     `facebook-success.html`) - regenerate and complete promptly.
 
-    **Still to do:** INSTAGRAM side - add `INSTAGRAM_APP_ID/SECRET/REDIRECT_URI` to `.env`,
-    register the IG redirect `https://api.fitlifesolutions.site/instagram/callback` in the
-    "API setup with Instagram login" settings, activate `instagram_business_basic` +
-    `instagram_business_content_publish`, then connect + test. Then the FRONTEND (connect
-    buttons + enable the FB/IG Post buttons on Edit & Post, currently "Coming soon" stubs).
-    Then Business Verification (owner has a bank statement, but it is a PERSONAL account -
-    a business-name document may be needed) + App Review with demos. `business_management`
-    was dropped from FB scopes (not needed for posting). Cosmetic: `facebook-success.html`
-    still shows the YouTube logo (cloned from `youtube-success.html`).
+    **INSTAGRAM verified end to end (Sep 11 2026).** Env is set (IG app id
+    `1794252245220274`, secret + redirect); the redirect is registered and the two
+    scopes activated. The owner's account (@fitlifesolutions.site, a Business account)
+    connected through the real app flow - which required (a) accepting the Meta
+    **Instagram Tester** invite, and the acceptance UI is **only on instagram.com in a
+    browser** (Settings -> Apps and websites -> **Tester Invites**), NOT in the mobile
+    app, whose "Apps and websites" shows only Active/Expired/Removed; and (b) converting
+    the account to **Professional** (the OAuth screen offers this inline). Tokens stored
+    in `igTokens/{uid}`. The Reels pipeline was proven against the live account by
+    creating a REELS container from a real 75s export and polling to `FINISHED`, with the
+    final `media_publish` **deliberately skipped so nothing posted** (Instagram has no
+    unpublished mode and no reliable delete-via-API, so this is the non-disruptive test).
+
+    **The bug this exposed (fixed `bb3413d4`):** the callback stored `short.user_id` from
+    the token exchange, but the `/media` publish endpoint needs the `user_id` from
+    `graph.instagram.com/me` - a DIFFERENT id (and different again from `/me`'s `id`
+    field). All three are "user_id"-ish; only `/me`'s works, and the wrong one fails with
+    subcode 33 ("does not exist ... or does not support this operation"). Every connected
+    account could authenticate but not publish. Now `igUserId` comes from `/me`. The
+    owner's stored doc was corrected in place.
+
+    **FRONTEND built and published (Sep 11 2026, update group
+    `8ae1cf7d-7077-42f5-986b-af2b9edc55ac`, commit `84e4fdf3`, production, runtime
+    1.1.0).** ConnectAccounts has real Facebook and Instagram cards (connect / status /
+    disconnect, server-authoritative status via the new `/api/facebook/status` +
+    `/api/instagram/status`, `bb3413d4`/`60bccb3e`); both leave the Coming Soon list (only
+    X remains). Edit & Post's FB/IG rows are real Post buttons: connected -> `/api/post-now`
+    (`[facebook]` posts a Page video, `[instagram]` a Reel); not connected -> route to
+    ConnectAccounts, same model as TikTok (both need browser OAuth, so posting does not try
+    to resume mid-flow on return). No new native module - safe OTA. **Untested on device**
+    (backend paths verified live). `facebook-success.html` cosmetic YouTube logo fixed
+    (`tonefy-website@c56c08d`): real FB+IG marks, reads `facebook_error`/`instagram_error`.
+
+    **Still to do:** Meta go-live - **Business Verification** (owner has a bank statement,
+    but it is a PERSONAL account - a business-name document may be needed) + **App Review**
+    with demos, both required before anyone but app admins/testers can connect (dev mode
+    today). `business_management` was dropped from FB scopes (not needed for posting).
+    Then TRACKED, same as TikTok: multiple FB Pages / IG accounts per user as a paid tier.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
