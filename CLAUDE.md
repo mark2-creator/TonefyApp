@@ -3426,11 +3426,16 @@ nothing to aim at.
     (`tonefy-website`, Sep 11 2026) - use "Fitlifesolutions" everywhere from now on.** Two
     things to get right at registration, both consistency not code: (a) register URSB as
     **"Fitlifesolutions"** (one word) - do NOT reintroduce the two-word or any third
-    spelling. (b) The Meta Business Manager is currently named "Ahumuza Mark" - **rename it
-    to "Fitlifesolutions"** before verifying, so the business name matches the URSB
-    certificate (sole proprietorship owned by Ahumuza Mark ties the two). Note the actual
-    Facebook Page is separately named "Fit life solutions" (three words) on FB's side - a
-    real page name only the owner can rename in Facebook, left factual where referenced.
+    spelling. (b) **DONE Sep 11 2026:** the Meta Business Manager portfolio (ID
+    732676555725838) was renamed from "Ahumuza Mark" to **"Fitlifesolutions"**, and the
+    brand Page **"Fit life solutions"** (id 944030155454496) was added to the portfolio and
+    set as its **Primary Page** (it previously had only an unrelated "Make money online"
+    page). Still empty on that portfolio, to fill against the URSB certificate at
+    verification time: Legal business name, address, phone; Website should be the COMPANY
+    site `https://www.fitlifesolutions.site` (apex→www, live), NOT the Tonefy product
+    subdomain. Note the actual Facebook Page keeps its own name "Fit life solutions" (three
+    words) on FB's side - a real page name only the owner can rename in Facebook, left
+    factual where referenced.
 
 45. **Pinterest + LinkedIn backend scaffolded - WRITTEN BUT UNTESTED, gated off**
     (Sep 11 2026, `~/Tonefy-react/backend@HEAD`, deployed; app side not built yet). Owner
