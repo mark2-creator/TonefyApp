@@ -3472,6 +3472,16 @@ nothing to aim at.
       the FIRST public channel, independent of the Meta/URSB gate. The publish CODE is
       verified correct as far as Trial allows (Pinterest returns specific policy responses,
       never a code error). The owner has 7 boards (all public).
+      **STANDARD-ACCESS SUBMITTED Sep 11 2026 - "under review" (email confirmed).** The
+      upgrade form went in with: a screen-recorded demo (padded to 9:16 in CapCut because
+      Pinterest rejects portrait phone recordings - needs aspect ratio between 1:2 and
+      1.91:1), Company website `https://tonefy-ai.fitlifesolutions.site/`, Privacy
+      `https://tonefy-ai.fitlifesolutions.site/privacy.html` (both must contain the company
+      name AND differ from each other - a play.google.com store link is REJECTED in the
+      website field), the Tonefy-AI-video app-purpose text, use case Pin creation &
+      scheduling, audience Pinners+Creators. **When approved, real pins post with NO code
+      change.** Also built the app-side Pinterest UI this session (ConnectAccounts card +
+      Edit&Post row, published), so the whole Pinterest chain is done pending review.
     - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
       -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
       part ids -> create a post referencing the video URN. `LinkedIn-Version` (`LI_VERSION`,
