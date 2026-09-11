@@ -3459,8 +3459,19 @@ nothing to aim at.
       requires `cover_image_url`, so we grab frame 0 with ffmpeg and host it under
       `/videos`. Tokens in `pinterestTokens/{uid}` with a refresh path (`pinValidToken`).
       Env: `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_REDIRECT_URI`
-      (`.../pinterest/callback`). Needs standard access (trial can't post to a real
-      audience).
+      (`.../pinterest/callback`).
+      **CREDENTIALS SET + OAUTH VERIFIED Sep 11 2026** (App id `1552947`, "FitlifeSolutions"
+      dev app; token stored in `pinterestTokens/{uid}` with refresh + ~30-day expiry). Two
+      real-API findings from live test pins: (1) creating a pin needs **`boards:write`**,
+      not just `pins:write` - added to `PIN_SCOPES` (`0a134b35`); (2) **Pinterest TRIAL
+      access cannot create pins in production at all** ("use API Sandbox instead") - the
+      sandbox needs its own token (production OAuth token is 401 there), so real pins are
+      blocked until **Standard access**, requested via the **"Upgrade access"** button on
+      the Pinterest app page (Pinterest's review). That review does NOT require the URSB
+      business registration - it asks for use-case + privacy URL - so Pinterest could be
+      the FIRST public channel, independent of the Meta/URSB gate. The publish CODE is
+      verified correct as far as Trial allows (Pinterest returns specific policy responses,
+      never a code error). The owner has 7 boards (all public).
     - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
       -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
       part ids -> create a post referencing the video URN. `LinkedIn-Version` (`LI_VERSION`,
