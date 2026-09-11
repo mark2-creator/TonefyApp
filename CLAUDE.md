@@ -3415,6 +3415,20 @@ nothing to aim at.
     and LinkedIn public launch too (see item 45) - it is the one shared gate for opening
     ANY social platform to real users, so the whole social-posting roadmap waits on it.
 
+    **Business vs product name (owner asked Sep 11 2026): the business is "Fitlife
+    Solutions", the product/app is "Tonefy AI" - a normal company->product split, not a
+    problem.** All identity infra already points at Fitlife Solutions (domain
+    `fitlifesolutions.site`, the OAuth consent screen, FB Page "Fit life solutions", IG
+    `@fitlifesolutions.site`, TikTok `@Fitlifesolutions`), and the privacy policy + terms +
+    site footer ALREADY state "Tonefy AI ... developed and operated by Fitlife Solutions" -
+    so the relationship is documented where reviewers look; nothing to add. Two things to
+    get right at registration, both consistency not code: (a) register URSB as **"Fitlife
+    Solutions"** - the two-word spelling the published legal docs already use (handles being
+    one word is fine, handles can't have spaces); do NOT introduce a third spelling. (b) The
+    Meta Business Manager is currently named "Ahumuza Mark" - **rename it to "Fitlife
+    Solutions"** before verifying, so the business name matches the URSB certificate (sole
+    proprietorship owned by Ahumuza Mark ties the two).
+
 45. **Pinterest + LinkedIn backend scaffolded - WRITTEN BUT UNTESTED, gated off**
     (Sep 11 2026, `~/Tonefy-react/backend@HEAD`, deployed; app side not built yet). Owner
     asked to keep adding social channels while the URSB/Meta gate (item 44) is parked on
