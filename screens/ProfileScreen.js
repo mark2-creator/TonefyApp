@@ -45,6 +45,11 @@ export default function ProfileScreen({ navigation }) {
   const [toastMsg, setToastMsg] = useState(null);
   const [tiktok, setTiktok] = useState({ connected: false, label: 'Checking...' });
   const [youtube, setYoutube] = useState({ connected: false, channelTitle: null });
+  // Facebook/Instagram/Pinterest are written into the SAME connectedAccounts doc by the
+  // server on connect, so this screen reads their state for free alongside TikTok/YouTube.
+  const [facebook, setFacebook] = useState({ connected: false, pageName: null });
+  const [instagram, setInstagram] = useState({ connected: false, username: null });
+  const [pinterest, setPinterest] = useState({ connected: false, username: null });
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
@@ -78,9 +83,15 @@ export default function ProfileScreen({ navigation }) {
         ? { connected: true, label: `@${acc.tiktok.displayName || 'Connected'}` }
         : { connected: false, label: 'Not connected' });
       setYoutube({ connected: !!acc.youtube, channelTitle: acc.youtube?.channelTitle || null });
+      setFacebook({ connected: !!acc.facebook, pageName: acc.facebook?.pageName || null });
+      setInstagram({ connected: !!acc.instagram, username: acc.instagram?.username || null });
+      setPinterest({ connected: !!acc.pinterest, username: acc.pinterest?.username || null });
     } catch (e) {
       setTiktok({ connected: false, label: 'Not connected' });
       setYoutube({ connected: false, channelTitle: null });
+      setFacebook({ connected: false, pageName: null });
+      setInstagram({ connected: false, username: null });
+      setPinterest({ connected: false, username: null });
     }
   }, [user]);
 
@@ -502,20 +513,54 @@ export default function ProfileScreen({ navigation }) {
               <FontAwesome6 name="facebook-f" size={16} color="#fff" />
             </View>
             <View style={styles.connInfo}>
-              <Text style={[styles.connName, { color: theme.text }]}>Facebook</Text>
-              <Text style={[styles.connStatus, { color: theme.subtext }]}>Coming soon</Text>
+              <Text style={[styles.connName, { color: '#1877F2' }]}>Facebook</Text>
+              <Text style={[styles.connStatus, { color: facebook.connected ? '#2ECC71' : theme.subtext }]}>
+                {facebook.connected ? (facebook.pageName || 'Your Page') : 'Post to your Page'}
+              </Text>
             </View>
-            <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}><Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Soon</Text></View>
+            <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+              <View style={facebook.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                <Text style={facebook.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
+                  {facebook.connected ? 'Connected' : 'Connect'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
-          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: '#E4405F' }]}>
               <FontAwesome6 name="instagram" size={18} color="#fff" />
             </View>
             <View style={styles.connInfo}>
-              <Text style={[styles.connName, { color: theme.text }]}>Instagram</Text>
-              <Text style={[styles.connStatus, { color: theme.subtext }]}>Coming soon</Text>
+              <Text style={[styles.connName, { color: '#E4405F' }]}>Instagram</Text>
+              <Text style={[styles.connStatus, { color: instagram.connected ? '#2ECC71' : theme.subtext }]}>
+                {instagram.connected ? (instagram.username ? '@' + instagram.username : 'Connected') : 'Post Reels'}
+              </Text>
             </View>
-            <View style={[styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}><Text style={[styles.badgeSoonText, { color: theme.subtext }]}>Soon</Text></View>
+            <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+              <View style={instagram.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                <Text style={instagram.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
+                  {instagram.connected ? 'Connected' : 'Connect'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.connLogo, { backgroundColor: '#E60023' }]}>
+              <FontAwesome6 name="pinterest" size={18} color="#fff" />
+            </View>
+            <View style={styles.connInfo}>
+              <Text style={[styles.connName, { color: '#E60023' }]}>Pinterest</Text>
+              <Text style={[styles.connStatus, { color: pinterest.connected ? '#2ECC71' : theme.subtext }]}>
+                {pinterest.connected ? (pinterest.username ? '@' + pinterest.username : 'Connected') : 'Publish video Pins'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+              <View style={pinterest.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                <Text style={pinterest.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
+                  {pinterest.connected ? 'Connected' : 'Connect'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </GradientBorder>
 
