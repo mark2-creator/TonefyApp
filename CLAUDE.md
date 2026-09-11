@@ -3475,6 +3475,13 @@ nothing to aim at.
     they're driven by `/api/platforms` + the per-platform `/status`, so it's the same
     shape), and the cosmetic redirect deep-link. Both success pages already exist.
 
+    **X (Twitter) DEFERRED, not built (Sep 11 2026), and deliberately so:** unlike every
+    other platform here, X's API is PAID for writes - video posting needs at least the
+    Basic tier (~$100/month) and the free tier effectively cannot post video. So building
+    an X publisher now would be code that costs a recurring fee to run, which is a bad
+    trade while the owner is funds-blocked. Revisit only when revenue justifies the monthly
+    cost; the registry pattern makes it a drop-in when that day comes.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
