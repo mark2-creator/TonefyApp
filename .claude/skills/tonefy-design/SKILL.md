@@ -63,6 +63,39 @@ This rule was decided after an audit, so do not read the existing file as gospel
 teal in `EditVideoScreen.js` is a mix of correct chrome and un-migrated actions. Convert
 teal to green when a control you are already editing is a commit action. Do not sweep.
 
+### Social platform identity — a MUST, not a preference
+
+A third party's brand overrides Tonefy's palette wherever we name or mark that party.
+Whenever a social platform is shown — a connect card, a "Post to" row, a success page, a
+marketing surface, anywhere:
+
+- **Use the platform's OFFICIAL logo**, never a Material/FontAwesome stand-in *where a
+  real mark exists*. A generic glyph in place of a real logo reads as unofficial and, on
+  a review surface (TikTok/Meta/Google audits), as a red flag.
+- **Write the platform NAME in that platform's own brand colour** (not `#fff`, not a
+  theme token, not green/teal), and as close to the brand's own typographic style as the
+  available fonts allow — the logo carries the true wordmark, the name echoes it. This is
+  the one place the green/teal rule above does **not** apply: a platform name is the
+  third party's identity, not one of our controls.
+
+Brand colours to use (kept here so they are not re-guessed):
+
+| Platform | Brand colour | Note |
+|---|---|---|
+| Facebook | `#1877F2` | solid blue |
+| Instagram | pink→orange **gradient** `#FEDA75 → #FA7E1E → #D62976 → #962FBF` | gradient text via `background-clip: text`; fall back to `#D62976` |
+| TikTok | `#000` mark, cyan `#25F4EE` + magenta `#FE2C55` accents | on dark surfaces the mark needs a light chip behind it |
+| YouTube | `#FF0000` | |
+| X | `#000` / `#fff` on dark | |
+| Pinterest | `#E60023` | |
+| LinkedIn | `#0A66C2` | |
+
+The word "Connected!", "Post", and our own copy around the name stay Tonefy green — only
+the platform *name itself* takes the brand colour. Proprietary brand fonts (Facebook
+Sans, Instagram's wordmark) cannot be embedded; approximate with a clean bold sans and
+let the official logo carry the real letterforms. First applied Sep 11 2026 to
+`facebook-success.html` and the Facebook/Instagram connect + post UI.
+
 ### Surfaces and text
 
 Backgrounds step darkest-first: `#000` (app, toolbar) → `#0a0a0a` (timeline) →

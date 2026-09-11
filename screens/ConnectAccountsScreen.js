@@ -330,7 +330,7 @@ export default function ConnectAccountsScreen({ navigation }) {
             <View style={[styles.cardLogoBadge, { backgroundColor: '#1877F2' }]}>
               <FontAwesome6 name="facebook-f" size={22} color="#fff" />
             </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect Facebook</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#1877F2' }}>Facebook</Text></Text>
             {fbLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
             ) : facebook?.connected ? (
@@ -379,7 +379,7 @@ export default function ConnectAccountsScreen({ navigation }) {
             <View style={[styles.cardLogoBadge, { backgroundColor: '#E4405F' }]}>
               <FontAwesome6 name="instagram" size={24} color="#fff" />
             </View>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect Instagram</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E4405F' }}>Instagram</Text></Text>
             {igLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
             ) : instagram?.connected ? (

@@ -490,7 +490,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         <View style={[styles.platformsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: theme.text }]}>Facebook</Text>
+            <Text style={[styles.platformName, { color: '#1877F2' }]}>Facebook</Text>
             {facebook?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('facebook')} disabled={fbPosting}>
               {fbPosting ? (
@@ -503,7 +503,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: theme.text }]}>Instagram</Text>
+            <Text style={[styles.platformName, { color: '#E4405F' }]}>Instagram</Text>
             {instagram?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToMetaPlatform('instagram')} disabled={igPosting}>
               {igPosting ? (

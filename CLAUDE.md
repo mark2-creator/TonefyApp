@@ -545,6 +545,20 @@ declarations in `EditVideoScreen.js`, eleven were teal and eight green purely be
 the eight were newest. Teal is no longer a legacy marker, so do not "finish the rebrand"
 by converting it. Full rules in the `tonefy-design` skill.
 
+**Social platforms are ALWAYS shown with their official logo and their name in that
+platform's own brand colour — a MUST, stated by the owner Sep 11 2026, not a preference.**
+Wherever a platform is named or marked (connect cards, "Post to" rows, OAuth success
+pages, marketing), use the real brand logo (never a Material/FontAwesome stand-in where a
+true mark exists) and write the platform NAME in its brand colour and closest available
+typographic style — Facebook `#1877F2`, Instagram its `#FEDA75→#FA7E1E→#D62976→#962FBF`
+gradient (fall back `#D62976`), TikTok black + `#25F4EE`/`#FE2C55`, YouTube `#FF0000`, X
+black/white, Pinterest `#E60023`, LinkedIn `#0A66C2`. This is the one deliberate
+exception to the green/teal rule: a third party's name is its identity, not one of our
+controls, so it does not take a Tonefy colour. Our own words around it ("Connected!",
+"Post") stay green. Proprietary brand fonts can't be embedded — the official logo carries
+the real wordmark, the name approximates with a bold sans. Full table in the
+`tonefy-design` skill under "Social platform identity".
+
 **A paid feature is marked with a diamond, never a padlock.** `MaterialIcons`
 `"diamond"` in premium gold `#f5c451`, with the label left dimmed — the same mark
 the transitions panel has used since it was written. This is a rule about meaning,
