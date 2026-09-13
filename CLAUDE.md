@@ -3506,6 +3506,13 @@ nothing to aim at.
       it should be **regenerated** in the LinkedIn Auth tab ("Generate a new Client Secret")
       and updated in `.env` when convenient - low risk (private transcript, dev app) but
       best practice.
+      **Company-Page posting: deliberately NOT built (owner decision, Sep 13 2026).** The
+      integration posts to the member's PERSONAL profile only, which is what Tonefy's
+      individual-creator users want (personal profiles get the reach; LinkedIn is a minor
+      channel for short-form creators anyway). Posting to a Company Page would need the
+      **Community Management API** (LinkedIn review required, unlike the self-serve member
+      products) + `w_organization_social` + an org-URN author. Revisit only if a
+      business/agency tier or real user demand appears - not before.
 
     **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
     Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
