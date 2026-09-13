@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo } from '../components/BrandLogos';
+import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo, LinkedInLogo } from '../components/BrandLogos';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, AppState,
   StatusBar, Linking, ActivityIndicator, Alert, Image
@@ -38,6 +38,9 @@ export default function ConnectAccountsScreen({ navigation }) {
   const [pinterest, setPinterest] = useState(null);
   const [pinLoading, setPinLoading] = useState(true);
   const [pinBusy, setPinBusy] = useState(false);
+  const [linkedin, setLinkedin] = useState(null);
+  const [liLoading, setLiLoading] = useState(true);
+  const [liBusy, setLiBusy] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -46,9 +49,10 @@ export default function ConnectAccountsScreen({ navigation }) {
     loadFacebook();
     loadInstagram();
     loadPinterest();
+    loadLinkedIn();
     // Re-check on return from the browser, which is exactly when the answer changes.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); loadPinterest(); }
+      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); loadPinterest(); loadLinkedIn(); }
     });
     return () => sub.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -198,6 +202,38 @@ export default function ConnectAccountsScreen({ navigation }) {
             await api('/api/pinterest/disconnect', { method: 'POST' });
             setPinterest({ ...(pinterest || {}), connected: false, username: null });
           } catch (e) { showAlert('Pinterest', 'Could not disconnect.'); }
+        },
+      },
+    ]);
+  }
+
+  async function loadLinkedIn() {
+    try { setLinkedin(await api('/api/linkedin/status')); }
+    catch (e) { setLinkedin(null); }
+    finally { setLiLoading(false); }
+  }
+
+  async function connectLinkedIn() {
+    setLiBusy(true);
+    try {
+      const data = await api('/api/linkedin/connect');
+      if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
+      await Linking.openURL(data.authUrl);
+    } catch (e) {
+      showAlert('LinkedIn', e.message || 'Could not open the LinkedIn sign-in page.');
+    } finally { setLiBusy(false); }
+  }
+
+  async function disconnectLinkedIn() {
+    showAlert('Disconnect LinkedIn', 'Tonefy will no longer be able to post to your LinkedIn.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Disconnect', style: 'destructive',
+        onPress: async () => {
+          try {
+            await api('/api/linkedin/disconnect', { method: 'POST' });
+            setLinkedin({ ...(linkedin || {}), connected: false, name: null });
+          } catch (e) { showAlert('LinkedIn', 'Could not disconnect.'); }
         },
       },
     ]);
@@ -499,6 +535,52 @@ export default function ConnectAccountsScreen({ navigation }) {
                 </View>
                 <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E60023' }]} onPress={connectPinterest} disabled={pinBusy}>
                   {pinBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect Pinterest Account</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* LinkedIn */}
+        {linkedin?.configured !== false && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.cardLogoBadge, { backgroundColor: 'transparent' }]}>
+              <LinkedInLogo size={48} />
+            </View>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#0A66C2' }}>LinkedIn</Text></Text>
+            {liLoading ? (
+              <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
+            ) : linkedin?.connected ? (
+              <>
+                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    <LinkedInLogo size={28} />
+                  </View>
+                  <View>
+                    <Text style={[styles.connectedName, { color: theme.text }]}>{linkedin.name || 'Your profile'}</Text>
+                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>LinkedIn · Connected</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
+                  onPress={disconnectLinkedIn}>
+                  <Text style={styles.btnDisconnectText}>Disconnect LinkedIn</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.cardDesc, { color: theme.subtext }]}>To post your videos to LinkedIn, connect your account below</Text>
+                <View style={styles.perms}>
+                  <Text style={[styles.permsTitle, { color: theme.subtext }]}>THIS WILL AUTHORIZE TONEFY AI TO:</Text>
+                  {['Post videos to your LinkedIn', 'See your name and photo'].map((p, i) => (
+                    <View key={i} style={styles.permRow}>
+                      <MaterialIcons name="check" size={16} color="#2ecc71" />
+                      <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#0A66C2' }]} onPress={connectLinkedIn} disabled={liBusy}>
+                  {liBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>Connect LinkedIn Account</Text>}
                 </TouchableOpacity>
               </>
             )}

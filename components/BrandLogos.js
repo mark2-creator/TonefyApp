@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Defs, LinearGradient, Stop, RadialGradient } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, RadialGradient, Rect } from 'react-native-svg';
 
 // Real platform marks, drawn as vector paths.
 //
@@ -96,10 +96,24 @@ export function PinterestLogo({ size = 22 }) {
   );
 }
 
+export function LinkedInLogo({ size = 22 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* Official LinkedIn mark: white "in" on the brand-blue rounded square. */}
+      <Rect x="0" y="0" width="24" height="24" rx="4" fill="#0A66C2" />
+      <Path
+        d="M6.94 8.5H4.5V19h2.44V8.5zM5.72 7.3a1.41 1.41 0 1 0 0-2.82 1.41 1.41 0 0 0 0 2.82zM19.5 19h-2.44v-5.1c0-1.22-.02-2.79-1.7-2.79-1.7 0-1.96 1.33-1.96 2.7V19h-2.44V8.5h2.34v1.43h.03c.33-.62 1.12-1.27 2.3-1.27 2.47 0 2.92 1.62 2.92 3.73V19z"
+        fill="#fff"
+      />
+    </Svg>
+  );
+}
+
 export const PLATFORM_LOGOS = {
   tiktok: TikTokLogo,
   instagram: InstagramLogo,
   facebook: FacebookLogo,
   youtube: YouTubeLogo,
   pinterest: PinterestLogo,
+  linkedin: LinkedInLogo,
 };

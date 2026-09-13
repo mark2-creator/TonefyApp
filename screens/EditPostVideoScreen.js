@@ -8,7 +8,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
-import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo, PinterestLogo } from '../components/BrandLogos';
+import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo, PinterestLogo, LinkedInLogo } from '../components/BrandLogos';
 import { usePlan } from '../constants/plan';
 import { auth, db } from '../firebase';
 import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -91,6 +91,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [igPosting, setIgPosting] = useState(false);
   const [pinterest, setPinterest] = useState(null);
   const [pinPosting, setPinPosting] = useState(false);
+  const [linkedin, setLinkedin] = useState(null);
+  const [liPosting, setLiPosting] = useState(false);
   const { isPremium } = usePlan();
   // 'immediate' posts on the next sweep; 'later' posts at the chosen time.
   // schedMode existed and was never read - the queue had no notion of "when", so every
@@ -110,6 +112,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     loadFacebook();
     loadInstagram();
     loadPinterest();
+    loadLinkedIn();
     // Returning from the browser BACKGROUNDS the app rather than navigating away, so
     // AppState is the signal - a navigation focus effect would never fire.
     const sub = AppState.addEventListener('change', async (next) => {
@@ -117,6 +120,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       loadFacebook();
       loadInstagram();
       loadPinterest();
+      loadLinkedIn();
       await loadYouTube();
       if (!ytPendingRef.current) return;
       ytPendingRef.current = false;
@@ -231,6 +235,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
     } catch (e) { setPinterest(null); }
   }
 
+  async function loadLinkedIn() {
+    try {
+      const token = await user.getIdToken();
+      const r = await fetch(`${BACKEND}/api/linkedin/status`, { headers: { Authorization: `Bearer ${token}` } });
+      setLinkedin(await r.json());
+    } catch (e) { setLinkedin(null); }
+  }
+
   // Post to a browser-OAuth platform (Facebook/Instagram/Pinterest). Not connected -> send
   // them to ConnectAccounts, exactly like TikTok, rather than opening a browser here and
   // having to resume mid-post on return. Connected -> publish through the same /api/post-now
@@ -239,6 +251,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     facebook: { label: 'Facebook', status: facebook, setPosting: setFbPosting, done: 'Your video is live on your Facebook Page.' },
     instagram: { label: 'Instagram', status: instagram, setPosting: setIgPosting, done: 'Your Reel is live on your Instagram.' },
     pinterest: { label: 'Pinterest', status: pinterest, setPosting: setPinPosting, done: 'Your video Pin is live on your Pinterest board.' },
+    linkedin: { label: 'LinkedIn', status: linkedin, setPosting: setLiPosting, done: 'Your post is live on your LinkedIn.' },
   };
   async function postToBrowserPlatform(id) {
     const cfg = BROWSER_PLATFORMS[id];
@@ -535,6 +548,19 @@ export default function EditPostVideoScreen({ navigation, route }) {
                 <ActivityIndicator color="#000" size="small" />
               ) : (
                 <Text style={styles.ttBtnText}>{pinterest?.connected ? 'Post' : 'Connect'}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={styles.platformRow}>
+            <View style={styles.platformIcon}><LinkedInLogo size={22} /></View>
+            <Text style={[styles.platformName, { color: '#0A66C2' }]}>LinkedIn</Text>
+            {linkedin?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('linkedin')} disabled={liPosting}>
+              {liPosting ? (
+                <ActivityIndicator color="#000" size="small" />
+              ) : (
+                <Text style={styles.ttBtnText}>{linkedin?.connected ? 'Post' : 'Connect'}</Text>
               )}
             </TouchableOpacity>
           </View>

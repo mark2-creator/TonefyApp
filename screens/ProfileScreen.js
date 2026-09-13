@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo } from '../components/BrandLogos';
+import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo, LinkedInLogo } from '../components/BrandLogos';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, Image, Alert, ActivityIndicator, Modal
@@ -51,6 +51,7 @@ export default function ProfileScreen({ navigation }) {
   const [facebook, setFacebook] = useState({ connected: false, pageName: null });
   const [instagram, setInstagram] = useState({ connected: false, username: null });
   const [pinterest, setPinterest] = useState({ connected: false, username: null });
+  const [linkedin, setLinkedin] = useState({ connected: false, name: null });
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
@@ -87,12 +88,14 @@ export default function ProfileScreen({ navigation }) {
       setFacebook({ connected: !!acc.facebook, pageName: acc.facebook?.pageName || null });
       setInstagram({ connected: !!acc.instagram, username: acc.instagram?.username || null });
       setPinterest({ connected: !!acc.pinterest, username: acc.pinterest?.username || null });
+      setLinkedin({ connected: !!acc.linkedin, name: acc.linkedin?.name || null });
     } catch (e) {
       setTiktok({ connected: false, label: 'Not connected' });
       setYoutube({ connected: false, channelTitle: null });
       setFacebook({ connected: false, pageName: null });
       setInstagram({ connected: false, username: null });
       setPinterest({ connected: false, username: null });
+      setLinkedin({ connected: false, name: null });
     }
   }, [user]);
 
@@ -545,7 +548,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </TouchableOpacity>
           </View>
-          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+          <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
               <PinterestLogo size={30} />
             </View>
@@ -559,6 +562,24 @@ export default function ProfileScreen({ navigation }) {
               <View style={pinterest.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={pinterest.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
                   {pinterest.connected ? 'Connected' : 'Connect'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.connRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
+              <LinkedInLogo size={30} />
+            </View>
+            <View style={styles.connInfo}>
+              <Text style={[styles.connName, { color: '#0A66C2' }]}>LinkedIn</Text>
+              <Text style={[styles.connStatus, { color: linkedin.connected ? '#2ECC71' : theme.subtext }]}>
+                {linkedin.connected ? (linkedin.name || 'Connected') : 'Post to your profile'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
+              <View style={linkedin.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
+                <Text style={linkedin.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
+                  {linkedin.connected ? 'Connected' : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>
