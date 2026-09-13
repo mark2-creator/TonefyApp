@@ -3497,13 +3497,14 @@ nothing to aim at.
       owner DOES have a passport and Persona read it fine from a photo - but then it demands
       an **NFC chip scan of the passport**, and (a) the owner's phone has **no NFC** and
       (b) the owner says the passport has **no chip**, with **no "continue without scanning"
-      option** offered. So verification dead-ends at the NFC step. **CONFIRMED Sep 13 2026:
-      there is NO photo-only fallback** - "I'm unable to do this now" leads only to an
-      abort/exit survey, not an alternative path. So LinkedIn identity verification cannot
-      be completed on this phone+passport, and it is **PARKED** (backend built + gated,
-      nothing lost). The ONLY conceivable way forward is an NFC-capable phone AND the
-      passport actually having a readable chip (owner says it has none) - not worth
-      chasing; revisit only if an NFC phone is ever on hand to test in 2 minutes.
+      option** offered - the owner's own phone has no NFC. **RESOLVED Sep 13 2026:** the
+      owner borrowed a friend's **NFC-capable phone** and completed the Persona identity
+      verification (so the passport DID have a chip after all). LinkedIn identity
+      verification is tied to the ACCOUNT, so it persists on the owner's own phone.
+      **UNBLOCKED - now proceeding:** create the Fitlifesolutions Company Page (the "verify
+      your workplace" wall should be lifted), then the developer app, products, and
+      credentials, then test end to end like Pinterest. Lesson: a Ugandan e-passport chip
+      needs an NFC phone to read; a borrowed NFC phone for the one scan step is enough.
 
     **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
     Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
