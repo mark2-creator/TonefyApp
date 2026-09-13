@@ -3484,27 +3484,28 @@ nothing to aim at.
       Edit&Post row, published), so the whole Pinterest chain is done pending review.
     - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
       -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
-      part ids -> create a post referencing the video URN. `LinkedIn-Version` (`LI_VERSION`,
-      currently `202405`) and `X-Restli-Protocol-Version: 2.0.0` are mandatory and LinkedIn
-      rejects a stale version - keep it current. Member id/name come from OpenID
+      part ids -> create a post referencing the video URN. Member id/name come from OpenID
       `/v2/userinfo` (`sub`). Tokens in `linkedinTokens/{uid}`. Env: `LINKEDIN_CLIENT_ID`,
-      `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_REDIRECT_URI` (`.../linkedin/callback`). Needs the
-      "Share on LinkedIn" / Community Management products + app review.
-      **BLOCKED before credentials (Sep 12-13 2026) on a wall that is NOT ours:** creating
-      a LinkedIn developer app requires an associated **Company Page**, and creating a Page
-      now requires LinkedIn **identity verification via Persona**. For **Uganda, Persona
-      accepts ONLY a passport** (national ID rejected: "you didn't submit a passport"). The
-      owner DOES have a passport and Persona read it fine from a photo - but then it demands
-      an **NFC chip scan of the passport**, and (a) the owner's phone has **no NFC** and
-      (b) the owner says the passport has **no chip**, with **no "continue without scanning"
-      option** offered - the owner's own phone has no NFC. **RESOLVED Sep 13 2026:** the
-      owner borrowed a friend's **NFC-capable phone** and completed the Persona identity
-      verification (so the passport DID have a chip after all). LinkedIn identity
-      verification is tied to the ACCOUNT, so it persists on the owner's own phone.
-      **UNBLOCKED - now proceeding:** create the Fitlifesolutions Company Page (the "verify
-      your workplace" wall should be lifted), then the developer app, products, and
-      credentials, then test end to end like Pinterest. Lesson: a Ugandan e-passport chip
-      needs an NFC phone to read; a borrowed NFC phone for the one scan step is enough.
+      `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_REDIRECT_URI` (`.../linkedin/callback`). Products:
+      **Sign In with LinkedIn using OpenID Connect** + **Share on LinkedIn** (both self-serve,
+      grant `openid profile w_member_social`) - **Community Management API is NOT needed** for
+      member video posts, confirmed by a real post.
+      **WORKING END TO END, verified Sep 13 2026** (app id `779gqah04k4cyf`): a real member
+      video post was created (`urn:li:ugcPost:...`) and deleted (204) through the live
+      `/api/post-now`. App-side UI shipped this session (ConnectAccounts card + Edit&Post row
+      + Profile status). **`LI_VERSION` must be a CURRENT dated version** (`YYYYMM`): LinkedIn
+      retires versions after ~12 months, and a stale one fails with "Requested version ... is
+      not active" - `202405` was retired; bumped to **`202606`** (`36b2cbbe`). Bump it again
+      when that error reappears. The `X-Restli-Protocol-Version: 2.0.0` header is also
+      mandatory. Getting here required LinkedIn **identity verification via Persona**, which
+      for Uganda needs a **passport with an NFC chip scanned on an NFC phone** - the owner's
+      phone has no NFC, so he verified on a **borrowed NFC phone** (verification is
+      account-tied, so it persisted). Creating the developer app also required first creating
+      the **Fitlifesolutions Company Page** (blocked until identity verified).
+      **SECURITY TODO:** the LinkedIn Client Secret was pasted into the chat during setup, so
+      it should be **regenerated** in the LinkedIn Auth tab ("Generate a new Client Secret")
+      and updated in `.env` when convenient - low risk (private transcript, dev app) but
+      best practice.
 
     **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
     Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
