@@ -3490,14 +3490,17 @@ nothing to aim at.
       `/v2/userinfo` (`sub`). Tokens in `linkedinTokens/{uid}`. Env: `LINKEDIN_CLIENT_ID`,
       `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_REDIRECT_URI` (`.../linkedin/callback`). Needs the
       "Share on LinkedIn" / Community Management products + app review.
-      **BLOCKED before credentials (Sep 12 2026) on a hard wall that is NOT ours:** creating
+      **BLOCKED before credentials (Sep 12-13 2026) on a wall that is NOT ours:** creating
       a LinkedIn developer app requires an associated **Company Page**, and creating a Page
-      now requires LinkedIn **identity verification via Persona** - which for **Uganda
-      accepts ONLY a passport**; the national ID card is rejected outright ("It looks like
-      you didn't submit a passport"). The owner has no passport, so LinkedIn cannot proceed
-      at all right now. **PARKED** - the backend is built and gated, ready for the day a
-      passport exists; do not re-attempt the Persona flow with a national ID, it only ever
-      asks for a passport. Not worth pursuing a passport solely for LinkedIn.
+      now requires LinkedIn **identity verification via Persona**. For **Uganda, Persona
+      accepts ONLY a passport** (national ID rejected: "you didn't submit a passport"). The
+      owner DOES have a passport and Persona read it fine from a photo - but then it demands
+      an **NFC chip scan of the passport**, and (a) the owner's phone has **no NFC** and
+      (b) the owner says the passport has **no chip**, with **no "continue without scanning"
+      option** offered. So verification dead-ends at the NFC step. Untried at last note: a
+      restart choosing "I'm unable to do this"/no-chip to force a photo-only fallback; if
+      that also forces NFC, LinkedIn stays **PARKED** (backend built + gated, nothing lost).
+      An NFC-capable phone only helps IF the passport actually has a chip.
 
     **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
     Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
