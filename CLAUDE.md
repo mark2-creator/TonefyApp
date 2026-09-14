@@ -1777,6 +1777,24 @@ nothing to aim at.
     bug). **Password-reset and change-email templates were left exactly as Firebase's
     defaults** - only the signup-blocking verification email was in scope; the same
     branding treatment could extend to those later using the same pattern.
+
+    **BUG FOUND + FIXED Sep 14 2026 (`a312f21b`, published):** the SIGNUP path called the
+    backend endpoint (works), but the LOGIN screen's "Resend Email" (shown when an
+    unverified user tries to log in) called Firebase's own `sendEmailVerification` directly
+    - which does NOT deliver on this project (the very CUSTOM_SMTP inertness this item
+    documents) - so it showed "Sent!" and no email arrived, blocking anyone who signed up,
+    didn't get the mail, and tried again from the login screen. Fixed: the resend now
+    captures the ID token BEFORE `auth.signOut()` and calls `/api/send-verification-email`
+    (same working Gmail-SMTP path as signup), with a re-sign-in + Firebase fallback.
+    Verified the backend path end to end Sep 14: `transporter.verify()` OK, a real send
+    accepted 250 OK, and the live endpoint returned `{success:true}` for a fresh user.
+    **OPEN (deliverability):** Gmail *accepts* the send, but a "verify your email" link from
+    a personal Gmail (`ahumuzamark21213@gmail.com`) can land in **spam** - the app now tells
+    users to check spam, but the real fix if it's a persistent problem is a transactional
+    email service (SendGrid/Mailgun/Resend) on a verified `fitlifesolutions.site` domain.
+    Also note: **Google Sign-In users are intentionally NOT asked to verify** - Google has
+    already verified the email (`emailVerified:true`), so `handleGoogleSignIn` correctly
+    skips the check that the email/password path applies. Working as intended.
 19. **Every popup in the app is now Tonefy-branded** (Aug 11 2026, commit `d8570d98`,
     published as update group `17363fc2-4e7a-4497-8e27-8732c80cf56a`, runtime 1.1.0).
     Direct request following the verification-email work above. Native `Alert.alert`
