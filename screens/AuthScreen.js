@@ -219,9 +219,38 @@ export default function AuthScreen({ navigation }) {
       if (isLogin) {
         const userCred = await signInWithEmailAndPassword(auth, email, password);
         if (!userCred.user.emailVerified) {
+          // Grab a token BEFORE signing out so Resend can call OUR backend endpoint (which
+          // needs a valid ID token). Firebase's own sendEmailVerification does not deliver
+          // on this project (CUSTOM_SMTP makes its template inert - see the backend's
+          // /api/send-verification-email), which is why the old direct call here showed
+          // "Sent!" but no email ever arrived. Same branded-backend path as signup.
+          let idToken = null;
+          try { idToken = await userCred.user.getIdToken(); } catch (e) { /* fall through */ }
           await auth.signOut();
           showAlert('Email Not Verified', 'Please verify your email before logging in.', [
-            { text: 'Resend Email', onPress: async () => { await sendEmailVerification(userCred.user); showAlert('Sent!', 'Verification email resent.'); }},
+            {
+              text: 'Resend Email',
+              onPress: async () => {
+                try {
+                  const res = await fetch(BACKEND + '/api/send-verification-email', {
+                    method: 'POST', headers: { Authorization: 'Bearer ' + idToken },
+                  });
+                  if (!res.ok) throw new Error('backend ' + res.status);
+                  showAlert('Sent!', 'Verification email sent. Check your inbox — and your spam folder.');
+                } catch (e) {
+                  // Backend unreachable / token stale: re-sign-in for a fresh session and
+                  // use Firebase's own send as a last resort, then sign back out.
+                  try {
+                    const uc = await signInWithEmailAndPassword(auth, email, password);
+                    await sendEmailVerification(uc.user);
+                    await auth.signOut();
+                    showAlert('Sent!', 'Verification email sent. Check your inbox — and your spam folder.');
+                  } catch (e2) {
+                    showAlert('Error', 'Could not resend the email. Please try again in a moment.');
+                  }
+                }
+              },
+            },
             { text: 'OK' },
           ]);
           setLoading(false);
@@ -289,7 +318,7 @@ export default function AuthScreen({ navigation }) {
           await sendEmailVerification(userCred.user);
         }
         await auth.signOut();
-        showAlert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in.');
+        showAlert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in — check your spam folder if you don\'t see it.');
         setIsLogin(true);
         setFullName('');
         setPassword('');
