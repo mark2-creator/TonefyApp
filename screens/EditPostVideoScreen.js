@@ -256,6 +256,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
   async function postToBrowserPlatform(id) {
     const cfg = BROWSER_PLATFORMS[id];
     if (!videoPath) return showAlert(cfg.label, 'There is no video to post yet.');
+    // Social posting is a Pro/Creator benefit (also enforced server-side). Shown proactively
+    // so a free user gets the message without a failed round-trip.
+    if (!isPremium) return showAlert(cfg.label, 'Posting to social media is available on the Pro and Creator plans.');
     if (!cfg.status?.connected) return navigation.navigate('ConnectAccounts');
     cfg.setPosting(true);
     try {
@@ -286,6 +289,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // posting straight away - TikTok's Direct Post audit requires the user to choose there.
   function postToTikTok() {
     if (!videoPath) return showAlert('TikTok', 'There is no video to post yet.');
+    if (!isPremium) return showAlert('TikTok', 'Posting to social media is available on the Pro and Creator plans.');
     if (!tiktokConnected) return navigation.navigate('ConnectAccounts');
     setTtSheet(true);
   }
@@ -353,6 +357,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // record itself, so this no longer does.
   async function postNow() {
     if (!videoPath) { showAlert('Error', 'No video to post'); return; }
+    if (!isPremium) { showAlert('Post Now', 'Posting to social media is available on the Pro and Creator plans.'); return; }
     const platforms = tiktokConnected ? ['tiktok'] : [];
     if (platforms.length === 0) { showAlert('Error', 'Connect TikTok first, or use the Post buttons above.'); return; }
     setPosting(true);
@@ -400,6 +405,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   }), []);
 
   async function saveToQueue() {
+    if (!isPremium) { showAlert('Schedule', 'Scheduling posts is available on the Pro and Creator plans.'); return; }
     setSaving(true);
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
@@ -521,7 +527,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {fbPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
-                <Text style={styles.ttBtnText}>{facebook?.connected ? 'Post' : 'Connect'}</Text>
+                !isPremium ? (
+                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
+                ) : (
+                  <Text style={styles.ttBtnText}>{facebook?.connected ? 'Post' : 'Connect'}</Text>
+                )
               )}
             </TouchableOpacity>
           </View>
@@ -534,7 +544,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {igPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
-                <Text style={styles.ttBtnText}>{instagram?.connected ? 'Post' : 'Connect'}</Text>
+                !isPremium ? (
+                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
+                ) : (
+                  <Text style={styles.ttBtnText}>{instagram?.connected ? 'Post' : 'Connect'}</Text>
+                )
               )}
             </TouchableOpacity>
           </View>
@@ -547,7 +561,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {pinPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
-                <Text style={styles.ttBtnText}>{pinterest?.connected ? 'Post' : 'Connect'}</Text>
+                !isPremium ? (
+                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
+                ) : (
+                  <Text style={styles.ttBtnText}>{pinterest?.connected ? 'Post' : 'Connect'}</Text>
+                )
               )}
             </TouchableOpacity>
           </View>
@@ -560,7 +578,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {liPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
-                <Text style={styles.ttBtnText}>{linkedin?.connected ? 'Post' : 'Connect'}</Text>
+                !isPremium ? (
+                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
+                ) : (
+                  <Text style={styles.ttBtnText}>{linkedin?.connected ? 'Post' : 'Connect'}</Text>
+                )
               )}
             </TouchableOpacity>
           </View>
@@ -576,7 +598,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {ttPosting ? (
                 <ActivityIndicator color="#000" size="small" />
               ) : (
-                <Text style={styles.ttBtnText}>{tiktokConnected ? 'Post' : 'Connect & post'}</Text>
+                !isPremium ? (
+                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
+                ) : (
+                  <Text style={styles.ttBtnText}>{tiktokConnected ? 'Post' : 'Connect & post'}</Text>
+                )
               )}
             </TouchableOpacity>
           </View>
