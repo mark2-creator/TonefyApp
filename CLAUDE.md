@@ -1788,10 +1788,12 @@ nothing to aim at.
     (same working Gmail-SMTP path as signup), with a re-sign-in + Firebase fallback.
     Verified the backend path end to end Sep 14: `transporter.verify()` OK, a real send
     accepted 250 OK, and the live endpoint returned `{success:true}` for a fresh user.
-    **OPEN (deliverability):** Gmail *accepts* the send, but a "verify your email" link from
-    a personal Gmail (`ahumuzamark21213@gmail.com`) can land in **spam** - the app now tells
-    users to check spam, but the real fix if it's a persistent problem is a transactional
-    email service (SendGrid/Mailgun/Resend) on a verified `fitlifesolutions.site` domain.
+    **Deliverability CONFIRMED GOOD Sep 14 2026:** the branded email lands in Gmail's
+    **Primary inbox** (not spam/Promotions) - verified by the owner on a real send. Caveat:
+    that test was Gmail->Gmail (a `+alias` of the sending account), the most-trusted case;
+    external-domain deliverability is likely fine (DKIM-signed by Google) but unproven. IF a
+    real external user ever reports mail in spam, the fix is a transactional email service
+    (SendGrid/Mailgun/Resend) on a verified `fitlifesolutions.site` domain. Not needed now.
     Also note: **Google Sign-In users are intentionally NOT asked to verify** - Google has
     already verified the email (`emailVerified:true`), so `handleGoogleSignIn` correctly
     skips the check that the email/password path applies. Working as intended.
