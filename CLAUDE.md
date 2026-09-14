@@ -586,12 +586,19 @@ example. Not yet migrated.
 
 ## Product direction (stated by the owner, not derivable from the code)
 
-- **Social posting is one of the reasons Tonefy exists**, not a side feature. TikTok is
-  the only platform wired today; Facebook, Instagram and X are "Coming soon" rows in
-  `EditPostVideoScreen`/`ProfileScreen`/`ConnectAccountsScreen`. **As each becomes fully
-  functional it is to be sold as a Pro/Creator benefit**, so treat posting integrations
-  as monetisable scope rather than as chrome. Nothing in `tiers.js` reflects this yet -
-  the caps there are credits, duration, resolution, watermark, caption styles and voices.
+- **Social posting is one of the reasons Tonefy exists**, not a side feature. **DONE as of
+  Sep 14 2026:** six platforms are wired - TikTok, YouTube, Facebook, Instagram, Pinterest,
+  LinkedIn (X deferred, paid API) - with connect cards, Post rows and Profile status, all
+  using official `BrandLogos`. **And posting is now a paid benefit, enforced (owner decision
+  Sep 14 2026):** `/api/post-now` AND the scheduled sweep refuse a `free` plan (403 /
+  fail-the-post) via `getUserPlanData`, and the app shows a diamond + "Pro" and an upgrade
+  prompt on every Post button + "Post Now" + "Save to queue" (`isPremium` from `usePlan`).
+  Free accounts can create/edit videos and CONNECT accounts, but not post/schedule. Fail
+  OPEN on a plan-lookup error (treat as paid), matching the render endpoints. The legal docs
+  were updated the same day (`tonefy-website`): privacy 2.3 covers all six platforms + token
+  storage/deletion, terms 4.7 covers Meta/Pinterest/LinkedIn, terms 7.1 states posting is a
+  Pro/Creator feature. So this bullet's old "nothing in tiers.js reflects this yet" is
+  RESOLVED - posting is gated, though it's gated in the post routes, not as a `tiers.js` cap.
 - **The editor's toolbar is a roadmap and stays that way.** 75 tools are defined,
   ~20 built; the rest fall through to "Coming soon" via `toolTapAction`. **Do not remove
   the unbuilt ones** - the stated intent is to reach CapCut-level breadth and build them
