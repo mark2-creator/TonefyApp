@@ -9,12 +9,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
+import { usePlan } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
 export default function ConnectAccountsScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { tier } = usePlan();
+  // Accounts allowed per platform (mirrors backend ACCOUNT_CAPS): Creator many, others one.
+  const accountCap = tier === 'creator' ? 5 : 1;
   const insets = useSafeAreaInsets();
   const [tiktok, setTiktok] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -224,15 +228,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     } finally { setLiBusy(false); }
   }
 
-  async function disconnectLinkedIn() {
-    showAlert('Disconnect LinkedIn', 'Tonefy will no longer be able to post to your LinkedIn.', [
+  async function disconnectLinkedIn(accountId, label) {
+    showAlert('Disconnect LinkedIn', `Tonefy will no longer be able to post to ${label || 'this LinkedIn account'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await api('/api/linkedin/disconnect', { method: 'POST' });
-            setLinkedin({ ...(linkedin || {}), connected: false, name: null });
+            await api('/api/linkedin/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
+            await loadLinkedIn();
           } catch (e) { showAlert('LinkedIn', 'Could not disconnect.'); }
         },
       },
@@ -541,7 +549,7 @@ export default function ConnectAccountsScreen({ navigation }) {
           </View>
         )}
 
-        {/* LinkedIn */}
+        {/* LinkedIn (multi-account: Pro 1, Creator up to 5) */}
         {linkedin?.configured !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.cardLogoBadge, { backgroundColor: 'transparent' }]}>
@@ -550,22 +558,34 @@ export default function ConnectAccountsScreen({ navigation }) {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#0A66C2' }}>LinkedIn</Text></Text>
             {liLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
-            ) : linkedin?.connected ? (
+            ) : (linkedin?.accounts?.length > 0) ? (
               <>
-                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                    <LinkedInLogo size={28} />
+                {linkedin.accounts.map((a) => (
+                  <View key={a.accountId} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                    <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                      <LinkedInLogo size={28} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.connectedName, { color: theme.text }]}>{a.name || 'Your profile'}</Text>
+                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>LinkedIn · Connected</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => disconnectLinkedIn(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons name="close" size={20} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
-                  <View>
-                    <Text style={[styles.connectedName, { color: theme.text }]}>{linkedin.name || 'Your profile'}</Text>
-                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>LinkedIn · Connected</Text>
+                ))}
+                {linkedin.accounts.length < accountCap ? (
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#0A66C2' }]} onPress={connectLinkedIn} disabled={liBusy}>
+                    {liBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.permRow, { justifyContent: 'center' }]}>
+                    <MaterialIcons name="diamond" size={14} color="#f5c451" />
+                    <Text style={[styles.permText, { color: theme.subtext }]}>
+                      {tier === 'creator' ? 'You’ve reached the 5-account limit.' : 'Multiple accounts is a Creator feature.'}
+                    </Text>
                   </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
-                  onPress={disconnectLinkedIn}>
-                  <Text style={styles.btnDisconnectText}>Disconnect LinkedIn</Text>
-                </TouchableOpacity>
+                )}
               </>
             ) : (
               <>

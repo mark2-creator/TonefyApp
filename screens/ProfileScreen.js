@@ -51,7 +51,7 @@ export default function ProfileScreen({ navigation }) {
   const [facebook, setFacebook] = useState({ connected: false, pageName: null });
   const [instagram, setInstagram] = useState({ connected: false, username: null });
   const [pinterest, setPinterest] = useState({ connected: false, username: null });
-  const [linkedin, setLinkedin] = useState({ connected: false, name: null });
+  const [linkedin, setLinkedin] = useState({ connected: false, name: null, count: 0 });
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
@@ -88,14 +88,16 @@ export default function ProfileScreen({ navigation }) {
       setFacebook({ connected: !!acc.facebook, pageName: acc.facebook?.pageName || null });
       setInstagram({ connected: !!acc.instagram, username: acc.instagram?.username || null });
       setPinterest({ connected: !!acc.pinterest, username: acc.pinterest?.username || null });
-      setLinkedin({ connected: !!acc.linkedin, name: acc.linkedin?.name || null });
+      // linkedin is now an ARRAY of accounts (multi-account); tolerant of the old object.
+      const liArr = Array.isArray(acc.linkedin) ? acc.linkedin : (acc.linkedin ? [acc.linkedin] : []);
+      setLinkedin({ connected: liArr.length > 0, name: liArr[0]?.label || liArr[0]?.name || null, count: liArr.length });
     } catch (e) {
       setTiktok({ connected: false, label: 'Not connected' });
       setYoutube({ connected: false, channelTitle: null });
       setFacebook({ connected: false, pageName: null });
       setInstagram({ connected: false, username: null });
       setPinterest({ connected: false, username: null });
-      setLinkedin({ connected: false, name: null });
+      setLinkedin({ connected: false, name: null, count: 0 });
     }
   }, [user]);
 
@@ -568,7 +570,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#0A66C2' }]}>LinkedIn</Text>
               <Text style={[styles.connStatus, { color: linkedin.connected ? '#2ECC71' : theme.subtext }]}>
-                {linkedin.connected ? (linkedin.name || 'Connected') : 'Post to your profile'}
+                {linkedin.connected ? (linkedin.count > 1 ? `${linkedin.count} accounts` : (linkedin.name || 'Connected')) : 'Post to your profile'}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
