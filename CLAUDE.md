@@ -599,6 +599,27 @@ example. Not yet migrated.
   storage/deletion, terms 4.7 covers Meta/Pinterest/LinkedIn, terms 7.1 states posting is a
   Pro/Creator feature. So this bullet's old "nothing in tiers.js reflects this yet" is
   RESOLVED - posting is gated, though it's gated in the post routes, not as a `tiers.js` cap.
+- **MULTIPLE ACCOUNTS PER PLATFORM (Pro/Creator differentiator, in progress Sep 15 2026).**
+  Owner-approved plan: **connect cap `ACCOUNT_CAPS = {free:1, pro:1, creator:5}`** per
+  platform (connecting a 1st account is allowed on any plan so free can link + upgrade to
+  post; a 2nd per platform is the Creator perk). **Architecture** (backend, low-blast-radius):
+  `connectedAccounts/{uid}.{platform}` moves from a single object to an ARRAY of
+  `{accountId,label,connectedAt}`, read via the tolerant `accountsArray()` (handles old
+  object OR new array); tokens for the uid-keyed platforms move into a MAP inside the same
+  doc, `{platform}Tokens/{uid}.accounts[accountId]` (no doc-key migration; TikTok already
+  per-openId). A publisher opts in with `multiAccount:true` + `listAccounts()`; `/api/post-now`
+  and the sweep publish to each chosen (or all) account for those, while non-multi platforms
+  keep the exact single `accountFrom()` path - so platforms convert one at a time without
+  risking the others. Helpers: `appendPlatformAccount` (dedupe), `canAddPlatformAccount`
+  (cap gate). **LinkedIn is DONE end to end** (backend + app UI: ConnectAccounts lists
+  accounts with per-account disconnect + "Add another"/Creator-gate, Profile shows "N
+  accounts", Edit&Post posts to all by default) and verified (real post via the new path +
+  cap arithmetic; owner's existing account migrated). **Still to convert, same pattern:**
+  Instagram, Facebook, Pinterest, YouTube (each keyed by igUserId/pageId/username/channelId),
+  then **TikTok LAST** - its `connectedAccounts.tiktok` is written CLIENT-side by
+  `tiktok-success.html` and its OAuth is under TikTok review, so don't touch the auth flow;
+  just make that client write append to the array. An account PICKER on Edit&Post (choose
+  which of several to post to) is a deferred nice-to-have; today it posts to all connected.
 - **The editor's toolbar is a roadmap and stays that way.** 75 tools are defined,
   ~20 built; the rest fall through to "Coming soon" via `toolTapAction`. **Do not remove
   the unbuilt ones** - the stated intent is to reach CapCut-level breadth and build them
