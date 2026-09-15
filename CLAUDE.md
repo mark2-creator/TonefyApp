@@ -611,15 +611,36 @@ example. Not yet migrated.
   and the sweep publish to each chosen (or all) account for those, while non-multi platforms
   keep the exact single `accountFrom()` path - so platforms convert one at a time without
   risking the others. Helpers: `appendPlatformAccount` (dedupe), `canAddPlatformAccount`
-  (cap gate). **LinkedIn is DONE end to end** (backend + app UI: ConnectAccounts lists
-  accounts with per-account disconnect + "Add another"/Creator-gate, Profile shows "N
-  accounts", Edit&Post posts to all by default) and verified (real post via the new path +
-  cap arithmetic; owner's existing account migrated). **Still to convert, same pattern:**
-  Instagram, Facebook, Pinterest, YouTube (each keyed by igUserId/pageId/username/channelId),
-  then **TikTok LAST** - its `connectedAccounts.tiktok` is written CLIENT-side by
-  `tiktok-success.html` and its OAuth is under TikTok review, so don't touch the auth flow;
-  just make that client write append to the array. An account PICKER on Edit&Post (choose
-  which of several to post to) is a deferred nice-to-have; today it posts to all connected.
+  (cap gate). **LinkedIn, Instagram and Facebook are DONE end to end** (backend + app UI:
+  ConnectAccounts lists accounts with per-account disconnect + "Add another"/Creator-gate,
+  Profile shows "N accounts", Edit&Post names the count and posts to all by default), each
+  verified against the real API with the owner's own account migrated. **Still to convert,
+  same pattern:** Pinterest, YouTube (keyed by username/channelId), then **TikTok LAST** -
+  its `connectedAccounts.tiktok` is written CLIENT-side by `tiktok-success.html` and its
+  OAuth is under TikTok review, so don't touch the auth flow; just make that client write
+  append to the array. An account PICKER on Edit&Post (choose which of several to post to)
+  is a deferred nice-to-have; today it posts to all connected.
+
+  **Facebook is the one platform where ONE grant yields MANY accounts**, and that shaped
+  its slice. An account here is a PAGE, and Meta's own permission dialog is where the user
+  picks which Pages to share - so `metaFetchPage` taking only the first was discarding a
+  deliberate choice. `metaFetchPages` reads them all and the callback adds them one at a
+  time, **re-checking the cap per Page** because each append changes what the next check is
+  measured against; a partial add is a success with a note on `facebook-success.html`
+  (`?accounts=…&notice=account_limit`), not a failure. **Revoking is per Facebook USER, not
+  per Page** - `DELETE /me/permissions` drops the whole grant - so removing one Page of
+  three only revokes once no remaining Page still relies on that same user token. Getting
+  that backwards would silently kill the other two.
+
+  **Each conversion has a stale-truthiness trap on the READING side.** `!!acc.facebook` is
+  true for an emptied array, so ProfileScreen would have kept saying "Connected" after the
+  last Page was removed. Whenever a platform converts, grep every reader of
+  `acc.{platform}` for a bare truthiness test, not just the writers.
+
+  **The discriminating test for "is the multiAccount branch actually live"**: post with an
+  `accounts: { <platform>: ['bogus-id'] }` selection. The multi path filters to empty and
+  refuses; the single path ignores the selection entirely and posts for real. Non-destructive
+  and it cannot pass by accident.
 - **The editor's toolbar is a roadmap and stays that way.** 75 tools are defined,
   ~20 built; the rest fall through to "Coming soon" via `toolTapAction`. **Do not remove
   the unbuilt ones** - the stated intent is to reach CapCut-level breadth and build them
@@ -2943,6 +2964,21 @@ nothing to aim at.
     revoke-failure branch exercised for real (`[account-delete] youtube revoke:
     invalid_token` logged, purge completed regardless). Test account and every fixture
     removed.
+
+    **REOPENED ONCE PER PLATFORM, and closed again Sep 15 2026.** Every social platform that
+    landed after this item - Meta, Instagram, Pinterest, LinkedIn - put its tokens in its own
+    Admin-SDK-only collection and none of them was added to this purge, so a deleted account
+    left four live credentials behind. The privacy policy already promised that access tokens
+    for **every** connected platform are deleted when the account is deleted, so the policy
+    was right and the code was wrong - the same direction this item settled for YouTube.
+    `metaTokens`, `igTokens`, `pinterestTokens` and `linkedinTokens` are now purged too
+    (Facebook's grant revoked at Meta as well, reusing its own disconnect's call; the other
+    three deleted rather than revoked, matching what their disconnect routes do). Verified
+    with a disposable account seeded into all eight collections and a deliberately invalid
+    Meta user token so the revoke would fail: HTTP 200, ten steps, everything gone.
+    **The lesson is the shape, not the fix: a purge list is a place new work has to be
+    added, and nothing fails loudly when it is not.** Adding a platform means adding its
+    token collection here, in the same commit.
 
     **Published Aug 26 2026** to `production` as update group
     `a36dec11-0cfb-46ea-ad9a-cb7fb0fed42a` (commit `d2e4da75`, runtime 1.1.0), alongside
