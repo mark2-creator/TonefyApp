@@ -49,7 +49,7 @@ export default function ProfileScreen({ navigation }) {
   // Facebook/Instagram/Pinterest are written into the SAME connectedAccounts doc by the
   // server on connect, so this screen reads their state for free alongside TikTok/YouTube.
   const [facebook, setFacebook] = useState({ connected: false, pageName: null });
-  const [instagram, setInstagram] = useState({ connected: false, username: null });
+  const [instagram, setInstagram] = useState({ connected: false, username: null, count: 0 });
   const [pinterest, setPinterest] = useState({ connected: false, username: null });
   const [linkedin, setLinkedin] = useState({ connected: false, name: null, count: 0 });
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -86,7 +86,8 @@ export default function ProfileScreen({ navigation }) {
         : { connected: false, label: 'Not connected' });
       setYoutube({ connected: !!acc.youtube, channelTitle: acc.youtube?.channelTitle || null });
       setFacebook({ connected: !!acc.facebook, pageName: acc.facebook?.pageName || null });
-      setInstagram({ connected: !!acc.instagram, username: acc.instagram?.username || null });
+      const igArr = Array.isArray(acc.instagram) ? acc.instagram : (acc.instagram ? [acc.instagram] : []);
+      setInstagram({ connected: igArr.length > 0, username: igArr[0]?.label || igArr[0]?.username || null, count: igArr.length });
       setPinterest({ connected: !!acc.pinterest, username: acc.pinterest?.username || null });
       // linkedin is now an ARRAY of accounts (multi-account); tolerant of the old object.
       const liArr = Array.isArray(acc.linkedin) ? acc.linkedin : (acc.linkedin ? [acc.linkedin] : []);
@@ -95,7 +96,7 @@ export default function ProfileScreen({ navigation }) {
       setTiktok({ connected: false, label: 'Not connected' });
       setYoutube({ connected: false, channelTitle: null });
       setFacebook({ connected: false, pageName: null });
-      setInstagram({ connected: false, username: null });
+      setInstagram({ connected: false, username: null, count: 0 });
       setPinterest({ connected: false, username: null });
       setLinkedin({ connected: false, name: null, count: 0 });
     }
@@ -534,7 +535,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#E4405F' }]}>Instagram</Text>
               <Text style={[styles.connStatus, { color: instagram.connected ? '#2ECC71' : theme.subtext }]}>
-                {instagram.connected ? (instagram.username ? '@' + instagram.username : 'Connected') : 'Post Reels'}
+                {instagram.connected ? (instagram.count > 1 ? `${instagram.count} accounts` : (instagram.username ? '@' + instagram.username : 'Connected')) : 'Post Reels'}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>

@@ -164,15 +164,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     } finally { setIgBusy(false); }
   }
 
-  async function disconnectInstagram() {
-    showAlert('Disconnect Instagram', 'Tonefy will no longer be able to post to your Instagram.', [
+  async function disconnectInstagram(accountId, label) {
+    showAlert('Disconnect Instagram', `Tonefy will no longer be able to post to ${label ? '@' + label : 'this Instagram account'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await api('/api/instagram/disconnect', { method: 'POST' });
-            setInstagram({ ...(instagram || {}), connected: false, username: null });
+            await api('/api/instagram/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
+            await loadInstagram();
           } catch (e) { showAlert('Instagram', 'Could not disconnect.'); }
         },
       },
@@ -463,22 +467,34 @@ export default function ConnectAccountsScreen({ navigation }) {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E4405F' }}>Instagram</Text></Text>
             {igLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
-            ) : instagram?.connected ? (
+            ) : (instagram?.accounts?.length > 0) ? (
               <>
-                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                    <InstagramLogo size={28} />
+                {instagram.accounts.map((a) => (
+                  <View key={a.accountId} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                    <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                      <InstagramLogo size={28} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.connectedName, { color: theme.text }]}>{a.name ? '@' + a.name : 'Your account'}</Text>
+                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Instagram · Connected</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => disconnectInstagram(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons name="close" size={20} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
-                  <View>
-                    <Text style={[styles.connectedName, { color: theme.text }]}>{instagram.username ? '@' + instagram.username : 'Your account'}</Text>
-                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Instagram · Connected</Text>
+                ))}
+                {instagram.accounts.length < accountCap ? (
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E4405F' }]} onPress={connectInstagram} disabled={igBusy}>
+                    {igBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.permRow, { justifyContent: 'center' }]}>
+                    <MaterialIcons name="diamond" size={14} color="#f5c451" />
+                    <Text style={[styles.permText, { color: theme.subtext }]}>
+                      {tier === 'creator' ? 'You’ve reached the 5-account limit.' : 'Multiple accounts is a Creator feature.'}
+                    </Text>
                   </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
-                  onPress={disconnectInstagram}>
-                  <Text style={styles.btnDisconnectText}>Disconnect Instagram</Text>
-                </TouchableOpacity>
+                )}
               </>
             ) : (
               <>
