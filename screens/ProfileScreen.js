@@ -33,7 +33,7 @@ function formatResetDate(iso) {
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { tier, creditsRemaining, creditsResetAt, caps, isPremium } = usePlan();
+  const { tier, creditsRemaining, creditsResetAt, caps } = usePlan();
   const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
@@ -485,10 +485,10 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </TouchableOpacity>
           </View>
-          {/* YouTube. Live, and a Pro/Creator benefit - the diamond is an offer, not a
-              refusal, which is the rule for everything gated behind a plan that is for
-              sale. The diamond goes once connected: an account you have already linked
-              is not an upsell. */}
+          {/* YouTube. Connecting is free for everyone (posting is the Pro/Creator gate,
+              enforced on Edit & Post where the gold diamond lives), so this row is a plain
+              Connect like the others - no diamond and no "Pro and Creator plans" here, which
+              was a leftover from when YouTube was the only gated platform. */}
           <View style={[styles.connRow, { borderBottomColor: theme.border }]}>
             <View style={[styles.connLogo, { backgroundColor: 'transparent' }]}>
               <YouTubeLogo size={30} />
@@ -496,16 +496,11 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: theme.text }]}>YouTube</Text>
               <Text style={[styles.connStatus, { color: youtube.connected ? '#2ECC71' : theme.subtext }]}>
-                {youtube.connected
-                  ? (youtube.channelTitle || 'Your channel')
-                  : (isPremium ? 'Upload to your channel' : 'Pro and Creator plans')}
+                {youtube.connected ? (youtube.channelTitle || 'Your channel') : 'Upload to your channel'}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
-              <View style={youtube.connected
-                ? styles.badgeConnected
-                : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                {!isPremium && !youtube.connected && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
+              <View style={youtube.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={youtube.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
                   {youtube.connected ? 'Connected' : 'Connect'}
                 </Text>
