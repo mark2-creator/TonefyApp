@@ -47,6 +47,31 @@ export default function ConnectAccountsScreen({ navigation }) {
   const [liBusy, setLiBusy] = useState(false);
   const user = auth.currentUser;
 
+  // At-cap note under a platform's account list. Below Creator this is an OFFER, not a
+  // refusal - so it is tappable and opens the plans screen (a diamond is an offer, per
+  // the design rule). At Creator the 5-account cap is a real ceiling with nothing to
+  // buy, so it stays a plain note.
+  const capNote = () => (
+    tier === 'creator' ? (
+      <View style={[styles.permRow, { justifyContent: 'center' }]}>
+        <MaterialIcons name="diamond" size={14} color="#f5c451" />
+        <Text style={[styles.permText, { color: theme.subtext }]}>You’ve reached the 5-account limit.</Text>
+      </View>
+    ) : (
+      <TouchableOpacity
+        style={[styles.permRow, { justifyContent: 'center', alignItems: 'center' }]}
+        onPress={() => navigation.navigate('Subscription')}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <MaterialIcons name="diamond" size={14} color="#f5c451" />
+        <Text style={[styles.permText, { color: theme.subtext }]}>
+          Multiple accounts is a Creator feature.{' '}
+          <Text style={{ color: '#f5c451', fontWeight: '700' }}>Upgrade</Text>
+        </Text>
+      </TouchableOpacity>
+    )
+  );
+
   useEffect(() => {
     loadTikTok();
     loadYouTube();
@@ -488,12 +513,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     {igBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                   </TouchableOpacity>
                 ) : (
-                  <View style={[styles.permRow, { justifyContent: 'center' }]}>
-                    <MaterialIcons name="diamond" size={14} color="#f5c451" />
-                    <Text style={[styles.permText, { color: theme.subtext }]}>
-                      {tier === 'creator' ? 'You’ve reached the 5-account limit.' : 'Multiple accounts is a Creator feature.'}
-                    </Text>
-                  </View>
+                  capNote()
                 )}
               </>
             ) : (
@@ -595,12 +615,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     {liBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                   </TouchableOpacity>
                 ) : (
-                  <View style={[styles.permRow, { justifyContent: 'center' }]}>
-                    <MaterialIcons name="diamond" size={14} color="#f5c451" />
-                    <Text style={[styles.permText, { color: theme.subtext }]}>
-                      {tier === 'creator' ? 'You’ve reached the 5-account limit.' : 'Multiple accounts is a Creator feature.'}
-                    </Text>
-                  </View>
+                  capNote()
                 )}
               </>
             ) : (
