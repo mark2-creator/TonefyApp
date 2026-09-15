@@ -211,6 +211,14 @@ export default function EditPostVideoScreen({ navigation, route }) {
     }
   }
 
+  // Multi-account platforms (Facebook, Instagram, LinkedIn) post to every connected
+  // account, so the row names the count rather than a bare "Connected" - a Post button
+  // that fans out to three accounts should say so before it is tapped.
+  const connectedLabel = (st, noun = 'accounts') => {
+    const n = st?.accounts?.length || 0;
+    return n > 1 ? `${n} ${noun}` : 'Connected';
+  };
+
   async function loadFacebook() {
     try {
       const token = await user.getIdToken();
@@ -522,7 +530,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#1877F2' }]}>Facebook</Text>
-            {facebook?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {facebook?.connected ? <Text style={styles.connectedText}>{connectedLabel(facebook, 'Pages')}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('facebook')} disabled={fbPosting}>
               {fbPosting ? (
                 <ActivityIndicator color="#000" size="small" />
@@ -539,7 +547,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#E4405F' }]}>Instagram</Text>
-            {instagram?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {instagram?.connected ? <Text style={styles.connectedText}>{connectedLabel(instagram)}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('instagram')} disabled={igPosting}>
               {igPosting ? (
                 <ActivityIndicator color="#000" size="small" />
@@ -573,7 +581,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><LinkedInLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#0A66C2' }]}>LinkedIn</Text>
-            {linkedin?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {linkedin?.connected ? <Text style={styles.connectedText}>{connectedLabel(linkedin)}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('linkedin')} disabled={liPosting}>
               {liPosting ? (
                 <ActivityIndicator color="#000" size="small" />

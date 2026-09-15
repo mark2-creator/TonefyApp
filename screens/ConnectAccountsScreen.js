@@ -157,15 +157,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     } finally { setFbBusy(false); }
   }
 
-  async function disconnectFacebook() {
-    showAlert('Disconnect Facebook', 'Tonefy will no longer be able to post to your Page.', [
+  async function disconnectFacebook(accountId, label) {
+    showAlert('Disconnect Facebook', `Tonefy will no longer be able to post to ${label || 'this Page'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await api('/api/facebook/disconnect', { method: 'POST' });
-            setFacebook({ ...(facebook || {}), connected: false, pageName: null });
+            await api('/api/facebook/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
+            await loadFacebook();
           } catch (e) { showAlert('Facebook', 'Could not disconnect.'); }
         },
       },
@@ -443,22 +447,29 @@ export default function ConnectAccountsScreen({ navigation }) {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#1877F2' }}>Facebook</Text></Text>
             {fbLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
-            ) : facebook?.connected ? (
+            ) : (facebook?.accounts?.length > 0) ? (
               <>
-                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                    <FacebookLogo size={26} />
+                {facebook.accounts.map((a) => (
+                  <View key={a.accountId} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                    <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                      <FacebookLogo size={26} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.connectedName, { color: theme.text }]}>{a.name || 'Your Page'}</Text>
+                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Facebook · Connected</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => disconnectFacebook(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons name="close" size={20} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
-                  <View>
-                    <Text style={[styles.connectedName, { color: theme.text }]}>{facebook.pageName || 'Your Page'}</Text>
-                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Facebook · Connected</Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
-                  onPress={disconnectFacebook}>
-                  <Text style={styles.btnDisconnectText}>Disconnect Facebook</Text>
-                </TouchableOpacity>
+                ))}
+                {facebook.accounts.length < accountCap ? (
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#1877F2' }]} onPress={connectFacebook} disabled={fbBusy}>
+                    {fbBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another Page</Text>}
+                  </TouchableOpacity>
+                ) : (
+                  capNote()
+                )}
               </>
             ) : (
               <>
@@ -473,6 +484,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   ))}
                   <Text style={[styles.permText, { color: theme.subtext, marginTop: 8, fontStyle: 'italic' }]}>
                     Facebook only allows posting to a Page you manage, not a personal profile.
+                    Whichever Pages you share on the next screen are the ones connected here.
                   </Text>
                 </View>
                 <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#1877F2' }]} onPress={connectFacebook} disabled={fbBusy}>
