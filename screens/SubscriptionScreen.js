@@ -32,7 +32,14 @@ const PRODUCTS = {
     yearlyBasePlanId: 'pro-yearly',
     monthlyPriceFallback: '$6.99/mo',
     yearlyPriceFallback: '$69.99/yr',
-    features: ['60 credits / month', '1080p exports', 'No watermark', 'All caption styles & voices'],
+    features: [
+      '60 credits / month',
+      'Videos up to 15 minutes',
+      '1080p exports',
+      'No watermark',
+      'Post to all 6 social platforms',
+      'All caption styles & voices',
+    ],
   },
   [TIER_CREATOR]: {
     productId: 'tonefy_creator_monthly',
@@ -41,8 +48,30 @@ const PRODUCTS = {
     yearlyBasePlanId: 'creator-yearly',
     monthlyPriceFallback: '$14.99/mo',
     yearlyPriceFallback: '$149.99/yr',
-    features: ['300 credits / month', '1080p exports', 'No watermark', 'Priority rendering', 'All caption styles & voices'],
+    features: [
+      '300 credits / month',
+      'Videos up to 40 minutes',
+      '1080p exports',
+      'No watermark',
+      'Priority rendering',
+      'Post to all platforms — multiple accounts each',
+      'All caption styles & voices',
+    ],
   },
+};
+
+// The Free tier, shown for comparison only (not purchasable, so it has no Play product).
+// Numbers mirror TIERS.free in ~/Tonefy-react/backend/tiers.js - keep in sync.
+const FREE_PLAN = {
+  label: 'Free',
+  features: [
+    '10 credits / month',
+    'Videos up to 2 minutes',
+    '720p exports',
+    'Watermark on exports',
+    '12 caption styles · 5 voices',
+    'No social posting',
+  ],
 };
 
 export default function SubscriptionScreen({ navigation }) {
@@ -285,6 +314,26 @@ export default function SubscriptionScreen({ navigation }) {
           >
             <Text style={[styles.cycleText, billingCycle === 'yearly' && styles.cycleTextActive]}>Yearly · Save ~17%</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Free plan - comparison only (not purchasable). Neutral dash markers, not green
+            checks, since these are the baseline limits rather than premium perks. */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{FREE_PLAN.label}</Text>
+            <Text style={[styles.cardPrice, { color: theme.subtext }]}>Free</Text>
+          </View>
+          {FREE_PLAN.features.map((f) => (
+            <View key={f} style={styles.featureRow}>
+              <MaterialIcons name="remove" size={16} color={theme.subtext} />
+              <Text style={[styles.featureText, { color: theme.subtext }]}>{f}</Text>
+            </View>
+          ))}
+          <View style={[styles.subscribeBtn, { backgroundColor: theme.border }]}>
+            <Text style={[styles.subscribeBtnText, { color: theme.subtext }]}>
+              {currentTier !== TIER_PRO && currentTier !== TIER_CREATOR ? 'Current Plan' : 'Free plan'}
+            </Text>
+          </View>
         </View>
 
         {[TIER_PRO, TIER_CREATOR].map((tierKey) => {
