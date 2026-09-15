@@ -1788,12 +1788,24 @@ nothing to aim at.
     (same working Gmail-SMTP path as signup), with a re-sign-in + Firebase fallback.
     Verified the backend path end to end Sep 14: `transporter.verify()` OK, a real send
     accepted 250 OK, and the live endpoint returned `{success:true}` for a fresh user.
-    **Deliverability CONFIRMED GOOD Sep 14 2026:** the branded email lands in Gmail's
-    **Primary inbox** (not spam/Promotions) - verified by the owner on a real send. Caveat:
-    that test was Gmail->Gmail (a `+alias` of the sending account), the most-trusted case;
-    external-domain deliverability is likely fine (DKIM-signed by Google) but unproven. IF a
-    real external user ever reports mail in spam, the fix is a transactional email service
-    (SendGrid/Mailgun/Resend) on a verified `fitlifesolutions.site` domain. Not needed now.
+    **REAL deliverability problem found + fixed by switching to Brevo (Sep 14-15 2026).**
+    Gmail personal-account SMTP *accepts* the send (250 OK) but **does NOT deliver to an
+    EXTERNAL inbox** - the earlier "works" test was Gmail->itself (a `+alias`, always lands);
+    a genuine send to a different Gmail never arrived anywhere (inbox/spam/promotions), which
+    is what actually blocked new signups. Fixed by routing the mailer through **Brevo**
+    (the owner already had an account, 300 emails/day free): `emailTransporter` now uses
+    `smtp-relay.brevo.com:587` with `BREVO_SMTP_LOGIN` + `BREVO_SMTP_KEY` when set (else falls
+    back to Gmail), logging `[email] transport: Brevo` at boot. The `from` is `EMAIL_FROM`
+    (`ahumuzamark254@gmail.com` - the address the owner VERIFIED as a Brevo sender; Brevo
+    refuses an unverified from). **Verified Sep 15: a real cross-account send AND the real
+    /api/send-verification-email endpoint both land in Gmail PRIMARY inbox.** Signups
+    unblocked. Two follow-ups: (a) **regenerate the Brevo SMTP key** - it was pasted into the
+    chat during setup (low risk, but rotate it: Brevo -> SMTP & API -> regenerate, then
+    update `.env`); (b) OPTIONAL long-term: authenticate the `fitlifesolutions.site` domain
+    in Brevo (Cloudflare DNS: DKIM/SPF/DMARC) and send from `noreply@fitlifesolutions.site` -
+    Brevo warns the gmail freemail from-address isn't compliant with Google/Yahoo bulk-sender
+    rules; it lands in Primary today on Brevo's reputation, but domain auth is the gold
+    standard if volume grows.
     Also note: **Google Sign-In users are intentionally NOT asked to verify** - Google has
     already verified the email (`emailVerified:true`), so `handleGoogleSignIn` correctly
     skips the check that the email/password path applies. Working as intended.
