@@ -1806,6 +1806,15 @@ nothing to aim at.
     Brevo warns the gmail freemail from-address isn't compliant with Google/Yahoo bulk-sender
     rules; it lands in Primary today on Brevo's reputation, but domain auth is the gold
     standard if volume grows.
+    **Verification RETURN-TO-APP (Sep 15 2026):** the link used to dead-end on Firebase's
+    bare "email verified" page. `generateEmailVerificationLink` now passes
+    `ActionCodeSettings.url = https://tonefy-ai.fitlifesolutions.site/verified.html` (already
+    an authorized domain), so after Firebase verifies, its page shows a Continue that lands
+    on the branded `verified.html`, which deep-links back into the app via the `tonefyai://`
+    scheme (registered in app.json + AndroidManifest). Not fully seamless - Firebase still
+    shows its interstitial with a Continue tap; a **custom action handler** (our own page
+    calling `applyActionCode`, set as the Console "action URL") would remove that
+    interstitial entirely if wanted - not done.
     Also note: **Google Sign-In users are intentionally NOT asked to verify** - Google has
     already verified the email (`emailVerified:true`), so `handleGoogleSignIn` correctly
     skips the check that the email/password path applies. Working as intended.
