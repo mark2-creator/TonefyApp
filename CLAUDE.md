@@ -370,6 +370,22 @@ sending **`disable_auto_auth=1`, but only when adding** - on a first connect the
 nothing to choose between and going straight through is the better experience. The
 authorisation page matters because **it is the only place TikTok offers "Switch account"**.
 
+**PROVEN Sep 16 2026: two real TikTok accounts connected** (`Fitlifesolutions.site` +
+`Fitlifesolutions.blog`), both uid-bound with `video.publish` and live tokens, both listed
+in the app with their own disconnect. **What finally worked was a full LOG OUT of TikTok in
+the browser, not "Switch account"** - after that the second account went through first try.
+Everything before it failed for one reason: the browser session kept resolving to the
+account already connected, so TikTok authorised that one no matter what the switch UI
+appeared to do.
+
+**The diagnosis lesson here is worth more than the fix.** Four rounds went by with the
+symptom reported as "the app only shows 1 account" and the app was correct every time -
+the server logs settled it in seconds each round: the last `/tiktok/callback` was hours
+old, or it carried the SAME openId. **When a client reports a missing record, check
+whether the write was ever attempted before looking at the read.** Three separate
+non-bugs were ruled out this way (the list rendering, the cap, the plan) without touching
+any of them.
+
 **2. "Switch account" loses the OAuth request, and that is TikTok's to own.** Tapping it
 goes to `tiktok.com/login`, and after signing in the user lands on the **For You feed** -
 not back at the consent screen. The documented authorize parameters are `client_key`,
