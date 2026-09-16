@@ -302,7 +302,9 @@ export default function ConnectAccountsScreen({ navigation }) {
   async function connectTikTok() {
     setConnecting(true);
     try {
-      await Linking.openURL(`${BACKEND}/tiktok/auth`);
+      // from=app so the success page hands the user back to Tonefy rather than to the
+      // WEBSITE's connect-accounts page - both clients start the flow at this same URL.
+      await Linking.openURL(`${BACKEND}/tiktok/auth?from=app`);
     } catch (e) {
       showAlert('Error', 'Could not open TikTok auth page');
     }
