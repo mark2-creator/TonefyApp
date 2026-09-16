@@ -300,6 +300,34 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   async function connectTikTok(adding = false) {
+    // Adding a second account is a TWO-TRIP journey, and only because of how TikTok
+    // behaves: its authorisation page offers "Switch account", but tapping that sends the
+    // user to TikTok's login page, which loses the OAuth request entirely and drops them
+    // on the For You feed once they sign in. Nothing we can send changes that - the
+    // documented parameters are client_key, scope, response_type, redirect_uri, state and
+    // disable_auto_auth, and none of them survives a detour through login.
+    //
+    // So the honest thing is to say what will happen before it happens. Being returned to
+    // TikTok's feed with no explanation reads as the connection having failed, when in
+    // fact the account switch worked and only the second trip is missing.
+    if (adding) {
+      const go = await new Promise((resolve) => {
+        showAlert('Add another TikTok account',
+          'TikTok will show whichever account you are signed in as.\n\n'
+          + 'If it is not the one you want, tap "Switch account" and sign in. TikTok will '
+          + 'then leave you on its own home feed - that is normal. Come back here and tap '
+          + '"Add another account" once more to finish linking it.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Continue', onPress: () => resolve(true) },
+          ],
+          // Not cancelable: the sheet dismisses on a backdrop tap or the back button by
+          // default, and neither runs a button's onPress - so this promise would never
+          // settle and the flow would sit here silently.
+          { cancelable: false });
+      });
+      if (!go) return;
+    }
     setConnecting(true);
     try {
       // from=app so the success page hands the user back to Tonefy rather than to the
