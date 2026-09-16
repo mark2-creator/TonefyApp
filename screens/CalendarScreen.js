@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { useTheme } from '../context/ThemeContext';
 import GradientBorder from '../components/GradientBorder';
@@ -14,6 +15,10 @@ import { showAlert } from '../components/BrandedAlert';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const PLATFORM_LABELS = {
+  facebook: 'Facebook', instagram: 'Instagram', pinterest: 'Pinterest',
+  linkedin: 'LinkedIn', tiktok: 'TikTok', youtube: 'YouTube',
+};
 
 export default function CalendarScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -22,21 +27,42 @@ export default function CalendarScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const user = auth.currentUser;
+  const [error, setError] = useState(null);
 
-  useEffect(() => { loadPosts(); }, []);
-
+  // Read at CALL time, never captured at render. This screen used to hold
+  // `const user = auth.currentUser` from its first render: null while Firebase was still
+  // restoring the session, so `user.uid` threw, the empty catch below swallowed it, and a
+  // mount-only effect never tried again. The result is a permanently empty calendar for
+  // an account with posts in it - which is exactly what it looked like.
   async function loadPosts() {
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setLoading(false); return; }   // not signed in yet; the listener retries
     setLoading(true);
     try {
-      const q = query(collection(db, 'scheduledPosts'), where('userId', '==', user.uid));
+      const q = query(collection(db, 'scheduledPosts'), where('userId', '==', uid));
       const snap = await getDocs(q);
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setPosts(all);
-    } catch (e) {}
+      setError(null);
+    } catch (e) {
+      // Reported, not swallowed. An empty list and a failed read look identical, and the
+      // difference is the whole diagnosis - this screen hid it for as long as it existed.
+      setError(e.message || 'Could not load your posts.');
+    }
     setLoading(false);
   }
+
+  useEffect(() => {
+    // Three triggers, because each covers a case the others do not: sign-in completing
+    // after mount, returning to the tab after posting from Edit & Post, and the first
+    // mount itself.
+    const offAuth = onAuthStateChanged(auth, () => loadPosts());
+    const offFocus = navigation.addListener('focus', () => loadPosts());
+    loadPosts();
+    return () => { offAuth(); offFocus(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
 
   async function deletePost(id) {
     showAlert('Delete Post', 'Are you sure you want to delete this post?', [
@@ -76,10 +102,21 @@ export default function CalendarScreen({ navigation }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
 
+  // When a post belongs on the grid. A post-now record has NO scheduledFor - the server
+  // writes postedAt instead - so keying on scheduledFor alone meant every posted item was
+  // `new Date(undefined)`, an Invalid Date, and no dot ever appeared for one.
+  const postDate = (p) => {
+    for (const v of [p.scheduledFor, p.postedAt, p.createdAt]) {
+      const d = new Date(v);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    return null;
+  };
+
   const postDays = new Set(
     posts.map(p => {
-      const d = new Date(p.scheduledFor);
-      return d.getMonth() === month && d.getFullYear() === year ? d.getDate() : null;
+      const d = postDate(p);
+      return d && d.getMonth() === month && d.getFullYear() === year ? d.getDate() : null;
     }).filter(Boolean)
   );
 
@@ -88,14 +125,15 @@ export default function CalendarScreen({ navigation }) {
 
   const filteredPosts = filter === 'all' ? posts :
     filter === 'scheduled' ? posts.filter(p => p.status === 'queued') :
-    filter === 'posted' ? posts.filter(p => p.status === 'posted') : posts;
+    filter === 'posted' ? posts.filter(p => p.status === 'posted') :
+    filter === 'failed' ? posts.filter(p => p.status === 'failed' || p.status === 'error') : posts;
 
   // Stats
   const scheduled = posts.filter(p => p.status === 'queued').length;
   const posted = posts.filter(p => p.status === 'posted').length;
   const thisMonth = posts.filter(p => {
-    const d = new Date(p.createdAt);
-    return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    const d = postDate(p);
+    return d && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
   }).length;
 
   return (
@@ -160,7 +198,7 @@ export default function CalendarScreen({ navigation }) {
 
         {/* Filter tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterWrap}>
-          {['all', 'scheduled', 'posted'].map(f => (
+          {['all', 'scheduled', 'posted', 'failed'].map(f => (
             <TouchableOpacity
               key={f}
               style={[styles.filterTab, { borderColor: theme.border }, filter === f && styles.filterTabActive]}
@@ -176,6 +214,15 @@ export default function CalendarScreen({ navigation }) {
         {/* Posts list */}
         {loading ? (
           <ActivityIndicator color="#2ecc71" style={{ marginTop: 20 }} />
+        ) : error ? (
+          <View style={styles.empty}>
+            <MaterialIcons name="error-outline" size={48} color="#f87171" style={styles.emptyIcon} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>Could not load your posts</Text>
+            <Text style={[styles.emptySub, { color: theme.subtext }]}>{error}</Text>
+            <TouchableOpacity style={styles.btnCreate} onPress={loadPosts}>
+              <Text style={styles.btnCreateText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
         ) : filteredPosts.length === 0 ? (
           <View style={styles.empty}>
             <MaterialIcons name="inbox" size={48} color={theme.border} style={styles.emptyIcon} />
@@ -188,19 +235,41 @@ export default function CalendarScreen({ navigation }) {
         ) : filteredPosts.map(post => (
           <View key={post.id} style={[styles.postCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.postHeader}>
-              <Text style={styles.postPlatform}>{(post.platforms || []).join(', ') || 'No platform'}</Text>
-              <Text style={[styles.postTime, { color: theme.subtext }]}>{new Date(post.scheduledFor).toLocaleDateString()}</Text>
-            </View>
-            <Text style={[styles.postCaption, { color: theme.text }]} numberOfLines={2}>{post.caption || 'Untitled'}</Text>
-            <View style={[
-              styles.postStatus,
-              { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' },
-              post.status === 'posted' && { backgroundColor: isDark ? '#1a2a0d' : '#eef8e0' },
-            ]}>
-              <Text style={[styles.postStatusText, post.status === 'posted' && styles.postStatusPostedText]}>
-                {post.status === 'posted' ? 'Posted' : 'Scheduled'}
+              <Text style={styles.postPlatform}>{(post.platforms || []).map(id => PLATFORM_LABELS[id] || id).join(', ') || 'No platform'}</Text>
+              <Text style={[styles.postTime, { color: theme.subtext }]}>
+                {postDate(post)?.toLocaleDateString() || ''}
               </Text>
             </View>
+            <Text style={[styles.postCaption, { color: theme.text }]} numberOfLines={2}>{post.caption || 'Untitled'}</Text>
+            {/* Three states, not two. Everything that was not 'posted' used to read
+                "Scheduled", so a post that FAILED sat on the calendar claiming it was
+                still coming - and the server writes the reason onto the post, which
+                nothing showed. */}
+            {(() => {
+              const failed = post.status === 'failed' || post.status === 'error';
+              const posted = post.status === 'posted';
+              return (
+                <>
+                  <View style={[
+                    styles.postStatus,
+                    { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' },
+                    posted && { backgroundColor: isDark ? '#1a2a0d' : '#eef8e0' },
+                    failed && { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#5a2020' : '#f5b5b5' },
+                  ]}>
+                    <Text style={[
+                      styles.postStatusText,
+                      posted && styles.postStatusPostedText,
+                      failed && styles.postStatusFailedText,
+                    ]}>
+                      {posted ? 'Posted' : failed ? 'Failed' : 'Scheduled'}
+                    </Text>
+                  </View>
+                  {failed && post.error ? (
+                    <Text style={[styles.postError, { color: theme.subtext }]} numberOfLines={3}>{post.error}</Text>
+                  ) : null}
+                </>
+              );
+            })()}
             <View style={styles.postActions}>
               <TouchableOpacity style={[styles.btnEdit, { borderColor: theme.border }]} onPress={() => editPost(post)}>
                 <Text style={[styles.btnEditText, { color: theme.text }]}>Edit</Text>
@@ -258,6 +327,8 @@ const styles = StyleSheet.create({
   postStatusPosted: { backgroundColor: '#1a2a0d' },
   postStatusText: { color: '#2ecc71', fontSize: 11, fontWeight: '700' },
   postStatusPostedText: { color: '#86efac' },
+  postStatusFailedText: { color: '#f87171' },
+  postError: { fontSize: 12, marginTop: 8, lineHeight: 17 },
   postActions: { flexDirection: 'row', gap: 8 },
   btnEdit: { flex: 1, padding: 10, borderRadius: 20, alignItems: 'center' },
   btnEditText: { color: '#fff', fontSize: 13, fontWeight: '600' },

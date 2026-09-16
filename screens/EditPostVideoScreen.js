@@ -372,8 +372,8 @@ export default function EditPostVideoScreen({ navigation, route }) {
   async function postNow() {
     if (!videoPath) { showAlert('Error', 'No video to post'); return; }
     if (!isPremium) { showAlert('Post Now', 'Posting to social media is available on the Pro and Creator plans.'); return; }
-    const platforms = tiktokConnected ? ['tiktok'] : [];
-    if (platforms.length === 0) { showAlert('Error', 'Connect TikTok first, or use the Post buttons above.'); return; }
+    const platforms = connectedPlatforms;
+    if (platforms.length === 0) { showAlert('Post Now', 'Connect an account first - use the Connect buttons above.'); return; }
     setPosting(true);
     try {
       const token = await user.getIdToken();
@@ -386,18 +386,46 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const failed = (d.results || []).filter(x => !x.ok);
       if (!d.results) throw new Error(d.error || 'The post failed.');
       if (failed.length === 0) {
-        showAlert('Posted', `Posted to ${platforms.length > 1 ? 'your channels' : platforms[0] === 'youtube' ? 'YouTube' : 'TikTok'}!`,
+        showAlert('Posted', `Posted to ${namePlatforms(platforms)}!`,
           [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
       } else if (failed.length < (d.results || []).length) {
         // Partial success is its own outcome. Reporting it as failure would have someone
         // retry a platform that already posted.
-        showAlert('Partly posted', failed.map(f => `${f.platform}: ${f.error}`).join('\n'));
+        showAlert('Partly posted', failed.map(f => `${PLATFORM_LABELS[f.platform] || f.platform}: ${f.error}`).join('\n'));
       } else {
         throw new Error(failed.map(f => f.error).join('\n'));
       }
     } catch (e) { showAlert('Error', e.message); }
     setPosting(false);
   }
+
+  // Every platform this account can actually publish to right now.
+  //
+  // The two buttons at the bottom used to be hardcoded to ['tiktok'] - which meant
+  // SCHEDULING, the only thing this section offers that the per-platform rows do not,
+  // could never target the five platforms that work. Worse, with TikTok not connected it
+  // wrote platforms: [] and the sweep skips an empty list, so the post sat queued forever
+  // while the Calendar showed it as pending.
+  const connectedPlatforms = useMemo(() => {
+    const on = [];
+    if (facebook?.connected) on.push('facebook');
+    if (instagram?.connected) on.push('instagram');
+    if (pinterest?.connected) on.push('pinterest');
+    if (linkedin?.connected) on.push('linkedin');
+    if (tiktokConnected) on.push('tiktok');
+    if (youtube?.connected) on.push('youtube');
+    return on;
+  }, [facebook, instagram, pinterest, linkedin, tiktokConnected, youtube]);
+
+  const PLATFORM_LABELS = {
+    facebook: 'Facebook', instagram: 'Instagram', pinterest: 'Pinterest',
+    linkedin: 'LinkedIn', tiktok: 'TikTok', youtube: 'YouTube',
+  };
+  const namePlatforms = (ids) => {
+    const names = ids.map(id => PLATFORM_LABELS[id] || id);
+    if (names.length <= 1) return names[0] || '';
+    return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  };
 
   // The instant the post is due, from the three chips. Built fresh on each render rather
   // than stored, so it cannot go stale across midnight while the screen is open.
@@ -420,11 +448,19 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
   async function saveToQueue() {
     if (!isPremium) { showAlert('Schedule', 'Scheduling posts is available on the Pro and Creator plans.'); return; }
+    const platforms = connectedPlatforms;
+    // Refused rather than written empty. The sweep skips a post with no platforms, so an
+    // empty list is a post that stays queued forever while the Calendar calls it pending -
+    // which is exactly what "Saved to your queue, now connect TikTok" used to produce.
+    if (platforms.length === 0) {
+      showAlert('Schedule', 'Connect an account first - a scheduled post needs somewhere to go.');
+      return;
+    }
     setSaving(true);
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '',
-        platforms: tiktokConnected ? ['tiktok'] : [],
+        platforms,
         scheduledFor: scheduledAt.toISOString(),
         scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
         status: 'queued', createdAt: new Date().toISOString()
@@ -432,12 +468,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
       await loadQueue();
       // Says when, because it now actually happens. The queue used to be a list nothing
       // read: this said "Added to queue!" and the post was never sent.
-      showAlert('Queued', !tiktokConnected
-        ? 'Saved to your queue. Connect TikTok to have it post automatically.'
-        : schedMode === 'immediate'
-          ? 'It will post to TikTok within about 5 minutes. You can see it on the Calendar.'
-          : `It will post to TikTok on ${scheduledAt.toLocaleDateString()} at `
-            + `${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
+      showAlert('Queued', schedMode === 'immediate'
+        ? `It will post to ${namePlatforms(platforms)} within about 5 minutes. You can see it on the Calendar.`
+        : `It will post to ${namePlatforms(platforms)} on ${scheduledAt.toLocaleDateString()} at `
+          + `${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
     } catch (e) { showAlert('Error', e.message); }
     setSaving(false);
   }
@@ -726,6 +760,15 @@ export default function EditPostVideoScreen({ navigation, route }) {
           </>
         )}
 
+        {/* Which platforms both buttons below act on. Stated here because these two send
+            to EVERY connected account at once, unlike the per-platform rows above where
+            the target is the row you tapped. */}
+        <Text style={[styles.schedNote, { color: theme.subtext }]}>
+          {connectedPlatforms.length
+            ? `Goes to ${namePlatforms(connectedPlatforms)}.`
+            : 'No accounts connected yet - connect one above.'}
+        </Text>
+
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.btnQueue} onPress={saveToQueue} disabled={saving}>
@@ -789,6 +832,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, padding: 16 },
   schedRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   schedMode: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
+  schedNote: { fontSize: 12, marginTop: 14, marginBottom: 2, textAlign: 'center' },
   schedModeOn: { borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.10)' },
   schedModeText: { fontSize: 13, fontWeight: '600' },
   schedModeTextOn: { color: '#2ecc71' },
