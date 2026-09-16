@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { TikTokLogo, YouTubeLogo, FacebookLogo, InstagramLogo, PinterestLogo, LinkedInLogo } from '../components/BrandLogos';
 import {
@@ -46,6 +46,31 @@ export default function ConnectAccountsScreen({ navigation }) {
   const [liLoading, setLiLoading] = useState(true);
   const [liBusy, setLiBusy] = useState(false);
   const user = auth.currentUser;
+
+  // What an "Add another account" attempt was trying to do, so the app can say whether it
+  // worked. Every one of these flows leaves for a browser and comes back, and until now
+  // the return was SILENT: the list looked identical whether a second account had been
+  // added, the same one had been re-authorised, or the user had cancelled. Three very
+  // different outcomes rendering as one unchanged screen is not something a user can be
+  // expected to work out.
+  const addPending = useRef(null);   // { platform, label, before }
+
+  const noteAddResult = useCallback((platform, label, count) => {
+    const p = addPending.current;
+    if (!p || p.platform !== platform) return;
+    addPending.current = null;
+    if (count > p.before) {
+      showAlert('Account added', `Your ${label} account is connected. You now have ${count}.`);
+    } else {
+      // The commonest cause by far, and the one that looks most like a bug: the browser is
+      // still signed in as the account already linked, so the provider authorises that one
+      // again. Nothing is broken and nothing was lost - but it has to be said out loud.
+      showAlert('No new account added',
+        `${label} authorised the account you already had connected, so nothing changed.\n\n`
+        + `To add a different one, sign in to that other ${label} account in your browser first, `
+        + `then try again.`);
+    }
+  }, []);
 
   // At-cap note under a platform's account list. Below Creator this is an OFFER, not a
   // refusal - so it is tappable and opens the plans screen (a diamond is an offer, per
@@ -139,7 +164,11 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   async function loadFacebook() {
-    try { setFacebook(await api('/api/facebook/status')); }
+    try {
+      const st = await api('/api/facebook/status');
+      setFacebook(st);
+      noteAddResult('facebook', 'Facebook', st?.accounts?.length || 0);
+    }
     catch (e) { setFacebook(null); }
     finally { setFbLoading(false); }
   }
@@ -177,7 +206,11 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   async function loadInstagram() {
-    try { setInstagram(await api('/api/instagram/status')); }
+    try {
+      const st = await api('/api/instagram/status');
+      setInstagram(st);
+      noteAddResult('instagram', 'Instagram', st?.accounts?.length || 0);
+    }
     catch (e) { setInstagram(null); }
     finally { setIgLoading(false); }
   }
@@ -213,7 +246,11 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   async function loadPinterest() {
-    try { setPinterest(await api('/api/pinterest/status')); }
+    try {
+      const st = await api('/api/pinterest/status');
+      setPinterest(st);
+      noteAddResult('pinterest', 'Pinterest', st?.accounts?.length || 0);
+    }
     catch (e) { setPinterest(null); }
     finally { setPinLoading(false); }
   }
@@ -249,7 +286,11 @@ export default function ConnectAccountsScreen({ navigation }) {
   }
 
   async function loadLinkedIn() {
-    try { setLinkedin(await api('/api/linkedin/status')); }
+    try {
+      const st = await api('/api/linkedin/status');
+      setLinkedin(st);
+      noteAddResult('linkedin', 'LinkedIn', st?.accounts?.length || 0);
+    }
     catch (e) { setLinkedin(null); }
     finally { setLiLoading(false); }
   }
@@ -295,6 +336,7 @@ export default function ConnectAccountsScreen({ navigation }) {
         name: a.label || a.displayName || null,
         avatar: a.avatar || null,
       })) : null);
+      noteAddResult('tiktok', 'TikTok', arr.length);
     } catch (e) {}
     setLoading(false);
   }
@@ -311,6 +353,7 @@ export default function ConnectAccountsScreen({ navigation }) {
     // TikTok's feed with no explanation reads as the connection having failed, when in
     // fact the account switch worked and only the second trip is missing.
     if (adding) {
+      addPending.current = { platform: 'tiktok', label: 'TikTok', before: tiktok?.length || 0 };
       const go = await new Promise((resolve) => {
         showAlert('Add another TikTok account',
           'TikTok will show whichever account you are signed in as.\n\n'
@@ -326,7 +369,7 @@ export default function ConnectAccountsScreen({ navigation }) {
           // settle and the flow would sit here silently.
           { cancelable: false });
       });
-      if (!go) return;
+      if (!go) { addPending.current = null; return; }
     }
     setConnecting(true);
     try {
@@ -517,7 +560,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   </View>
                 ))}
                 {facebook.accounts.length < accountCap ? (
-                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#1877F2' }]} onPress={connectFacebook} disabled={fbBusy}>
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#1877F2' }]} onPress={() => { addPending.current = { platform: 'facebook', label: 'Facebook', before: facebook?.accounts?.length || 0 }; connectFacebook(); }} disabled={fbBusy}>
                     {fbBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another Page</Text>}
                   </TouchableOpacity>
                 ) : (
@@ -574,7 +617,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   </View>
                 ))}
                 {instagram.accounts.length < accountCap ? (
-                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E4405F' }]} onPress={connectInstagram} disabled={igBusy}>
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E4405F' }]} onPress={() => { addPending.current = { platform: 'instagram', label: 'Instagram', before: instagram?.accounts?.length || 0 }; connectInstagram(); }} disabled={igBusy}>
                     {igBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                   </TouchableOpacity>
                 ) : (
@@ -630,7 +673,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   </View>
                 ))}
                 {pinterest.accounts.length < accountCap ? (
-                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E60023' }]} onPress={connectPinterest} disabled={pinBusy}>
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E60023' }]} onPress={() => { addPending.current = { platform: 'pinterest', label: 'Pinterest', before: pinterest?.accounts?.length || 0 }; connectPinterest(); }} disabled={pinBusy}>
                     {pinBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                   </TouchableOpacity>
                 ) : (
@@ -683,7 +726,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   </View>
                 ))}
                 {linkedin.accounts.length < accountCap ? (
-                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#0A66C2' }]} onPress={connectLinkedIn} disabled={liBusy}>
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#0A66C2' }]} onPress={() => { addPending.current = { platform: 'linkedin', label: 'LinkedIn', before: linkedin?.accounts?.length || 0 }; connectLinkedIn(); }} disabled={liBusy}>
                     {liBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                   </TouchableOpacity>
                 ) : (
