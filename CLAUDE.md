@@ -356,6 +356,40 @@ unauthenticated and wrong-secret posts refused 403, EXPIRED downgraded creator�
 credits clamped 300→10, the same message replayed changed nothing, an unknown token was a
 no-op, and a voided purchase took a pro account back.
 
+## Connecting a SECOND TikTok account is a two-trip journey, by TikTok's design
+
+Two separate things had to be fixed here, and the second one cannot be fixed - only
+explained. Worth keeping because both look like our bugs and only one was.
+
+**1. TikTok skips its own authorisation page.** "Add another account" sent the user to
+TikTok, which saw a valid session, silently re-authorised the account ALREADY connected,
+and returned - and the success page said "Connected!". Straight from TikTok's Login Kit
+docs for `/v2/auth/authorize/`: *"When set to 0, skips the authorization page for valid
+sessions. When set to 1, always displays the authorization page."* Default is 0. Fixed by
+sending **`disable_auto_auth=1`, but only when adding** - on a first connect there is
+nothing to choose between and going straight through is the better experience. The
+authorisation page matters because **it is the only place TikTok offers "Switch account"**.
+
+**2. "Switch account" loses the OAuth request, and that is TikTok's to own.** Tapping it
+goes to `tiktok.com/login`, and after signing in the user lands on the **For You feed** -
+not back at the consent screen. The documented authorize parameters are `client_key`,
+`scope`, `response_type`, `redirect_uri`, `state` and `disable_auto_auth`; none of them
+survives a detour through login. So the real flow is: switch account → get left on
+TikTok's feed → return to Tonefy → tap "Add another account" AGAIN, which now authorises
+as the newly signed-in account. **The app says this before opening the browser**, because
+being dumped on TikTok's feed reads as failure when in fact the switch worked and only
+the second trip is missing.
+
+**Two traps from implementing it**, both invisible to lint and to `expo export`:
+- **`onPress={fn}` hands the press EVENT to the first parameter.** `connectTikTok(adding
+  = false)` wired as `onPress={connectTikTok}` receives a truthy event object, so a FIRST
+  connect would have taken the add path. Wrap every call site in an arrow function when
+  the handler takes arguments.
+- **`showAlert` dismisses on a backdrop tap and the back button without running any
+  button's `onPress`.** Awaiting a promise that only its buttons resolve therefore hangs
+  forever on a dismissal. Pass `{ cancelable: false }` whenever the sheet's outcome is
+  awaited.
+
 ## Known bug pattern: an authorisation check that reads a client-written record
 
 **Found for real Sep 16 2026 in TikTok, and fixed.** `tiktokOwnedBy(uid, openId)` read
