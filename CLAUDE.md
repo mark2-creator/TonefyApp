@@ -254,6 +254,53 @@ Keep the committed `android/app/google-services.json` in sync afterwards. It cha
 nothing at runtime, but this project's committed `android/` folder means nothing
 regenerates it, so it silently rots from every SHA change otherwise.
 
+## Known bug pattern: an authorisation check that reads a client-written record
+
+**Found for real Sep 16 2026 in TikTok, and fixed.** `tiktokOwnedBy(uid, openId)` read
+`connectedAccounts/{uid}.tiktok.openId` to decide whether that uid was allowed to post to
+that TikTok account. But **`connectedAccounts/{uid}` is written by the CLIENT** -
+`tiktok-success.html` wrote it, and the Firestore rule lets any user write their own doc.
+So the check asked the caller whether the caller was allowed.
+
+**Why it was exploitable rather than merely ugly:** an `openId` is not a secret (this file
+already said so), and `getTikTokToken(openId)` reads an Admin-only token keyed by openId
+alone. Write someone else's openId into your own record and every ownership check passes.
+The same forged value also chose whose token `/tiktok/disconnect` revoked.
+
+**Confirmed reachable before anything was changed** - a real client-authenticated REST
+write put an arbitrary openId into a fresh user's own record and Firestore returned 200.
+Then confirmed closed by running the whole exploit against the fixed server: the forged
+claim still writes (the rule is unchanged, and nothing trusts it now), posting is refused,
+and the victim's token survives the disconnect attempt.
+
+**The rule: a record the client can write is a CLAIM, never a credential.** Ownership has
+to live somewhere the client cannot reach - here `tiktokTokens/{openId}.uid`, written only
+by the server. Note the trap is not "we forgot to check" - there WAS a check, with a
+careful comment about failing closed, reading the wrong source. So the question to ask of
+any authorisation check is not *does it check* but **who wrote the thing it is reading**.
+
+**And check it at the point of use.** Three paths reach TikTok - `/api/post-now`, the
+scheduled sweep, and the older `/tiktok/post-video`. The check now sits inside
+`publishToTikTok`, because a check that has to be repeated per route is one that some
+future route eventually gets written without.
+
+**The binding needed a uid at the end of an OAuth that does not carry one** (TikTok's state
+holds only the PKCE verifier, and the flow is under review, so it must not be touched).
+Solved without touching it: the callback issues a **single-use link code**, and the success
+page trades that code plus its own Firebase ID token for a server-written connection. The
+redirect URI, scopes and consent screen are all unchanged - the query string on **our own**
+success page is ours to add to. Codes live in `tiktokLinkCodes`, are consumed before
+anything else can fail (a code that survives a failed attempt can be replayed), expire in
+10 minutes, and are swept at issue time since nothing else ever looks at that collection.
+
+**Where else to look for this shape:** anything reading `connectedAccounts` to authorise
+rather than to display. The other platforms are safe today for a structural reason worth
+keeping - their tokens are keyed by **uid**, so the uid doing the reading is the uid whose
+token is used and there is nothing to forge. TikTok was exposed precisely because its
+token store is keyed by openId, which is what also made it the easiest to make
+multi-account. **A per-account-id token store needs a server-written owner field from the
+first day it exists.**
+
 ## Known bug pattern: many sibling views is O(n²) on Android
 
 **Symptom:** the app freezes and Android offers "Tonefy AI isn't responding". Sentry
@@ -611,15 +658,66 @@ example. Not yet migrated.
   and the sweep publish to each chosen (or all) account for those, while non-multi platforms
   keep the exact single `accountFrom()` path - so platforms convert one at a time without
   risking the others. Helpers: `appendPlatformAccount` (dedupe), `canAddPlatformAccount`
-  (cap gate). **LinkedIn, Instagram and Facebook are DONE end to end** (backend + app UI:
-  ConnectAccounts lists accounts with per-account disconnect + "Add another"/Creator-gate,
-  Profile shows "N accounts", Edit&Post names the count and posts to all by default), each
-  verified against the real API with the owner's own account migrated. **Still to convert,
-  same pattern:** Pinterest, YouTube (keyed by username/channelId), then **TikTok LAST** -
-  its `connectedAccounts.tiktok` is written CLIENT-side by `tiktok-success.html` and its
-  OAuth is under TikTok review, so don't touch the auth flow; just make that client write
-  append to the array. An account PICKER on Edit&Post (choose which of several to post to)
+  (cap gate). **DONE end to end: LinkedIn, Instagram, Facebook, Pinterest and TikTok**
+  (backend + app UI: ConnectAccounts lists accounts with per-account disconnect +
+  "Add another"/Creator-gate, Profile shows "N accounts", Edit&Post names the count and
+  posts to all by default), each verified against the real API with the owner's own
+  account migrated. An account PICKER on Edit&Post (choose which of several to post to)
   is a deferred nice-to-have; today it posts to all connected.
+
+  **YouTube is the one that CANNOT be converted, and this is settled rather than pending.**
+  It has no account identity we can read: the app requests only `youtube.upload`, and
+  `channels.list(mine:true)` answers **"Request had insufficient authentication scopes"** -
+  checked against the live API with the owner's real refresh token, which also reports its
+  granted scope as exactly `youtube.upload`. That is why `connectedAccounts.youtube` has
+  carried `channelId: null, channelTitle: null` since it was connected. **Do not key
+  YouTube on channelId** - a working connection has none, and the sweep would declare it
+  dead. Converting anyway would key every account on one placeholder, which is what the
+  single-account path already does, so it would buy nothing. The unblock is a scope
+  (`youtube.readonly`), and that means re-running the Google API Services audit currently
+  in progress with a deliberately minimal single scope - an external cost, not a code one.
+  Same shape of reason as TikTok's, and the same conclusion: wait for the review.
+
+  **Facebook is the one platform where ONE grant yields MANY accounts.** An account there
+  is a PAGE, and Meta's own permission dialog is where the user picks which Pages to share
+  - so `metaFetchPage` taking only the first was discarding a deliberate choice.
+  `metaFetchPages` reads them all and the callback adds them one at a time, **re-checking
+  the cap per Page** because each append changes what the next check is measured against;
+  a partial add is a success with a note on `facebook-success.html`
+  (`?accounts=…&notice=account_limit`), not a failure. **Revoking is per Facebook USER, not
+  per Page** - `DELETE /me/permissions` drops the whole grant - so removing one Page of
+  three only revokes once no remaining Page still relies on that same user token.
+
+  **Pinterest had no readable id either, and got solved rather than deferred.**
+  `/v5/user_account` needs `user_accounts:read`, which this app does not request (and
+  adding a scope mid-review for Standard access, forcing everyone to reconnect, is the
+  same bad trade YouTube's would be). But **`/v5/boards` carries `owner.username` under
+  `boards:read`, which we DO hold** - so the username comes from there. Worth knowing
+  generally: *when the obvious identity endpoint is out of scope, look for the identity
+  riding on an endpoint you can already call.* An account with no boards has no owner to
+  report; it is held under a `'default'` key and upgraded in place once a name is
+  readable, rather than counting as a second account the cap would refuse.
+
+  **Two traps that bit during these conversions, both worth checking on the next one:**
+  - **The token REFRESH writes to the document root.** Pinterest's did. Left alone it
+    resurrects a flat token beside the accounts map and nothing refreshes the one being
+    read. It must write into the account's own entry, and the callback should clear the
+    flat fields as it migrates.
+  - **`accountsArray` has to know the platform's id field.** It dug for every id except a
+    username, so a legacy Pinterest record read as ZERO accounts - the owner's existing
+    connection would have shown as disconnected. Caught by running the deployed reader
+    against the real record before shipping. **Run the tolerant reader against live data,
+    not just against a fixture.**
+
+  **Each conversion has a stale-truthiness trap on the READING side.** `!!acc.facebook` is
+  true for an emptied array, so ProfileScreen would have kept saying "Connected" after the
+  last Page was removed. Whenever a platform converts, grep every reader of
+  `acc.{platform}` for a bare truthiness test, not just the writers.
+
+  **The discriminating test for "is the multiAccount branch actually live"**: post with an
+  `accounts: { <platform>: ['bogus-id'] }` selection. The multi path filters to empty and
+  refuses; the single path ignores the selection entirely and posts for real. Non-destructive
+  and it cannot pass by accident.
 
   **Facebook is the one platform where ONE grant yields MANY accounts**, and that shaped
   its slice. An account here is a PAGE, and Meta's own permission dialog is where the user
