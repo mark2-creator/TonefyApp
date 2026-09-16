@@ -309,10 +309,19 @@ export default function EditPostVideoScreen({ navigation, route }) {
     setTtPosting(true);
     try {
       const token = await user.getIdToken();
+      // The sheet read its privacy rules FROM one account, so the post goes to that one -
+      // not to every connected TikTok under a single account's settings, which is what
+      // TikTok's guidelines exist to prevent. accountId is the sheet's, not the user's to
+      // type, so it never reaches TikTok as post_info.
+      const { accountId, ...tiktokOptions } = options;
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'], tiktok: options }),
+        body: JSON.stringify({
+          videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'],
+          tiktok: tiktokOptions,
+          ...(accountId ? { accounts: { tiktok: [accountId] } } : {}),
+        }),
       });
       const d = await r.json();
       const result = d.results?.[0];

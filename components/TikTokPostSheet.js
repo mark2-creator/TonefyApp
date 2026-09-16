@@ -52,6 +52,17 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
   const [yourBrand, setYourBrand] = useState(false);      // brand_organic_toggle
   const [brandedContent, setBrandedContent] = useState(false); // brand_content_toggle
 
+  // Which account this post is for. Settings are per account - the privacy levels on offer
+  // and whether comments are even allowed differ between them - so switching accounts
+  // re-asks TikTok rather than reusing the previous account's answer. Showing one
+  // account's rules while posting to another is exactly what TikTok's guidelines forbid.
+  const [accountId, setAccountId] = useState(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setAccountId(null);          // start from the server's default each time it opens
+  }, [visible]);
+
   useEffect(() => {
     if (!visible) return;
     // reset each open so a previous session's choices never carry over
@@ -61,7 +72,8 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
     (async () => {
       try {
         const token = await auth.currentUser?.getIdToken();
-        const r = await fetch(`${BACKEND}/tiktok/creator-info`, { headers: { Authorization: 'Bearer ' + token } });
+        const q = accountId ? `?accountId=${encodeURIComponent(accountId)}` : '';
+        const r = await fetch(`${BACKEND}/tiktok/creator-info${q}`, { headers: { Authorization: 'Bearer ' + token } });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Could not load your TikTok settings.');
         setInfo(d);
@@ -71,7 +83,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
         setLoading(false);
       }
     })();
-  }, [visible]);
+  }, [visible, accountId]);
 
   // Branded content cannot be private: drop SELF_ONLY from the choices, and clear it if
   // it was the current selection.
@@ -86,6 +98,9 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
   function confirm() {
     if (!canPost) return;
     onConfirm({
+      // The account these settings were read FROM, so the caller posts to that one and
+      // not to every connected account under one account's rules.
+      accountId: info?.accountId || null,
       privacyLevel: privacy,
       disableComment: !allowComment,
       disableDuet: !allowDuet,
@@ -113,6 +128,24 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
             <Text style={styles.error}>{error}</Text>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Which account. Only when there IS a choice - one account needs no picker,
+                  and the creator row below already names it. */}
+              {(info?.accounts?.length || 0) > 1 ? (
+                <>
+                  <Text style={[styles.label, { marginTop: 4 }]}>Post to which account</Text>
+                  {info.accounts.map((a) => (
+                    <TouchableOpacity key={a.accountId} style={styles.optRow}
+                      onPress={() => { if (a.accountId !== info.accountId) setAccountId(a.accountId); }}>
+                      <MaterialIcons
+                        name={info.accountId === a.accountId ? 'radio-button-checked' : 'radio-button-unchecked'}
+                        size={22} color={info.accountId === a.accountId ? '#2ECC71' : '#888'}
+                      />
+                      <Text style={styles.optText}>{a.name || 'TikTok account'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : null}
+
               {/* Creator */}
               <View style={styles.creator}>
                 {info?.avatar ? <Image source={{ uri: info.avatar }} style={styles.avatar} /> : null}
