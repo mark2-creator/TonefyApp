@@ -62,13 +62,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     if (count > p.before) {
       showAlert('Account added', `Your ${label} account is connected. You now have ${count}.`);
     } else {
-      // The commonest cause by far, and the one that looks most like a bug: the browser is
-      // still signed in as the account already linked, so the provider authorises that one
-      // again. Nothing is broken and nothing was lost - but it has to be said out loud.
+      // TWO causes, and naming only one of them sends people down the wrong path. Either
+      // the authorisation was never completed - switching accounts returns you to the
+      // consent screen, and leaving without pressing its confirm button sends nothing at
+      // all - or it was completed as the account already linked. Both end here with an
+      // unchanged list, and the user cannot tell them apart, so say both.
       showAlert('No new account added',
-        `${label} authorised the account you already had connected, so nothing changed.\n\n`
-        + `To add a different one, sign in to that other ${label} account in your browser first, `
-        + `then try again.`);
+        `Nothing changed, which means one of two things:\n\n`
+        + `1. The ${label} screen was not confirmed. After switching accounts it returns you `
+        + `to the permission screen - you have to press its confirm button there for anything `
+        + `to reach us.\n\n`
+        + `2. ${label} confirmed the account you already had connected. Check the name shown `
+        + `on that screen before confirming; if it is the old one, sign out of ${label} in your `
+        + `browser and sign in as the other account.`);
     }
   }, []);
 
