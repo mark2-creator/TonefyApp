@@ -3472,11 +3472,28 @@ nothing to aim at.
     - **APPROVED AND LIVE IN PRODUCTION Sep 16 2026.** TikTok emailed "Your app is
       approved"; the portal shows Production / Live since Sep 16 10:20. `TIKTOK_ENV=production`
       is set and the boot log says `[tiktok] using PRODUCTION credentials`.
-      **`video.publish` WAS granted** - the consent screen offers "Post content to TikTok"
-      and the token came back with `user.info.basic,video.publish,video.upload`, now logged
-      and stored on the token doc at connect rather than inferred from how a post turned
-      out. So Direct Post is live and the draft path is the fallback, exactly as the
-      direct-first code was written for; no code change was needed to switch over.
+      **`video.publish` was granted, but that is NOT the same as Direct Post being live -
+      and reading it that way was wrong.** The token does come back with
+      `user.info.basic,video.publish,video.upload`, and the consent screen does offer "Post
+      content to TikTok". From that it was announced here that Direct Post was live. It is
+      not. Asking TikTok's own endpoint settles it:
+
+      ```
+      POST /v2/post/publish/video/init/  ->  403
+      unaudited_client_can_only_post_to_private_accounts
+      ```
+
+      **The SCOPE is granted; the Direct Post AUDIT is separate and has not passed.** Until
+      it does, TikTok permits direct posting only to accounts that are PRIVATE, so a public
+      account correctly falls back to the inbox draft - which is what the privacy policy and
+      terms already promise. Nothing in the code is wrong, and the direct-first path will
+      start working with no change the moment the audit clears.
+      **The general lesson: a granted scope is permission to CALL an endpoint, not proof the
+      call will be allowed.** Only the endpoint's own answer is proof.
+      **Cheap way to verify the direct path today without the audit:** set one TikTok
+      account to private, post, confirm `mode: 'direct'`, set it back.
+      The fallback now LOGS the refusal reason; discarding it is what made "it went to
+      drafts again" undiagnosable without another device round trip.
       **The order that mattered on the flip:** the old account was disconnected while
       SANDBOX was still active, so its token was revoked at TikTok rather than orphaned -
       a sandbox token cannot be revoked once the production app is the active one. Every
