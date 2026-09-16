@@ -254,6 +254,46 @@ Keep the committed `android/app/google-services.json` in sync afterwards. It cha
 nothing at runtime, but this project's committed `android/` folder means nothing
 regenerates it, so it silently rots from every SHA change otherwise.
 
+## The Content Calendar, and why it looked empty (Sep 16 2026)
+
+Reported as showing 0 Scheduled / 0 Posted / 0 This Month on an account with **33 posts**
+in Firestore. Four independent app-side defects, each of which alone produces exactly that
+screen, plus a fifth that made the feature unreachable. **The backend half was fine
+throughout** - proven by creating a real queued post and watching the sweep publish it to
+LinkedIn for real (`urn:li:ugcPost:…`, status `posted`, deleted afterwards).
+
+**The diagnosis order is the lesson.** Before touching the screen, the same query was run
+three ways: as admin (33 docs), as a client-authenticated REST query (33), and through the
+**actual Firebase JS SDK the app uses** (33 — 17 posted, 16 failed). That eliminated data,
+rules and the query itself in a few minutes and left only the screen. *When a screen shows
+nothing, prove the data is reachable by the same path the app uses before reading a line of
+the component.*
+
+- **`const user = auth.currentUser` captured at first render.** Null while Firebase was
+  still restoring the session, so `user.uid` threw, an empty `catch (e) {}` swallowed it,
+  and a mount-only effect never retried. Read the uid **at call time**, and drive the load
+  from `onAuthStateChanged` + a `focus` listener as well as mount.
+- **Errors were swallowed**, so a failed read and an empty calendar looked identical - and
+  that difference is the entire diagnosis. Same lesson as the filmstrip: an instrument is
+  cheaper than a guess.
+- **Dots and dates keyed on `scheduledFor`, which a post-now record does not have** (the
+  server writes `postedAt`). Every posted item was `new Date(undefined)` - no dot ever
+  appeared, and each card read "Invalid Date".
+- **Anything not `'posted'` displayed as "Scheduled"**, so 16 FAILED posts sat there
+  claiming they were still coming, while the server had written the reason onto each.
+
+**The fifth, and the one that made scheduling pointless:** `saveToQueue` wrote
+`platforms: tiktokConnected ? ['tiktok'] : []`. Scheduling is the only thing that section
+offers which the per-platform rows do not, and it could target **only TikTok** - the one
+platform that cannot post publicly yet. With TikTok not connected it wrote an empty array,
+**and the sweep skips a post with no platforms**, so it stayed queued forever while the
+Calendar called it pending. `postNow` had the same hardcoding. Both now act on every
+connected platform and **refuse rather than write a post with nowhere to go**.
+
+**Do not turn the per-platform rows into toggles.** Their comments say why: a toggle states
+an intention whose action lived at the bottom of the screen, so flipping one appeared to do
+nothing. They are one-tap Post buttons on purpose; the bottom section is for WHEN.
+
 ## Known bug pattern: an authorisation check that reads a client-written record
 
 **Found for real Sep 16 2026 in TikTok, and fixed.** `tiktokOwnedBy(uid, openId)` read
@@ -1470,9 +1510,9 @@ nothing to aim at.
 
     **What's explicitly not built, on purpose:** cloud storage (Firebase Storage stays
     initialized-but-unused; both retention tiers are VPS disk, a deliberate call per
-    "upgrading the promise is easy, downgrading one is not"), subscription-lapse
-    behavior (delete vs. read-only vs. grace period — a product decision with no
-    billing yet to trigger it), and billing itself. **Untested on device or against a
+    "upgrading the promise is easy, downgrading one is not"), ~~subscription-lapse
+    behavior~~ (**BUILT — `subscriptionSweep`, see item 13; the plan reverts to free and
+    credits are clamped, and videos then age out at the free 72h**), and billing itself. **Untested on device or against a
     real paid account** — the retention logic has never actually held a video past
     72h end-to-end; verifying that needs a real `users/{uid}.plan = "pro"` account,
     a generated video older than 72h, and confirming it survives a cleanup cycle
@@ -1629,8 +1669,10 @@ nothing to aim at.
     out of scope per direct instruction (Android-only for now). The web pricing/account
     page from the original ask — superseded by the Play Billing pivot; a website can't
     process a Play Billing purchase, so it would be marketing copy at most, not built.
-    Subscription-lapse behavior (delete vs. read-only vs. grace period) — still a
-    product decision with no billing yet to trigger it, same as noted in item 12.
+    ~~Subscription-lapse behavior~~ — **BUILT and proven Sep 16 2026 against the live
+    Play API; see item 13.** The answer it settled on is neither delete nor read-only:
+    the plan reverts to free, credits are clamped rather than zeroed, and a CANCELLED
+    subscription keeps working until the date already paid for.
 14. **Captions/overlays could render partially or fully outside the exported frame**
     (Aug 11 2026, `~/Tonefy-react/backend@e410f2e9`, deployed via `pm2 restart`) — two
     independent, unclamped mechanisms, both closed:
@@ -2517,11 +2559,37 @@ nothing to aim at.
     Generalise this: **wrapping a promise-returning call in try/catch does not catch its
     rejection**, and a comment asserting it does is worse than no guard at all.
 
-    **Still not built:** subscription-lapse handling and Real-time Developer
-    Notifications. Nothing observes a cancellation or expiry, so a lapsed subscriber
-    stays on Pro indefinitely. The test subscription's 5-minute cycle makes this
-    unusually cheap to observe on a real account - cancel in Play and watch - and that is
-    the one part of this system nobody has ever seen behave.
+    **Subscription-lapse handling IS built and now PROVEN** (this line used to say it was
+    not - it was written before `subscriptionSweep` existed and was read as current twice).
+    `subscriptionSweep` polls Play every six hours for accounts on pro/creator that carry a
+    `subscriptionPurchaseToken`, and downgrades the ones Play says have ended. The
+    classification is careful and worth not "simplifying": **CANCELED is not ended** -
+    cancelling turns auto-renew off and the subscription runs to the date already paid for,
+    so it only counts once `expiryTime` has passed. Credits are **clamped, not zeroed**: a
+    cycle someone paid for may have credits left, and taking those too punishes them for
+    the ending rather than simply ending it.
+
+    **It had never once run** - the only paid account is the owner's, and the sweep skips
+    admins by design (an admin's Creator comes from being an admin, not a purchase), so
+    nothing in the logs had ever come from it. Proven Sep 16 2026 against the LIVE Play API
+    with a disposable paid account carrying the owner's own real, expired purchase token:
+    `creator -> free (SUBSCRIPTION_STATE_EXPIRED), credits 300 -> 10`, with
+    `subscriptionStatus: 'expired'`, `subscriptionEndedAt` and `subscriptionLastState` all
+    written. **A fixture could not have proven this** - the Play lookup and the state
+    classification are the parts that matter. Test account removed.
+
+    **What the app then did with that was nothing**, which was the real gap: it never read
+    `subscriptionStatus`, so a lapse arrived as features locking and credits dropping with
+    no explanation - indistinguishable from the app breaking. `usePlan` now carries
+    `subscriptionStatus`/`subscriptionEndedAt` off the same snapshot listener and exposes
+    `subscriptionExpired`, which requires BOTH the expired status AND the free tier, since
+    someone who was always on free must never be told theirs ran out. Profile shows it as a
+    diamond row that opens the plans screen. `verify-purchase` now clears the flag, or a
+    resubscriber would keep 'expired' beside an active plan.
+
+    **Still not built: Real-time Developer Notifications.** That is a refinement rather
+    than a gap - it would make a lapse instant instead of within six hours - and it needs
+    a Pub/Sub topic and Play Console configuration, i.e. owner actions, not code.
 
 
 31. **Rate limiting audit — every limit had been one shared bucket for all users at
