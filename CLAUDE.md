@@ -294,6 +294,68 @@ connected platform and **refuse rather than write a post with nowhere to go**.
 an intention whose action lived at the bottom of the screen, so flipping one appeared to do
 nothing. They are one-tap Post buttons on purpose; the bottom section is for WHEN.
 
+## Play RTDN (Real-time Developer Notifications) - live Sep 16 2026
+
+Play does not POST to us. It publishes into a **Cloud Pub/Sub topic we own**, and Pub/Sub
+pushes to our URL. The queue is the point: it retries while this box is down, so a deploy
+cannot lose a cancellation.
+
+```
+Google Play → projects/gen-lang-client-0229110424/topics/play-rtdn
+            → subscription play-rtdn-push
+            → POST https://api.fitlifesolutions.site/play-notifications?key=<RTDN_VERIFY_TOKEN>
+```
+
+- **The endpoint is OUTSIDE `/api`**, like the OAuth callbacks, because everything under
+  `/api` is behind `verifyToken` and Pub/Sub has no Firebase token to present. It
+  authenticates with a shared secret in the query string (`RTDN_VERIFY_TOKEN` in `.env`,
+  gitignored), compared with `timingSafeEqual`. **With no secret set the route refuses
+  everything** rather than accepting anonymous posts that move people's plans around.
+- **THE PAYLOAD IS NOT TRUSTED, and this is the design.** Pub/Sub is at-least-once and
+  unordered: the same message arrives twice, and a RENEWED can land after the EXPIRED that
+  followed it. Only the `purchaseToken` is read; the state comes from asking Play through
+  `applyPlayVerdict`, the same function the sweep uses. **RTDN is a TRIGGER for a check
+  that already exists, not a second implementation of it** - which is also what makes a
+  replay harmless, since asking Play twice gives the same answer twice.
+- **It acks BEFORE doing the work.** A Play lookup plus a Firestore write outlasts Pub/Sub's
+  ack deadline, so a slow-but-fine run would be redelivered as though it had failed.
+- **A voided purchase (refund/chargeback) is decided locally**, because Play has no
+  `subscriptionsv2` state for one. That is the single case where waiting six hours is a
+  real loss rather than a courtesy.
+
+**The verdict has to go BOTH ways, and this was a genuine one-way door before.** Reacting
+to `ON_HOLD` is only safe if recovery restores the plan - and nothing could have: the sweep
+reads `plan in [pro, creator]`, so it can never see an account it has already set to free.
+A recovered subscriber would have stayed on free forever. `applyPlayVerdict` restores, and
+the sweep gained a second query (`subscriptionStatus == 'expired'`) so the backstop covers
+recovery too. **Restoring only ever undoes what WE did** - it requires the expired marker,
+so a plan set by hand in the console is never touched by Play's opinion.
+
+**Setup, and the step that silently fails.** The topic needs
+`google-play-developer-notifications@system.gserviceaccount.com` granted **Publisher on the
+topic itself**. Miss it and nothing ever arrives, with no error anywhere. The Firebase
+admin service account has **no project-level permissions** (it could not even read whether
+an API was enabled), so the owner granted it **Pub/Sub Admin** temporarily, the topic /
+binding / push subscription were created by script, and the role was **revoked afterwards**
+- confirmed revoked, and confirmed that Firestore, Auth and token signing still work.
+Nothing in the running system needs it: Play publishes, Pub/Sub pushes, and the endpoint
+only reads. **Domain verification was NOT required** for the push endpoint.
+
+Note the Cloud project's **display name is "Openclaw"** while its id is
+`gen-lang-client-0229110424` (number 527163602306) - the Console says Openclaw, which looks
+like the wrong project and is not.
+
+Play Console → Monetise with Play → Monetisation setup → Real-time developer notifications
+holds the topic name, with **"Subscriptions and voided purchases only"** selected, matching
+exactly what the handler covers.
+
+**Proven end to end**, not reasoned about: a real "Send test notification" from Play Console
+arrived and was understood (`[RTDN] test notification received - the pipe works`,
+09:29:35Z). Before that, against the deployed endpoint with a real expired purchase token:
+unauthenticated and wrong-secret posts refused 403, EXPIRED downgraded creator→free with
+credits clamped 300→10, the same message replayed changed nothing, an unknown token was a
+no-op, and a voided purchase took a pro account back.
+
 ## Known bug pattern: an authorisation check that reads a client-written record
 
 **Found for real Sep 16 2026 in TikTok, and fixed.** `tiktokOwnedBy(uid, openId)` read
@@ -2587,9 +2649,10 @@ nothing to aim at.
     diamond row that opens the plans screen. `verify-purchase` now clears the flag, or a
     resubscriber would keep 'expired' beside an active plan.
 
-    **Still not built: Real-time Developer Notifications.** That is a refinement rather
-    than a gap - it would make a lapse instant instead of within six hours - and it needs
-    a Pub/Sub topic and Play Console configuration, i.e. owner actions, not code.
+    **Real-time Developer Notifications: BUILT AND LIVE (Sep 16 2026).** A lapse is now
+    acted on in seconds rather than within six hours, and the six-hourly sweep stays as the
+    backstop. See "Play RTDN" below for the wiring and the two things that are easy to get
+    wrong.
 
 
 31. **Rate limiting audit — every limit had been one shared bucket for all users at
