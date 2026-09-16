@@ -299,12 +299,15 @@ export default function ConnectAccountsScreen({ navigation }) {
     setLoading(false);
   }
 
-  async function connectTikTok() {
+  async function connectTikTok(adding = false) {
     setConnecting(true);
     try {
       // from=app so the success page hands the user back to Tonefy rather than to the
       // WEBSITE's connect-accounts page - both clients start the flow at this same URL.
-      await Linking.openURL(`${BACKEND}/tiktok/auth?from=app`);
+      // add=1 makes the backend ask TikTok to show its authorisation page, which is the
+      // only place to switch accounts; without it TikTok skips that page for a valid
+      // session and silently re-authorises the account already connected.
+      await Linking.openURL(`${BACKEND}/tiktok/auth?from=app${adding ? '&add=1' : ''}`);
     } catch (e) {
       showAlert('Error', 'Could not open TikTok auth page');
     }
@@ -379,7 +382,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                 </View>
               ))}
               {tiktok.length < accountCap ? (
-                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#000' }]} onPress={connectTikTok} disabled={connecting}>
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#000' }]} onPress={() => connectTikTok(true)} disabled={connecting}>
                   {connecting ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
                 </TouchableOpacity>
               ) : (
@@ -398,7 +401,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                   </View>
                 ))}
               </View>
-              <TouchableOpacity style={styles.btnConnect} onPress={connectTikTok} disabled={connecting}>
+              <TouchableOpacity style={styles.btnConnect} onPress={() => connectTikTok(false)} disabled={connecting}>
                 {connecting ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnConnectText}>Connect TikTok Account</Text>}
               </TouchableOpacity>
             </>
