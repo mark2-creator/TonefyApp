@@ -3419,7 +3419,27 @@ nothing to aim at.
     - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
       (draft) then the draft appearing in the TikTok app. Two test drafts from this session
       sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
-    - **SUBMITTED Sep 9 2026 - TikTok app is now "In review."** The production TikTok app
+    - **APPROVED AND LIVE IN PRODUCTION Sep 16 2026.** TikTok emailed "Your app is
+      approved"; the portal shows Production / Live since Sep 16 10:20. `TIKTOK_ENV=production`
+      is set and the boot log says `[tiktok] using PRODUCTION credentials`.
+      **`video.publish` WAS granted** - the consent screen offers "Post content to TikTok"
+      and the token came back with `user.info.basic,video.publish,video.upload`, now logged
+      and stored on the token doc at connect rather than inferred from how a post turned
+      out. So Direct Post is live and the draft path is the fallback, exactly as the
+      direct-first code was written for; no code change was needed to switch over.
+      **The order that mattered on the flip:** the old account was disconnected while
+      SANDBOX was still active, so its token was revoked at TikTok rather than orphaned -
+      a sandbox token cannot be revoked once the production app is the active one. Every
+      connected account must reconnect after this flip; sandbox-issued tokens are refused.
+      The reconnect also gave the new link-code flow (see the client-written-record bug
+      pattern) its first real TikTok round trip: `uid bound: true` on the token doc.
+      **Cosmetic bug fixed the same day:** connecting from the phone landed on the
+      WEBSITE's connect-accounts page, because both clients start at the same
+      `/tiktok/auth` and the callback gets only `code` and `state` back. "Who asked" now
+      rides on the server-side PKCE entry (`?from=app`), so TikTok still sees a byte-for-byte
+      identical OAuth request with an opaque state - worth preserving for a freshly
+      approved app.
+    - **SUBMITTED Sep 9 2026 - TikTok app was "In review."** The production TikTok app
       (Login Kit + Content Posting API, scopes user.info.basic/video.publish/video.upload,
       Direct Post ON) was completed and submitted. What went in: app icon 1024, name,
       Photo&Video category, description, Terms/Privacy URLs, Web platform (site
