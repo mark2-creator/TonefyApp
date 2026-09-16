@@ -50,7 +50,7 @@ export default function ProfileScreen({ navigation }) {
   // server on connect, so this screen reads their state for free alongside TikTok/YouTube.
   const [facebook, setFacebook] = useState({ connected: false, pageName: null, count: 0 });
   const [instagram, setInstagram] = useState({ connected: false, username: null, count: 0 });
-  const [pinterest, setPinterest] = useState({ connected: false, username: null });
+  const [pinterest, setPinterest] = useState({ connected: false, username: null, count: 0 });
   const [linkedin, setLinkedin] = useState({ connected: false, name: null, count: 0 });
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
@@ -81,8 +81,10 @@ export default function ProfileScreen({ navigation }) {
     try {
       const snap = await getDoc(doc(db, 'connectedAccounts', user.uid));
       const acc = snap.exists() ? snap.data() : {};
-      setTiktok(acc.tiktok
-        ? { connected: true, label: `@${acc.tiktok.displayName || 'Connected'}` }
+      // tiktok is now an ARRAY (multi-account); tolerant of the old object.
+      const ttArr = Array.isArray(acc.tiktok) ? acc.tiktok : (acc.tiktok ? [acc.tiktok] : []);
+      setTiktok(ttArr.length
+        ? { connected: true, label: ttArr.length > 1 ? `${ttArr.length} accounts` : `@${ttArr[0].label || ttArr[0].displayName || 'Connected'}` }
         : { connected: false, label: 'Not connected' });
       setYoutube({ connected: !!acc.youtube, channelTitle: acc.youtube?.channelTitle || null });
       // facebook is now an ARRAY of Pages (multi-account); tolerant of the old object.
@@ -91,7 +93,10 @@ export default function ProfileScreen({ navigation }) {
       setFacebook({ connected: fbArr.length > 0, pageName: fbArr[0]?.label || fbArr[0]?.pageName || null, count: fbArr.length });
       const igArr = Array.isArray(acc.instagram) ? acc.instagram : (acc.instagram ? [acc.instagram] : []);
       setInstagram({ connected: igArr.length > 0, username: igArr[0]?.label || igArr[0]?.username || null, count: igArr.length });
-      setPinterest({ connected: !!acc.pinterest, username: acc.pinterest?.username || null });
+      // pinterest is now an ARRAY (multi-account); tolerant of the old object. As with
+      // facebook, !!acc.pinterest would report an emptied array as connected.
+      const pinArr = Array.isArray(acc.pinterest) ? acc.pinterest : (acc.pinterest ? [acc.pinterest] : []);
+      setPinterest({ connected: pinArr.length > 0, username: pinArr[0]?.label || pinArr[0]?.username || null, count: pinArr.length });
       // linkedin is now an ARRAY of accounts (multi-account); tolerant of the old object.
       const liArr = Array.isArray(acc.linkedin) ? acc.linkedin : (acc.linkedin ? [acc.linkedin] : []);
       setLinkedin({ connected: liArr.length > 0, name: liArr[0]?.label || liArr[0]?.name || null, count: liArr.length });
@@ -100,7 +105,7 @@ export default function ProfileScreen({ navigation }) {
       setYoutube({ connected: false, channelTitle: null });
       setFacebook({ connected: false, pageName: null, count: 0 });
       setInstagram({ connected: false, username: null, count: 0 });
-      setPinterest({ connected: false, username: null });
+      setPinterest({ connected: false, username: null, count: 0 });
       setLinkedin({ connected: false, name: null, count: 0 });
     }
   }, [user]);
@@ -556,7 +561,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.connInfo}>
               <Text style={[styles.connName, { color: '#E60023' }]}>Pinterest</Text>
               <Text style={[styles.connStatus, { color: pinterest.connected ? '#2ECC71' : theme.subtext }]}>
-                {pinterest.connected ? (pinterest.username ? '@' + pinterest.username : 'Connected') : 'Publish video Pins'}
+                {pinterest.connected ? (pinterest.count > 1 ? `${pinterest.count} accounts` : (pinterest.username ? '@' + pinterest.username : 'Connected')) : 'Publish video Pins'}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>

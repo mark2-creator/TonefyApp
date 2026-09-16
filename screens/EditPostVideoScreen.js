@@ -71,6 +71,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
+  const [tiktokAccounts, setTiktokAccounts] = useState(0);
   const [ttPosting, setTtPosting] = useState(false);
   const [ttSheet, setTtSheet] = useState(false);
   const [youtube, setYoutube] = useState(null);
@@ -338,11 +339,16 @@ export default function EditPostVideoScreen({ navigation, route }) {
   async function loadTikTok() {
     try {
       const snap = await getDoc(doc(db, 'connectedAccounts', user.uid));
-      if (snap.exists() && snap.data().tiktok) {
-        const tt = snap.data().tiktok;
-        setTiktokConnected(true);
-        setTiktokOpenId(tt.openId);
-        setTiktokName(tt.displayName || 'TikTok');
+      const tt = snap.exists() ? snap.data().tiktok : null;
+      // An ARRAY since TikTok went multi-account; an older single object still reads.
+      // Posting fans out to every connected account server-side, so the first one is
+      // only what names the row.
+      const arr = Array.isArray(tt) ? tt : (tt ? [tt] : []);
+      setTiktokConnected(arr.length > 0);
+      setTiktokAccounts(arr.length);
+      if (arr.length) {
+        setTiktokOpenId(arr[0].accountId || arr[0].openId);
+        setTiktokName(arr[0].label || arr[0].displayName || 'TikTok');
       }
     } catch (e) {}
   }
@@ -564,7 +570,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><PinterestLogo size={22} /></View>
             <Text style={[styles.platformName, { color: '#E60023' }]}>Pinterest</Text>
-            {pinterest?.connected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {pinterest?.connected ? <Text style={styles.connectedText}>{connectedLabel(pinterest)}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('pinterest')} disabled={pinPosting}>
               {pinPosting ? (
                 <ActivityIndicator color="#000" size="small" />
@@ -598,7 +604,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><TikTokLogo size={22} /></View>
             <Text style={[styles.platformName, { color: theme.text }]}>TikTok</Text>
-            {tiktokConnected ? <Text style={styles.connectedText}>Connected</Text> : null}
+            {tiktokConnected ? <Text style={styles.connectedText}>{tiktokAccounts > 1 ? `${tiktokAccounts} accounts` : 'Connected'}</Text> : null}
             {/* A button, not a toggle - the same one-tap flow as YouTube below. Flipping a
                 toggle here appeared to do nothing because the action lived at the bottom of
                 the screen; this runs the whole sequence in one tap. */}

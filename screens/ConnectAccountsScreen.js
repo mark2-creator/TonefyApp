@@ -229,15 +229,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     } finally { setPinBusy(false); }
   }
 
-  async function disconnectPinterest() {
-    showAlert('Disconnect Pinterest', 'Tonefy will no longer be able to post to your Pinterest.', [
+  async function disconnectPinterest(accountId, label) {
+    showAlert('Disconnect Pinterest', `Tonefy will no longer be able to post to ${label ? '@' + label : 'this Pinterest account'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await api('/api/pinterest/disconnect', { method: 'POST' });
-            setPinterest({ ...(pinterest || {}), connected: false, username: null });
+            await api('/api/pinterest/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
+            await loadPinterest();
           } catch (e) { showAlert('Pinterest', 'Could not disconnect.'); }
         },
       },
@@ -283,11 +287,14 @@ export default function ConnectAccountsScreen({ navigation }) {
   async function loadTikTok() {
     try {
       const snap = await getDoc(doc(db, 'connectedAccounts', user.uid));
-      if (snap.exists() && snap.data().tiktok) {
-        setTiktok(snap.data().tiktok);
-      } else {
-        setTiktok(null);
-      }
+      const tt = snap.exists() ? snap.data().tiktok : null;
+      // An ARRAY since TikTok went multi-account; an older single object still reads.
+      const arr = Array.isArray(tt) ? tt : (tt ? [tt] : []);
+      setTiktok(arr.length ? arr.map((a) => ({
+        accountId: a.accountId || a.openId,
+        name: a.label || a.displayName || null,
+        avatar: a.avatar || null,
+      })) : null);
     } catch (e) {}
     setLoading(false);
   }
@@ -302,8 +309,8 @@ export default function ConnectAccountsScreen({ navigation }) {
     setConnecting(false);
   }
 
-  async function disconnectTikTok() {
-    showAlert('Disconnect TikTok', 'Are you sure?', [
+  async function disconnectTikTok(accountId, label) {
+    showAlert('Disconnect TikTok', `Tonefy will no longer be able to post to ${label || 'this TikTok account'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
@@ -312,9 +319,13 @@ export default function ConnectAccountsScreen({ navigation }) {
             // Server-side: deletes our stored token AND revokes it at TikTok. The old
             // client-side deleteField only removed the display flag and left the token
             // live - which the privacy policy says we don't do.
-            const r = await api('/tiktok/disconnect', { method: 'POST' });
+            const r = await api('/tiktok/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
             if (r?.error) throw new Error(r.error);
-            setTiktok(null);
+            await loadTikTok();
           } catch (e) { showAlert('Error', e.message || 'Could not disconnect.'); }
         }
       }
@@ -345,24 +356,33 @@ export default function ConnectAccountsScreen({ navigation }) {
           <Text style={[styles.cardTitle, { color: theme.text }]}>Connect TikTok</Text>
           {loading ? (
             <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
-          ) : tiktok ? (
+          ) : (tiktok?.length > 0) ? (
             <>
-              <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' }]}>
-                <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                  {tiktok.avatar ? (
-                    <Image source={{ uri: tiktok.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
-                  ) : (
-                    <TikTokLogo size={26} />
-                  )}
+              {tiktok.map((a) => (
+                <View key={a.accountId} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1a4a2a' : '#a8e6c1' }]}>
+                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                    {a.avatar ? (
+                      <Image source={{ uri: a.avatar }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                    ) : (
+                      <TikTokLogo size={26} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.connectedName, { color: theme.text }]}>{a.name || 'TikTok User'}</Text>
+                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>TikTok · Connected</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => disconnectTikTok(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <MaterialIcons name="close" size={20} color="#f87171" />
+                  </TouchableOpacity>
                 </View>
-                <View>
-                  <Text style={[styles.connectedName, { color: theme.text }]}>{tiktok.displayName || 'TikTok User'}</Text>
-                  <Text style={[styles.connectedSub, { color: theme.subtext }]}>TikTok · Connected</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#5a2020' : '#f5b5b5' }]} onPress={disconnectTikTok}>
-                <Text style={styles.btnDisconnectText}>Disconnect TikTok</Text>
-              </TouchableOpacity>
+              ))}
+              {tiktok.length < accountCap ? (
+                <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#000' }]} onPress={connectTikTok} disabled={connecting}>
+                  {connecting ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
+                </TouchableOpacity>
+              ) : (
+                capNote()
+              )}
             </>
           ) : (
             <>
@@ -560,22 +580,29 @@ export default function ConnectAccountsScreen({ navigation }) {
             <Text style={[styles.cardTitle, { color: theme.text }]}>Connect <Text style={{ color: '#E60023' }}>Pinterest</Text></Text>
             {pinLoading ? (
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
-            ) : pinterest?.connected ? (
+            ) : (pinterest?.accounts?.length > 0) ? (
               <>
-                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                    <PinterestLogo size={28} />
+                {pinterest.accounts.map((a) => (
+                  <View key={a.accountId} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                    <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                      <PinterestLogo size={28} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.connectedName, { color: theme.text }]}>{a.name ? '@' + a.name : 'Your account'}</Text>
+                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Pinterest · Connected</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => disconnectPinterest(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons name="close" size={20} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
-                  <View>
-                    <Text style={[styles.connectedName, { color: theme.text }]}>{pinterest.username ? '@' + pinterest.username : 'Your account'}</Text>
-                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>Pinterest · Connected</Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
-                  onPress={disconnectPinterest}>
-                  <Text style={styles.btnDisconnectText}>Disconnect Pinterest</Text>
-                </TouchableOpacity>
+                ))}
+                {pinterest.accounts.length < accountCap ? (
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#E60023' }]} onPress={connectPinterest} disabled={pinBusy}>
+                    {pinBusy ? <ActivityIndicator color="#fff" /> : <Text style={[styles.btnConnectText, { color: '#fff' }]}>+ Add another account</Text>}
+                  </TouchableOpacity>
+                ) : (
+                  capNote()
+                )}
               </>
             ) : (
               <>
