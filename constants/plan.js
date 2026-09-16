@@ -59,6 +59,11 @@ export function usePlan() {
   const [tier, setTier] = useState(TIER_FREE);
   const [creditsRemaining, setCreditsRemaining] = useState(null);
   const [creditsResetAt, setCreditsResetAt] = useState(null);
+  // Why the plan is what it is. The backend's subscriptionSweep downgrades a lapsed
+  // subscriber to free and records 'expired' here; without reading it the app can only
+  // show the RESULT - locked features and fewer credits - with no way to say why.
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [subscriptionEndedAt, setSubscriptionEndedAt] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -66,7 +71,8 @@ export function usePlan() {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsubDoc) { unsubDoc(); unsubDoc = null; }
       if (!user) {
-        setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null); setLoaded(true);
+        setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null);
+        setSubscriptionStatus(null); setSubscriptionEndedAt(null); setLoaded(true);
         return;
       }
       unsubDoc = onSnapshot(
@@ -76,12 +82,15 @@ export function usePlan() {
           setTier(data.plan || TIER_FREE);
           setCreditsRemaining(typeof data.creditsRemaining === 'number' ? data.creditsRemaining : null);
           setCreditsResetAt(data.creditsResetAt || null);
+          setSubscriptionStatus(data.subscriptionStatus || null);
+          setSubscriptionEndedAt(data.subscriptionEndedAt || null);
           setLoaded(true);
         },
         // A read failure (offline, permission error) must not get stuck
         // showing nothing forever - fall back to free rather than hang.
         () => {
-          setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null); setLoaded(true);
+          setTier(TIER_FREE); setCreditsRemaining(null); setCreditsResetAt(null);
+          setSubscriptionStatus(null); setSubscriptionEndedAt(null); setLoaded(true);
         }
       );
     });
@@ -91,6 +100,10 @@ export function usePlan() {
   return {
     tier, isPremium: tierUnlocksPremium(tier), loaded,
     creditsRemaining, creditsResetAt,
+    subscriptionStatus, subscriptionEndedAt,
+    // True only when a subscription actually ENDED - not merely when someone is on free.
+    // Most free users never had a plan and must not be told theirs expired.
+    subscriptionExpired: subscriptionStatus === 'expired' && tier === TIER_FREE,
     caps: TIER_CAPS[tier] || TIER_CAPS[TIER_FREE],
   };
 }

@@ -33,7 +33,7 @@ function formatResetDate(iso) {
 export default function ProfileScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { tier, creditsRemaining, creditsResetAt, caps } = usePlan();
+  const { tier, creditsRemaining, creditsResetAt, caps, subscriptionExpired, subscriptionEndedAt } = usePlan();
   const planLabel = PLAN_LABELS[tier] || 'Free Plan';
   const user = auth.currentUser;
   const [stats, setStats] = useState({ total: '—', thisMonth: '—', scheduled: '—' });
@@ -394,6 +394,24 @@ export default function ProfileScreen({ navigation }) {
 
         <GradientBorder radius={14} backgroundColor={theme.card} style={styles.planCard}>
           <Text style={[styles.sectionHeader, { borderBottomColor: theme.border, color: theme.subtext }]}>Plan & Credits</Text>
+          {/* A subscription that ended used to be silent: the backend takes the plan back,
+              features lock and credits drop, and nothing anywhere said why - which reads
+              as the app breaking rather than as a subscription ending. Shown only when one
+              really lapsed, never to someone who was always on free. */}
+          {subscriptionExpired && (
+            <TouchableOpacity style={[styles.row, { borderBottomColor: theme.border }]} onPress={() => navigation.navigate('Subscription')}>
+              <MaterialIcons name="diamond" size={18} color="#f5c451" style={styles.rowIcon} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Your plan ended</Text>
+                <Text style={[styles.rowValue, { color: theme.subtext }]}>
+                  {subscriptionEndedAt
+                    ? `It ran out on ${new Date(subscriptionEndedAt).toLocaleDateString()}. Tap to pick it up again.`
+                    : 'Tap to pick it up again.'}
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color={theme.subtext} />
+            </TouchableOpacity>
+          )}
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <MaterialIcons name="bolt" size={18} color={theme.icon} style={styles.rowIcon} />
             <View style={styles.rowContent}>
