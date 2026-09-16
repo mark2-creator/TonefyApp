@@ -101,6 +101,9 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
       // The account these settings were read FROM, so the caller posts to that one and
       // not to every connected account under one account's rules.
       accountId: info?.accountId || null,
+      // For "all", name them explicitly rather than relying on an empty selection meaning
+      // everything - the settings above were computed for exactly this list.
+      accountIds: info?.accountId === 'all' ? (info.accounts || []).map(a => a.accountId) : null,
       privacyLevel: privacy,
       disableComment: !allowComment,
       disableDuet: !allowDuet,
@@ -133,7 +136,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
               {(info?.accounts?.length || 0) > 1 ? (
                 <>
                   <Text style={[styles.label, { marginTop: 4 }]}>Post to which account</Text>
-                  {info.accounts.map((a) => (
+                  {[{ accountId: 'all', name: `All ${info.accounts.length} accounts` }, ...info.accounts].map((a) => (
                     <TouchableOpacity key={a.accountId} style={styles.optRow}
                       onPress={() => { if (a.accountId !== info.accountId) setAccountId(a.accountId); }}>
                       <MaterialIcons
@@ -143,11 +146,17 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
                       <Text style={styles.optText}>{a.name || 'TikTok account'}</Text>
                     </TouchableOpacity>
                   ))}
+                  {info.accountId === 'all' ? (
+                    <Text style={styles.allNote}>
+                      Only the settings every account allows are offered below.
+                    </Text>
+                  ) : null}
                 </>
               ) : null}
 
-              {/* Creator */}
-              <View style={styles.creator}>
+              {/* Creator. Hidden when the picker is showing, which already names the
+                  choice - two rows saying the same thing read as a rendering fault. */}
+              <View style={[styles.creator, (info?.accounts?.length || 0) > 1 && { display: 'none' }]}>
                 {info?.avatar ? <Image source={{ uri: info.avatar }} style={styles.avatar} /> : null}
                 <Text style={styles.creatorName}>{info?.nickname || 'Your TikTok'}</Text>
               </View>
@@ -247,6 +256,7 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#222' },
   creatorName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   label: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
+  allNote: { color: '#888', fontSize: 12, marginTop: 2, marginBottom: 2, lineHeight: 17 },
   optRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
   optText: { color: '#eee', fontSize: 15 },
   optSub: { color: '#777', fontSize: 12, marginTop: 1, lineHeight: 16 },

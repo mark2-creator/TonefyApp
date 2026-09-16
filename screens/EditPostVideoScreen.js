@@ -313,14 +313,17 @@ export default function EditPostVideoScreen({ navigation, route }) {
       // not to every connected TikTok under a single account's settings, which is what
       // TikTok's guidelines exist to prevent. accountId is the sheet's, not the user's to
       // type, so it never reaches TikTok as post_info.
-      const { accountId, ...tiktokOptions } = options;
+      const { accountId, accountIds, ...tiktokOptions } = options;
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'],
           tiktok: tiktokOptions,
-          ...(accountId ? { accounts: { tiktok: [accountId] } } : {}),
+          // 'all' means every connected TikTok, which post-now expresses as an empty
+          // selection; a single id posts only there.
+          ...(accountIds?.length ? { accounts: { tiktok: accountIds } }
+              : accountId && accountId !== 'all' ? { accounts: { tiktok: [accountId] } } : {}),
         }),
       });
       const d = await r.json();
