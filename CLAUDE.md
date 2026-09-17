@@ -406,6 +406,45 @@ the second trip is missing.
   forever on a dismissal. Pass `{ cancelable: false }` whenever the sheet's outcome is
   awaited.
 
+## The website has no build check, and three pages were dead (Sep 17 2026)
+
+**Three of the site's pages shipped inline scripts that did not PARSE**, and had for an
+unknown length of time: `connect-accounts.html` (a stray `});`), `dashboard.html` (two
+consts of the same name in one scope) and `edit-post-video.html` (a `showConfirm` callback
+never closed). All three the same shape - an edit that wrapped code in a callback and left
+the braces unbalanced.
+
+**A script that does not parse does not run at all.** These were not pages with one broken
+feature; they were pages where NOTHING happened - no auth redirect, no status load, no
+buttons, no tabs. `connect-accounts.html` also called `showToast`, `showConfirm` and
+`closeConfirm`, none of which was ever defined, with `closeConfirm` wired to an onclick in
+the markup.
+
+**Why it went unnoticed: the app has `expo export` and eslint; the website has nothing.**
+It is hand-written HTML served straight by nginx, so a syntax error ships silently and
+reads as a page that merely does nothing.
+
+**Guard added: `scripts/check-website-js.py`** (in the APP repo, with the other guards,
+since the website repo has no tooling of its own). Run it after any website edit:
+
+```bash
+python3 scripts/check-website-js.py          # defaults to /var/www/tonefy-ai
+```
+
+Non-zero exit if anything fails to parse. Verified by breaking a page deliberately and
+confirming it is caught, not only by watching it pass on working pages.
+
+**Also fixed while in there:** the site's TikTok disconnect deleted the Firestore field and
+stopped, leaving the token live at TikTok - the same gap item 41 closed in the app, still
+open here. It calls `/tiktok/disconnect` now. And `connect-accounts.html` no longer writes
+the connection record itself; the success page hands the server a single-use code and the
+server writes the binding (see the client-written-record bug pattern).
+
+**Still true: the site is three platforms behind the app.** It knows TikTok, Facebook,
+Instagram and X; there is no YouTube, Pinterest or LinkedIn anywhere on it, and the
+Facebook and Instagram panels say "Coming Soon" while both work in the app. Not done here -
+the parse failures were the more urgent finding.
+
 ## Input handling: where user text meets a command line (audited Sep 17 2026)
 
 The foundation is sound and worth not undoing: **every external binary is invoked with
