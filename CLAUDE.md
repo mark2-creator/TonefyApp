@@ -3490,8 +3490,9 @@ nothing to aim at.
       start working with no change the moment the audit clears.
       **The general lesson: a granted scope is permission to CALL an endpoint, not proof the
       call will be allowed.** Only the endpoint's own answer is proof.
-      **AUDIT APPLIED FOR Sep 17 2026** - "Application to request access to Content Posting
-      API" submitted; TikTok says 2-4 weeks, status on the Manage apps page. App ID
+      **AUDIT APPLIED FOR Sep 17 2026, reference `20260917112025`** ("Content Posting API -
+      Direct Post", acknowledged by email); TikTok says 2-4 weeks, status on the Manage apps
+      page. Quote that reference in any follow-up. App ID
       `7650884728652466193`, organisation given as **Fitlifesolutions** (matching the legal
       docs rather than the product name), cap requested "Less than 100" with the real
       figures behind it (23 accounts, 34 posts in 30 days, 16 of them TikTok). The answers
