@@ -406,6 +406,57 @@ the second trip is missing.
   forever on a dismissal. Pass `{ cancelable: false }` whenever the sheet's outcome is
   awaited.
 
+## Input handling: where user text meets a command line (audited Sep 17 2026)
+
+The foundation is sound and worth not undoing: **every external binary is invoked with
+`execFile` and an argument array, never a shell** (`run()` in `server.js`; no `shell: true`
+anywhere). So a caption reading `"; rm -rf /"` arrives at ImageMagick as literal text.
+Keep it that way - the moment one call switches to `exec` with an interpolated string,
+every caption in the app becomes a command.
+
+That still leaves each TOOL's own syntax, which is where the real findings were. All three
+were confirmed by running the thing, not by reading it.
+
+**1. ffmpeg filter injection through the client-supplied chains (FIXED).** The app sends
+grade/motion/transition chains so the catalogue can grow without a backend deploy, and the
+server checked an op name plus shell metacharacters. Both read only as far as the first
+`=`, and neither rejected a **comma** - which is how ffmpeg chains filters. So
+`eq=brightness=0.1,movie=http://169.254.169.254/` passed as "eq" and smuggled a second
+filter; `movie=` opens any file or URL the server can reach, and this box runs five other
+pm2 services on localhost. Grade chains and transition fx are ARRAYS, so one entry is one
+filter and a comma inside one is now refused outright. A motion cannot use that rule - its
+whole point is an expression, and `z='min(zoom+0.001,1.5)'` needs its comma - so a motion
+is split on commas **outside parentheses and quotes** and every segment must name a
+geometry op (`MOTION_ALLOWED_OPS`). **Cost to remember: a motion added to
+`constants/motions.js` using an op not on that list silently does not render** - the same
+failure shape as the `{W}` substitution trap right above it.
+
+**2. ImageMagick `label:` interprets percent escapes (FIXED).** `%[fx:2*3]` DREW "6" -
+measured, at identical width to a literal "6". `%d` and `%w` disappeared the same way.
+Percentages are ordinary content for this app's users, so this was a real rendering bug,
+not only hardening. `imText()` in `textRender.js` is now the single boundary where text
+meets ImageMagick, which also fixed a quieter drift: the backslash strip had applied on the
+render side only, so **the string being MEASURED was not the string being DRAWN**.
+`label:@file` would read a file outright; this box's ImageMagick policy refuses the `@`
+indirection (verified by trying it), but the escaping does not rely on that holding.
+
+**3. The ASS path stripped braces but not newlines (FIXED).** Braces are what stop a
+caption injecting its own override tags. A `.ass` file is line-based, one Dialogue event
+per line, so a literal newline split the event and corrupted the file. Newlines become
+`\N`, an ASS hard line break, which keeps what the user meant.
+
+**Checked and found already correct** - don't re-audit these without a reason: uploads are
+type- and size-filtered by multer; `isOwnMediaUrl` gates every video URL; paths built from
+a client URL go through `path.basename`, which neutralises traversal; the verification
+mailer takes its recipient from the verified Auth record, never the request body; no URL
+parameter reaches `innerHTML` on any page of the website (all use `textContent`); and audio
+effects send an ID rather than a filter string, which is why they needed none of this.
+
+**The shape to carry forward: a safe process spawn does not make the payload safe.** Each
+consumer - ffmpeg's filtergraph, ImageMagick's percent escapes and `@` indirection, ASS's
+braces and line structure - has a syntax of its own, and user text has to be made safe for
+*that* syntax at the boundary where it is handed over.
+
 ## Known bug pattern: an authorisation check that reads a client-written record
 
 **Found for real Sep 16 2026 in TikTok, and fixed.** `tiktokOwnedBy(uid, openId)` read
