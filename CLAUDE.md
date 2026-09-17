@@ -431,8 +431,22 @@ since the website repo has no tooling of its own). Run it after any website edit
 python3 scripts/check-website-js.py          # defaults to /var/www/tonefy-ai
 ```
 
-Non-zero exit if anything fails to parse. Verified by breaking a page deliberately and
-confirming it is caught, not only by watching it pass on working pages.
+It checks TWO things, because parsing is not enough: every inline script must parse, AND
+must not call a name nothing defines - a page whose script parses perfectly still throws on
+first render if it calls a helper nobody wrote. The second check runs **eslint's own
+`no-undef`**, not a regex: a hand-written identifier matcher reported five working pages as
+broken (`async` arrows and destructuring from a dynamic import both defeat it), and a guard
+that cries wolf is a guard nobody runs. It is told about two things these pages do
+legitimately - `window.foo = ...` to expose a handler to an inline onclick, which creates a
+global but declares no binding, and `tailwind` from a `<script src>`.
+
+**It has paid for itself three times already**: it caught an unclosed `if` I introduced
+while editing `profile.html`, a `LOGO` map referenced by a renderer after the edit meant to
+add it silently failed, and - unprompted - `idea-to-video.html` calling `showToast` on five
+error paths with the function defined nowhere, so a failed generation threw
+`ReferenceError` instead of showing the message and left the button stuck loading.
+Verified by breaking a page deliberately and confirming it is caught, not only by watching
+it pass.
 
 **Also fixed while in there:** the site's TikTok disconnect deleted the Firestore field and
 stopped, leaving the token live at TikTok - the same gap item 41 closed in the app, still
@@ -453,6 +467,25 @@ API charges for writes.
 Reanimated worklets and gesture handlers that do not cross to the web, so it is a second
 product rather than a port. The split to aim for is ACCOUNT parity - one login, one plan,
 one set of connected accounts, one library - not feature parity.
+
+## Posting was free through the legacy TikTok route (fixed Sep 17 2026)
+
+`/api/post-now` has charged for posting since Sep 14. **`/tiktok/post-video` - the older
+single-platform route - never did.** It checked the token, the ownership and the media
+host, and skipped the plan entirely, so posting to TikTok was free for anyone who called
+it. **The WEBSITE called it by default**, which is how a paywalled feature was being given
+away on one of the two clients. Gated now, failing OPEN on a lookup error to match
+post-now.
+
+**The general shape: a second route to the same capability is a second place the rule has
+to be written.** Same reason the TikTok ownership check now lives inside `publishToTikTok`
+rather than in each of the three callers.
+
+**The website's Edit & Post now uses `/api/post-now` like the app**, so the plan check, the
+per-account ownership check and the server-side record all apply. It used to let the
+CLIENT write the "posted" record after calling the legacy route - so a post that failed
+could still be written down as posted. Its platform switches now CHOOSE where a post goes;
+they used to connect and disconnect the account, so turning a platform off disconnected it.
 
 ## Input handling: where user text meets a command line (audited Sep 17 2026)
 
