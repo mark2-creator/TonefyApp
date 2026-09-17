@@ -3490,6 +3490,19 @@ nothing to aim at.
       start working with no change the moment the audit clears.
       **The general lesson: a granted scope is permission to CALL an endpoint, not proof the
       call will be allowed.** Only the endpoint's own answer is proof.
+      **AUDIT APPLIED FOR Sep 17 2026** - "Application to request access to Content Posting
+      API" submitted; TikTok says 2-4 weeks, status on the Manage apps page. App ID
+      `7650884728652466193`, organisation given as **Fitlifesolutions** (matching the legal
+      docs rather than the product name), cap requested "Less than 100" with the real
+      figures behind it (23 accounts, 34 posts in 30 days, 16 of them TikTok). The answers
+      are kept as an artifact so a returned application does not mean rewriting them.
+      **Before applying, the sheet was audited against TikTok's content-sharing guidelines
+      and three requirements were NOT met** - the interaction toggles defaulted ON
+      ("none should be checked by default"), there was no content preview, and neither
+      `max_video_post_duration_sec` nor the "creator cannot post" signal (an EMPTY
+      `privacy_level_options`) was enforced. All three shipped the same day. **Checking the
+      guidelines before submitting rather than learning from a rejection is what a 2-4 week
+      review cycle is worth.**
       **Cheap way to verify the direct path today without the audit:** set one TikTok
       account to private, post, confirm `mode: 'direct'`, set it back.
       The fallback now LOGS the refusal reason; discarding it is what made "it went to
