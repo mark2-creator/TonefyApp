@@ -15,7 +15,7 @@ import {
   getMultiFactorResolver,
   TotpMultiFactorGenerator,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebase';
@@ -150,17 +150,48 @@ export default function AuthScreen({ navigation }) {
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || userInfo.idToken;
       if (!idToken) {
-        // Temporary diagnostic: idToken has been coming back empty even with
-        // correct webClientId/SHA-1 config verified on the Firebase/Cloud
-        // side. Surfacing the raw response here instead of letting Firebase
-        // throw its opaque auth/argument-error, so the actual shape Google
-        // returned can be read off the device instead of guessed at.
-        showAlert('Debug: no idToken in response', JSON.stringify(userInfo, null, 2).slice(0, 900));
+        // This was a raw JSON dump of Google's response while the empty-idToken
+        // problem was being chased. That turned out to be a signing certificate
+        // Google did not recognise, is fixed, and is understood - so the dump is
+        // gone. What is left says something a person can act on.
+        showAlert('Google Sign-In', 'Google did not return a sign-in token. Please try again, or use your email and password.');
         setLoading(false);
         return;
       }
       const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
+      const cred = await signInWithCredential(auth, credential);
+
+      // Seed the profile the same way email signup does - Google sign-in never did,
+      // so a Google account existed in Auth with NO users document: no plan, no
+      // credits, and invisible to anything that counts plans. The backend treats a
+      // missing document as free, so nothing broke outright; it just meant the
+      // account had no record of its own until something wrote one.
+      //
+      // merge:false would wipe a returning user's plan, so this only fills what is
+      // missing and only for a genuinely new account.
+      try {
+        const ref = doc(db, 'users', cred.user.uid);
+        const existing = await getDoc(ref);
+        if (!existing.exists()) {
+          await setDoc(ref, {
+            fullName: cred.user.displayName || '',
+            email: cred.user.email || '',
+            createdAt: serverTimestamp(),
+            plan: 'free',
+            // 10 credits / 30-day window must match TIERS.free in the backend's
+            // tiers.js - the same duplication the email path carries, and for the
+            // same reason.
+            creditsRemaining: 10,
+            creditsResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            subscriptionStatus: null,
+          });
+        }
+      } catch (profileErr) {
+        // Never block a successful sign-in on this: the backend lazily creates the
+        // same record on first use, so the worst case is the old behaviour.
+        console.warn('[google-signin] could not write user profile:', profileErr.message);
+      }
+
       setFailedAttempts(0);
       setLockedUntil(null);
     } catch (error) {

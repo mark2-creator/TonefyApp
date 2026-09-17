@@ -120,7 +120,9 @@ export default function AdminScreen({ navigation }) {
                 </View>
               )}
               <Text style={[styles.listNote, { color: theme.subtext }]}>
-                Not counted as revenue. Nothing revokes an expired subscription yet.
+                Not counted as revenue. An expired subscription is taken back to free
+                within six hours - except on an admin account, which is exempt, and is
+                what this one is.
               </Text>
             </View>
           )}
@@ -131,6 +133,18 @@ export default function AdminScreen({ navigation }) {
             <Stat theme={theme} label="Pro" value={u?.plans?.pro ?? 0} />
             <Stat theme={theme} label="Creator" value={u?.plans?.creator ?? 0} />
           </View>
+
+          {(u?.noProfileDoc > 0 || u?.orphanDocs > 0) && (
+            <Text style={[styles.listNote, { color: theme.subtext, marginTop: 10 }]}>
+              {u.noProfileDoc > 0
+                ? `${u.noProfileDoc} account${u.noProfileDoc === 1 ? ' has' : 's have'} no profile record yet and count as Free.`
+                : ''}
+              {u.noProfileDoc > 0 && u.orphanDocs > 0 ? ' ' : ''}
+              {u.orphanDocs > 0
+                ? `${u.orphanDocs} profile record${u.orphanDocs === 1 ? '' : 's'} left behind by deleted account${u.orphanDocs === 1 ? '' : 's'}.`
+                : ''}
+            </Text>
+          )}
 
           <Text style={[styles.section, { color: theme.subtext }]}>VIDEOS</Text>
           <View style={styles.row}>
