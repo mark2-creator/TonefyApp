@@ -101,6 +101,34 @@ Sans, Instagram's wordmark) cannot be embedded; approximate with a clean bold sa
 let the official logo carry the real letterforms. First applied Sep 11 2026 to
 `facebook-success.html` and the Facebook/Instagram connect + post UI.
 
+### The website follows this skill too (Sep 17 2026)
+
+`/var/www/tonefy-ai` is the second client of the same backend and is held to the same
+rules. It has no build step and no package manager, so two things differ in MECHANISM
+while the rule stays the same:
+
+- **Icons** come from `scripts/website_icons.py` in the app repo - the same Material
+  glyphs, inlined as SVG with `currentColor` so an icon takes its row's colour and the
+  palette rules keep applying. Same three sizes, no others.
+- **Brand logos** are inline SVG per page rather than `components/BrandLogos.js`.
+
+Its emoji were audited to **zero** the same way the app's were: an emoji that WAS the icon
+became a glyph, an emoji leading a label was deleted. `idea-to-video`'s option rows lost
+their icon entirely rather than gaining ten invented glyphs - the label and description
+already carry the choice, which is how the app's own option sheets read.
+
+**Two conflicts between this skill and the app itself, found while doing it. Neither is
+fixed, because fixing one client alone makes the two diverge - which is the opposite of
+what the website work is for.**
+
+- **The bottom tab strip.** This skill says a control that switches which view you are
+  looking at is TEAL, and names the tab strip. Both clients render it GREEN
+  (`theme.accent` is `#2ecc71`; the website matches). One of the two is wrong and they
+  should move together.
+- **Nothing on either client is teal except the editor.** The website had no teal at all
+  until the progress bar was corrected. If teal really is the colour of "handling media",
+  more of both clients should be wearing it - or the rule is narrower than it reads.
+
 ### Surfaces and text
 
 Backgrounds step darkest-first: `#000` (app, toolbar) → `#0a0a0a` (timeline) →
