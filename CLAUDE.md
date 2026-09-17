@@ -440,10 +440,19 @@ open here. It calls `/tiktok/disconnect` now. And `connect-accounts.html` no lon
 the connection record itself; the success page hands the server a single-use code and the
 server writes the binding (see the client-written-record bug pattern).
 
-**Still true: the site is three platforms behind the app.** It knows TikTok, Facebook,
-Instagram and X; there is no YouTube, Pinterest or LinkedIn anywhere on it, and the
-Facebook and Instagram panels say "Coming Soon" while both work in the app. Not done here -
-the parse failures were the more urgent finding.
+**CLOSED Sep 17 2026: the site now carries all six platforms.** Connect Accounts and
+Profile are generated from ONE table rather than six hand-written panels - which is how the
+page fell three platforms behind in the first place - and both read the `/status` endpoints
+rather than Firestore, so a token cleared server-side reports as disconnected instead of
+showing a stale "Connected". `/api/tiktok/status` was added for this: TikTok was the only
+platform where each client had its own idea of what connected meant. The homepage badges
+for Facebook and Instagram now match the app; X keeps "coming soon", which is true - its
+API charges for writes.
+
+**What is still NOT on the website, deliberately:** the timeline editor. It is built on
+Reanimated worklets and gesture handlers that do not cross to the web, so it is a second
+product rather than a port. The split to aim for is ACCOUNT parity - one login, one plan,
+one set of connected accounts, one library - not feature parity.
 
 ## Input handling: where user text meets a command line (audited Sep 17 2026)
 
