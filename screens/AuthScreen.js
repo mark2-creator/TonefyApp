@@ -401,10 +401,11 @@ export default function AuthScreen({ navigation }) {
           onChangeText={setFullName}
           autoCapitalize="words"
           textContentType="name"
+          autoComplete="name"
         />
       )}
 
-      <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Email" placeholderTextColor={theme.subtext} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+      <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Email" placeholderTextColor={theme.subtext} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" autoCorrect={false} />
 
       {!isLogin && (
         <TouchableOpacity style={[styles.countryRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowCountrySheet(true)}>
@@ -417,14 +418,17 @@ export default function AuthScreen({ navigation }) {
       )}
 
       <View style={styles.passwordRow}>
-        <TextInput style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Password" placeholderTextColor={theme.subtext} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+        <TextInput style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Password" placeholderTextColor={theme.subtext} value={password} onChangeText={setPassword} secureTextEntry={!showPassword}
+          autoComplete={isLogin ? 'current-password' : 'new-password'}
+          textContentType={isLogin ? 'password' : 'newPassword'} />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={[styles.eyeBtn, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
           <MaterialIcons name={showPassword ? 'visibility-off' : 'visibility'} size={20} color={theme.icon} />
         </TouchableOpacity>
       </View>
 
       {!isLogin && (
-        <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Confirm Password" placeholderTextColor={theme.subtext} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+        <TextInput style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} placeholder="Confirm Password" placeholderTextColor={theme.subtext} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry
+          autoComplete="new-password" textContentType="newPassword" />
       )}
 
       {isLogin && (
@@ -485,6 +489,8 @@ export default function AuthScreen({ navigation }) {
               onChangeText={setMfaLoginCode}
               keyboardType="number-pad"
               maxLength={6}
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
             />
             <TouchableOpacity
               style={{ marginTop: 16, backgroundColor: theme.accent, borderRadius: 12, padding: 14, width: '100%', alignItems: 'center' }}
