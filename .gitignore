@@ -1,8 +1,8 @@
-node_modules/
-.expo/
-dist/
 *.log
-.pm2/
 *.sock
+.expo/
+.pm2/
+.webcheck/
 EditVideoScreen.js.bak_*
+dist/
 node_modules/
