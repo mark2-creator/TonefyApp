@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import { useSheetInset } from './SheetHeader';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -38,16 +39,19 @@ const PRIVACY_LABELS = {
  * Until the app is audited the backend falls back to an inbox draft (the options are then
  * moot), but the sheet must exist and be correct for the audit to pass.
  */
-export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, posting }) {
+export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, posting, videoUrl }) {
   const sheetInset = useSheetInset();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
 
   const [privacy, setPrivacy] = useState(null);          // no default, on purpose
-  const [allowComment, setAllowComment] = useState(true);
-  const [allowDuet, setAllowDuet] = useState(true);
-  const [allowStitch, setAllowStitch] = useState(true);
+  // Also no default, and for the same reason. TikTok's guidelines: "Users must manually
+  // turn on these interaction settings and none should be checked by default." They used
+  // to start on, which is the app deciding on the creator's behalf.
+  const [allowComment, setAllowComment] = useState(false);
+  const [allowDuet, setAllowDuet] = useState(false);
+  const [allowStitch, setAllowStitch] = useState(false);
   const [disclose, setDisclose] = useState(false);
   const [yourBrand, setYourBrand] = useState(false);      // brand_organic_toggle
   const [brandedContent, setBrandedContent] = useState(false); // brand_content_toggle
@@ -58,6 +62,22 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
   // account's rules while posting to another is exactly what TikTok's guidelines forbid.
   const [accountId, setAccountId] = useState(null);
 
+  // Muted, not looping, never played: this is a still of the first frame in practice, and
+  // sound starting under a posting sheet would be a surprise.
+  const preview = useVideoPlayer(videoUrl || null, (pl) => { pl.muted = true; pl.loop = false; });
+
+  // The duration comes from the preview player rather than from a prop: it is the same
+  // file, the player has to load it anyway, and a number measured here cannot disagree
+  // with the video actually on screen.
+  const [durationSec, setDurationSec] = useState(null);
+  useEffect(() => {
+    if (!preview) return;
+    const sub = preview.addListener('statusChange', ({ status }) => {
+      if (status === 'readyToPlay' && preview.duration) setDurationSec(preview.duration);
+    });
+    return () => sub.remove();
+  }, [preview]);
+
   useEffect(() => {
     if (!visible) return;
     setAccountId(null);          // start from the server's default each time it opens
@@ -67,7 +87,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
     if (!visible) return;
     // reset each open so a previous session's choices never carry over
     setLoading(true); setError(null); setInfo(null);
-    setPrivacy(null); setAllowComment(true); setAllowDuet(true); setAllowStitch(true);
+    setPrivacy(null); setAllowComment(false); setAllowDuet(false); setAllowStitch(false);
     setDisclose(false); setYourBrand(false); setBrandedContent(false);
     (async () => {
       try {
@@ -92,8 +112,17 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
     if (brandedContent && privacy === 'SELF_ONLY') setPrivacy(null);
   }, [brandedContent, privacy]);
 
+  // TikTok signals "this creator cannot post any more right now" by returning NO privacy
+  // options. Their guidelines require the attempt to stop and the user to be told to try
+  // later, rather than being allowed to start an upload that will be refused.
+  const cannotPostNow = !loading && !error && (info?.privacyOptions?.length || 0) === 0;
+
+  // And the video must fit the creator's own maximum, which creator_info reports.
+  const maxSec = info?.maxDurationSec || null;
+  const tooLong = !!(maxSec && durationSec && durationSec > maxSec);
+
   const discloseValid = !disclose || yourBrand || brandedContent;
-  const canPost = !!privacy && discloseValid && !posting;
+  const canPost = !!privacy && discloseValid && !posting && !cannotPostNow && !tooLong;
 
   function confirm() {
     if (!canPost) return;
@@ -131,6 +160,28 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
             <Text style={styles.error}>{error}</Text>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* A preview of exactly what is about to be posted. Required: "API Clients
+                  should display a preview of the to-be-posted content." Muted and not
+                  autoplaying - it is here to confirm WHICH video, not to be watched. */}
+              {videoUrl ? (
+                <View style={styles.previewBox}>
+                  <VideoView player={preview} style={styles.preview} contentFit="contain"
+                    nativeControls={false} />
+                </View>
+              ) : null}
+
+              {cannotPostNow ? (
+                <Text style={styles.blocked}>
+                  TikTok says this account cannot post again just yet. Please try later.
+                </Text>
+              ) : null}
+              {tooLong ? (
+                <Text style={styles.blocked}>
+                  This video is {Math.round(durationSec)}s. TikTok allows up to {maxSec}s on
+                  this account.
+                </Text>
+              ) : null}
+
               {/* Which account. Only when there IS a choice - one account needs no picker,
                   and the creator row below already names it. */}
               {(info?.accounts?.length || 0) > 1 ? (
@@ -257,6 +308,9 @@ const styles = StyleSheet.create({
   creatorName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   label: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
   allNote: { color: '#888', fontSize: 12, marginTop: 2, marginBottom: 2, lineHeight: 17 },
+  previewBox: { height: 150, borderRadius: 12, overflow: 'hidden', backgroundColor: '#000', marginBottom: 6 },
+  preview: { width: '100%', height: '100%' },
+  blocked: { color: '#f87171', fontSize: 13, lineHeight: 19, marginTop: 10 },
   optRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
   optText: { color: '#eee', fontSize: 15 },
   optSub: { color: '#777', fontSize: 12, marginTop: 1, lineHeight: 16 },

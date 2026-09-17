@@ -815,6 +815,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         onConfirm={uploadTikTok}
         theme={theme}
         posting={ttPosting}
+        videoUrl={fullUrl}
       />
     </View>
   );
