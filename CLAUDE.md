@@ -2956,6 +2956,22 @@ nothing to aim at.
     work and did contain it.
 
 
+31b. **CORS was registered AFTER half the routes, and only a browser could tell**
+    (Sep 18 2026). `app.use(cors(...))` sat at line 1414 while `/api/admin/stats` and
+    `/api/admin/users` are registered at 828 and 972 - so those two answered with **no CORS
+    headers at all**. The website's admin page showed *"Could not load stats. Failed to
+    fetch"*, which is what a browser reports when it blocks a response: a network-level
+    failure with no status code behind it, naming nothing.
+
+    **Every check I had run on those endpoints was curl, and curl does not enforce CORS** -
+    they returned 200 with correct JSON throughout. That is the trap: a server-side test
+    cannot see a browser-side block. When a page says "Failed to fetch" while curl is
+    happy, suspect CORS before anything else.
+
+    Fixed by moving the middleware **above every route** rather than adding it to the two
+    that needed it, so a route added later cannot land in the same gap. Same shape as the
+    three unlimited routes in item 31, and the third time this file has recorded it.
+
 32. **Capacity: one VPS is the right size, and two scaling cliffs were fixed rather
     than scaled around** (Aug 16 2026, `~/Tonefy-react/backend@8bb766a8`, deployed).
 
