@@ -463,6 +463,22 @@ platform where each client had its own idea of what connected meant. The homepag
 for Facebook and Instagram now match the app; X keeps "coming soon", which is true - its
 API charges for writes.
 
+**Website Profile now matches the app's sections** except three, and they are named here
+so the gap is not rediscovered: **Security (2FA)** needs Firebase MFA enrolment on the web
+(a reCAPTCHA verifier - real work, not a quick add), **Admin** needs a web admin page the
+site does not have, and **Build** is genuinely app-only, since it reports the OTA bundle
+and a website has no bundle. Everything else is there: Plan & Credits with the real
+credits and reset date, the plan-ended row, Connected Accounts for all six, and profile
+photo upload through the same `/api/profile-photo` the app posts to.
+
+**Cards on the website wear the spinning gradient border** - CSS, a rotating conic
+gradient behind an opaque panel inset by the border width, which is the same trick the app
+plays with a spinning square. Same stops, same 4.2s, same reduced-motion behaviour.
+
+**When this file's design skill and the app disagree, THE APP IS THE REFERENCE** (owner,
+Sep 18 2026). That settled the tab-strip colour: green on both, and the skill was
+corrected rather than the code.
+
 **What is still NOT on the website, deliberately:** the timeline editor. It is built on
 Reanimated worklets and gesture handlers that do not cross to the web, so it is a second
 product rather than a port. The split to aim for is ACCOUNT parity - one login, one plan,
