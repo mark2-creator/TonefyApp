@@ -85,7 +85,7 @@ export default [{
 
 
 # Loaded by a <script src=...> the page includes rather than declared in the block itself.
-EXTERNAL_GLOBALS = ['tailwind']
+EXTERNAL_GLOBALS = ['tailwind', 'QRious']
 
 
 def undefined_names(body):
