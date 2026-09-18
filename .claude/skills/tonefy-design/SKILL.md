@@ -28,10 +28,17 @@ when it lives in a sheet whose Apply button is green.
 
 **Selection splits on what is being selected.** A control that chooses a *value* is
 green in its active state — the selected voice, the selected resolution, an active tool
-chip that applies on tap. A control that switches *which view you are looking at* is
-teal — the bottom tab strip, a sheet's segmented pills. Both are "selected", but only
-one of them changed the video. This is why the voice pill and the music/voiceover tab
-pills sit next to each other in the same sheet in different colours.
+chip that applies on tap. A control that switches *which view you are looking at within
+the editor* is teal — a sheet's segmented pills, the music/voiceover tabs. Both are
+"selected", but only one of them changed the video. This is why the voice pill and the
+music/voiceover tab pills sit next to each other in the same sheet in different colours.
+
+**The bottom tab strip is GREEN, and that is settled** (owner, Sep 18 2026). This rule
+used to name it as teal, and neither client ever rendered it that way — both use
+`theme.accent` (`#2ECC71`). Asked to choose, the owner's answer was that **the APP is the
+reference**: where this file and the app disagree, the app wins and this file is what
+gets corrected. So the strip stays green on both clients, and the teal rule is about the
+editor's own instruments rather than app-level navigation.
 
 Some things are neither an action nor media. If it is an **indicator attached to the
 media or the editor surface** — the quality badge on the top bar, a RAW marker on a
@@ -117,17 +124,19 @@ became a glyph, an emoji leading a label was deleted. `idea-to-video`'s option r
 their icon entirely rather than gaining ten invented glyphs - the label and description
 already carry the choice, which is how the app's own option sheets read.
 
-**Two conflicts between this skill and the app itself, found while doing it. Neither is
-fixed, because fixing one client alone makes the two diverge - which is the opposite of
-what the website work is for.**
+**Two conflicts surfaced while doing it, both now settled by the same principle: where
+this file and the app disagree, THE APP IS THE REFERENCE** (owner, Sep 18 2026).
 
-- **The bottom tab strip.** This skill says a control that switches which view you are
-  looking at is TEAL, and names the tab strip. Both clients render it GREEN
-  (`theme.accent` is `#2ecc71`; the website matches). One of the two is wrong and they
-  should move together.
-- **Nothing on either client is teal except the editor.** The website had no teal at all
-  until the progress bar was corrected. If teal really is the colour of "handling media",
-  more of both clients should be wearing it - or the rule is narrower than it reads.
+- **The bottom tab strip** stays green on both clients, and the colour rule above was
+  corrected rather than the code. See it there.
+- **Teal is narrower than this file once implied.** Outside the editor almost nothing is
+  teal, and that is correct rather than an omission: teal marks the instruments you work
+  the footage with, which mostly exist in the editor. On the website only the progress bar
+  qualified, and it was green until it was fixed.
+
+**The gradient border is on the website too**, as CSS: a rotating conic gradient behind an
+opaque panel inset by the border width, which is the same trick the app plays with a
+spinning square. Same stops, same 4.2s, same reduced-motion behaviour.
 
 ### Surfaces and text
 
