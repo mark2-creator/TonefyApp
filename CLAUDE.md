@@ -30,6 +30,29 @@ On this VPS there are three confusable local directories:
 - **`/tmp/tonefy-build`** — ❌ the old working copy, now superseded. Left in place as a
   temporary backup only. Do not edit here; it will vanish on reboot.
 
+## The parent business has its own project file — keep them apart
+
+**Tonefy runs on `tonefy-ai.fitlifesolutions.site`, a subdomain of the owner's OTHER business**,
+Fitlifesolutions: a WooCommerce ebook store (`www.fitlifesolutions.site`, 319 products) plus a WordPress
+blog (`blog.`, 464 posts), sold through Digistore24. That business is documented in
+**`~/fitlife-scripts/CLAUDE.md`** and is not this project.
+
+The shared domain has two consequences that reach Tonefy and nothing else does:
+
+- **Search Console.** The `fitlifesolutions.site` **Domain property covers every subdomain**, so Tonefy's
+  pages report into a property whose numbers are dominated by the blog — 23 indexed of 547 known across the
+  whole domain. A URL-prefix property for `tonefy-ai.` was added Sep 18 2026 for clean separation and
+  **auto-verified with no meta tag**, because the parent domain is already verified by DNS.
+- **Tonefy had never been crawled.** URL Inspection reported *"URL is unknown to Google"* with
+  *"Referring page: None detected"* — nothing anywhere linked to it. Closed by submitting
+  `/sitemap.xml` (Success, 5 pages) and adding a "Tonefy AI" item to the store's Main Menu. That link buys
+  **discovery**, not ranking: same registrable domain, so Google reads it as internal.
+
+**Do not write FitLife findings into this file, or Tonefy findings into that one.** The blog's indexing
+problem, the Digistore24 automation and the WooCommerce store belong there; anything about the app, the
+backend or the Tonefy website belongs here. Both live on the same VPS, which is exactly why the boundary
+has to be stated rather than assumed.
+
 ## One backend, two clients (confirmed Aug 8 2026)
 
 The Android app and the live website already share a single backend. This was traced
