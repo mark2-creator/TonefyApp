@@ -35,18 +35,32 @@ function planColour(plan) {
   return null;
 }
 
+// Who this is, in the order a person would say it: their name, then the address and the
+// numbers. The email drops off the second line when it IS the title, so nobody is shown
+// their own address twice. The website's admin page draws the identical two lines.
+function personLines(item) {
+  return {
+    title: item.name || item.email || item.uid,
+    meta: [
+      item.name ? item.email : null,
+      `${item.videos} video${item.videos === 1 ? '' : 's'}`,
+      item.credits === null || item.credits === undefined ? null : `${item.credits} credits`,
+      item.country || null,
+    ].filter(Boolean).join(' \u00b7 '),
+  };
+}
+
 function Row({ item, theme, onPress }) {
   const colour = planColour(item.plan);
+  const { title, meta } = personLines(item);
   return (
     <TouchableOpacity style={[styles.row, { borderBottomColor: theme.border }]} onPress={() => onPress(item)}>
       <View style={styles.rowMain}>
-        <Text style={[styles.rowEmail, { color: theme.text }]} numberOfLines={1}>
-          {item.email || item.name || item.uid}
+        <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>
+          {title}
         </Text>
         <Text style={[styles.rowMeta, { color: theme.subtext }]} numberOfLines={1}>
-          {item.videos} video{item.videos === 1 ? '' : 's'}
-          {item.credits !== null ? ` · ${item.credits} credits` : ''}
-          {item.country ? ` · ${item.country}` : ''}
+          {meta}
         </Text>
       </View>
 
@@ -190,13 +204,12 @@ export default function AdminPeople({ theme, onChanged, count }) {
       <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={styles.overlay}>
           <View style={[styles.sheet, sheetInset]}>
-            <SheetHeader title={selected?.email || selected?.uid || ''} onClose={() => setSelected(null)} />
+            <SheetHeader
+              title={selected ? personLines(selected).title : ''}
+              onClose={() => setSelected(null)}
+            />
 
-            <Text style={styles.sheetMeta}>
-              {selected?.name ? `${selected.name} · ` : ''}
-              {selected?.videos} video{selected?.videos === 1 ? '' : 's'}
-              {selected?.credits !== null ? ` · ${selected?.credits} credits` : ''}
-            </Text>
+            <Text style={styles.sheetMeta}>{selected ? personLines(selected).meta : ''}</Text>
             <Text style={styles.sheetMeta}>
               Joined {selected?.created ? new Date(selected.created).toLocaleDateString() : 'unknown'}
               {selected?.lastSignIn ? ` · last seen ${new Date(selected.lastSignIn).toLocaleDateString()}` : ' · never signed in'}
@@ -260,7 +273,7 @@ const styles = StyleSheet.create({
 
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, borderBottomWidth: 1 },
   rowMain: { flex: 1, marginRight: 10 },
-  rowEmail: { fontSize: 14, fontWeight: '600' },
+  rowName: { fontSize: 14, fontWeight: '600' },
   rowMeta: { fontSize: 12, marginTop: 2 },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   plan: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },

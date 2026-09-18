@@ -6,3 +6,4 @@
 EditVideoScreen.js.bak_*
 dist/
 node_modules/
+__pycache__/
