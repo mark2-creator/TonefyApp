@@ -35,7 +35,7 @@ On this VPS there are three confusable local directories:
 **Tonefy runs on `tonefy-ai.fitlifesolutions.site`, a subdomain of the owner's OTHER business**,
 Fitlifesolutions: a WooCommerce ebook store (`www.fitlifesolutions.site`, 319 products) plus a WordPress
 blog (`blog.`, 464 posts), sold through Digistore24. That business is documented in
-**`~/fitlife-scripts/CLAUDE.md`** and is not this project.
+**`~/fitlife/CLAUDE.md`** and is not this project.
 
 The shared domain has two consequences that reach Tonefy and nothing else does:
 
