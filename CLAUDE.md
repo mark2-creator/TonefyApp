@@ -463,11 +463,25 @@ platform where each client had its own idea of what connected meant. The homepag
 for Facebook and Instagram now match the app; X keeps "coming soon", which is true - its
 API charges for writes.
 
-**Website Profile now matches the app's sections** except three, and they are named here
-so the gap is not rediscovered: **Security (2FA)** needs Firebase MFA enrolment on the web
-(a reCAPTCHA verifier - real work, not a quick add), **Admin** needs a web admin page the
-site does not have, and **Build** is genuinely app-only, since it reports the OTA bundle
-and a website has no bundle. Everything else is there: Plan & Credits with the real
+**Website Profile now matches the app's sections** but one: **Build** is genuinely
+app-only, since it reports the OTA bundle and a website has no bundle. Plan & Credits,
+Connected Accounts for all six, profile photo upload, Security and Admin are all there.
+
+**2FA is TOTP, so it needs no reCAPTCHA** - that is only for phone/SMS MFA, and an earlier
+estimate here said otherwise. **The login challenge has to exist BEFORE enrolment is
+offered**: an account with 2FA on does not fail to sign in, it stops half way with
+`auth/multi-factor-auth-required`, so a client that only knows how to enrol will lock its
+user out with "Sign in failed". `login.html` handles the challenge; `profile.html` enrols.
+The QR is drawn in the browser from the otpauth uri rather than fetched from a chart
+service - that image IS the second factor, and posting it to a third party would be
+handing the secret away.
+
+**`/admin.html` is owner-only in the UI and 404 for everyone else at the API.** The uid
+check on Profile and on the page decides whether it is DRAWN; `requireAdmin` against
+`ADMIN_UIDS` is the real gate, and it answers **404 rather than 403**, which does not even
+admit the endpoints exist. Verified with a fresh account.
+**Its account list reads `rows`, not `users`** - the endpoint's own field name, and the
+first version of the page read `.users` and would have shown an empty list. Everything else is there: Plan & Credits with the real
 credits and reset date, the plan-ended row, Connected Accounts for all six, and profile
 photo upload through the same `/api/profile-photo` the app posts to.
 
