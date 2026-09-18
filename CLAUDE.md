@@ -485,6 +485,35 @@ first version of the page read `.users` and would have shown an empty list. Ever
 credits and reset date, the plan-ended row, Connected Accounts for all six, and profile
 photo upload through the same `/api/profile-photo` the app posts to.
 
+**The two admin screens are one screen in two places (Sep 18 2026).** They had drifted:
+the app led with the email address and kept the real name only in a detail sheet - and
+**23 of 24 accounts have a displayName**, so it was hiding the thing that identifies a
+person. The website led with the name but showed less of everything else and could not
+change anything. Both now draw the same two lines - name, then address + videos +
+credits + country, with the address dropping off the second line when it IS the title -
+the same three flags, and the same plan editor. `personLines()` in `AdminPeople.js`
+builds both lines for the row AND its sheet, so those two cannot disagree either.
+
+The website's Accounts list is now collapsed behind the same toggle the app uses and
+**fetches nothing until it is opened** - listing accounts walks the whole auth list and
+every `userVideos` document server-side. The count in the closed row comes from the
+stats already on screen, so it can say how many there are without asking for any. Its
+rows had carried `cursor:pointer` with no handler behind them, which is the website
+version of a dead control.
+
+**A headless browser is the check this page needed, and it is cheap.** The page was
+rendered with snap chromium against the real API payload, with only the Firebase auth
+and `fetch` stubbed so every drawing line is the real one - collapsed, expanded, and
+with the sheet open. A second check greps `id="..."` against every `el('...')`, since a
+typo'd id is `null` and a TypeError at runtime that nothing static sees. Note snap
+chromium can only read and write under `$HOME`, not `/tmp`.
+
+**Glyph paths for the website come from `fonts.gstatic.com/s/i/materialicons/<name>/v1/24px.svg`**,
+not from memory - `scripts/website_icons.py` says so at the point it matters. Google
+ships a transparent bounding-box `<path fill="none">` alongside the real one; drop it.
+The app's equivalent rule is checking a name against the installed glyphmap: both exist
+because a wrong icon renders as a shape rather than an error.
+
 **Cards on the website wear the spinning gradient border** - CSS, a rotating conic
 gradient behind an opaque panel inset by the border width, which is the same trick the app
 plays with a spinning square. Same stops, same 4.2s, same reduced-motion behaviour.
