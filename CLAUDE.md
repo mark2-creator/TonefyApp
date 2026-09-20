@@ -1631,8 +1631,16 @@ nothing to aim at.
    `TextRow`, `CaptionsRow`, `applyAudioTrimEdit`, `captionPreviewGroups` - that exactly
    match Phase 2-4 features already documented complete above. An earlier draft of
    already-shipped work, not anything unique. Removed with `rm -rf`.
-5. Rotate the exposed GitHub PAT in `xauusd_scalper` repo config (unrelated hygiene
-   item, low priority, not urgent).
+5. ~~Rotate the exposed GitHub PAT in `xauusd_scalper` repo config~~ — **RESOLVED
+   Sep 20 2026, and it was not merely cosmetic.** That token was DEAD, so the repo's
+   hourly `git-backup.sh` had been committing and then failing its push with
+   `Invalid username or token` into a log nothing reads: **369 commits were stranded on
+   this disk, and the remote had not moved since 12 July.** Fixed by dropping the inline
+   token from the remote URL so git falls back to the working `store` credential helper;
+   all 369 pushed. The exposed PAT is out of `.git/config` as a side effect.
+   **The general shape, seen three times in one day:** a backup that commits but cannot
+   push reports success locally and protects nothing. Check `git rev-list --count
+   @{upstream}..HEAD`, not whether the last commit exists.
 6. **Sign-up now asks for full name and country** (commit `7b6d26e7`, published Aug 10
    2026 as update group `c29281a5-c78d-4a01-9bf6-cfe6f30aacb8`, runtime 1.1.0) — new
    `components/CountryPicker.js` (searchable sheet) and `constants/countries.js` (194
