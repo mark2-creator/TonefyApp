@@ -1578,7 +1578,12 @@ nothing to aim at.
    to name, **plus uncommitted `server.js` changes** — the backend half of the word chip
    (`labelWidth`/`labelPad`/`wordBoxInLabel`, the fill recolour, the chip layer). A
    restart deploys the working tree, not the last commit, so read `git diff` before
-   restarting rather than trusting the commit id. Those changes are still uncommitted.
+   restarting rather than trusting the commit id. ~~Those changes are still
+   uncommitted.~~ **They were committed long ago; `~/Tonefy-react` has had a clean tree
+   since (checked Sep 20 2026).** Left struck rather than deleted because this line was
+   read as current and repeated as fact on Sep 20 - the two untracked directories there
+   were generated artifacts (`__pycache__/`, the 321 voice-preview mp3s), not modified
+   source. **`git status` answers this in one line; do not answer it from this file.**
 
    **No longer blocked (Aug 8 2026).** `git -C ~/Tonefy-react push origin master`
    now succeeds — verified by pushing seven backend commits and confirming
