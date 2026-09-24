@@ -3848,6 +3848,12 @@ nothing to aim at.
       **No code change was needed on either side** - the direct-first path and the app's
       `result.mode === 'direct'` branch were both written for this day. The inbox-draft
       fallback stays as the safety net, no longer the ordinary path.
+      **Published to `production` Sep 24 2026 as update group
+      `861e079d-3646-480d-ac03-3e3bc7a38e5c`** (runtime 1.1.0, commit `71191f3a`). The app
+      change in it is a stale comment only - both features went live through the BACKEND -
+      but the channel is kept in step with the repo on the standing rule that a commit is
+      not a publish. `eas update` reported "no new assets found", so it costs an installed
+      device almost nothing to take.
 
       **AUDIT APPLIED FOR Sep 17 2026, reference `20260917112025`** ("Content Posting API -
       Direct Post", acknowledged by email); TikTok says 2-4 weeks, status on the Manage apps
