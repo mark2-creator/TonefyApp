@@ -7,7 +7,16 @@ module.exports = defineConfig([
   {
     // .bak_* are recovery snapshots kept on disk deliberately and are not part of the
     // build; dist is generated. Linting either is noise that hides real findings.
-    ignores: ['dist/*', 'android/*', 'ios/*', '**/*.bak_*', 'scratchpad/*'],
+    //
+    // .webcheck/ is scratch written by scripts/check-website-js.py - it is the harness
+    // that guard builds to run eslint against the WEBSITE's inline scripts, so it is
+    // neither app code nor bundled. It is gitignored, but a flat config does NOT read
+    // .gitignore, so `npx eslint .` linted it anyway and reported 5 no-var errors from
+    // Sep 18 onward. That matters more than the noise: the gate this project relies on
+    // is "eslint --quiet must be SILENT, so any error is new and real", and a scratch
+    // directory was quietly making it red - which is exactly the always-red lint the
+    // rules below were written to avoid.
+    ignores: ['dist/*', 'android/*', 'ios/*', '**/*.bak_*', 'scratchpad/*', '.webcheck/*'],
   },
   {
     settings: {
