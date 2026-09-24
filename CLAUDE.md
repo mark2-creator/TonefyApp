@@ -667,6 +667,57 @@ token store is keyed by openId, which is what also made it the easiest to make
 multi-account. **A per-account-id token store needs a server-written owner field from the
 first day it exists.**
 
+## Known bug pattern: a reasoning model's `max_tokens` is a SHARED budget
+
+**Found Sep 24 2026.** Groq's `openai/gpt-oss-*` models are reasoning models, and
+`max_tokens` caps their private reasoning **and** the answer together. Reasoning is
+spent first, so a budget that looks generous for the answer can be consumed entirely
+before one content token is emitted. The reply is not an error - it is
+`finish_reason: 'length'` with `content` **empty**.
+
+Measured on this app's own prompts at their real budgets, default (medium) effort:
+
+| call site | max_tokens | reasoning tokens | result |
+|---|---|---|---|
+| `/api/extract-keywords` | 80 | 78 | **empty** |
+| AI tool lookup | 120 | 113 | **empty** |
+| `/api/extract-segments` | 500 | 498 | **empty** |
+| url -> script | 400 | 141 | `finish: length`, narration **truncated mid-sentence** |
+
+**Fixed with `reasoning_effort: 'low'`, not by raising every budget** - these prompts are
+lookups and extractions, not problems needing deliberation. Reasoning drops to 28-46
+tokens and every call finishes `stop` with real content. Set once in `groqChat`, the
+single boundary every caller goes through.
+
+**Three things this hid behind:**
+
+- **Only one of the four actually broke visibly.** `/api/extract-segments` calls
+  `groqChat` DIRECTLY rather than through `callLLM`, so it has no Cloudflare fallback and
+  simply failed. The others fell through to Cloudflare on *every single call* - working,
+  slower, and not what the model list is for. **A fallback that always fires looks like
+  success.**
+- **The error it surfaced named the wrong thing.** Empty content set `lastError`, the
+  loop moved to the next candidate, that one was retired, and the 404 for
+  `groq/compound-mini` is what reached the log - so the visible error was the *second*
+  model's retirement, never the first model's starvation. `lastError` now reports
+  `finish` and the reasoning/budget split, because "returned empty content" alone is what
+  got blamed on the model last time.
+- **It had already caused a wrong conclusion, written down as fact.** The comment above
+  `GROQ_MODELS` rejected `openai/gpt-oss-20b` on Aug 17 2026 for "returns EMPTY content
+  for these prompts". It does - at medium effort, exactly as the 120b does. It was the
+  budget, not the model, and that misdiagnosis cost the list its only working fallback.
+  `gpt-oss-20b` passes all four real prompts at low effort and is the fallback again.
+
+**`qwen/qwen3.8-27b` is still rejected**, now for a measured reason: it accepts
+`reasoning_effort` and ignores it, starving at 80 and 400 tokens.
+
+**The guard:** a model that does not take `reasoning_effort` answers **400**, which is not
+a "model gone" error and would be rethrown, taking the feature down. `groqChat` retries
+once without the parameter.
+
+**Verified through the deployed endpoints, not the library:** `/api/extract-segments` and
+`/api/extract-keywords` both return real content, with no fallback warning in the log.
+
 ## Known bug pattern: a field that is WRITTEN but never READ
 
 **Found Sep 24 2026 in TikTok, and it had been live since the token store was built.**
