@@ -36,8 +36,11 @@ const PRIVACY_LABELS = {
  *     private branded content, and shows the Music Usage / Branded Content declarations.
  *
  * Collects those choices and hands them back via onConfirm(options); the caller posts.
- * Until the app is audited the backend falls back to an inbox draft (the options are then
- * moot), but the sheet must exist and be correct for the audit to pass.
+ *
+ * The Direct Post audit PASSED Sep 24 2026, so these options are live rather than moot -
+ * every one of them now reaches the real post. The inbox-draft fallback in
+ * publishToTikTok stays as the safety net for an account or app state TikTok refuses
+ * direct posting for; it is no longer the ordinary path.
  */
 export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, posting, videoUrl }) {
   const sheetInset = useSheetInset();

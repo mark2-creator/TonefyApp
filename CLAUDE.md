@@ -667,6 +667,47 @@ token store is keyed by openId, which is what also made it the easiest to make
 multi-account. **A per-account-id token store needs a server-written owner field from the
 first day it exists.**
 
+## Known bug pattern: a field that is WRITTEN but never READ
+
+**Found Sep 24 2026 in TikTok, and it had been live since the token store was built.**
+`saveTikTokToken` wrote `expiresAt` on every save, with a comment stating it existed
+"so a refresh can be attempted rather than the connection simply failing". Nothing ever
+read it. A TikTok access token lives **24 hours**, so every TikTok connection stopped
+working the day after it was made, and the only cure was reconnecting by hand.
+
+**Why it hid for so long.** The owner reconnects while testing, so the connection was
+almost always less than a day old. And the failure is silent in the worst way: the
+badge still said Connected, because `getTikTokToken` returned the expired record and
+every caller reads that as "we have a token". The same stale-badge shape as item 39 and
+item 41, arrived at from a third direction.
+
+**The tell is in the code, not the symptom.** A field written with a comment explaining
+what it is *for* and no reader anywhere is a feature that was designed and never
+finished. `grep` for the field name: one hit in the writer and none in a reader is the
+whole bug.
+
+**Three things a token refresh has to get right**, all of which are easy to miss:
+
+- **Rotation.** TikTok returns a NEW refresh token each time. Two concurrent refreshes
+  race, and the loser persists one the provider has already replaced - which breaks the
+  connection *permanently* rather than for a day. One in-flight promise per account,
+  shared by everyone who arrives while it runs.
+- **What the save overwrites.** `saveTikTokToken` uses `.set()` without merge, so the
+  refreshed record must spread the stored one. That is what keeps `uid` - the
+  server-written ownership field `tiktokOwnedBy` reads (see the client-written-record
+  pattern above). Dropping it would fail every ownership check.
+- **A margin.** Refresh a few minutes EARLY, or a token that passes the check expires
+  during the upload that follows. A video post takes real time.
+
+**And a dead refresh token must return null, not the expired record** - that is what
+makes `/api/tiktok/status` report disconnected instead of drawing Connected over a
+token that cannot post.
+
+**Where else to look:** every platform storing an expiring token. Pinterest already has
+`pinValidToken` and is fine. The uid-keyed platforms are worth a `grep` for
+`expiresAt`/`expires_in` with no reader beside it - the question to ask is not whether
+the expiry is recorded but **who reads it**.
+
 ## Known bug pattern: many sibling views is O(n²) on Android
 
 **Symptom:** the app freezes and Android offers "Tonefy AI isn't responding". Sentry
@@ -3726,13 +3767,37 @@ nothing to aim at.
       unaudited_client_can_only_post_to_private_accounts
       ```
 
-      **The SCOPE is granted; the Direct Post AUDIT is separate and has not passed.** Until
-      it does, TikTok permits direct posting only to accounts that are PRIVATE, so a public
-      account correctly falls back to the inbox draft - which is what the privacy policy and
-      terms already promise. Nothing in the code is wrong, and the direct-first path will
-      start working with no change the moment the audit clears.
+      **The SCOPE is granted; the Direct Post AUDIT is separate** - it had not passed then,
+      and until it did, TikTok permitted direct posting only to accounts that are PRIVATE, so
+      a public account correctly fell back to the inbox draft.
       **The general lesson: a granted scope is permission to CALL an endpoint, not proof the
       call will be allowed.** Only the endpoint's own answer is proof.
+
+      **DIRECT POST AUDIT APPROVED Sep 24 2026 - and it IS live this time, asked rather
+      than assumed.** TikTok emailed "Your Content Posting API - Direct Post application is
+      approved". The same probe that refused before now answers a different question
+      entirely:
+
+      ```
+      POST /v2/post/publish/video/init/  ->  400 invalid_params ("The video info is empty")
+      ```
+
+      That is the audit gate GONE - it is now complaining about the deliberately bad
+      payload rather than about who is asking. **Probing with an invalid payload is the
+      cheap non-destructive check**: an unaudited app is refused before its parameters are
+      ever looked at, so the error that comes back tells you which wall you hit without
+      posting anything. Then proven for real through the deployed `/api/post-now`:
+      `mode: 'direct'`, publish id `v_pub_file~v2-1.7689070843848476692`, and
+      `/v2/post/publish/status/fetch/` reporting `PUBLISH_COMPLETE`. **The id prefix is
+      itself the discriminator - `v_pub_file~` is a direct post, `v_inbox_file~` a draft.**
+      Posted at `SELF_ONLY` so a verification post is real without being public; it is on
+      the owner's profile privately and can be deleted in the TikTok app.
+      `creator_info` now offers all three privacy levels (`PUBLIC_TO_EVERYONE`,
+      `MUTUAL_FOLLOW_FRIENDS`, `SELF_ONLY`) with `max_video_post_duration_sec` 3600.
+      **No code change was needed on either side** - the direct-first path and the app's
+      `result.mode === 'direct'` branch were both written for this day. The inbox-draft
+      fallback stays as the safety net, no longer the ordinary path.
+
       **AUDIT APPLIED FOR Sep 17 2026, reference `20260917112025`** ("Content Posting API -
       Direct Post", acknowledged by email); TikTok says 2-4 weeks, status on the Manage apps
       page. Quote that reference in any follow-up. App ID
@@ -3747,8 +3812,9 @@ nothing to aim at.
       `privacy_level_options`) was enforced. All three shipped the same day. **Checking the
       guidelines before submitting rather than learning from a rejection is what a 2-4 week
       review cycle is worth.**
-      **Cheap way to verify the direct path today without the audit:** set one TikTok
-      account to private, post, confirm `mode: 'direct'`, set it back.
+      ~~**Cheap way to verify the direct path today without the audit:** set one TikTok
+      account to private, post, confirm `mode: 'direct'`, set it back.~~ - moot, the audit
+      passed; a normal post is now the direct path.
       The fallback now LOGS the refusal reason; discarding it is what made "it went to
       drafts again" undiagnosable without another device round trip.
       **The order that mattered on the flip:** the old account was disconnected while
@@ -4160,6 +4226,17 @@ nothing to aim at.
       scheduling, audience Pinners+Creators. **When approved, real pins post with NO code
       change.** Also built the app-side Pinterest UI this session (ConnectAccounts card +
       Edit&Post row, published), so the whole Pinterest chain is done pending review.
+      **STANDARD ACCESS APPROVED Sep 24 2026, and the "no code change" claim held.**
+      Pinterest emailed "approved for Standard access". Proven the same way as TikTok -
+      first the cheap probe (a pin create with a deliberately unfetchable image answered
+      `"Sorry we could not fetch the image."`, a CONTENT complaint, where Trial used to
+      refuse the call outright with "use API Sandbox instead"), then for real through the
+      deployed `/api/post-now`: a video pin published in 54s, `publishId
+      1043216701211124835`, confirmed live with a GET and then **deleted** (`DELETE
+      /v5/pins/{id}` -> 204, re-read -> 404). Unlike Instagram, Pinterest HAS a working
+      delete, so an end-to-end test here leaves nothing behind.
+      **Pinterest is therefore the first fully public social channel** - it never needed the
+      URSB business registration that still gates Meta.
     - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
       -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
       part ids -> create a post referencing the video URN. Member id/name come from OpenID
