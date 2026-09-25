@@ -1519,9 +1519,23 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
   edit that was discarded rather than committed - so screenshots need no resizing, and the
   2:1 aspect-ratio limit I expected does not bite. `edits.images.upload` appends, so
   controlling ORDER means `deleteall` then uploading in sequence.
-  **Still thin on the editor:** four of the six designs are about connecting and posting.
-  Nothing shows the timeline, the 138 caption styles or a generation in progress, which is
-  what the listing text now promises. 2-3 editor frames are the next improvement.
+  **CLOSED the same evening - 8 live, the Play maximum.** The owner sent four more
+  designs covering exactly the gap: the timeline editor with its filmstrip and toolbar,
+  Caption Style 138, the Auto Captions sheet and Transition 133. Final order answers, in
+  sequence, *what is this* (hero), *can it do what it claims* (dashboard's four generation
+  entry points), *is it any good* (the real editor), then the visual proof, the depth, and
+  the differentiator: hero, dashboard, editor, captions 138, auto captions, transitions,
+  Post To, Edit & Post.
+  **Nine designs existed and Play caps phone shots at 8**, so Connected Accounts was
+  dropped - a settings list is the weakest seller, and it was also the frame most exposed
+  by Meta's dev mode.
+  **`edits.insert` answered 503 once**, and the googleapis client does **not** retry POSTs
+  (`httpMethodsToRetry` is GET/HEAD/PUT/OPTIONS/DELETE). It failed before an edit existed,
+  so nothing was half-applied - but any script driving this API wants its own retry on
+  429/5xx or a transient blip reads as a real failure.
+  **A re-send of the whole folder is mostly duplicates** - dedupe by md5 before treating
+  anything as new; 6 of the 10 files the second transfer brought were byte-identical to
+  what was already live.
   **They show Facebook and Instagram as Connected**, which a public user cannot reach while
   Meta is in dev mode (item 44). Flagged to the owner, who chose to ship them as they are
   while that work continues - a deliberate call, not an oversight. Swap that frame when
