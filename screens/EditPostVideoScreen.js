@@ -15,6 +15,9 @@ import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+// A post that actually landed is the one moment it is fair to ask for a rating -
+// their video is live. See utils/rateApp.js for why this is not expo-store-review.
+import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import TikTokPostSheet from '../components/TikTokPostSheet';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -204,7 +207,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       // it really is private until Google's audit clears.
       showAlert('Posted to YouTube',
         'It is on your channel as a private video while our YouTube app is under review.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+        [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
     } catch (e) {
       showAlert('YouTube', e.message || 'The upload failed.');
     } finally {
@@ -282,7 +285,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       if (!result) throw new Error(d.error || 'The post failed.');
       if (!result.ok) throw new Error(result.error);
       showAlert(`Posted to ${cfg.label}`, cfg.done,
-        [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+        [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
     } catch (e) {
       showAlert(cfg.label, e.message || 'The post failed.');
     } finally {
@@ -335,11 +338,11 @@ export default function EditPostVideoScreen({ navigation, route }) {
       // lands in the TikTok inbox for the user to finish).
       if (result.mode === 'direct') {
         showAlert('Posted to TikTok', 'Your video has been posted to your TikTok account.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
       } else {
         showAlert('Sent to TikTok',
           'Your video is now in your TikTok inbox as a draft. Open TikTok to add your caption and publish it.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
       }
     } catch (e) {
       showAlert('TikTok', e.message || 'The post failed.');
@@ -399,7 +402,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       if (!d.results) throw new Error(d.error || 'The post failed.');
       if (failed.length === 0) {
         showAlert('Posted', `Posted to ${namePlatforms(platforms)}!`,
-          [{ text: 'OK', onPress: () => navigation.navigate('Calendar') }]);
+          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
       } else if (failed.length < (d.results || []).length) {
         // Partial success is its own outcome. Reporting it as failure would have someone
         // retry a platform that already posted.
