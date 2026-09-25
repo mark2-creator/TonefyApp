@@ -1504,11 +1504,28 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
 `StoreReview.requestReview()` later needs no other change here.
 
 **What is still OWNER work, and why it cannot be done from here:**
-- **Screenshots: 2, where Play allows 8.** The only phone screenshots on this box are the
-  YouTube-audit evidence shots in `~/ytshots` - OAuth consent dialogs, a browser, YouTube
-  Studio, and "Coming soon" badges for platforms that are now live. Using them would
-  actively hurt. Needs 6-8 fresh captures of the editor, the caption picker, the
-  generation flow and the posting sheet.
+- ~~**Screenshots: 2, where Play allows 8.**~~ **DONE Sep 25 2026 - 5 live on both
+  locales.** The owner designed them in Canva with phone mockups, at exactly 1080x1920
+  sRGB with no alpha, and sent them over with `scp` from Termux (the link ran at ~800KB/s,
+  not the 18.8K/s the phone's status bar suggested - **measure the transfer, do not plan
+  around the status bar**). Order is deliberate, since the first two or three are what
+  most browsers ever see: hero value proposition, dashboard workflows, post + schedule,
+  a real video in the editor, connected accounts.
+  Two of the eight files that arrived were not screenshots at all (a bank statement and an
+  old sale graphic) and one design was a near-duplicate of another with a different mockup
+  frame - **5 distinct frames beat 6 with a visible repeat.** Originals kept in `~/shots/`,
+  the two they replaced in `~/shots/old-listing/`.
+  **A raw 720x1612 phone capture was tested against Play and ACCEPTED**, in a throwaway
+  edit that was discarded rather than committed - so screenshots need no resizing, and the
+  2:1 aspect-ratio limit I expected does not bite. `edits.images.upload` appends, so
+  controlling ORDER means `deleteall` then uploading in sequence.
+  **Still thin on the editor:** four of the six designs are about connecting and posting.
+  Nothing shows the timeline, the 138 caption styles or a generation in progress, which is
+  what the listing text now promises. 2-3 editor frames are the next improvement.
+  **They show Facebook and Instagram as Connected**, which a public user cannot reach while
+  Meta is in dev mode (item 44). Flagged to the owner, who chose to ship them as they are
+  while that work continues - a deliberate call, not an oversight. Swap that frame when
+  Meta goes live.
 - **No promo video** on the listing.
 - **Tags** (up to 5, Console-only) and **store listing experiments** are not exposed by
   the API.
