@@ -1460,6 +1460,63 @@ nothing to aim at.
   refuses to extend, which is the safe reading of not knowing, but the real fix is to
   measure the duration on add. The strip shows `no duration` when this bites.
 
+## Play Store discovery / ASO (Sep 25 2026)
+
+Reported as "not being discovered, very few impressions". Diagnosed against the live
+listing through the Play Developer API rather than from the Console screenshots.
+
+**The single biggest fault was the title: `"Tonefy AI"` - 9 of 30 characters, and not
+one word anybody searches for.** Title is the heaviest-weighted field Play indexes, and
+the app was spending it entirely on a brand nobody knows yet. Now
+**`"Tonefy AI: AI Video Generator"`** (29/30).
+
+Also fixed the same day, all through `edits.listings.update`:
+- **Short description** rewritten to carry the terms with real intent behind them:
+  `"AI video maker: script to video, auto captions, voiceover & post to TikTok"` (74/80).
+- **Full description** 970 -> 2505 chars. The old one **never mentioned social posting**,
+  which is both the app's clearest differentiator against CapCut and a whole keyword
+  surface that was simply absent.
+- **`en-US` added.** The listing existed in `en-GB` ONLY, and every locale is its own
+  search index.
+
+**Accuracy matters more than keywords here.** The description names TikTok, YouTube,
+Pinterest and LinkedIn as working and Facebook/Instagram as "on the way", because Meta is
+still in dev mode pending Business Verification (item 44) - a store listing claiming a
+feature a new user cannot use earns one-star reviews, which costs more than the keyword
+gains.
+
+**The listing was backed up first** to `~/ytshots/play-listing-backup-2026-09-25.json`
+(not the scratchpad, which a reboot wipes).
+
+**Checked and found already CORRECT - do not re-diagnose these:** the category is
+`VIDEO_PLAYERS` (Video Players & Editors), production is live at versionCode 12 with all
+countries targeted, and the public listing returns 200. An early read of the page HTML
+appeared to say the category was "Tools"; that was a false positive from elsewhere in the
+markup, and the structured data says `applicationCategory: VIDEO_PLAYERS`. **Grep the
+structured data, not the whole page.**
+
+**27 accounts and ZERO ratings, which is a ranking problem rather than a vanity one** -
+Play sorts a zero-rating app below anything with any rating, for every term it might
+otherwise appear for. `utils/rateApp.js` asks after a POST succeeds (their video is
+actually live), never on a first success, never twice in 60 days. **Deliberately not
+`expo-store-review`**: it is the nicer control but a native module, so it would reach
+nobody already holding the app - `Linking` ships over the air today, and swapping in
+`StoreReview.requestReview()` later needs no other change here.
+
+**What is still OWNER work, and why it cannot be done from here:**
+- **Screenshots: 2, where Play allows 8.** The only phone screenshots on this box are the
+  YouTube-audit evidence shots in `~/ytshots` - OAuth consent dialogs, a browser, YouTube
+  Studio, and "Coming soon" badges for platforms that are now live. Using them would
+  actively hurt. Needs 6-8 fresh captures of the editor, the caption picker, the
+  generation flow and the posting sheet.
+- **No promo video** on the listing.
+- **Tags** (up to 5, Console-only) and **store listing experiments** are not exposed by
+  the API.
+
+**Expect a lag.** Play re-indexes a changed listing over roughly a week, and an app three
+weeks into production with no ratings is slow to rank whatever the copy says. The keyword
+work decides which searches it can appear in at all; ratings decide where in them.
+
 ## Repo hygiene (as of Aug 5 2026)
 
 - `rebuild/phase-4` pushed to `origin`, confirmed at `f3a8e26d` (Aug 6 2026).
