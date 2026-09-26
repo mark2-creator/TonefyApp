@@ -1550,8 +1550,11 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
   and TikTok-AUDIT demos: reviewer-paced, one letterboxed portrait-in-16:9 with grey bars,
   the other a zoomed capture with overlapping text and "Coming soon" badges on Facebook and
   Instagram. **Judge this from the THUMBNAIL** (`img.youtube.com/vi/<id>/maxresdefault.jpg`)
-  - that still is what the carousel actually shows. Both were rejected on that basis; a
-  purpose-made 20-30s landscape promo is the thing still missing.
+  - that still is what the carousel actually shows. Both were rejected on that basis.
+  **DECIDED Sep 26 2026 (owner): no promo video, deliberately - not an outstanding task.**
+  "If the video is going to replace our hero lets leave it." An empty slot costs nothing;
+  a weak video costs the best frame in the set. Revisit only with a purpose-made 20-30s
+  landscape promo, and judge it by its thumbnail before setting it.
   (`diNcnX-CIKU`, the old OAuth demo, has since gone private - oEmbed is the quick liveness
   check.)
 - **Tags** (up to 5, Console-only) and **store listing experiments** are not exposed by
