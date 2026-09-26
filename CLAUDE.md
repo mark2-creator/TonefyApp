@@ -1576,6 +1576,42 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
 weeks into production with no ratings is slow to rank whatever the copy says. The keyword
 work decides which searches it can appear in at all; ratings decide where in them.
 
+## Google sign-in captured no country, and that was most of the user base
+
+**Found Sep 26 2026 by the owner, confirmed by measurement: 20 of 27 accounts had no
+country, every one of them a Google account, and only 6 of 27 carried one at all.**
+Sign-up by email asks for a full name and a country (item 6). Google sign-in cannot -
+Google returns a name and an address and nothing else - and nothing asked afterwards, so
+the field simply stayed empty. The admin screen's country breakdown had been reporting
+on under a quarter of the user base without saying so.
+
+**`components/CountryGate.js`, mounted in `App.js` beside `BrandedAlertHost`.** Three
+decisions worth not re-litigating:
+
+- **Gated on the FIELD being missing, not on "is this a new sign-up".** That is the whole
+  reason it repairs the existing accounts: the twenty already signed in never pass through
+  `AuthScreen` again, so anything hooked to the sign-up path would only ever have helped
+  future users. Verified against live data before shipping - it asks exactly those 20,
+  skips the 6 that have one, and skips the 1 with no profile document at all (the backend
+  creates that lazily, so it gets asked the launch after).
+- **Dismissible**, per the sheet rule that every sheet backs out from its header. A
+  required field captures marginally more on the first showing and traps anyone whose
+  country is genuinely not on the list; asking again next launch gets there without
+  holding the app hostage. Shown once per session via a module flag.
+- **It does NOT create a profile document.** Asking someone for a country before anything
+  of theirs exists would write a document containing only that.
+
+**The trap this nearly shipped with: `CountrySheet` is itself a `Modal`.** Rendering it
+inside `CountryGate`'s own `Modal` is a Modal inside a Modal, which on Android can put
+the inner one behind its parent or drop it entirely - and it **bundles clean, passes
+eslint, passes jsxrefs and passes `expo export`**, failing only on a real device. Exactly
+the shape this file records four times already. They are siblings under a fragment now,
+with the outer sheet hidden while the picker is up, so two modals are never on screen at
+once. **Check whether a component you are about to nest is a `Modal` before nesting it.**
+
+Published to `production` Sep 26 2026 as update group
+`98b71a94-f98a-492a-83d5-e8b2fb6896ce`. **Untested on device.**
+
 ## Repo hygiene (as of Aug 5 2026)
 
 - `rebuild/phase-4` pushed to `origin`, confirmed at `f3a8e26d` (Aug 6 2026).
