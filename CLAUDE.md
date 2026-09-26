@@ -1576,7 +1576,7 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
 weeks into production with no ratings is slow to rank whatever the copy says. The keyword
 work decides which searches it can appear in at all; ratings decide where in them.
 
-## Google sign-in captured no country, and that was most of the user base
+## Google sign-in captured no country and no usable name (`components/ProfileGate.js`)
 
 **Found Sep 26 2026 by the owner, confirmed by measurement: 20 of 27 accounts had no
 country, every one of them a Google account, and only 6 of 27 carried one at all.**
@@ -1585,7 +1585,7 @@ Google returns a name and an address and nothing else - and nothing asked afterw
 the field simply stayed empty. The admin screen's country breakdown had been reporting
 on under a quarter of the user base without saying so.
 
-**`components/CountryGate.js`, mounted in `App.js` beside `BrandedAlertHost`.** Three
+**`components/ProfileGate.js`, mounted in `App.js` beside `BrandedAlertHost`.** Three
 decisions worth not re-litigating:
 
 - **Gated on the FIELD being missing, not on "is this a new sign-up".** That is the whole
@@ -1609,8 +1609,26 @@ the shape this file records four times already. They are siblings under a fragme
 with the outer sheet hidden while the picker is up, so two modals are never on screen at
 once. **Check whether a component you are about to nest is a `Modal` before nesting it.**
 
-Published to `production` Sep 26 2026 as update group
-`98b71a94-f98a-492a-83d5-e8b2fb6896ce`. **Untested on device.**
+**It collects a FIRST and LAST name as well** (asked for Sep 26 2026, for personalised
+email). Measured before building it: **26 of 27 accounts already had a name from Google**,
+but only 8 had it mirrored into Firestore and **none** had it split into first and last -
+which is the part an email actually needs. So it does not ask anyone to retype what the
+app holds: the fields are **prefilled** by splitting the display name, and simulating the
+gate against live data gave a prefilled first name for all 26 with none blank.
+
+- **A surname is OPTIONAL.** Two accounts have a single-word name, and plenty of people
+  legitimately have one. Requiring it would block them or teach them to type a full stop.
+- **The split is shown for correction, never saved silently** - first-token-is-given-name
+  is wrong for every culture that writes the family name first.
+- **The name is mirrored back to Auth `displayName`**, because `ProfileScreen` reads that
+  and two stores disagreeing would show one person under two names. Non-fatal: the
+  Firestore record is the one that counts.
+
+Renamed from `CountryGate` when it grew the name fields - a component called `CountryGate`
+that asks for names is exactly the kind of name that misleads the next reader.
+
+Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (country),
+then `518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country). **Untested on device.**
 
 ## Repo hygiene (as of Aug 5 2026)
 
