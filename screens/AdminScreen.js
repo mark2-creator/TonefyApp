@@ -99,7 +99,7 @@ export default function AdminScreen({ navigation }) {
             <Stat theme={theme} label="Monthly revenue" value={r ? `$${r.mrrUsd}` : '—'}
               hint={r?.paying ? 'from real purchases' : 'no real purchases yet'} />
           </View>
-          {!!r && (r.testing > 0 || r.manual > 0 || r.lapsed > 0) && (
+          {!!r && (r.testing > 0 || r.manual > 0 || r.lapsed > 0 || r.lapsedAdmin > 0) && (
             <View style={[styles.list, { backgroundColor: theme.card, borderColor: theme.border }]}>
               {r.testing > 0 && (
                 <View style={styles.listRow}>
@@ -113,6 +113,18 @@ export default function AdminScreen({ navigation }) {
                   <Text style={styles.listCount}>{r.manual}</Text>
                 </View>
               )}
+              {/* An admin's lapse and a real subscriber's lapse look identical in the
+                  plan field and mean opposite things, so they are counted apart by the
+                  server and drawn apart here. This row used to be one red line with a
+                  note asserting the account was an admin - which it could not know, and
+                  which would have calmly mislabelled a real customer's lapse as exempt
+                  the first time one happened. */}
+              {r.lapsedAdmin > 0 && (
+                <View style={styles.listRow}>
+                  <Text style={[styles.listName, { color: theme.subtext }]}>Expired · admin account, exempt</Text>
+                  <Text style={styles.listCount}>{r.lapsedAdmin}</Text>
+                </View>
+              )}
               {r.lapsed > 0 && (
                 <View style={styles.listRow}>
                   <Text style={[styles.listName, { color: '#ff6b6b' }]}>Expired but still on a paid plan</Text>
@@ -120,9 +132,16 @@ export default function AdminScreen({ navigation }) {
                 </View>
               )}
               <Text style={[styles.listNote, { color: theme.subtext }]}>
-                Not counted as revenue. An expired subscription is taken back to free
-                within six hours - except on an admin account, which is exempt, and is
-                what this one is.
+                {'Not counted as revenue.'}
+                {r.lapsedAdmin > 0
+                  ? ' An admin keeps Creator for being an admin rather than for buying it,'
+                    + ' so the sweep leaves that one alone on purpose.'
+                  : ''}
+                {r.lapsed > 0
+                  ? ' An expired subscription is taken back to free within six hours -'
+                    + ' one still showing here after that has not been swept and is worth'
+                    + ' looking into.'
+                  : ''}
               </Text>
             </View>
           )}
