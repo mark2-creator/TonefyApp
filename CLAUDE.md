@@ -1495,6 +1495,18 @@ appeared to say the category was "Tools"; that was a false positive from elsewhe
 markup, and the structured data says `applicationCategory: VIDEO_PLAYERS`. **Grep the
 structured data, not the whole page.**
 
+**A rating left from a TESTING TRACK is private feedback and never becomes a public
+star** (seen Sep 26 2026: the owner's own 5-star shows on his device under "Your private
+feedback", while `reviews.list` reports zero). That is the actual reason the public rating
+is 0, and it has a consequence for `utils/rateApp.js`: **anyone installed via the internal
+or closed track who taps Rate leaves feedback that cannot move the public rating.** Public
+stars only come from installs off the PUBLIC production listing. Worth considering moving
+real users off the testing tracks now that production is live - Play serves a tester the
+highest-priority track they are opted into (item 29), so they also see a
+"(Internal Beta)" title suffix and a red "may be unsecure or unstable" banner that a real
+user never sees. **The public listing itself is clean** - verified by fetching it: title
+`Tonefy AI: AI Video Generator`, no beta label, new description live.
+
 **27 accounts and ZERO ratings, which is a ranking problem rather than a vanity one** -
 Play sorts a zero-rating app below anything with any rating, for every term it might
 otherwise appear for. `utils/rateApp.js` asks after a POST succeeds (their video is
