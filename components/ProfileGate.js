@@ -115,11 +115,18 @@ export default function ProfileGate({ user }) {
     <>
     <Modal visible={!picker} transparent animationType="slide" onRequestClose={() => setVisible(false)}>
       <View style={styles.overlay}>
-        <View style={[styles.sheet, { paddingBottom: sheetInset }]}>
-          <SheetHeader title="Tell us who you are" onClose={() => setVisible(false)} />
+        {/* useSheetInset returns a STYLE OBJECT ({paddingBottom: n}), so it is spread
+            into the array - not read as a number. Writing {paddingBottom: sheetInset}
+            nests an object inside a style property, which React Native silently drops,
+            and the sheet then sits flush against the Android navigation bar with its
+            Save button half under the buttons. Nothing static catches it: it is valid
+            JS, valid JSX, and lint has no opinion about the shape of a style value. */}
+        <View style={[styles.sheet, sheetInset]}>
+          <SheetHeader title="Nice to meet you" onClose={() => setVisible(false)} />
           <Text style={styles.body}>
-            So we can address you properly, and know which countries Tonefy is reaching.
-            None of this is shown on anything you post.
+            We would love to know who we are talking to, and which countries Tonefy is
+            reaching, so we can add the languages and voices people actually need. It
+            takes a moment, and none of it ever appears on anything you post.
           </Text>
 
           <Text style={styles.label}>First name</Text>

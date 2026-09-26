@@ -222,6 +222,44 @@ Bottom sheets, never centre dialogs. `modalOverlay` is `rgba(0,0,0,0.7)` with
 Always use `SheetHeader` (`components/SheetHeader.js`) and `useSheetInset()` — every
 sheet must be dismissible from its header without hunting for a footer button.
 
+### The system bars are not yours to draw on — a MUST
+
+**Nothing interactive may sit under the Android navigation bar or the gesture pill.**
+Reported from a device Sep 26 2026: a sheet's Save button was half-hidden behind the
+three navigation buttons, which makes the primary action of that sheet unreachable
+without the user scrolling a sheet that does not scroll.
+
+A sheet sits flush against the bottom of the window, so **its own bottom padding is the
+only thing holding the last row clear**. That padding cannot be a fixed number - the bar
+is a different height on a gesture-nav device, a three-button device and a tall device
+with a pill, and a guess is wrong on two of the three.
+
+```js
+const sheetInset = useSheetInset(16);            // hook, at the top of the component
+<View style={[styles.sheet, sheetInset]}>        // SPREAD into the array
+```
+
+**`useSheetInset()` returns a STYLE OBJECT, `{ paddingBottom: n }`, not a number.** The
+mistake to know about, because it has been made and it is invisible:
+
+```js
+<View style={[styles.sheet, { paddingBottom: sheetInset }]}>   // WRONG
+```
+
+That nests an object inside a style property. React Native silently drops it, the sheet
+gets no bottom padding at all, and the result is the bug above. **It is valid JS, valid
+JSX, passes `eslint --quiet`, passes `expo export` and passes jsxrefs** - nothing static
+has an opinion about the shape of a style value, so only a device shows it. Same family
+as every other failure this project ships: correct-looking, silent, device-only.
+
+Screens that are not sheets use `useSafeAreaInsets()` and consume `insets.top` /
+`insets.bottom` directly; `MyVideosScreen` not consuming `insets.top` is what put its
+header under the status bar (item 9).
+
+**The check is one line** whenever a sheet is touched: does its last interactive row
+clear the navigation bar on a three-button device? That is the tightest case, since a
+button bar is taller than a gesture pill.
+
 Option chips: `borderRadius: 20`, `paddingHorizontal: 14`, `paddingVertical: 8`,
 `backgroundColor: '#1a1a1a'`, border `#2a2a2a`; active flips to the green fill with
 `#000` text.
