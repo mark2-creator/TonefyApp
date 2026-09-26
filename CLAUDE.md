@@ -1627,8 +1627,26 @@ gate against live data gave a prefilled first name for all 26 with none blank.
 Renamed from `CountryGate` when it grew the name fields - a component called `CountryGate`
 that asks for names is exactly the kind of name that misleads the next reader.
 
+**Two device findings, both fixed Sep 26 2026:**
+
+- **The Save button sat under the Android navigation buttons** - the sheet's primary
+  action, unreachable. `useSheetInset()` returns a **STYLE OBJECT**, `{paddingBottom: n}`,
+  and this wrote `{ paddingBottom: sheetInset }`, nesting an object inside a style
+  property. React Native silently drops that, so the sheet had no bottom padding at all.
+  **Valid JS, valid JSX, passes `eslint --quiet`, `expo export` AND jsxrefs** - nothing
+  static has an opinion about the shape of a style value. 41 other call sites spread it
+  correctly (`style={[styles.sheet, sheetInset]}`); this was the only one wrong.
+  **Now a MUST in the `tonefy-design` skill** (owner's request): nothing interactive may
+  sit under the navigation bar or gesture pill, the padding cannot be a fixed number
+  because the bar differs per device, and the three-button device is the tightest case to
+  check against.
+- **"Tell us who you are" read as a demand.** Now "Nice to meet you", explaining what the
+  answers buy the user (the languages and voices people actually need) rather than what
+  the app wants. Owner's standing preference: good, polite, friendly and professional.
+
 Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (country),
-then `518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country). **Untested on device.**
+`518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country), then
+`45e89282-2e65-48fe-a021-4708126050a0` (copy + safe area).
 
 ## Repo hygiene (as of Aug 5 2026)
 
