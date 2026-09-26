@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
 import { configureForegroundBehaviour } from './utils/notifications';
 import BrandedAlertHost from './components/BrandedAlert';
-import CountryGate from './components/CountryGate';
+import ProfileGate from './components/ProfileGate';
 import ErrorBoundary from './components/ErrorBoundary';
 import { JobsProvider } from './context/JobsContext';
 import ActiveJobsBar from './components/ActiveJobsBar';
@@ -233,11 +233,12 @@ function App() {
     </NavigationContainer>
     </JobsProvider>
     <BrandedAlertHost />
-    {/* Asks for a country when the profile has none - which is every Google account,
-        since Google returns a name and an address and nothing else. Mounted here rather
-        than in AuthScreen because the accounts that need it most are already signed in
-        and never pass through that screen again. */}
-    {user && <CountryGate user={user} />}
+    {/* Fills in the name and country a Google sign-in cannot collect - Google returns
+        a display name and an address and nothing else, so no country was ever captured
+        and the name was never split for a personalised email. Mounted here rather than
+        in AuthScreen because the accounts that need it most are already signed in and
+        never pass through that screen again. */}
+    {user && <ProfileGate user={user} />}
     </GestureHandlerRootView>
     </ThemeProvider>
     </SafeAreaProvider>
