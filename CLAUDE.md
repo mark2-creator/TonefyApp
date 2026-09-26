@@ -1540,7 +1540,20 @@ nobody already holding the app - `Linking` ships over the air today, and swappin
   Meta is in dev mode (item 44). Flagged to the owner, who chose to ship them as they are
   while that work continues - a deliberate call, not an oversight. Swap that frame when
   Meta goes live.
-- **No promo video** on the listing.
+- **No promo video** on the listing. **Play takes a YouTube URL, never an uploaded file**
+  - it is the `video` field on `edits.listings.update`, one per locale. Tested in throwaway
+  edits Sep 26 2026: `watch?v=`, `youtube.com/shorts/` and `youtu.be/` are **all three
+  accepted** at validate time, so the URL form is not the constraint.
+  **The constraint is that a promo video takes the FIRST slot in the media carousel**,
+  ahead of every screenshot - so a weak video costs the hero frame its position, which is
+  a net loss. The two demo videos that exist (`2Dciwsx1vLs`, `WupTWthv9H0`) are YouTube-
+  and TikTok-AUDIT demos: reviewer-paced, one letterboxed portrait-in-16:9 with grey bars,
+  the other a zoomed capture with overlapping text and "Coming soon" badges on Facebook and
+  Instagram. **Judge this from the THUMBNAIL** (`img.youtube.com/vi/<id>/maxresdefault.jpg`)
+  - that still is what the carousel actually shows. Both were rejected on that basis; a
+  purpose-made 20-30s landscape promo is the thing still missing.
+  (`diNcnX-CIKU`, the old OAuth demo, has since gone private - oEmbed is the quick liveness
+  check.)
 - **Tags** (up to 5, Console-only) and **store listing experiments** are not exposed by
   the API.
 
