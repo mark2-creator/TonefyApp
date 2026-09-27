@@ -1648,6 +1648,46 @@ Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (c
 `518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country), then
 `45e89282-2e65-48fe-a021-4708126050a0` (copy + safe area).
 
+## Post analytics: possible, but every platform gates it behind a scope we lack
+
+Asked Sep 27 2026 - best time to post, which video performed, follower growth. **The
+answer is yes in principle and NOT with the permissions this app holds**, and that was
+established by calling the endpoints rather than reading docs:
+
+```
+scopes held: user.info.basic, video.publish, video.upload
+POST /v2/video/list/   (per-video views/likes/comments) -> 401 scope_not_authorized
+GET  /v2/user/info/    (follower_count, likes_count)    -> 401 scope_not_authorized
+```
+
+**TikTok needs `video.list` and the stats fields of `user.info`.** Both are ordinary Login
+Kit scopes, but adding a scope to an approved app means **another review AND every
+connected account reconnecting** - a granted scope is not retroactive, so all existing
+tokens keep the old grant. The same trap YouTube's `channels.list` already sits in.
+
+**Every other platform is worse, not better:**
+- **YouTube** needs `yt-analytics.readonly`; the app requests only `youtube.upload`, and
+  the API Services compliance review is OPEN. Do not touch the scopes mid-review.
+- **Meta** insights need further permissions on top of an app still in dev mode.
+- **Pinterest** has per-pin analytics behind a scope not requested.
+- **LinkedIn** member-post analytics are essentially unavailable without the Community
+  Management API.
+
+**What needs NO new scope is our own first-party record** - what was posted, when, to
+which platform and account, from which video. `scheduledPosts` already carries most of
+it. That supports "what you posted and how consistently", and cannot support views,
+likes or best-time-to-post, because we never see those numbers.
+
+**And the honest statistical point**: 34 posts in 30 days is far too few for a
+best-time-to-post claim to mean anything - it needs dozens of posts per slot before the
+signal beats the noise. TikTok's own Creator tools already give the user this for a
+Business account, accurately, today.
+
+**Recommendation recorded: do not add scopes while reviews are in flight.** Three are
+(YouTube open, Meta blocked on URSB, TikTok Direct Post approved only Sep 24). The cheap
+move meanwhile is to keep recording post metadata richly so there is history to join
+against the day the scopes land.
+
 ## Repo hygiene (as of Aug 5 2026)
 
 - `rebuild/phase-4` pushed to `origin`, confirmed at `f3a8e26d` (Aug 6 2026).
