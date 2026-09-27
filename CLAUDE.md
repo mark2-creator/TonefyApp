@@ -1663,6 +1663,15 @@ Confused once already (Sep 27 2026), so the list is here rather than inferred:
 submission, different outcome - and assuming the open thread covered it is the mistake
 that gets made.
 
+**CAVEAT on that conclusion, found Sep 27 while filling the form: the Cloud project's
+Developer contact is `ahumuzamark254@gmail.com`, NOT the main address.** Google notifies
+that address about this project, and the mailbox search below covered only
+`ahumuzamark21213@gmail.com`, which is where the Gmail connector is attached. So an
+acknowledgement could exist unseen in the other inbox. **Check `...254` before submitting
+anything to Google**, and add `...21213` to the contact list so correspondence reaches the
+inbox that is actually read. `...254` is the address verified as the Brevo sender (item
+18) and is not otherwise watched.
+
 **"Never started" is evidenced, not assumed** - searched the whole mailbox including trash
 and spam for `oauth-verification@google.com`, `api-verification@google.com`, "OAuth
 verification", "unverified app", "verification request", "brand verification" and
@@ -1691,14 +1700,22 @@ different submissions, and OAuth verification takes weeks of its own, so startin
 overlaps the clocks instead of stacking them. The one real dependency is small and
 recoverable: if the audit forces a scope change, resubmit with the new scopes.
 
-**The Console's real order, read off the Verification centre Sep 27 rather than assumed:
-BRANDING must be verified and published BEFORE "Prepare for verification" is even
-clickable** - it is greyed out until then, and the page says so outright. I had told the
-owner that publishing on the Audience page triggers the request; that was wrong. Branding
-is the gate, not a cosmetic step, and **uploading the logo is what triggers brand
-verification**. The same page reports branding as "not being shown to users", which is the
-identical fact as the consent screen showing the domain instead of "Tonefy AI" - one fix
-clears both.
+**The Console's real order, and I got it wrong twice before the screens settled it.**
+The Verification centre greys out "Prepare for verification" and says *"You need to verify
+and publish your branding before you can request verification"*, so I told the owner
+branding was the gate and that my earlier Audience-page instruction had been wrong. Then
+the Branding page turned out to be **already complete and saved** - every field filled,
+logo uploaded, Save greyed out - which makes branding not the gate at all.
+
+**The resolution is in the Branding page's own note**: *"After you upload a logo, you will
+need to submit your app for verification unless the app is configured for internal use
+only or has a publishing status of 'Testing'."* The logo IS uploaded, so the app is
+sitting in **Testing**, and "publish your branding" means publish the APP. The Audience
+page is the gate after all.
+
+**The lesson is the one this file keeps recording from a different direction: read the
+screen before instructing from it.** Both wrong answers came from reasoning about what
+Google's flow probably does instead of asking the owner what his Console showed.
 
 **Submission pack written to `~/ytshots/oauth-verification-pack.md`** - every Console
 field, the scope justification to paste, and the rejection list checked against what we
