@@ -1648,6 +1648,44 @@ Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (c
 `518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country), then
 `45e89282-2e65-48fe-a021-4708126050a0` (copy + safe area).
 
+## Google runs FOUR separate verifications, and only one of them is still unstarted
+
+Confused once already (Sep 27 2026), so the list is here rather than inferred:
+
+| | What it is | Status |
+|---|---|---|
+| **Play Console identity** | proves who the developer is, to publish at all | passed **11 Aug 2026** |
+| **Payments / bank** | lets real subscription money settle | passed **7 Sep 2026** |
+| **YouTube API Services compliance** | quota and YouTube policy; the month-long email thread | **OPEN** since 9 Sep |
+| **OAuth app verification** | the consent screen's warning, the app name/logo, the 100-user cap | **NEVER STARTED** |
+
+**The YouTube audit does NOT cover the consent screen.** Different team, different
+submission, different outcome - and assuming the open thread covered it is the mistake
+that gets made.
+
+**"Never started" is evidenced, not assumed** - searched the whole mailbox including trash
+and spam for `oauth-verification@google.com`, `api-verification@google.com`, "OAuth
+verification", "unverified app", "verification request", "brand verification" and
+"restricted scope": **zero results**. Google emails on receipt AND on outcome, so a
+submitted request would have left two. **Before submitting anything to Google, search the
+mailbox first** - a duplicate request sets a review back rather than forward.
+
+**Independent confirmation from another direction:** the consent screen still reads
+`fitlifesolutions.site wants access to your Google Account` instead of "Tonefy AI".
+Google suppresses the app name and logo for UNVERIFIED apps only (item 40), so the
+branding being absent is itself proof the verification has not passed.
+
+**What OAuth verification actually buys:** removes the "Google hasn't verified this app"
+interstitial and its Advanced -> "unsafe" path, restores the name and logo, and lifts the
+**100-user cap** on sensitive scopes. Currently 1 YouTube connection, so the cap is a
+future ceiling rather than a present problem - the interstitial is the real cost, since a
+user connecting YouTube must click through a screen that reads as a security warning.
+
+**Recommendation: submit it AFTER the API audit closes**, not alongside. The materials
+already exist from the audit (domain ownership, privacy policy, demo video, scope
+justification), so it is assembly rather than new work - but running two reviews of the
+same app at once invites them to reference each other.
+
 ## Social platforms: who can actually use each one (Sep 27 2026)
 
 `/api/platforms` reports all six `enabled: true`, and **that only means CONFIGURED on the
