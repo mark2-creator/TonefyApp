@@ -54,6 +54,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
   const [info, setInfo] = useState(null);
 
   const [caption, setCaption] = useState('');
+  const [writing, setWriting] = useState(false);
   const [privacy, setPrivacy] = useState(null);          // no default, on purpose
   // Also no default, and for the same reason. TikTok's guidelines: "Users must manually
   // turn on these interaction settings and none should be checked by default." They used
@@ -137,6 +138,31 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
 
   const discloseValid = !disclose || yourBrand || brandedContent;
   const canPost = !!privacy && discloseValid && !posting && !cannotPostNow && !tooLong;
+
+  // Proposes a caption; it lands in the editable field rather than going anywhere near
+  // the post, so the user always reads the words before they are published. The context
+  // is whatever is already in the box - the video's own idea for a generated video, or a
+  // few words the user typed - because with nothing to go on a model invents a subject.
+  async function writeWithAi() {
+    if (writing) return;
+    setWriting(true);
+    setError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const r = await fetch(`${BACKEND}/api/caption-suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ context: caption.trim() || defaultCaption, platform: 'tiktok' }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.caption) throw new Error(d.error || 'Could not write a caption.');
+      setCaption(d.caption.slice(0, MAX_CAPTION));
+    } catch (e) {
+      setError(e.message || 'Could not write a caption.');
+    } finally {
+      setWriting(false);
+    }
+  }
 
   function confirm() {
     if (!canPost) return;
@@ -232,7 +258,18 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
                   our own name in a user's description because they left it empty is not
                   ours to do - which is exactly what the old 'Created with Tonefy AI'
                   fallback did. */}
-              <Text style={styles.label}>Caption</Text>
+              <View style={styles.capRow}>
+                <Text style={[styles.label, { marginBottom: 0 }]}>Caption</Text>
+                {/* Neutral on purpose. Green in this app marks the control that COMMITS,
+                    and in this sheet that is Post to TikTok - a second green button
+                    would spend the one colour that makes Post unmistakable. */}
+                <TouchableOpacity style={styles.aiBtn} onPress={writeWithAi} disabled={writing}>
+                  {writing
+                    ? <ActivityIndicator size="small" color="#cfcfcf" />
+                    : <MaterialIcons name="auto-awesome" size={14} color="#cfcfcf" />}
+                  <Text style={styles.aiBtnText}>{writing ? 'Writing…' : 'Write with AI'}</Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
                 style={styles.caption}
                 value={caption}
@@ -341,6 +378,13 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#222' },
   creatorName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   label: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
+  capRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18, marginBottom: 6 },
+  aiBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: '#2a2a2a', backgroundColor: '#1a1a1a',
+    borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  aiBtnText: { color: '#cfcfcf', fontSize: 12, fontWeight: '600' },
   caption: {
     backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 15,
