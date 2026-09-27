@@ -1753,12 +1753,33 @@ video link, Search Console ownership - and each was wrong, every one corrected b
 screenshot rather than by reasoning. **The rule earned here: when a checklist is fully
 satisfied and a control stays disabled, stop theorising and take the other route.**
 
-**The other route: Google's OAuth app verification support form**,
-`support.google.com/cloud/contact/oauth_app_verification`, which does not depend on that
-button. Everything it asks for is already prepared in
-`~/ytshots/oauth-verification-pack.md` and `~/ytshots/oauth-scope-justification.txt`.
-Try the Console again first on a DESKTOP browser after a few hours - the state may simply
-be lagging, since branding was saved minutes before.
+**ANSWER FOUND, by looking it up instead of reasoning: brand verification is its OWN
+flow, with its own button, on the BRANDING page - not in the Verification centre.**
+Google's documented steps
+(developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification):
+
+1. Branding page -> fill app name, logo, developer contact (all already done here)
+2. **Click "Verify Branding"** to start the evaluation
+3. Status becomes **"Ready to publish"**
+4. **Click "Publish branding"**
+
+So the Verification centre's *"you need to verify and publish your branding"* is LITERAL -
+it names those two buttons. Brand verification is a real prerequisite that had simply
+never been run, which is why "Prepare for verification" is greyed. The button did not
+appear in any of the mobile screenshots; **try a DESKTOP browser**, since the Google Auth
+Platform pages collapse controls at narrow widths and all of this was done on a phone.
+
+Note for after: *"Branding modifications are not permitted while verification is in
+progress"*, so do not edit those fields once it is submitted. Results are valid 7 days.
+
+**There is NO support form for this** - I gave the owner
+`support.google.com/cloud/contact/oauth_app_verification` from memory and it 404s.
+Google's docs state submission happens only through the Console. **Sixth wrong answer of
+the session, and the first one that a single web search would have prevented: the earlier
+five came from reasoning about the flow, this one from reciting a URL. Look it up.**
+
+Everything the submission needs is prepared in `~/ytshots/oauth-verification-pack.md` and
+`~/ytshots/oauth-scope-justification.txt`.
 
 **The lesson is the one this file keeps recording from a different direction: read the
 screen before instructing from it.** Both wrong answers came from reasoning about what
