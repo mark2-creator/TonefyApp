@@ -1648,6 +1648,39 @@ Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (c
 `518e7a07-a7ad-45a2-9ea5-0cda9b2f1c56` (name + country), then
 `45e89282-2e65-48fe-a021-4708126050a0` (copy + safe area).
 
+## Social platforms: who can actually use each one (Sep 27 2026)
+
+`/api/platforms` reports all six `enabled: true`, and **that only means CONFIGURED on the
+server** - it says nothing about whether a stranger can connect. The gates are per
+platform and they are what this table is for. Real publish counts are from
+`scheduledPosts`.
+
+| Platform | Usable by any user? | Gate | Proof |
+|---|---|---|---|
+| **TikTok** | **YES** | none - production app, Direct Post audit approved Sep 24 | 16 posted; on-device Sep 27 |
+| **Pinterest** | **YES** | none - Standard access approved Sep 24 | 1 posted (created + deleted) |
+| **LinkedIn** | **YES** | none - both products are self-serve, no review | 2 posted |
+| **YouTube** | **capped** | OAuth app unverified (warning screen + 100-user cap); API compliance review OPEN since Sep 9 | 7 posted |
+| **Facebook** | **NO** | Meta dev mode - admins/testers only. Business Verification blocked on URSB | Page upload proven directly (unpublished, deleted) |
+| **Instagram** | **NO** | same Meta gate, plus the account must be Professional | Reels container reached FINISHED; publish deliberately skipped |
+| **X** | not built | API charges for video writes (~$100/mo) | - |
+
+**So: 3 fully live, 1 working but capped, 2 waiting on URSB, 1 deferred.**
+
+**URSB blocks exactly two platforms, not the roadmap.** Meta's Business Verification wants
+a document in a business's legal name, which is what the URSB registration would provide
+(item 44). It does NOT gate TikTok, Pinterest, LinkedIn or YouTube - those cleared on
+their own reviews, none of which asked for a business registration.
+
+**The honest caveat on all six: every test used the OWNER's own accounts.** The approvals
+for TikTok and Pinterest and LinkedIn's self-serve products are app-level, so they should
+hold for anyone, but no second real user has connected and posted. The first outside user
+to try is still the real test.
+
+**A failed count in that table is not a broken platform** - Pinterest's 6 failures are
+mostly the under-4-second refusals and the Trial-access period before Sep 24, and TikTok's
+7 include the sandbox era and the spam-risk window.
+
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
 Asked Sep 27 2026 - best time to post, which video performed, follower growth. **The
