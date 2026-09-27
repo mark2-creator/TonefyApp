@@ -1778,8 +1778,26 @@ Google's docs state submission happens only through the Console. **Sixth wrong a
 the session, and the first one that a single web search would have prevented: the earlier
 five came from reasoning about the flow, this one from reciting a URL. Look it up.**
 
+**AND THE BUTTON IS NOT THERE.** Checked on the Branding page with Chrome's "Desktop
+site" already enabled: the page ends at Save / Discard changes with no "Verify Branding"
+anywhere. Google's docs describe a control this account's Console does not have - most
+likely because the docs predate the newer **Google Auth Platform** UI this project is on.
+
+**Google's own documentation is a dead end on this.** The OAuth App Verification Help
+Center gives no contact route, and its FAQ has no entry for a greyed-out "Prepare for
+verification" or for branding verification being unavailable. Both were read directly.
+
+**STOPPED Sep 27 2026 with everything prepared and nothing submitted.** Remaining options,
+in order of cost: try the Console from a REAL desktop computer (not a phone in desktop
+mode - rendering still differs); then Google Cloud Support via Help -> Create a case.
+
+**Nothing operational is blocked by this**, which is why it was right to stop: YouTube
+uploads work (7 real posts), and the only costs are the consent warning screen and the
+100-user cap with 1 user used. It can wait weeks without harm.
+
 Everything the submission needs is prepared in `~/ytshots/oauth-verification-pack.md` and
-`~/ytshots/oauth-scope-justification.txt`.
+`~/ytshots/oauth-scope-justification.txt`, and the demo video is live at
+`https://www.youtube.com/watch?v=f1qjACbJies`.
 
 **The lesson is the one this file keeps recording from a different direction: read the
 screen before instructing from it.** Both wrong answers came from reasoning about what
