@@ -16,6 +16,10 @@ import ProgressRing from '../components/ProgressRing';
 import ProgressButton from '../components/ProgressButton';
 import { measureVideoDuration } from '../utils/videoDuration';
 
+// Prompts the backend writes itself when there is no real one. They are records of
+// how a video got here, never something a person would caption a post with.
+const PLACEHOLDER_PROMPTS = ['Uploaded media video'];
+
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: '9:16', label: 'TikTok 9:16' },
@@ -177,7 +181,12 @@ export default function MyVideosScreen({ navigation }) {
       videoPath: url.startsWith(BACKEND) ? url.slice(BACKEND.length) : url,
       // What the video is already called. Without it YouTube gets the title "Untitled",
       // since the first line of the caption is what supplies a required title.
-      defaultCaption: video.prompt || '',
+      // `prompt` is a real idea for a generated video and a literal placeholder for an
+      // uploaded one ("Uploaded media video", written by the upload route). Seeding a
+      // caption with the placeholder put that phrase on people's posts, so the known
+      // placeholders are dropped and the field simply starts empty.
+      defaultCaption: PLACEHOLDER_PROMPTS.includes((video.prompt || '').trim())
+        ? '' : (video.prompt || ''),
     });
   }
 

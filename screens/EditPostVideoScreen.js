@@ -316,12 +316,15 @@ export default function EditPostVideoScreen({ navigation, route }) {
       // not to every connected TikTok under a single account's settings, which is what
       // TikTok's guidelines exist to prevent. accountId is the sheet's, not the user's to
       // type, so it never reaches TikTok as post_info.
-      const { accountId, accountIds, ...tiktokOptions } = options;
+      // `caption` is the sheet's, not the screen's: TikTok is the one platform where the
+      // user writes the description inside the compliant sheet, alongside the privacy
+      // choice, the way TikTok's own composer does.
+      const { accountId, accountIds, caption: ttCaption, ...tiktokOptions } = options;
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['tiktok'],
+          videoUrl: `${BACKEND}${videoPath}`, caption: ttCaption ?? caption, platforms: ['tiktok'],
           tiktok: tiktokOptions,
           // 'all' means every connected TikTok, which post-now expresses as an empty
           // selection; a single id posts only there.
@@ -813,6 +816,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       </ScrollView>
 
       <TikTokPostSheet
+        defaultCaption={caption}
         visible={ttSheet}
         onClose={() => { if (!ttPosting) setTtSheet(false); }}
         onConfirm={uploadTikTok}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, Switch, ActivityIndicator,
-  ScrollView, Linking, Image,
+  ScrollView, Linking, Image, TextInput,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
@@ -42,12 +42,18 @@ const PRIVACY_LABELS = {
  * publishToTikTok stays as the safety net for an account or app state TikTok refuses
  * direct posting for; it is no longer the ordinary path.
  */
-export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, posting, videoUrl }) {
+// TikTok's caption. Hashtags and @mentions inside it are live on TikTok, which is why
+// this belongs here rather than being inherited silently from the screen behind: it is
+// the difference between a post that can be found and one that cannot.
+const MAX_CAPTION = 2200;
+
+export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, posting, videoUrl, defaultCaption = '' }) {
   const sheetInset = useSheetInset();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
 
+  const [caption, setCaption] = useState('');
   const [privacy, setPrivacy] = useState(null);          // no default, on purpose
   // Also no default, and for the same reason. TikTok's guidelines: "Users must manually
   // turn on these interaction settings and none should be checked by default." They used
@@ -110,6 +116,11 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
 
   // Branded content cannot be private: drop SELF_ONLY from the choices, and clear it if
   // it was the current selection.
+  // Seeded when the sheet opens, not on mount - the caller's caption can change between
+  // one post and the next, and a sheet that kept the first one would quietly publish the
+  // wrong words the second time.
+  useEffect(() => { if (visible) setCaption(defaultCaption || ''); }, [visible, defaultCaption]);
+
   const options = (info?.privacyOptions || []).filter((p) => !(brandedContent && p === 'SELF_ONLY'));
   useEffect(() => {
     if (brandedContent && privacy === 'SELF_ONLY') setPrivacy(null);
@@ -136,6 +147,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
       // For "all", name them explicitly rather than relying on an empty selection meaning
       // everything - the settings above were computed for exactly this list.
       accountIds: info?.accountId === 'all' ? (info.accounts || []).map(a => a.accountId) : null,
+      caption: caption.trim(),
       privacyLevel: privacy,
       disableComment: !allowComment,
       disableDuet: !allowDuet,
@@ -214,6 +226,25 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
                 {info?.avatar ? <Image source={{ uri: info.avatar }} style={styles.avatar} /> : null}
                 <Text style={styles.creatorName}>{info?.nickname || 'Your TikTok'}</Text>
               </View>
+
+              {/* The caption, with the hashtags that decide whether anyone finds it.
+                  Optional on purpose: TikTok accepts a post with none, and publishing
+                  our own name in a user's description because they left it empty is not
+                  ours to do - which is exactly what the old 'Created with Tonefy AI'
+                  fallback did. */}
+              <Text style={styles.label}>Caption</Text>
+              <TextInput
+                style={styles.caption}
+                value={caption}
+                onChangeText={(t) => setCaption(t.slice(0, MAX_CAPTION))}
+                placeholder="Say something about your video, and add #hashtags"
+                placeholderTextColor="#555"
+                multiline
+                maxLength={MAX_CAPTION}
+              />
+              <Text style={styles.captionCount}>
+                {caption.length}/{MAX_CAPTION} · hashtags and @mentions work here
+              </Text>
 
               {/* Privacy — required, no default */}
               <Text style={styles.label}>Who can view this video</Text>
@@ -310,6 +341,12 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#222' },
   creatorName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   label: { color: '#888', fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 18, marginBottom: 6 },
+  caption: {
+    backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 15,
+    minHeight: 84, textAlignVertical: 'top',
+  },
+  captionCount: { color: '#555', fontSize: 11, marginTop: 6 },
   allNote: { color: '#888', fontSize: 12, marginTop: 2, marginBottom: 2, lineHeight: 17 },
   previewBox: { height: 150, borderRadius: 12, overflow: 'hidden', backgroundColor: '#000', marginBottom: 6 },
   preview: { width: '100%', height: '100%' },
