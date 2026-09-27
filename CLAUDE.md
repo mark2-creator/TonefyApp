@@ -1681,10 +1681,30 @@ interstitial and its Advanced -> "unsafe" path, restores the name and logo, and 
 future ceiling rather than a present problem - the interstitial is the real cost, since a
 user connecting YouTube must click through a screen that reads as a security warning.
 
-**Recommendation: submit it AFTER the API audit closes**, not alongside. The materials
-already exist from the audit (domain ownership, privacy policy, demo video, scope
-justification), so it is assembly rather than new work - but running two reviews of the
-same app at once invites them to reference each other.
+**DECIDED Sep 27 2026: submit it NOW, in parallel with the audit.** I had advised waiting
+for the audit to close; the owner's counter was better and the advice was changed. The
+wait is UNBOUNDED - the audit has no committed date and could close next quarter - while
+the cost of waiting is active and concrete: every user who tries to connect YouTube meets
+a screen that reads as a security warning. My "running two reviews invites them to
+reference each other" was speculation stated as risk; the two are different teams and
+different submissions, and OAuth verification takes weeks of its own, so starting now
+overlaps the clocks instead of stacking them. The one real dependency is small and
+recoverable: if the audit forces a scope change, resubmit with the new scopes.
+
+**Submission pack written to `~/ytshots/oauth-verification-pack.md`** - every Console
+field, the scope justification to paste, and the rejection list checked against what we
+have. The 120x120 consent-screen logo is `~/ytshots/tonefy-oauth-logo-120.png` (the 1024
+icon flattened to opaque; Google needs exactly 120x120 and no alpha).
+
+**The one blocker is the demo video.** `diNcnX-CIKU` ("Tonefy AI - YouTube OAuth consent
+flow and video upload") is the right content and is PRIVATE; it must be Unlisted. The
+other demo, `2Dciwsx1vLs`, satisfies the YouTube audit and NOT this one, because OAuth
+verification has to see the **consent screen being granted**, not just the app working.
+Source file survives at `~/ytshots/tonefy-oauth-demo.mp4` if the upload is gone.
+
+**The strongest part of the application is the narrowness**: one scope, `youtube.upload`,
+with the fact that we declined `youtube.readonly` - and therefore cannot read back the
+channel name - offered as evidence of restraint rather than hidden as a limitation.
 
 ## Social platforms: who can actually use each one (Sep 27 2026)
 
