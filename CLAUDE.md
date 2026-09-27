@@ -4057,6 +4057,33 @@ Published to `production` Sep 26 2026: `98b71a94-f98a-492a-83d5-e8b2fb6896ce` (c
       `privacy_level_options`) was enforced. All three shipped the same day. **Checking the
       guidelines before submitting rather than learning from a rejection is what a 2-4 week
       review cycle is worth.**
+      **DIRECT POST CONFIRMED ON DEVICE Sep 27 2026** - the owner posted twice from the
+      app, both landed on the real account. The device test then found what no server-side
+      check could: **the posts had no description and no hashtags, and carried OUR name.**
+      Three causes, all fixed the same day:
+      - **The sheet had no caption field.** It collected privacy and the disclosures - the
+        things the audit requires - and the description was inherited silently from the
+        screen behind it. Hashtags and @mentions inside a TikTok caption are LIVE, so that
+        field is the difference between a post that can be found and one that cannot. It
+        now sits beside the privacy choice, the way TikTok's own composer has it, 2200
+        characters with a counter. Seeded when the sheet OPENS, not on mount - the caller's
+        caption changes between posts and a stale seed publishes the wrong words.
+      - **`MyVideosScreen` seeded the caption from `video.prompt`**, which is a real idea
+        for a generated video and the literal placeholder `"Uploaded media video"` for an
+        uploaded one (written by the upload route, `server.js:7271`). That phrase was going
+        out as people's captions. Known placeholders are dropped now.
+      - **The backend substituted `'Created with Tonefy AI'` for an empty caption**, which
+        published our name in the user's own video description because they had not written
+        one. **No fallback now** - `undefined` is dropped by `JSON.stringify` and TikTok
+        accepts a post with no description. **Verified both ways against the live API,
+        because "is `title` optional" was the whole risk in removing it:** a post WITH a
+        caption and hashtags and a post with NONE both returned `mode: 'direct'` and
+        reached `PUBLISH_COMPLETE`.
+
+      **The general shape: a field the server can fill in for you is a field that will be
+      wrong on someone's public profile.** A default caption is not a convenience, it is
+      publishing words the user never chose.
+
       ~~**Cheap way to verify the direct path today without the audit:** set one TikTok
       account to private, post, confirm `mode: 'direct'`, set it back.~~ - moot, the audit
       passed; a normal post is now the direct path.
