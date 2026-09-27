@@ -1723,6 +1723,43 @@ approved."* The cap and the warning screen are real and documented on the page i
 **Both contact inboxes were checked and neither holds any Google verification mail**, so
 "never submitted" survives the caveat above - there is no duplicate risk.
 
+### Blocked Sep 27 2026: every prerequisite is met and the button stays greyed
+
+Worked through the whole Console with the owner. **All of this is confirmed in place**, so
+do not re-check it:
+
+- Branding complete and SAVED - name, logo (120x120), home/privacy/terms URLs all live,
+  authorised domains `fitlifesolutions.site` + `gen-lang-client-0229110424.firebaseapp.com`,
+  both contact emails added
+- Publishing status **In production**, user type External, `1 user / 100 user cap`
+- `.../auth/youtube.upload` registered under **sensitive scopes** with a justification at
+  998/1000 chars
+- Demo video live and saved as `https://www.youtube.com/watch?v=f1qjACbJies`
+  (the field had still pointed at the DELETED `diNcnX-CIKU` - fixed)
+- `fitlifesolutions.site` verified in Search Console as a **Domain property**, under
+  **the same account** that owns the Cloud project (`ahumuzamark21213@gmail.com`), DNS TXT
+  `google-site-verification=5M1yThBbxGMVp2B5RiPVx5U4CMexQDSELmxnshWnguk`
+
+**And "Prepare for verification" is still greyed**, with the Verification centre repeating
+*"You need to verify and publish your branding before you can request verification"*.
+
+**Reading worth carrying: "Your branding is not being shown to users" is probably a
+STATEMENT, not a to-do.** The branding genuinely is not shown, because the app is
+unverified - which is the thing being applied for. If so the Data access card's message is
+a template that does not match this project's state, and clicking will never clear it.
+
+**I guessed at a blocking step FIVE times** - Audience, branding, Testing status, the dead
+video link, Search Console ownership - and each was wrong, every one corrected by a
+screenshot rather than by reasoning. **The rule earned here: when a checklist is fully
+satisfied and a control stays disabled, stop theorising and take the other route.**
+
+**The other route: Google's OAuth app verification support form**,
+`support.google.com/cloud/contact/oauth_app_verification`, which does not depend on that
+button. Everything it asks for is already prepared in
+`~/ytshots/oauth-verification-pack.md` and `~/ytshots/oauth-scope-justification.txt`.
+Try the Console again first on a DESKTOP browser after a few hours - the state may simply
+be lagging, since branding was saved minutes before.
+
 **The lesson is the one this file keeps recording from a different direction: read the
 screen before instructing from it.** Both wrong answers came from reasoning about what
 Google's flow probably does instead of asking the owner what his Console showed.
