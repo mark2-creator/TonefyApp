@@ -1696,11 +1696,23 @@ field, the scope justification to paste, and the rejection list checked against 
 have. The 120x120 consent-screen logo is `~/ytshots/tonefy-oauth-logo-120.png` (the 1024
 icon flattened to opaque; Google needs exactly 120x120 and no alpha).
 
-**The one blocker is the demo video.** `diNcnX-CIKU` ("Tonefy AI - YouTube OAuth consent
-flow and video upload") is the right content and is PRIVATE; it must be Unlisted. The
-other demo, `2Dciwsx1vLs`, satisfies the YouTube audit and NOT this one, because OAuth
-verification has to see the **consent screen being granted**, not just the app working.
-Source file survives at `~/ytshots/tonefy-oauth-demo.mp4` if the upload is gone.
+**The one blocker is the demo video, and it is DELETED rather than private** - the owner
+could not find it, and checking settled which: `diNcnX-CIKU` returns `"status":"ERROR"`,
+which is what YouTube answers for a video that no longer exists, where a private one says
+`LOGIN_REQUIRED` / "This video is private". **oEmbed cannot tell those two apart** - it
+returns nothing for both - so fetch the watch page and read the status when it matters.
+
+**The source file survived at `~/ytshots/tonefy-oauth-demo.mp4`** (5.1 MB, 5m 29s) and was
+sent to the owner to re-upload as Unlisted. **Frames were sampled before sending rather
+than trusting the filename**: it shows dashboard -> Connect YouTube -> the Google consent
+screen reading "fitlifesolutions.site wants access to your Google Account" -> Edit & Post
+-> YouTube Studio with the uploaded video. That consent-screen frame is the one thing this
+review must see, which is why `2Dciwsx1vLs` does NOT substitute - it satisfies the YouTube
+audit by showing posting work, and never shows a grant.
+
+**Keeping the raw recordings paid off here.** Everything else in `~/ytshots` is evidence
+for reviews that have already been answered; this one became the only copy of a required
+artifact after the YouTube upload was removed.
 
 **The strongest part of the application is the narrowness**: one scope, `youtube.upload`,
 with the fact that we declined `youtube.readonly` - and therefore cannot read back the
