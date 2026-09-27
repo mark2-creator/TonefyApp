@@ -1707,11 +1707,21 @@ branding was the gate and that my earlier Audience-page instruction had been wro
 the Branding page turned out to be **already complete and saved** - every field filled,
 logo uploaded, Save greyed out - which makes branding not the gate at all.
 
-**The resolution is in the Branding page's own note**: *"After you upload a logo, you will
-need to submit your app for verification unless the app is configured for internal use
-only or has a publishing status of 'Testing'."* The logo IS uploaded, so the app is
-sitting in **Testing**, and "publish your branding" means publish the APP. The Audience
-page is the gate after all.
+**And that guess was wrong too - the Audience page shows `Publishing status: In
+production`.** So branding was complete AND the app was already published, and neither
+was the gate. **Nothing was blocking it except that the request had never been made.**
+The Audience page simply carries a banner - *"Your app requires verification. When you
+have finished configuring your information, please submit your app for review"* - with a
+button straight to the Verification centre. Three guesses at a gate that did not exist,
+each from reasoning about the flow rather than reading a screen.
+
+**The same page confirms, in Google's own words, what this app has been paying for:**
+`OAuth user cap: 1 user / 100 user cap`, and *"If your users are seeing the 'unverified
+app' screen, it is because your OAuth request includes additional scopes that haven't been
+approved."* The cap and the warning screen are real and documented on the page itself.
+
+**Both contact inboxes were checked and neither holds any Google verification mail**, so
+"never submitted" survives the caveat above - there is no duplicate risk.
 
 **The lesson is the one this file keeps recording from a different direction: read the
 screen before instructing from it.** Both wrong answers came from reasoning about what
