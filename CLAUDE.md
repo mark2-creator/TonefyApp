@@ -1691,6 +1691,15 @@ different submissions, and OAuth verification takes weeks of its own, so startin
 overlaps the clocks instead of stacking them. The one real dependency is small and
 recoverable: if the audit forces a scope change, resubmit with the new scopes.
 
+**The Console's real order, read off the Verification centre Sep 27 rather than assumed:
+BRANDING must be verified and published BEFORE "Prepare for verification" is even
+clickable** - it is greyed out until then, and the page says so outright. I had told the
+owner that publishing on the Audience page triggers the request; that was wrong. Branding
+is the gate, not a cosmetic step, and **uploading the logo is what triggers brand
+verification**. The same page reports branding as "not being shown to users", which is the
+identical fact as the consent screen showing the domain instead of "Tonefy AI" - one fix
+clears both.
+
 **Submission pack written to `~/ytshots/oauth-verification-pack.md`** - every Console
 field, the scope justification to paste, and the rejection list checked against what we
 have. The 120x120 consent-screen logo is `~/ytshots/tonefy-oauth-logo-120.png` (the 1024
