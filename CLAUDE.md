@@ -1863,6 +1863,27 @@ to try is still the real test.
 mostly the under-4-second refusals and the Trial-access period before Sep 24, and TikTok's
 7 include the sandbox era and the spam-risk window.
 
+## FitLife now posts through Tonefy's Pinterest and LinkedIn grants (Sep 29 2026)
+
+FitLife's `~/social-publish.py` reads the OWNER's tokens from `pinterestTokens/{uid}` and
+`linkedinTokens/{uid}` (uid `sWyTCf...`, accounts `chirlieanderson` and `dYU1_OASCN`) with
+this backend's service account, and may refresh the Pinterest one in the same shape
+`pinValidToken` writes. Details live in `~/fitlife/CLAUDE.md`. **What it means here:**
+disconnecting either account in the app, renaming those collections, or changing the
+per-account map shape silently stops FitLife's posting - it alerts on Telegram, but check
+that script before reshaping the token store.
+
+Two Tonefy-side findings from building it:
+
+- **Pinterest blocks the whole `fitlifesolutions.site` domain as spam, `tonefy-ai.`
+  included** - a pin linking to it answers HTTP 429, code 9, "may lead to spam". Tonefy's
+  own publisher sends no `link`, so app posting is unaffected; what is affected is ever
+  pinning the Tonefy website. The appeal is the owner's to file.
+- **`publishToLinkedIn` sends `commentary` unescaped.** It is LinkedIn "little text", where
+  `( ) [ ] { } < > @ | # * _ ~ \` are syntax, so a user caption containing a parenthesis
+  or a hashtag is cut off at that character or refused. FitLife escapes them
+  (`li_escape`); the backend does not yet. Small fix, needs a `pm2 restart`.
+
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
 Asked Sep 27 2026 - best time to post, which video performed, follower growth. **The
