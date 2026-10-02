@@ -20,6 +20,7 @@ import { VOICES as VOICE_CATALOGUE } from '../constants/voices';
 import TransitionSheet from '../components/TransitionPicker';
 import { transitionSpec, resolveTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
+import AiScenesRow from '../components/AiScenesRow';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
@@ -343,6 +344,8 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 export default function UrlToVideoScreen({ navigation }) {
   // Gates the locked tiles in the transition sheet, the same way the editor does.
   const { isPremium } = usePlan();
+  // How many opening scenes the server generates with AI; 0 = all stock footage.
+  const [aiScenes, setAiScenes] = useState(0);
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { track } = useJobs();
@@ -477,6 +480,7 @@ export default function UrlToVideoScreen({ navigation }) {
           // names the endpoint's own map happens to know. The id still goes
           // with it, for a server older than this change.
           transitionSpec: transitionSpec(transition),
+          aiScenes,
           videoSpeed,
           // The server burns these captions in itself and has no copy of the
           // catalogue, so it needs the style rather than just its name.
@@ -596,6 +600,7 @@ export default function UrlToVideoScreen({ navigation }) {
             <SelectorRow icon="movie-filter" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.category}`} onPress={() => setModal('transition')} />
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <SelectorRow icon="speed" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
+            <AiScenesRow value={aiScenes} onChange={setAiScenes} />
           </View>
           <TouchableOpacity style={[styles.btn, (!urlInput.trim() || loading) && styles.btnDisabled]} onPress={fetchUrlAndGenerate} disabled={loading || !urlInput.trim()}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Extract & Generate Video</Text>}

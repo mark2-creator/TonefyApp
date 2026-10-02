@@ -21,6 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import TransitionSheet from '../components/TransitionPicker';
 import { transitionSpec, resolveTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
+import AiScenesRow from '../components/AiScenesRow';
 import { showAlert } from '../components/BrandedAlert';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
@@ -471,6 +472,8 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 export default function IdeaToVideoScreen({ navigation }) {
   // Gates the locked tiles in the transition sheet, the same way the editor does.
   const { isPremium } = usePlan();
+  // How many opening scenes the server generates with AI; 0 = all stock footage.
+  const [aiScenes, setAiScenes] = useState(0);
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { track } = useJobs();
@@ -593,6 +596,7 @@ export default function IdeaToVideoScreen({ navigation }) {
           // names the endpoint's own map happens to know. The id still goes
           // with it, for a server older than this change.
           transitionSpec: transitionSpec(transition),
+          aiScenes,
           videoSpeed,
           // The server burns these captions in itself and has no copy of the
           // catalogue, so it needs the style rather than just its name.
@@ -747,6 +751,7 @@ export default function IdeaToVideoScreen({ navigation }) {
             <SettingCard icon="movie-filter" iconColor="#f472b6" iconBg="#2a0f1f" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.category}`} onPress={() => setModal('transition')} />
             <SettingCard icon="speed" iconColor="#fb923c" iconBg="#2a1500" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
             <SettingCard icon="music-note" iconColor="#facc15" iconBg="#2a2000" label="Music" value={musicTrack.name} onPress={() => setModal('music')} />
+            <AiScenesRow value={aiScenes} onChange={setAiScenes} />
             {loading && <ProgressBar progress={progress} label={loadingMsg} theme={theme} />}
           </ScrollView>
           <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80, backgroundColor: theme.bg }}>
