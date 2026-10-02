@@ -1899,6 +1899,32 @@ Two Tonefy-side findings from building it:
   or a hashtag is cut off at that character or refused. FitLife escapes them
   (`li_escape`); the backend does not yet. Small fix, needs a `pm2 restart`.
 
+## AI scenes in Idea/Script/Url to Video, via fal.ai (Oct 2 2026)
+
+**Built and deployed, OFF until `FAL_KEY` is in `~/Tonefy-react/backend/.env`.** With no key the
+server ignores `aiScenes` and `/api/ai-scenes/status` says `available:false`, so the app row renders
+nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three generation screens.
+
+- **Hybrid, and AI is never load-bearing.** The first N segments (hook first) are generated, the rest
+  are Pexels, and any scene that fails, times out (150s), is refused or hits a cap resolves `null` and
+  takes the old Pexels path. Generations run concurrently, so the wait is the slowest clip.
+- **Model is one string, `AI_SCENE_MODEL`.** Default **Seedance 1 Pro Fast, 720p** - priced from the
+  real schema and pages, it is better AND cheaper than Wan 2.2 (~$0.11 vs $0.40 per 5s). **Hailuo 02
+  t2v has no `aspect_ratio` input - landscape only - so it is out for a portrait app.** Kling 2.1
+  Master is $1.40/5s. Read model inputs from `fal.ai/api/openapi/queue/openapi.json?endpoint_id=...`,
+  not from the rendered docs page, which lies by omission.
+- **Allowance separate from credits**: free 0, pro 10/cycle 2/video, creator 40/cycle 4/video, clip 3-8s.
+  Tied to the credit cycle by stamping `aiScenesCycle = creditsResetAt`, so none of the four refill
+  paths had to change. Reserved in a transaction, **refunded for failures and cache hits**.
+- **Three spend guards**: fal's own dashboard limit (the real one - SET IT), an in-process daily cap
+  `AI_SCENE_DAILY_USD_CAP` (default $5), and the per-user allowance. **Aborting the client's wait does
+  not stop fal billing** - the code calls `fal.queue.cancel` on timeout; the client's own `timeout`
+  option is documented as not enforced.
+- 7-day prompt cache in `backend/cache/aiscenes` (gitignored, swept by age), so a retried render is free.
+- **Verified** against the real fal API with an invalid key: reserve 2 of 5 asked (per-video cap),
+  fal refused, both refunded, stale cycle reads 0, free gets 0. **NOT yet verified: a real generation**
+  - that needs the key.
+
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
 Asked Sep 27 2026 - best time to post, which video performed, follower growth. **The
