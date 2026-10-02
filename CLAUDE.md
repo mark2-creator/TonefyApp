@@ -1791,6 +1791,15 @@ verification" or for branding verification being unavailable. Both were read dir
 in order of cost: try the Console from a REAL desktop computer (not a phone in desktop
 mode - rendering still differs); then Google Cloud Support via Help -> Create a case.
 
+**UNBLOCKED Oct 2 2026: the owner verified and published the branding** (the button did exist after
+all), and the Verification centre form opened. Its "Additional info" box (1000 chars) got: the Play
+URL, the reviewer login `youtube.audit@tonefyai.app` (**sign-in re-tested the same day: OK, plan
+creator, 300 credits, 3 sample videos whose files return 200**), the real tap path (My Videos > Post
+> YouTube row "Connect & post"; disconnect via Profile > Connected Accounts), the single project id,
+the fact that the website makes no YouTube API calls, and a note that the API compliance review is
+running in parallel. **Watch `ahumuzamark254@gmail.com` too**: it is a contact address on the
+consent screen, and Google's questions can go there.
+
 **Nothing operational is blocked by this**, which is why it was right to stop: YouTube
 uploads work (7 real posts), and the only costs are the consent warning screen and the
 100-user cap with 1 user used. It can wait weeks without harm.
