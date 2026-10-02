@@ -1800,6 +1800,12 @@ the fact that the website makes no YouTube API calls, and a note that the API co
 running in parallel. **Watch `ahumuzamark254@gmail.com` too**: it is a contact address on the
 consent screen, and Google's questions can go there.
 
+The questionnaire was answered **No to all four questions, both boxes ticked**. **No CASA security
+assessment applies**: `youtube.upload` is a SENSITIVE scope, not a RESTRICTED one, and CASA is
+required only for restricted scopes. Do not let a later email talk anyone into paying for one.
+**While the review runs, edit neither the branding nor the publishing status** (Audience page). A
+change to either can reset or void the request.
+
 **Nothing operational is blocked by this**, which is why it was right to stop: YouTube
 uploads work (7 real posts), and the only costs are the consent warning screen and the
 100-user cap with 1 user used. It can wait weeks without harm.
