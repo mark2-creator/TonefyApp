@@ -1529,7 +1529,11 @@ the first success, at most every 60 days, never again after "Rate". Published as
   like the app?"). Without it (build 12 and older) our own sheet, reworded to "Rate Tonefy on Google
   Play?" - the old "Enjoying Tonefy?" opener is review-gating, which Play policy forbids.
 - **Build 13 (versionCode 13) cut for it on Oct 3 2026**, same keystore `qMlH7ffwtv` - the only native
-  change since build 12 is `expo-store-review`.
+  change since build 12 is `expo-store-review`. Verified inside the AAB before upload: 58 in-app-review
+  references in the dex, BILLING + POST_NOTIFICATIONS present, READ_MEDIA_VIDEO/IMAGES absent, RNIap
+  intact, runtimeVersion 1.1.0. AAB kept at `~/builds/tonefy-vc13.aab`. **Uploaded to `internal` only**
+  (production + alpha still vc12) for the owner to check on device before promotion - and the owner
+  must leave the testing programme only AFTER that, or he cannot receive the internal build.
 - The in-app sheet is quota-limited by Google and reports nothing back, so it is never marked "done";
   the 60-day rule decides re-asking. It also does not appear for every install - a no-show is normal.
 
