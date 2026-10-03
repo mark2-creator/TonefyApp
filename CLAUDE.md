@@ -4765,6 +4765,12 @@ against the day the scopes land.
       profile (~30-60s, ~10-30MB, a few uploads/week per active user, never bulk/automated).
       Deliberately modest and internally consistent - the first submission's inflated
       250k/day is what triggered this re-assessment. Awaiting their reply.
+    - **Google's last word was Sep 9:** "We will conduct our review based on the information you
+      provided... notify you if we need additional information, or when we've completed our review."
+      **24 days of silence, so a polite status request went out on the SAME thread on Oct 3 2026**
+      (reply to Google's Sep 9 message, project id + the three answers already given + the practical
+      cost: every user upload is private until the review clears). Same thread on purpose - a new
+      request can restart a review. The owner asked why his uploads are private; this is the answer.
 
     **Still open / separate:** the OAuth verification (consent screen branding) is a
     different Google review from this API audit - see item 40. And a separate Google Play
