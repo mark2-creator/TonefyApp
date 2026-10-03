@@ -2012,6 +2012,28 @@ nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three gen
   **Published to `production` Oct 3 2026** as update group `8a234f95-17cb-4789-bcd1-9b1d9d48889f`
   (commit `126df9e0`, runtime 1.1.0) - every Play install on build 12 takes it on its next cold starts.
 
+## Owner's three-platform post, checked Oct 3 2026: all three LANDED, two had no words
+
+One video posted from Edit & Post to TikTok, YouTube and Pinterest, ~15:07 UTC. Every record is
+`posted` with a publish id, no errors.
+- **TikTok:** direct post (`v_pub_file~`), with the caption typed into the TikTok sheet. Fine.
+- **YouTube (`_WLA500ezZE`): uploaded, and PRIVATE - which is Google's rule, not a fault.** The
+  watch page answers `LOGIN_REQUIRED` / "Private video". Until the YouTube API Services audit (open
+  since Sep 9) passes, every `videos.insert` from the project is forced private whatever is requested;
+  `publishToYouTube` defaults to private for exactly that reason, and the app's success sheet already
+  says "on your channel as a private video while our YouTube app is under review".
+- **Pinterest (`1043216701211408060`): LIVE and public**, a 10s video pin on the public board
+  "Fitness & Workouts". The board is NOT chosen by anyone - `publishToPinterest` takes the first board
+  `/v5/boards?page_size=1` returns.
+- **The real defect: YouTube was titled "Untitled" and the pin "Tonefy video", both with empty
+  descriptions.** The TikTok sheet has its OWN caption field; the Edit & Post screen's caption box,
+  which YouTube/Pinterest use, was still empty - so the owner wrote his words once and only TikTok got
+  them. And the server's fallbacks (`'Untitled'` for YouTube, `'Tonefy video'` for Pinterest and
+  LinkedIn) published words the user never wrote - our brand name on his pin, the exact shape the
+  TikTok "Created with Tonefy AI" fix removed on Sep 27.
+- Debugging note: the Pinterest token field is `accounts[id].token`, not `accessToken` - reading the
+  wrong field gives a 401 that looks like a dead connection.
+
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
 Asked Sep 27 2026 - best time to post, which video performed, follower growth. **The
