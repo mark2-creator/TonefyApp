@@ -39,10 +39,12 @@ function planColour(plan) {
 // numbers. The email drops off the second line when it IS the title, so nobody is shown
 // their own address twice. The website's admin page draws the identical two lines.
 function personLines(item) {
+  // Google's pre-launch robot signs in with an invented name ("Nuage Laboratoire") on
+  // every uploaded build; say what it is instead, and keep the address underneath.
   return {
-    title: item.name || item.email || item.uid,
+    title: item.testDevice ? 'Google test device' : (item.name || item.email || item.uid),
     meta: [
-      item.name ? item.email : null,
+      item.name || item.testDevice ? item.email : null,
       `${item.videos} video${item.videos === 1 ? '' : 's'}`,
       item.credits === null || item.credits === undefined ? null : `${item.credits} credits`,
       item.country || null,
