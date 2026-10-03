@@ -2050,7 +2050,20 @@ One video posted from Edit & Post to TikTok, YouTube and Pinterest, ~15:07 UTC. 
      `linkedin.com/feed/update/<urn>/` page instead. YouTube keeps
      `'Untitled'` server-side only as a last resort, since the API rejects an empty title; the app now
      prevents reaching it.
-  App update `0e2837cc-8ac6-4442-ae4b-55f75a6ab44f`. Still open, deliberately: choosing the Pinterest board.
+  App update `0e2837cc-8ac6-4442-ae4b-55f75a6ab44f`.
+- **Pinterest board picker - BUILT Oct 3 2026.** `GET /api/pinterest/boards` lists every connected
+  account's boards (per ACCOUNT - a board id only works with its own account's token; paginated, 250
+  cap). post-now and the scheduled sweep pass `{ pinterest: { boards: { accountId: boardId } } }`
+  (`cleanPinterestOptions` keeps only numeric ids) to `publishToPinterest`, which reads the chosen
+  board back with that account's token and **refuses a board that is gone rather than posting
+  elsewhere**; no choice keeps the old first-board behaviour, so older clients and older queued posts
+  are unchanged. App: `components/PinterestBoardSheet.js`, opened by the Pinterest row's Post after
+  the plan/connection/caption checks; remembers the last board per account in AsyncStorage
+  (`tonefy.pinterestBoards`), which Post Now and Save to queue also send; the row shows the board.
+  The sheet CLOSES before posting so the result alert is never hidden under a Modal. Verified: board
+  list (9 boards), a Pin onto the non-first board "Weight Loss Journey" (confirmed by board_id, then
+  deleted), a foreign board id refused, and a client-side `scheduledPosts` write carrying the
+  `pinterest` field allowed by the rules. Update group in the publish log of this commit.
 
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
