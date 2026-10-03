@@ -70,7 +70,10 @@ export default function AiScenesRow({ value, onChange }) {
   }
 
   const options = [0, ...Array.from({ length: status.perVideo }, (_, i) => i + 1)];
-  const sub = status.remaining > 0
+  // Admin accounts are not rationed; their perCycle is a sentinel, not a number to show.
+  const sub = status.unlimited
+    ? 'Admin account: no monthly limit. Scenes that cannot be generated use stock footage.'
+    : status.remaining > 0
     ? `${status.remaining} of ${status.perCycle} left this month. Scenes that cannot be generated use stock footage and are not counted.`
     : `All ${status.perCycle} used this month. They refresh with your credits.`;
 

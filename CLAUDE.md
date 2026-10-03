@@ -1923,7 +1923,10 @@ nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three gen
   would have reset them each lap; fails CLOSED. The first trip of each cap per day **emails the owner**
   (Brevo, to `AI_SCENE_ALERT_EMAIL` or `EMAIL_USER`), flagged on the same doc so restarts do not resend -
   verified landing in the Gmail INBOX Oct 3. Then the per-user allowance. **Pro/Creator with no
-  `subscriptionPurchaseToken` (reviewer, hand-set test accounts) get 3/cycle, 1/video**; admins exempt. **Aborting the client's wait does
+  `subscriptionPurchaseToken` (reviewer, hand-set test accounts) get 3/cycle, 1/video**. **Admins (the
+  owner's ahumuzamark21213@ account) are not rationed at all** - no allowance, no caps, by owner request
+  Oct 3 2026 so he can test freely; their spend is recorded as `aiSpend.adminUsd`, outside the capped
+  totals. The fal balance is the only ceiling on an admin. **Aborting the client's wait does
   not stop fal billing** - the code calls `fal.queue.cancel` on timeout; the client's own `timeout`
   option is documented as not enforced.
 - 7-day prompt cache in `backend/cache/aiscenes` (gitignored, swept by age), so a retried render is free.
