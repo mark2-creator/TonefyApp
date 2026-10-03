@@ -1534,6 +1534,10 @@ the first success, at most every 60 days, never again after "Rate". Published as
   intact, runtimeVersion 1.1.0. AAB kept at `~/builds/tonefy-vc13.aab`. **Uploaded to `internal` only**
   (production + alpha still vc12) for the owner to check on device before promotion - and the owner
   must leave the testing programme only AFTER that, or he cannot receive the internal build.
+- **RELEASED Oct 3 2026 after the owner checked it on device: vc13 is on production, alpha AND internal
+  (100%, all tracks in step).** Alpha was moved too on purpose - Play serves a tester their
+  highest-priority track (item 29), so a closed-test tester would otherwise have stayed on vc12. Google
+  reviews a production release first; it shows "In review" before it reaches devices.
 - The in-app sheet is quota-limited by Google and reports nothing back, so it is never marked "done";
   the 60-day rule decides re-asking. It also does not appear for every install - a no-show is normal.
 
