@@ -1507,6 +1507,16 @@ highest-priority track they are opted into (item 29), so they also see a
 user never sees. **The public listing itself is clean** - verified by fetching it: title
 `Tonefy AI: AI Video Generator`, no beta label, new description live.
 
+**Oct 3 2026: why it was STILL zero - nobody was ever asked.** `recordWinAndMaybeAsk()` had exactly
+ONE call site, after a successful social POST in `EditPostVideoScreen` - and posting is a paid feature
+with 0 paying subscribers, so not one real user has ever seen the prompt. Also confirmed via the API:
+0 reviews, and `internal` + `alpha` tracks are still live on vc12 beside production, so anyone still
+enrolled as a tester rates PRIVATELY (the testers.get API returns `{}` - the list lives in Console email
+lists it cannot read). Plan proposed to the owner: call the prompt on free-tier successes, testers leave
+the programme via `play.google.com/apps/testing/<pkg>`, honest direct asks (no incentives, no
+review-gating - both are Play policy violations), the owner NOT rating his own app, and
+`expo-store-review` in the next native build.
+
 **27 accounts and ZERO ratings, which is a ranking problem rather than a vanity one** -
 Play sorts a zero-rating app below anything with any rating, for every term it might
 otherwise appear for. `utils/rateApp.js` asks after a POST succeeds (their video is
