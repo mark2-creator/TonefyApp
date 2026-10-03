@@ -1938,7 +1938,8 @@ nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three gen
   scenes 2-3 Pexels, allowance 40 -> 39. **"720p" 9:16 is really 704x1248**; 480p is 480x864 at half
   the price. Compared side by side at export size: 480p is visibly softer in foliage and faces, and the
   AI clip is the HOOK sitting next to HD stock, so **720p stays** - the margin holds at 720p anyway.
-  Users still cannot reach it until the app update with `AiScenesRow` is published.
+  **Published to `production` Oct 3 2026** as update group `8a234f95-17cb-4789-bcd1-9b1d9d48889f`
+  (commit `126df9e0`, runtime 1.1.0) - every Play install on build 12 takes it on its next cold starts.
 
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
