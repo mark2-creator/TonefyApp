@@ -4957,6 +4957,18 @@ against the day the scopes land.
     trade while the owner is funds-blocked. Revisit only when revenue justifies the monthly
     cost; the registry pattern makes it a drop-in when that day comes.
 
+## "Names that are not real names" in Admin -> Accounts: not a bug (checked Oct 3 2026)
+
+The list shows each account's own `displayName` - for a Google sign-in, whatever that person's Google
+profile is called, copied as-is. Checked against Auth metadata, the odd ones are:
+- **`*@cloudtestlabaccounts.com` ("Nuage Laboratoire") is Google's pre-launch report robot** (Firebase
+  Test Lab), created 06:34 Oct 3 - minutes after build 13 was uploaded. **One appears per uploaded
+  build**, and it inflates "New this week".
+- **"ytapitest Hyd" (Sep 7) is the YouTube API audit team** testing the integration.
+- "Basic Account", "Just Another", "Nata", "Gyy" etc. are real Google/password sign-ins whose own
+  profile names look like that. Common to all of the recent ones: **one session, 0 videos, no country,
+  never returned** - an activation problem worth more attention than the names.
+
 ## Known bug pattern: a canvas made the right SHAPE at the wrong SCALE (fixed Oct 3 2026)
 
 **Reported by the owner from a downloaded video: "the captions become very small".** Every caption
