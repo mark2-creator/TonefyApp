@@ -4993,6 +4993,15 @@ signup time:
   dashboard of ~11 equal cards ("Choose a workflow") with no guided first step. None of the recent
   signups ever set a country, so each dismissed the gate or left at it.
 - **There is no funnel data**, so where exactly people quit is inferred. Proposed fixes put to the owner.
+- **Correction from the owner the same day: most accounts are his closed-test recruits, not users.**
+  The Play API cannot confirm it - `edits.testers.get` returns `{}` for internal/alpha/beta because
+  it only exposes GOOGLE GROUPS; testers entered as Console EMAIL LISTS are invisible to it. Grouped by
+  creation date against the 14-day closed test that preceded the Sep 3 production application, the 33:
+  **4 the owner's own**, **5 review/test** (Test User, Play Reviewer, YouTube Audit, Google's
+  "ytapitest" reviewer, the Test Lab robot), **15 closed-test recruits** (Google sign-ins Aug 16-19,
+  exactly the recruitment window), and **9 after the Sep 8 launch** - the only real strangers. Of
+  those 9, none has made a video and one (Sep 22) tried and hit the extract-segments bug. So the
+  activation finding stands, on a sample of 9 rather than 33.
 
 ## Known bug pattern: a canvas made the right SHAPE at the wrong SCALE (fixed Oct 3 2026)
 
