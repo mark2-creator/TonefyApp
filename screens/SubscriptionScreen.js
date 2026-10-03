@@ -24,16 +24,19 @@ const BACKEND = 'https://api.fitlifesolutions.site';
 // Monetise with Play -> Subscriptions. They're fixed here ahead of those
 // products existing so creation over there can follow this naming, rather
 // than this screen chasing whatever got typed in on the day.
+// The AI scene counts mirror AI_SCENE_PLANS in ~/Tonefy-react/backend/aiScenes.js -
+// keep in sync. There are no fallback prices on purpose: since Oct 3 2026 prices
+// differ by country (doubled in 44 high-income markets), so any one hardcoded
+// number would be wrong for most people who saw it. Only Play's own price is shown.
 const PRODUCTS = {
   [TIER_PRO]: {
     productId: 'tonefy_pro_monthly',
     label: 'Pro',
     monthlyBasePlanId: 'pro-monthly',
     yearlyBasePlanId: 'pro-yearly',
-    monthlyPriceFallback: '$6.99/mo',
-    yearlyPriceFallback: '$69.99/yr',
     features: [
       '60 credits / month',
+      '10 AI scenes / month',
       'Videos up to 15 minutes',
       '1080p exports',
       'No watermark',
@@ -46,10 +49,9 @@ const PRODUCTS = {
     label: 'Creator',
     monthlyBasePlanId: 'creator-monthly',
     yearlyBasePlanId: 'creator-yearly',
-    monthlyPriceFallback: '$14.99/mo',
-    yearlyPriceFallback: '$149.99/yr',
     features: [
       '300 credits / month',
+      '40 AI scenes / month',
       'Videos up to 40 minutes',
       '1080p exports',
       'No watermark',
@@ -271,8 +273,7 @@ export default function SubscriptionScreen({ navigation }) {
     const detail = skuDetails[plan.productId];
     const offer = detail?.subscriptionOfferDetails?.find((o) => o.basePlanId === basePlanId);
     const phase = offer?.pricingPhases?.pricingPhaseList?.[0];
-    if (phase?.formattedPrice) return phase.formattedPrice;
-    return billingCycle === 'yearly' ? plan.yearlyPriceFallback : plan.monthlyPriceFallback;
+    return phase?.formattedPrice || null;
   };
 
   return (
@@ -343,7 +344,9 @@ export default function SubscriptionScreen({ navigation }) {
             <View key={tierKey} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, { color: theme.text }]}>{plan.label}</Text>
-                <Text style={styles.cardPrice}>{priceFor(tierKey)}</Text>
+                {priceFor(tierKey)
+                  ? <Text style={styles.cardPrice}>{priceFor(tierKey)}</Text>
+                  : <Text style={[styles.cardPrice, styles.cardPriceUnknown]}>Price in Google Play</Text>}
               </View>
               {plan.features.map((f) => (
                 <View key={f} style={styles.featureRow}>
@@ -377,6 +380,7 @@ export default function SubscriptionScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  cardPriceUnknown: { fontSize: 13, color: '#888', fontWeight: '600' },
   screen: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 18, fontWeight: '700' },
