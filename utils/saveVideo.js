@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { recordWin } from './rateApp';
 import { File, Paths } from 'expo-file-system';
 // The legacy API only for createDownloadResumable: the current one has no progress
 // callback in DownloadOptions, and a 26MB file on a slow connection with nothing but a
@@ -102,6 +103,7 @@ export async function saveVideoToDevice(url, video, onProgress) {
     const perm = await MediaLibrary.requestPermissionsAsync(true);
     if (perm.granted) {
       const asset = await MediaLibrary.createAssetAsync(localUri);
+      recordWin();   // counts toward the rating prompt, never asks - see utils/rateApp.js
       return { method: 'gallery', uri: asset.uri };
     }
     // Permission refused is a choice, not a failure - fall through to the share
@@ -144,7 +146,8 @@ export async function saveAudioToDevice(url, meta, onProgress) {
       const perm = await MediaLibrary.requestPermissionsAsync(true);
       if (perm.granted) {
         const asset = await MediaLibrary.createAssetAsync(localUri);
-        return { method: 'gallery', uri: asset.uri };
+        recordWin();   // counts toward the rating prompt, never asks - see utils/rateApp.js
+      return { method: 'gallery', uri: asset.uri };
       }
     } catch (e) {
       // Fall through to the share sheet - see above.
@@ -186,6 +189,7 @@ export async function saveImageToDevice(url, meta, onProgress) {
     const perm = await MediaLibrary.requestPermissionsAsync(true);
     if (perm.granted) {
       const asset = await MediaLibrary.createAssetAsync(localUri);
+      recordWin();   // counts toward the rating prompt, never asks - see utils/rateApp.js
       return { method: 'gallery', uri: asset.uri };
     }
   }

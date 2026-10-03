@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 
@@ -112,6 +113,10 @@ export function JobsProvider({ children }) {
             seen.current.add(id);
             const job = jobsRef.current.find(j => j.id === id) || {};
             notifyDone({ ...job, ...data });
+            // The one place every way of making a video reports a finish, so the rating
+            // prompt lives here rather than in five screens. Delayed so the screen can land
+            // on its result first - asking over a spinner is asking at the wrong moment.
+            if (data.status === 'done') setTimeout(() => { recordWinAndMaybeAsk(); }, 2500);
           }
         } catch (e) {
           // A failed poll is a blip, not a failed job. The next tick tries again.

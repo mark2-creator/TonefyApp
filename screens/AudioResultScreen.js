@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { VOICES } from '../constants/voices';
 import { saveAudioToDevice } from '../utils/saveVideo';
 import { showAlert } from '../components/BrandedAlert';
+import { recordWinAndMaybeAsk } from '../utils/rateApp';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const BARS = 60;
@@ -38,6 +39,13 @@ export default function AudioResultScreen({ navigation, route }) {
   const [downloadPct, setDownloadPct] = useState(0);
 
   // --- playback -----------------------------------------------------------
+  // Audio does not go through JobsContext, so this screen is its success moment. Delayed
+  // so the result is on screen before anything is asked of anyone.
+  useEffect(() => {
+    const t = setTimeout(() => { recordWinAndMaybeAsk(); }, 2500);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (!audioUrl) return;
     let cancelled = false;

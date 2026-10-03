@@ -9,12 +9,22 @@ import { showAlert } from '../components/BrandedAlert';
 // search term it might otherwise appear in. Ratings are a discovery problem before they
 // are a vanity one.
 //
-// DELIBERATELY NOT expo-store-review. That is the nicer control - Google's own overlay,
-// rated without leaving the app - but it is a NATIVE module, so shipping it means a new
-// binary and nobody already holding the app gets the prompt until they update. This
-// version uses Linking, which every installed build already has, so it works over the
-// air today. When a native build next happens, swap `openStoreListing` for
-// StoreReview.requestReview() and nothing else here needs to change.
+// Two routes, chosen by what the INSTALLED binary has:
+//   - expo-store-review (build 13 on): Google's own in-app review sheet, rated without
+//     leaving the app. Shown DIRECTLY - Google's in-app review guidelines forbid asking
+//     anything first ("Do you like the app?", "Would you rate us 5 stars?"), so this
+//     route has no pre-prompt of ours at all.
+//   - anything older: our own sheet, then the Play listing via Linking, which every build
+//     already has.
+// expo-store-review is a NATIVE module and its JS calls requireNativeModule at import,
+// so a top-level import would throw on build 12 and take the app down (the
+// expo-secure-store lesson, item 29). Required lazily inside a try instead.
+//
+// Asked from two kinds of place (Oct 3 2026): a finished render/export, via JobsContext,
+// which every way of making a video goes through - and, until then, only after a social
+// post, which is paid-only, so with no subscribers NO real user had ever been asked.
+// Saves to the phone COUNT as a win (recordWin) but never ask: those screens show their
+// own "Saved" sheet, and BrandedAlert has one host - a prompt would replace it.
 const PKG = 'com.ahumuza21213.TonefyApp';
 const KEY = 'tonefy.rating';
 const WINS_BEFORE_ASKING = 2;        // never on someone's first success - that is a stranger
@@ -29,6 +39,10 @@ async function readState() {
     // is the one that asks for nothing.
     return null;
   }
+}
+
+function storeReview() {
+  try { return require('expo-store-review'); } catch { return null; }
 }
 
 async function writeState(s) {
@@ -50,6 +64,13 @@ export async function openStoreListing() {
   } catch {
     return false;
   }
+}
+
+/** Counts a success without ever asking - for moments that already show their own sheet. */
+export async function recordWin() {
+  const s = await readState();
+  if (!s || s.done) return;
+  await writeState({ ...s, wins: s.wins + 1 });
 }
 
 /**
@@ -74,13 +95,25 @@ export async function recordWinAndMaybeAsk() {
   // real button - which is how a polite request turns into nagging.
   await writeState({ ...s, wins, lastAskedAt: Date.now() });
 
+  // Native sheet when this build has it. Google decides whether it actually appears (it
+  // is quota-limited and gives no callback either way), so this is never marked done -
+  // the 60-day rule above decides when it is worth asking again.
+  const SR = storeReview();
+  if (SR) {
+    try {
+      if (await SR.isAvailableAsync()) { await SR.requestReview(); return; }
+    } catch { /* fall through to the Linking route */ }
+  }
+
+  // Neutral wording on purpose: no "Enjoying Tonefy?" - asking for an opinion first and
+  // only sending the happy ones on is review-gating, which Play's policy forbids.
   showAlert(
-    'Enjoying Tonefy?',
-    'If Tonefy saved you some time, a rating on Google Play genuinely helps other creators find it.',
+    'Rate Tonefy on Google Play?',
+    'Ratings help other creators find Tonefy. It only takes a few seconds.',
     [
       { text: 'Not now', style: 'cancel' },
       {
-        text: 'Rate Tonefy',
+        text: 'Rate on Google Play',
         onPress: async () => {
           // Marked done on the way OUT, not on the way back. Play gives no callback
           // saying whether a rating was left, and someone who went to the store has
