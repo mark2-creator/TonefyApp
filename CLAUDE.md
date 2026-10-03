@@ -2042,8 +2042,12 @@ One video posted from Edit & Post to TikTok, YouTube and Pinterest, ~15:07 UTC. 
   3. **No invented titles server-side:** Pinterest's `title`/`description` and LinkedIn's media `title`
      are omitted when the caption is empty instead of "Tonefy video". Verified on Pinterest with a real
      captionless pin through the live `/api/post-now` (title came back `""`), then deleted (204 -> 404)
-     with its scheduledPosts record. **LinkedIn was not posted live** - a test post reaches the owner's
-     connections' feeds - so its omitted-title form rests on LinkedIn's API docs. YouTube keeps
+     with its scheduledPosts record. **LinkedIn: confirmed by the owner's own real post at 15:42 UTC**,
+     made with an empty caption on the fixed server (restarted ~15:22): accepted
+     (`urn:li:ugcPost:7512175336672079873`), and its public page plays the video at 360/640/720p. Note
+     the API cannot read it back - `GET /rest/posts` answers 403 because the app holds only
+     `w_member_social`, by design - so check LinkedIn posts through the public
+     `linkedin.com/feed/update/<urn>/` page instead. YouTube keeps
      `'Untitled'` server-side only as a last resort, since the API rejects an empty title; the app now
      prevents reaching it.
   App update `0e2837cc-8ac6-4442-ae4b-55f75a6ab44f`. Still open, deliberately: choosing the Pinterest board.
