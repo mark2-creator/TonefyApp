@@ -1916,8 +1916,14 @@ nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three gen
 - **Allowance separate from credits**: free 0, pro 10/cycle 2/video, creator 40/cycle 4/video, clip 3-8s.
   Tied to the credit cycle by stamping `aiScenesCycle = creditsResetAt`, so none of the four refill
   paths had to change. Reserved in a transaction, **refunded for failures and cache hits**.
-- **Three spend guards**: fal's own dashboard limit (the real one - SET IT), an in-process daily cap
-  `AI_SCENE_DAILY_USD_CAP` (default $5), and the per-user allowance. **Aborting the client's wait does
+- **Spend guards, outermost first**: the fal PREPAID BALANCE with auto top-up off (fal has no separate
+  spend limit - the balance is the ceiling, even for a leaked key); then **$3/day and $1/hour** caps
+  (`AI_SCENE_DAILY_USD_CAP` / `AI_SCENE_HOURLY_USD_CAP` in `.env`) **reserved in a Firestore transaction
+  on `aiSpend/{UTC day}` before every fal call** - they were in memory first, and a crash loop under pm2
+  would have reset them each lap; fails CLOSED. The first trip of each cap per day **emails the owner**
+  (Brevo, to `AI_SCENE_ALERT_EMAIL` or `EMAIL_USER`), flagged on the same doc so restarts do not resend -
+  verified landing in the Gmail INBOX Oct 3. Then the per-user allowance. **Pro/Creator with no
+  `subscriptionPurchaseToken` (reviewer, hand-set test accounts) get 3/cycle, 1/video**; admins exempt. **Aborting the client's wait does
   not stop fal billing** - the code calls `fal.queue.cancel` on timeout; the client's own `timeout`
   option is documented as not enforced.
 - 7-day prompt cache in `backend/cache/aiscenes` (gitignored, swept by age), so a retried render is free.
