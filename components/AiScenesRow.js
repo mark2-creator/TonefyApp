@@ -12,7 +12,7 @@
 // Reads its own status so a screen only has to hold the chosen number. Refetches on
 // focus, because rendering a video spends the allowance it is showing.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -47,6 +47,17 @@ export default function AiScenesRow({ value, onChange }) {
   const max = status?.enabled ? Math.min(status.perVideo, status.remaining) : 0;
   useEffect(() => {
     if (status && value > max) onChange(max);
+  }, [status, max, value, onChange]);
+
+  // "First scene" by default for anyone who has scenes to spend (owner, Oct 3 2026): a
+  // subscriber should get the feature they pay for without hunting for it. Applied ONCE,
+  // on the first status this screen sees - the status refetches on every focus, and
+  // re-defaulting then would undo someone who had deliberately chosen Off.
+  const defaulted = useRef(false);
+  useEffect(() => {
+    if (!status || defaulted.current) return;
+    defaulted.current = true;
+    if (status.enabled && max >= 1 && value === 0) onChange(1);
   }, [status, max, value, onChange]);
 
   if (!status?.available) return null;
