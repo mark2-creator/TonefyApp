@@ -1899,6 +1899,38 @@ Two Tonefy-side findings from building it:
   or a hashtag is cut off at that character or refused. FitLife escapes them
   (`li_escape`); the backend does not yet. Small fix, needs a `pm2 restart`.
 
+## Subscription prices are REGIONAL since Oct 3 2026 - doubled in 44 markets only
+
+**Owner decision: x2 in high-income markets, unchanged everywhere else.** Applied through the Play
+Developer API and verified price by price: of 696 regional prices (2 products x 2 base plans x 174
+regions) exactly 176 changed, every one in the approved list, ratio 2.00-2.13 (.99 rounding up).
+
+| | Pro monthly / yearly | Creator monthly / yearly |
+|---|---|---|
+| **US** (was) | **$13.99 / $139.99** ($6.99 / $69.99) | **$29.99 / $299.99** ($14.99 / $149.99) |
+| UK | GBP 11.99 / 123.99 | GBP 26.99 / 269.99 |
+| Germany | EUR 13.99 / 139.99 | EUR 29.99 / 309.99 |
+| **Uganda - unchanged** | $8.25 / $82.59 | $17.69 / $176.99 |
+
+- **Doubled (44):** US CA GB IE FR DE NL BE LU AT CH LI DK SE NO FI IS IT ES PT MT CY SI EE LV LT SK CZ HR
+  AU NZ JP KR SG HK TW MO IL AE QA KW SA BH OM.
+- **Borderline, deliberately KEPT (12):** PL HU GR RO BG CL CR UY PA BS TT SC. Revisit with sales data.
+- **Kept (118):** everything else - Uganda, Kenya, Nigeria, India, Brazil, South Africa and the rest.
+  Most real users are Ugandan (7 of the 9 accounts with a country set), which is the reason for the split.
+- **Why then:** 0 paying subscribers, so no one was moved - Play needs existing subscribers to accept a
+  rise. Raising later is the hard direction; lowering is easy.
+- **Backups:** `~/ytshots/play-subs-backup-2026-10-03.json` (before) and `...-after-...` (after). Restore by
+  patching a backup's basePlans back.
+- **The API call that does it:** `monetization.subscriptions.patch`, `updateMask: basePlans`, the WHOLE
+  subscription object, and **`regionsVersion.version` must be current (`2026/01` at the time)** - an
+  old one is refused with a misleading currency error ("Expected USD but got ARS"); Play names the
+  latest version in the error when you send a too-new one. A refused patch changes nothing.
+- **The plans screen no longer carries fallback prices** - with regional pricing any single number is
+  wrong for most people; it shows Play's price or "Price in Google Play". Cards now list AI scenes
+  (10 Pro / 40 Creator). Published as update group `c0b06482-8635-42de-9dcb-d8dc9eb53194`.
+- Margin at the new US prices, worst-case AI use: Pro $11.89 net - $1.73 = **$10.16**, Creator
+  $25.49 - $6.91 = **$18.58** per subscriber per month.
+
 ## AI scenes in Idea/Script/Url to Video, via fal.ai (Oct 2 2026)
 
 **Built and deployed, OFF until `FAL_KEY` is in `~/Tonefy-react/backend/.env`.** With no key the
