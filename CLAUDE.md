@@ -2063,7 +2063,7 @@ One video posted from Edit & Post to TikTok, YouTube and Pinterest, ~15:07 UTC. 
   The sheet CLOSES before posting so the result alert is never hidden under a Modal. Verified: board
   list (9 boards), a Pin onto the non-first board "Weight Loss Journey" (confirmed by board_id, then
   deleted), a foreign board id refused, and a client-side `scheduledPosts` write carrying the
-  `pinterest` field allowed by the rules. Update group in the publish log of this commit.
+  `pinterest` field allowed by the rules. App update `c2dd5190-85a0-41e8-95dd-401e205f19c0`.
 
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
