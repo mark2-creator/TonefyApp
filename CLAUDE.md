@@ -1922,8 +1922,14 @@ nothing. Backend `aiScenes.js`; app `components/AiScenesRow.js` on the three gen
   option is documented as not enforced.
 - 7-day prompt cache in `backend/cache/aiscenes` (gitignored, swept by age), so a retried render is free.
 - **Verified** against the real fal API with an invalid key: reserve 2 of 5 asked (per-video cap),
-  fal refused, both refunded, stale cycle reads 0, free gets 0. **NOT yet verified: a real generation**
-  - that needs the key.
+  fal refused, both refunded, stale cycle reads 0, free gets 0.
+- **LIVE Oct 3 2026, real generation verified.** Owner's fal account: prepaid $10, auto top-up OFF (the
+  balance IS the cap - fal has no separate spend limit), key scope API, `FAL_KEY` in `.env`. A full
+  `/api/idea-to-video-v2` render with `aiScenes:1` took 85s, scene 1 generated in 28s (~$0.08 for 4s),
+  scenes 2-3 Pexels, allowance 40 -> 39. **"720p" 9:16 is really 704x1248**; 480p is 480x864 at half
+  the price. Compared side by side at export size: 480p is visibly softer in foliage and faces, and the
+  AI clip is the HOOK sitting next to HD stock, so **720p stays** - the margin holds at 720p anyway.
+  Users still cannot reach it until the app update with `AiScenesRow` is published.
 
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
