@@ -2033,6 +2033,20 @@ One video posted from Edit & Post to TikTok, YouTube and Pinterest, ~15:07 UTC. 
   TikTok "Created with Tonefy AI" fix removed on Sep 27.
 - Debugging note: the Pinterest token field is `accounts[id].token`, not `accessToken` - reading the
   wrong field gives a 401 that looks like a dead connection.
+- **FIXED the same day (owner approved fixes 1-3):**
+  1. **Write once:** a caption typed in the TikTok sheet fills the Edit & Post caption box when that is
+     empty (never overwrites one already written), so the YouTube/Pinterest posts that follow carry it.
+  2. **No title-less posts:** `needsCaption()` in `EditPostVideoScreen` - posting, Post Now and Save to
+     queue to YouTube, Pinterest or LinkedIn with an empty caption now asks for one. Those three show the
+     caption as the post's TITLE; TikTok/Facebook/Instagram show none and stay optional.
+  3. **No invented titles server-side:** Pinterest's `title`/`description` and LinkedIn's media `title`
+     are omitted when the caption is empty instead of "Tonefy video". Verified on Pinterest with a real
+     captionless pin through the live `/api/post-now` (title came back `""`), then deleted (204 -> 404)
+     with its scheduledPosts record. **LinkedIn was not posted live** - a test post reaches the owner's
+     connections' feeds - so its omitted-title form rests on LinkedIn's API docs. YouTube keeps
+     `'Untitled'` server-side only as a last resort, since the API rejects an empty title; the app now
+     prevents reaching it.
+  App update `0e2837cc-8ac6-4442-ae4b-55f75a6ab44f`. Still open, deliberately: choosing the Pinterest board.
 
 ## Post analytics: possible, but every platform gates it behind a scope we lack
 
