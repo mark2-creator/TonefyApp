@@ -4969,6 +4969,31 @@ profile is called, copied as-is. Checked against Auth metadata, the odd ones are
   profile names look like that. Common to all of the recent ones: **one session, 0 videos, no country,
   never returned** - an activation problem worth more attention than the names.
 
+**Robot now handled (Oct 3 2026):** `isTestDeviceUser()` in `server.js` (email `@cloudtestlabaccounts.com`)
+- excluded from every admin count (total, new this week, verified, active), from the plan tally and from
+the orphan-doc check (its profile document would otherwise read as an orphan - caught on the live
+endpoint, not by reading); reported as `testDevices`; list rows carry `testDevice: true` and both admin
+screens title it "Google test device" with the address underneath. Live after the fix: 32 accounts,
+plans sum 32, 0 orphans, 1 test device. App update `1778f3b1-f462-4c31-8804-8f837d50e7e3`.
+
+### Why new users leave (investigated Oct 3 2026)
+
+**Only 3 of 33 accounts have EVER made a video** - and two of those are the owner and the YouTube
+review account. 12 came back more than a day after signing up. Server requests lined up against each
+signup time:
+- **Most recent signups made NO request at all after signing in** - no script, no audio, no render. They
+  looked and left. The app reads plan/profile from Firestore directly, so the dashboard itself makes no
+  backend call - silence means nothing was started.
+- **Pawel (Sep 22) tried and hit a bug:** generate-script -> generate-audio -> **extract-segments four
+  times in 15s**, then stopped before ever rendering. Extract-segments returned EMPTY until the
+  reasoning-budget fix on Sep 24 (see that bug pattern) - a real user lost to a bug since fixed.
+- **Rita (Sep 18, email signup) never verified her address** and so could never sign in (`AuthScreen`
+  blocks unverified logins) - lost at the verification wall.
+- First-run path today: sign in -> the ProfileGate sheet asks for names + country immediately -> a
+  dashboard of ~11 equal cards ("Choose a workflow") with no guided first step. None of the recent
+  signups ever set a country, so each dismissed the gate or left at it.
+- **There is no funnel data**, so where exactly people quit is inferred. Proposed fixes put to the owner.
+
 ## Known bug pattern: a canvas made the right SHAPE at the wrong SCALE (fixed Oct 3 2026)
 
 **Reported by the owner from a downloaded video: "the captions become very small".** Every caption
