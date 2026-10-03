@@ -4977,8 +4977,10 @@ written in the OLD space has to be rescaled with it - or keep the old space and 
 
 **Same day, the owner asked whether AI clips were being used: they were not**, because the two real
 videos he made were sent with `aiScenes: 0` - the row defaults to **Off**. The AI path itself was
-working (proven in the Oct 3 end-to-end test). Whether the default should be "First scene" is an open
-decision put to the owner.
+working (proven in the Oct 3 end-to-end test). **DECIDED the same day: the row now defaults to "First
+scene" for any account with scenes to spend** - paying users, admin, and the 3/month unpurchased
+accounts; free stays Off. Applied once per screen visit so a deliberate Off sticks. Update group
+`5cf3b391-d92a-4cc0-a4e8-698ca74ec2ea`.
 
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
