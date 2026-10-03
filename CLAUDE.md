@@ -1517,6 +1517,22 @@ the programme via `play.google.com/apps/testing/<pkg>`, honest direct asks (no i
 review-gating - both are Play policy violations), the owner NOT rating his own app, and
 `expo-store-review` in the next native build.
 
+**DONE the same day.** `recordWinAndMaybeAsk()` now fires 2.5s after ANY finished render/export -
+from `JobsContext`, the one place every video path reports a finish - and on `AudioResultScreen`.
+Saves to the phone call `recordWin()`: they COUNT but never ask, because those screens show their own
+"Saved" sheet and BrandedAlert has a single host, so a prompt would replace it. Unchanged: never on
+the first success, at most every 60 days, never again after "Rate". Published as update group
+`c52e2a91-8802-4a7c-a42b-02161dca5570`.
+- **`expo-store-review` is installed and loaded LAZILY** (its JS calls `requireNativeModule` at
+  import - the expo-secure-store trap). With the module, Google's in-app sheet is shown **directly,
+  with no question of ours first: Google's in-app review guidelines forbid any pre-prompt** ("Do you
+  like the app?"). Without it (build 12 and older) our own sheet, reworded to "Rate Tonefy on Google
+  Play?" - the old "Enjoying Tonefy?" opener is review-gating, which Play policy forbids.
+- **Build 13 (versionCode 13) cut for it on Oct 3 2026**, same keystore `qMlH7ffwtv` - the only native
+  change since build 12 is `expo-store-review`.
+- The in-app sheet is quota-limited by Google and reports nothing back, so it is never marked "done";
+  the 60-day rule decides re-asking. It also does not appear for every install - a no-show is normal.
+
 **27 accounts and ZERO ratings, which is a ranking problem rather than a vanity one** -
 Play sorts a zero-rating app below anything with any rating, for every term it might
 otherwise appear for. `utils/rateApp.js` asks after a POST succeeds (their video is
