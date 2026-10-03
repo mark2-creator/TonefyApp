@@ -71,6 +71,18 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // A silent fallback would have fixed the symptom while still publishing something the
   // user never saw; prefilling shows them the words before they press Post.
   const [caption, setCaption] = useState(defaultCaption);
+
+  // Where the caption is the TITLE people see. Posting there with none used to publish
+  // words the user never wrote - "Untitled" on YouTube, "Tonefy video" on Pinterest (owner's
+  // post, Oct 3 2026) - so the app asks instead. TikTok, Facebook and Instagram show no
+  // title and are fine without a caption.
+  const CAPTION_IS_TITLE = ['youtube', 'pinterest', 'linkedin'];
+  function needsCaption(platforms) {
+    if (caption.trim() || !platforms.some(p => CAPTION_IS_TITLE.includes(p))) return false;
+    showAlert('Add a caption first',
+      'YouTube, Pinterest and LinkedIn show your caption as the title of the post. Write it in the caption box above, then post again.');
+    return true;
+  }
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [tiktokOpenId, setTiktokOpenId] = useState(null);
   const [tiktokName, setTiktokName] = useState('');
@@ -191,6 +203,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   }
 
   async function uploadToYouTube() {
+    if (needsCaption(['youtube'])) return;
     setYtPosting(true);
     try {
       const token = await user.getIdToken();
@@ -272,6 +285,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     // so a free user gets the message without a failed round-trip.
     if (!isPremium) return showAlert(cfg.label, 'Posting to social media is available on the Pro and Creator plans.');
     if (!cfg.status?.connected) return navigation.navigate('ConnectAccounts');
+    if (needsCaption([id])) return;
     cfg.setPosting(true);
     try {
       const token = await user.getIdToken();
@@ -320,6 +334,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
       // user writes the description inside the compliant sheet, alongside the privacy
       // choice, the way TikTok's own composer does.
       const { accountId, accountIds, caption: ttCaption, ...tiktokOptions } = options;
+      // Write once: words typed in the TikTok sheet fill the screen's empty caption box, so
+      // the YouTube/Pinterest posts that usually follow carry them too. Never overwrites
+      // a caption the user already wrote here.
+      if (ttCaption?.trim() && !caption.trim()) setCaption(ttCaption);
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -392,6 +410,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     if (!isPremium) { showAlert('Post Now', 'Posting to social media is available on the Pro and Creator plans.'); return; }
     const platforms = connectedPlatforms;
     if (platforms.length === 0) { showAlert('Post Now', 'Connect an account first - use the Connect buttons above.'); return; }
+    if (needsCaption(platforms)) return;
     setPosting(true);
     try {
       const token = await user.getIdToken();
@@ -474,6 +493,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       showAlert('Schedule', 'Connect an account first - a scheduled post needs somewhere to go.');
       return;
     }
+    if (needsCaption(platforms)) return;
     setSaving(true);
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
