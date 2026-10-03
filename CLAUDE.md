@@ -1538,6 +1538,11 @@ the first success, at most every 60 days, never again after "Rate". Published as
   (100%, all tracks in step).** Alpha was moved too on purpose - Play serves a tester their
   highest-priority track (item 29), so a closed-test tester would otherwise have stayed on vc12. Google
   reviews a production release first; it shows "In review" before it reaches devices.
+- **Leaving testing, as it actually went (owner, Oct 3 2026):** removing the email from the Console
+  tester list made the opt-out link answer "App not available - your account isn't currently eligible",
+  but the Play Store app kept showing "(Internal Beta)" and "Your private feedback" - and **Clear cache
+  was not enough. Settings -> Apps -> Google Play Store -> Storage -> CLEAR STORAGE fixed it at once**:
+  normal title, no warning, a public "Rate this app" section. Give testers that step, not "wait a day".
 - The in-app sheet is quota-limited by Google and reports nothing back, so it is never marked "done";
   the 60-day rule decides re-asking. It also does not appear for every install - a no-show is normal.
 
