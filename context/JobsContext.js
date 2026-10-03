@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { recordWinAndMaybeAsk } from '../utils/rateApp';
+import { recordWin, recordWinAndMaybeAsk } from '../utils/rateApp';
+import { askForReminders } from '../utils/notifications';
+import { showAlert } from '../components/BrandedAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 
@@ -116,7 +118,14 @@ export function JobsProvider({ children }) {
             // The one place every way of making a video reports a finish, so the rating
             // prompt lives here rather than in five screens. Delayed so the screen can land
             // on its result first - asking over a spinner is asking at the wrong moment.
-            if (data.status === 'done') setTimeout(() => { recordWinAndMaybeAsk(); }, 2500);
+            // Reminders are offered after the first finished video from ANY screen (they
+            // used to be asked only after an editor export, so Idea/Script/Url users were
+            // never asked). BrandedAlert shows one sheet at a time, so if that question is
+            // being asked the rating prompt waits for the next success.
+            if (data.status === 'done') setTimeout(async () => {
+              const asking = await askForReminders(showAlert);
+              if (asking) recordWin(); else recordWinAndMaybeAsk();
+            }, 2500);
           }
         } catch (e) {
           // A failed poll is a blip, not a failed job. The next tick tries again.

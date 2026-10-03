@@ -44,7 +44,7 @@ export default function NotificationsScreen({ navigation }) {
         setBusy(false);
         return;
       }
-      const ok = await scheduleReminders();
+      const ok = await scheduleReminders({ fromUser: true });
       setEnabled(ok);
     } else {
       await cancelReminders();

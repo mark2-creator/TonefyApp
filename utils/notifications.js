@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Re-engagement reminders: "Hi, it's Tonefy AI - fancy making a video?"
+// Re-engagement reminders: an idea or a feature to try, at 6pm, while someone is away.
 //
 // expo-notifications is a NATIVE module, which makes this the one feature in the app
 // that an over-the-air update cannot deliver. The binary currently on the phone
@@ -72,59 +72,132 @@ export async function requestNotificationPermission() {
   }
 }
 
-// The nudges themselves. Short, in the app's voice, and each says what it is for -
-// a notification that only says "come back" is the kind people turn off.
-const REMINDERS = [
-  {
-    title: '👋 Hi, it’s Tonefy AI',
-    body: 'Do you want to make a video today? It takes about a minute. 🎬',
-    days: 1,
-  },
-  {
-    title: '✨ Your next video is waiting',
-    body: 'Turn an idea into a finished clip with captions and music. 🎵',
-    days: 3,
-  },
-  {
-    title: '🎬 Still got that idea?',
-    body: 'Tonefy AI can have it edited and ready to post in minutes.',
-    days: 7,
-  },
+// The nudges (rebuilt Oct 3 2026, owner: "like CapCut - almost daily").
+//
+// Each one names something the app really does and opens the screen that does it - a
+// notification that only says "come back" is the kind people switch off. No emoji, per
+// the app-wide rule. Rotated so nobody sees the same line two days running.
+const MESSAGES = [
+  { title: 'Got an idea for a video?', body: 'Type it into Tonefy AI and get a finished video with voiceover and captions in about a minute.', route: 'IdeaToVideo' },
+  { title: 'Open with something new', body: 'Paid plans can generate an AI opening scene for every video. Give your next one a hook.', route: 'IdeaToVideo' },
+  { title: 'Post everywhere in one tap', body: 'Send your next video to TikTok, YouTube, Pinterest and LinkedIn at once.', route: 'Social' },
+  { title: '138 caption styles', body: 'Bold, neon, highlight, sticker... captions people actually stop scrolling for.', route: 'EditVideo' },
+  { title: 'Already have a script?', body: 'Paste it into Script to Video and Tonefy AI finds the footage for every line.', route: 'ScriptToVideo' },
+  { title: 'Turn an article into a video', body: 'Paste a link and Tonefy AI writes, voices and edits a short video from it.', route: 'UrlToVideo' },
+  { title: 'Over 300 voices', body: 'Give your next voiceover a new voice, in the language your audience speaks.', route: 'ScriptToAudio' },
+  { title: 'Speak to a new audience', body: 'Video Translator re-voices a clip in another language. Try it in the editor.', route: 'EditVideo' },
+  { title: 'Five minutes is enough', body: 'One short video today keeps your channel growing. Tonefy AI does the editing.', route: 'IdeaToVideo' },
+  { title: 'Make a thumbnail that gets clicks', body: 'Pick a frame, add bold text, done. Thumbnails for YouTube, TikTok and more.', route: 'Thumbnail' },
+  { title: 'Plan the week ahead', body: 'Schedule your posts once and Tonefy AI publishes them on time.', route: 'Social' },
+  { title: 'Your videos are waiting', body: 'Open My Videos to post, download or edit something you already made.', route: 'MainTabs' },
+  { title: 'Record and polish', body: 'Film yourself and let Tonefy AI add captions, music and effects.', route: 'RecordToVideo' },
+  { title: 'Consistency beats perfect', body: 'Creators who post often grow fastest. Make today\'s video in a minute.', route: 'IdeaToVideo' },
 ];
 
+// When: every day for the first week, then every other day up to a month, always at
+// 6pm local time - after work and school, when people scroll. Rebuilt from NOW each time
+// the app is opened (refreshReminders), so someone who uses Tonefy daily never gets one:
+// it only reaches people who have drifted away, which is how CapCut does it too.
+const HOUR = 18;
+const SCHEDULE_DAYS = [1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31];
+
+const OPT_OUT_KEY = 'tonefy.notifOptOut';
+const ROTATION_KEY = 'tonefy.notifRotation';
+
 /**
- * Schedule the re-engagement series, replacing anything already scheduled.
- *
- * Cancelled and rebuilt each time rather than added to, because the point of these is
- * "you have not been here for a while" - and someone who just finished a video should
- * have their clock restarted, not receive a reminder booked three days ago.
+ * Schedule the series, replacing anything already scheduled. `fromUser` is the
+ * Notifications screen's switch being turned ON; anything automatic respects an
+ * earlier OFF and does nothing.
  */
-export async function scheduleReminders() {
+export async function scheduleReminders({ fromUser = false } = {}) {
   const N = mod();
   if (!N) return false;
   try {
+    if (fromUser) await AsyncStorage.removeItem(OPT_OUT_KEY);
+    else if (await AsyncStorage.getItem(OPT_OUT_KEY)) return false;
     const perms = await N.getPermissionsAsync();
     if (!perms.granted) return false;
     await ensureChannel(N);
     await N.cancelAllScheduledNotificationsAsync();
-    for (const r of REMINDERS) {
+    // Start the rotation where the last series stopped, so a returning user does not
+    // see message one again every time.
+    const start = Number(await AsyncStorage.getItem(ROTATION_KEY)) || 0;
+    const now = new Date();
+    for (let i = 0; i < SCHEDULE_DAYS.length; i++) {
+      const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + SCHEDULE_DAYS[i], HOUR, 0, 0);
+      const m = MESSAGES[(start + i) % MESSAGES.length];
       await N.scheduleNotificationAsync({
         content: {
-          title: r.title,
-          body: r.body,
-          data: { kind: 'reengage' },
+          title: m.title,
+          body: m.body,
+          data: { kind: 'reengage', route: m.route },
           ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
         },
-        trigger: {
-          type: N.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: r.days * 24 * 60 * 60,
-        },
+        trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: at },
       });
     }
+    // Opening the app tomorrow rebuilds from tomorrow; the next series starts one
+    // message further on.
+    await AsyncStorage.setItem(ROTATION_KEY, String((start + 1) % MESSAGES.length));
     await AsyncStorage.setItem(SCHEDULED_KEY, String(Date.now()));
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Called on every app open and return to foreground: restarts the clock. Silent no-op
+ *  without permission, without the native module, or after the user turned them off. */
+export async function refreshReminders() {
+  return scheduleReminders();
+}
+
+/**
+ * Ask for permission with our own one-line explanation first, then the system dialog.
+ * Android 13 lets the system dialog be answered "no" for good, so it is only shown to
+ * someone who has just said yes to the idea. Asked once ever (see ASKED_KEY).
+ */
+export async function askForReminders(showAlert) {
+  const N = mod();
+  if (!N) return false;
+  try {
+    if ((await N.getPermissionsAsync()).granted) { await refreshReminders(); return false; }
+    if (await AsyncStorage.getItem(ASKED_KEY)) return false;
+    if (await AsyncStorage.getItem(OPT_OUT_KEY)) return false;
+  } catch { return false; }
+  showAlert(
+    'Get a video idea now and then?',
+    'Tonefy AI can send you a short reminder with an idea or a feature to try. You can turn this off any time in Settings, Notifications.',
+    [
+      { text: 'Not now', style: 'cancel', onPress: () => { AsyncStorage.setItem(ASKED_KEY, '1').catch(() => {}); } },
+      { text: 'Yes, remind me', onPress: async () => { if (await requestNotificationPermission()) await scheduleReminders(); } },
+    ],
+    { cancelable: false },
+  );
+  return true;   // a prompt is on screen - the caller should not open another
+}
+
+/** The route of the notification that launched the app from cold, if any. */
+export async function launchRouteFromNotification() {
+  const N = mod();
+  if (!N) return null;
+  try { return routeFromNotification(await N.getLastNotificationResponseAsync()); } catch { return null; }
+}
+
+/** The screen a tapped reminder should open, or null. */
+export function routeFromNotification(response) {
+  return response?.notification?.request?.content?.data?.route || null;
+}
+
+/** Subscribes to taps on any notification; returns an unsubscribe function. */
+export function onNotificationTap(handler) {
+  const N = mod();
+  if (!N) return () => {};
+  try {
+    const sub = N.addNotificationResponseReceivedListener(handler);
+    return () => { try { sub.remove(); } catch {} };
+  } catch {
+    return () => {};
   }
 }
 
@@ -144,6 +217,8 @@ export async function cancelReminders() {
   try {
     await N.cancelAllScheduledNotificationsAsync();
     await AsyncStorage.removeItem(SCHEDULED_KEY);
+    // Remembered, so the automatic refresh on every app open does not quietly undo it.
+    await AsyncStorage.setItem(OPT_OUT_KEY, '1');
   } catch {}
 }
 
@@ -205,7 +280,7 @@ export async function sendTestNotification() {
     await ensureChannel(N);
     await N.scheduleNotificationAsync({
       content: {
-        title: '🔔 Tonefy AI',
+        title: 'Tonefy AI',
         body: 'Notifications are working. This is a test.',
         data: { kind: 'test' },
         ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),

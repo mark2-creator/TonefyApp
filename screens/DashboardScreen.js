@@ -10,6 +10,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { showAlert } from '../components/BrandedAlert';
+import { askForReminders } from '../utils/notifications';
 
 
 const sections = [
@@ -57,8 +58,18 @@ export default function DashboardScreen({ navigation }) {
   // neither fires onAuthStateChanged reliably nor changes the object's identity - reading
   // it once at mount left this avatar stale until a full restart. Bumping a tick on focus
   // forces a re-render that reads the freshly-mutated currentUser below.
-  const [, setFocusTick] = useState(0);
+  const [focusTick, setFocusTick] = useState(0);
   useEffect(() => navigation.addListener('focus', () => setFocusTick((t) => t + 1)), [navigation]);
+
+  // Reminders for someone who has had the app a day and has not been asked yet - mostly
+  // people who never finished a video, who are exactly who the reminders are for. Asked
+  // once ever (askForReminders keeps track), never on the first day.
+  useEffect(() => {
+    const created = Date.parse(auth.currentUser?.metadata?.creationTime || '');
+    if (!created || Date.now() - created < 24 * 60 * 60 * 1000) return;
+    const t = setTimeout(() => { askForReminders(showAlert); }, 1500);
+    return () => clearTimeout(t);
+  }, [focusTick]);
   const user = auth.currentUser;
   const firstName =
     user?.displayName?.split(' ')[0] ||

@@ -6,13 +6,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './utils/navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Linking } from 'react-native';
+import { View, ActivityIndicator, Linking, AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from './firebase';
-import { configureForegroundBehaviour } from './utils/notifications';
+import { configureForegroundBehaviour, refreshReminders, onNotificationTap, routeFromNotification, launchRouteFromNotification } from './utils/notifications';
 import BrandedAlertHost from './components/BrandedAlert';
 import ProfileGate from './components/ProfileGate';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -76,6 +76,33 @@ function App() {
   // open - which is precisely when someone is testing whether this works. A no-op
   // on a build without the native module.
   useEffect(() => { configureForegroundBehaviour(); }, []);
+
+  // Reminders count from the LAST time the app was used: rebuilt on every open and every
+  // return to the foreground, so a daily user never gets one and someone who drifts away
+  // does. Silent no-op without permission or after the user switched them off.
+  useEffect(() => {
+    refreshReminders();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') refreshReminders(); });
+    return () => sub.remove();
+  }, []);
+
+  // A tapped reminder opens the screen it talks about. Waits for navigation and a
+  // signed-in user, since a tap can be what launched the app from cold.
+  useEffect(() => {
+    const go = (route, tries = 0) => {
+      if (!route) return;
+      if (!navigationRef.isReady?.() || !auth.currentUser) {
+        if (tries < 20) setTimeout(() => go(route, tries + 1), 500);
+        return;
+      }
+      try {
+        if (route === 'MainTabs') navigationRef.navigate('MainTabs', { screen: 'MyVideos' });
+        else navigationRef.navigate(route);
+      } catch (e) { /* an unknown route just leaves the user where they are */ }
+    };
+    launchRouteFromNotification().then(go);
+    return onNotificationTap((response) => go(routeFromNotification(response)));
+  }, []);
 
   // Updates, and the two things that made them unreliable for real testers.
   //
