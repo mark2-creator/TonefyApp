@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 // A post that actually landed is the one moment it is fair to ask for a rating -
-// their video is live. See utils/rateApp.js for why this is not expo-store-review.
+// their video is live. utils/rateApp.js picks Google's in-app sheet or the Play listing.
 import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import TikTokPostSheet from '../components/TikTokPostSheet';
 
