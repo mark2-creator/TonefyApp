@@ -1460,6 +1460,32 @@ nothing to aim at.
   refuses to extend, which is the safe reading of not knowing, but the real fix is to
   measure the duration on add. The strip shows `no duration` when this bites.
 
+## Re-engagement reminders, rebuilt "like CapCut" (Oct 3 2026)
+
+**Before:** three local reminders (days 1, 3, 7) and then silence, scheduled ONLY after an export in
+the video editor - which was also the only place permission was asked. Idea/Script/Url to Video users
+were never asked, and the post-launch strangers (none of whom finished a video) never got one. The
+messages also carried emoji, against the app's own rule.
+
+**Now** (`utils/notifications.js`, update group `f90be985-7267-44c6-8b94-62cc606233b6`):
+- **19 local reminders at 18:00 local time: days 1-7 daily, then every 2 days to day 31.** Still local
+  (no server, no cost, works offline); build 12/13 already carry expo-notifications + POST_NOTIFICATIONS.
+- **Rebuilt from now on every app open and return to foreground** (`refreshReminders` in `App.js`),
+  so a daily user never gets one - only someone who drifts away does.
+- **14 rotating messages, each naming a real feature, each opening its screen when tapped**
+  (`data.route`; cold launch handled with `getLastNotificationResponseAsync`). No emoji. The rotation
+  start advances per series so a returning user does not restart at message one.
+- **Asked after the first finished video from ANY screen** (JobsContext), and on the dashboard once
+  the account is a day old - with our own one-line explanation before Android's dialog, because a
+  "no" there is permanent. Asked once ever (`tonefy.notifPermissionAsked`). The editor's own ask was
+  removed - JobsContext covers its exports too.
+- **Turning reminders off is remembered** (`tonefy.notifOptOut`), so the automatic refresh never
+  quietly re-enables them; the Notifications screen's switch ON passes `fromUser: true` to clear it.
+- **One prompt per success:** BrandedAlert has a single host, so when the reminders question is asked
+  the rating prompt waits for the next finished video (`recordWin` instead of `recordWinAndMaybeAsk`).
+- **Not device-tested yet.** The discriminating test: allow reminders, then use Notifications ->
+  "Send test notification" for the channel, and check one arrives at 18:00 the next day.
+
 ## Play Store discovery / ASO (Sep 25 2026)
 
 Reported as "not being discovered, very few impressions". Diagnosed against the live
