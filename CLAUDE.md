@@ -4957,6 +4957,29 @@ against the day the scopes land.
     trade while the owner is funds-blocked. Revisit only when revenue justifies the monthly
     cost; the registry pattern makes it a drop-in when that day comes.
 
+## Known bug pattern: a canvas made the right SHAPE at the wrong SCALE (fixed Oct 3 2026)
+
+**Reported by the owner from a downloaded video: "the captions become very small".** Every caption
+burned in by the ASS path (Idea/Script/Url to Video, Auto Captions) on a **1080p export** - Pro,
+Creator, admin - came out at **2/3 of its design size since Aug 11 2026**. Free (720p) was right,
+which is why it hid.
+
+**Cause:** item 14 set `PlayResX/Y` to the real output size to stop libass stretching a 720x1280
+canvas onto a 16:9 frame. Right about the shape - but every number in `buildAssFile` (font size,
+outline, shadow, margins) is pixels designed for a 720-wide frame, so on 1080x1920 the same "42px"
+landed on a frame 1.5x taller. **Measured:** caption width 50.4% of frame at 720x1280, 33.6% at
+1080x1920 before the fix, 50.3% after. **Fix:** `PlayRes` keeps the real aspect ratio at the
+720-short-edge scale (1080x1920 -> 720x1280, 1920x1080 -> 1280x720, 1080x1080 -> 720x720); libass
+scales uniformly. 720p output is byte-for-byte the same canvas. Verified on a live 1080x1920 render.
+
+**The shape to carry forward:** when a coordinate space is changed to match the output, every number
+written in the OLD space has to be rescaled with it - or keep the old space and change only its aspect.
+
+**Same day, the owner asked whether AI clips were being used: they were not**, because the two real
+videos he made were sent with `aiScenes: 0` - the row defaults to **Off**. The AI path itself was
+working (proven in the Oct 3 end-to-end test). Whether the default should be "First scene" is an open
+decision put to the owner.
+
 ## Backend caption rendering (`~/Tonefy-react/backend/server.js`)
 
 Changed Aug 7 2026 alongside the caption catalogue and **deployed Aug 7 2026 09:12** —
