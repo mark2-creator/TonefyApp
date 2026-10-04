@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  StatusBar, Modal, ActivityIndicator, RefreshControl, ScrollView
+  StatusBar, Modal, ActivityIndicator, RefreshControl, ScrollView, Image
 } from 'react-native';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -19,6 +19,17 @@ import { measureVideoDuration } from '../utils/videoDuration';
 // Prompts the backend writes itself when there is no real one. They are records of
 // how a video got here, never something a person would caption a post with.
 const PLACEHOLDER_PROMPTS = ['Uploaded media video'];
+const API = 'https://api.fitlifesolutions.site';
+
+// What a card is called: the title the server gives a video from the caption it was first
+// posted with; else its idea/prompt; else, for an editor export (whose record only says
+// "Uploaded media video"), plainly what it is.
+function displayTitle(video) {
+  if (video.title) return video.title;
+  const p = (video.prompt || '').trim();
+  if (!p || PLACEHOLDER_PROMPTS.includes(p)) return 'Edited video';
+  return p;
+}
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -35,24 +46,25 @@ function formatDate(iso) {
   }
 }
 
-function VideoCard({ video, onPress, onUse, onPost, onDownload, downloading, downloadPct, preparing }) {
+function VideoCard({ video, posterUrl, onPress, onUse, onPost, onDownload, downloading, downloadPct, preparing }) {
   const { theme } = useTheme();
 
   return (
     <TouchableOpacity style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => onPress(video)} activeOpacity={0.85}>
-      {/* A lightweight poster, NOT a per-card native player. Mounting an expo-video player
-          for every grid card spins up ~10 at once and freezes low-end devices - this is the
-          "My Videos stops responding" ANR. The modal opened on tap owns the only player and
-          handles actual playback. A real per-video thumbnail is a future enhancement
-          (server-generated poster on the record); the placeholder is what stops the freeze. */}
+      {/* A poster IMAGE, never a per-card native player: mounting an expo-video player per
+          card froze low-end devices (the "My Videos stops responding" ANR); the modal owns
+          the only player. The image is a ~5-30KB JPEG the server makes for each video
+          (/api/video-posters, Oct 4 2026) and the phone caches - the card used to stay a
+          blank placeholder forever. Dark box until it arrives. */}
       <View style={styles.thumbWrap}>
+        {posterUrl ? <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
         <View style={styles.posterCircle}>
           <MaterialIcons name="play-arrow" size={30} color="#fff" />
         </View>
       </View>
       <View style={styles.info}>
         <Text style={[styles.date, { color: theme.subtext }]}>{formatDate(video.createdAt)}</Text>
-        <Text style={[styles.prompt, { color: theme.text }]} numberOfLines={1}>{video.prompt || 'Generated video'}</Text>
+        <Text style={[styles.prompt, { color: theme.text }]} numberOfLines={1}>{displayTitle(video)}</Text>
       </View>
       <View style={styles.actionsRow}>
         {/* Post is the primary action on a FINISHED video - publishing is what it is
@@ -106,6 +118,26 @@ export default function MyVideosScreen({ navigation }) {
     p.loop = false;
   });
 
+  // filename -> absolute poster URL. One request for the whole list; anything missing is
+  // made on the server now, so only a first visit waits (11 videos: ~2s, then ~0.1s).
+  const [posters, setPosters] = useState({});
+  const loadPosters = useCallback(async (videos) => {
+    try {
+      const names = videos.map(v => v.filename).filter(Boolean).slice(0, 60);
+      if (!names.length) return;
+      const token = await auth.currentUser?.getIdToken();
+      const r = await fetch(`${API}/api/video-posters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filenames: names }),
+      });
+      const j = await r.json();
+      const map = {};
+      for (const [f, u] of Object.entries(j.posters || {})) map[f] = `${API}${u}`;
+      setPosters(map);
+    } catch (e) { /* the cards keep their play-button placeholder */ }
+  }, []);
+
   const loadVideos = useCallback(async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -119,6 +151,7 @@ export default function MyVideosScreen({ navigation }) {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setAllVideos(videos);
       applyFilter(activeFilter, videos);
+      loadPosters(videos);
     } catch (e) {
       console.log('loadVideos error:', e.message);
       setAllVideos([]);
@@ -310,7 +343,7 @@ export default function MyVideosScreen({ navigation }) {
           columnWrapperStyle={{ gap: 12 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2ecc71" />}
           renderItem={({ item }) => (
-            <VideoCard video={item} onPress={openModal} onUse={handleUse} onPost={handlePost} onDownload={handleDownload} downloading={downloading === item.id} downloadPct={downloadPct} preparing={preparing === item.id} />
+            <VideoCard video={item} posterUrl={posters[item.filename]} onPress={openModal} onUse={handleUse} onPost={handlePost} onDownload={handleDownload} downloading={downloading === item.id} downloadPct={downloadPct} preparing={preparing === item.id} />
           )}
         />
       )}

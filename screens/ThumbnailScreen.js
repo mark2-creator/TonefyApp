@@ -348,7 +348,7 @@ export default function ThumbnailScreen({ navigation }) {
                 onPress={() => { setPicked(v); setAtSeconds(0); }}>
                 <MaterialIcons name="movie" size={20} color={picked?.id === v.id ? '#000' : '#cfcfcf'} />
                 <Text style={[styles.pickText, picked?.id === v.id && styles.pickTextOn]} numberOfLines={1}>
-                  {v.prompt || 'Untitled'}
+                  {v.title || (['', 'Uploaded media video'].includes((v.prompt || '').trim()) ? 'Edited video' : v.prompt)}
                 </Text>
               </TouchableOpacity>
             ))}
