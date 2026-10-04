@@ -308,3 +308,26 @@ own `numberOfLines={1}` line under the name inside a `flex:1, minWidth:0` column
 there - `flex:1` in a column collapses it), and "Connected" is hidden when the board line shows, which
 gives the board 154px instead of 73px. After: row 66px, button 314 of 314. Update group
 `390957b5-c53f-42a1-b2e6-53e29d51944b`.
+
+## Pinterest posting UX for everyone (Oct 4 2026, update `3506bd88-28f8-45de-85b8-2c77bbf5517b`)
+
+Owner asked how boards work ("this app is for all people") and approved every UX improvement.
+**How it works:** each user's boards are read LIVE from their own Pinterest account with their own
+token (`GET /api/pinterest/boards`) - nobody sees anyone else's boards.
+- **Create a board in the app** - `POST /api/pinterest/boards`. **PUBLIC only:** creating a SECRET
+  board answered "You are not permitted to access that resource" - it needs `boards:write_secret`,
+  which the app does not request, and adding a scope would force every user to reconnect. Posting to
+  an existing secret board still works.
+- **Always-visible destination:** the Pinterest row shows the board (each account's FIRST board until
+  one is chosen - shown, not saved) with "· Change", so Post Now / Save to queue never send a Pin
+  somewhere the user could not see (which is how the owner's first Pin landed on "Fitness & Workouts").
+  Name and "Change" are separate Texts: one truncating line would cut "Change" first. Yoga-checked.
+- **Search** once an account has 11+ boards; **cached list** (`tonefy.pinterestBoardsCache`) shown
+  instantly, refreshed in the background.
+- **Link** (`pinterest.link`, http/s only) becomes the Pin's destination - verified on a real Pin with
+  the Play Store URL.
+- **Cover**: `GET /api/pinterest/cover-frames` makes 5 frames (5/25/50/75/95%) server-side as small
+  JPEGs in /videos (non-video files there are swept at 72h); `pinterest.coverSeconds` picks the frame.
+- **Remembered board on the account** (`users/{uid}.pinterestBoards`, client write allowed by the
+  rules - tested) as well as the phone, so it survives a phone change.
+All server pieces tested on the owner's account with the test board and Pins deleted afterwards.

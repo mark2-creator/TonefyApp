@@ -184,7 +184,7 @@ free). One registry `PUBLISHERS`; `/api/post-now` and `scheduledPostSweep` (5 mi
 | Platform | Usable by anyone? | Notes |
 |---|---|---|
 | TikTok | yes | production app, **Direct Post audit approved Sep 24**; caption written in `TikTokPostSheet` |
-| Pinterest | yes | Standard access; **board picker** (`PinterestBoardSheet`, remembered per account) |
+| Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
 | YouTube | capped | **uploads forced PRIVATE until the YouTube API audit passes**; OAuth app unverified (warning + 100-user cap) |
 | Facebook / Instagram | no | Meta dev mode; Business Verification blocked on a URSB registration (funds) |
