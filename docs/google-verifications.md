@@ -199,3 +199,15 @@ artifact after the YouTube upload was removed.
 **The strongest part of the application is the narrowness**: one scope, `youtube.upload`,
 with the fact that we declined `youtube.readonly` - and therefore cannot read back the
 channel name - offered as evidence of restraint rather than hidden as a limitation.
+
+## OAuth app verification APPROVED (Oct 4 2026, 12:45 UTC)
+
+Email from `api-oauth-dev-verification-reply@google.com` (cc ...254@): "We've approved your OAuth App
+Verification request for project 527163602306 (gen-lang-client-0229110424) for the following scopes:
+.../auth/youtube.upload". Submitted Oct 2, approved in two days. The subject says "[Action Needed]" but
+the body asks for nothing beyond standing reminders: keep project Owner/Editor accounts current, and
+**a new scope or any change to the consent screen configuration needs a new verification** (it cannot be
+inherited). Effect: the consent screen shows "Tonefy AI" with its logo instead of
+"fitlifesolutions.site", the "Google hasn't verified this app" interstitial is gone, and the 100-user cap
+on the sensitive scope is lifted. **It does NOT lift forced-private uploads** - that is the separate
+YouTube API Services compliance audit, still open (status request sent Oct 3).

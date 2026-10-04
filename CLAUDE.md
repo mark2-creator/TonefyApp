@@ -191,7 +191,7 @@ platforms have an account picker. LinkedIn captions are escaped as little text.
 | TikTok | yes | production app, **Direct Post audit approved Sep 24**; `TikTokPostSheet` (caption, privacy, disclosure) now opens for single posts, **Post Now AND Save to queue** - without it the server defaults to SELF_ONLY |
 | Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
-| YouTube | capped | **uploads forced PRIVATE until the YouTube API audit passes**; OAuth app unverified (warning + 100-user cap); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |
+| YouTube | yes, private uploads | **uploads forced PRIVATE until the YouTube API Services audit passes** (OAuth verification passed Oct 4 - a different review); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |
 | Facebook / Instagram | no | Meta dev mode; Business Verification blocked on a URSB registration. **Shown "Coming soon" to non-admins** (app + website) until `META_LIVE=true` in `.env`; connect refuses them |
 | X | not built | paid API |
 
@@ -212,8 +212,9 @@ after a day; OFF is remembered.
 
 **Google reviews** (`docs/google-verifications.md`): Play identity ✅ Aug 11, payments ✅ Sep 7,
 **YouTube API Services audit OPEN** (status request sent Oct 3 on the `youtube-disputes` thread),
-**OAuth app verification submitted Oct 2** (don't edit branding or publishing status meanwhile; watch
-both ...21213@ and ...254@ inboxes). Reviewer login `youtube.audit@tonefyai.app` (Creator, re-tested Oct 2).
+**OAuth app verification APPROVED Oct 4** for `youtube.upload` (consent screen now shows Tonefy AI, no
+"unverified app" warning, 100-user cap lifted). **Any new scope or ANY change to the OAuth consent
+screen needs a NEW verification** - don't touch it casually. Watch both ...21213@ and ...254@ inboxes. Reviewer login `youtube.audit@tonefyai.app` (Creator, re-tested Oct 2).
 
 **Email** goes out through Brevo (`smtp-relay.brevo.com`, from the verified `EMAIL_FROM`), including
 the branded verification email (`/api/send-verification-email`) and AI-cap alerts.
@@ -223,7 +224,7 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
 - **Drop-off fixes awaiting the owner's decision:** "Make your first video" card, ProfileGate after the
   first video, let email signups in before verifying, a first-steps funnel log (needs a privacy-policy
   line), next-day email. Recommended 1, 2 and 4 first.
-- Google: YouTube API audit decision; OAuth verification decision.
+- Google: YouTube API Services audit decision (the one that lifts forced-private uploads).
 - Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
 - Pinterest blocks links to the whole `fitlifesolutions.site` domain as spam (an appeal is the owner's).
