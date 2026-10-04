@@ -174,6 +174,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
       // everything - the settings above were computed for exactly this list.
       accountIds: info?.accountId === 'all' ? (info.accounts || []).map(a => a.accountId) : null,
       caption: caption.trim(),
+      username: info?.username || null,   // for the "View" link after posting
       privacyLevel: privacy,
       disableComment: !allowComment,
       disableDuet: !allowDuet,

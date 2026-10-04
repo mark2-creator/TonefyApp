@@ -20,6 +20,8 @@ import { showAlert } from '../components/BrandedAlert';
 import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import TikTokPostSheet from '../components/TikTokPostSheet';
 import PinterestBoardSheet, { loadPinterestBoards } from '../components/PinterestBoardSheet';
+import YouTubePostSheet, { youtubeTitleFrom } from '../components/YouTubePostSheet';
+import AccountPickerSheet from '../components/AccountPickerSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -63,6 +65,79 @@ function VideoPreview({ url }) {
 }
 
 const PIN_BOARDS_KEY = 'tonefy.pinterestBoards';
+const YT_KIDS_KEY = 'tonefy.youtubeMadeForKids';
+
+// The profile is the only TikTok link there is: a direct post's publish id is not a video id.
+const tiktokUrl = (username) => (username ? `https://www.tiktok.com/@${username}` : 'https://www.tiktok.com/');
+
+// One row per platform, all alike (Oct 4 2026). Under the name it shows, in priority:
+// "Posted · View" once posted from here, else the row's own line (board, chosen accounts,
+// YouTube audience). Each line is two Texts so the link part ("Change", "View") is never
+// what truncation cuts. "Coming soon" replaces the button where this user cannot post
+// (Facebook/Instagram while Meta is in development mode).
+function PostRow({ Logo, name, color, theme, comingSoon, connected, connectedText, sub, posted, posting, isPremium, onPress, connectLabel = 'Connect', youtube }) {
+  const line = posted
+    ? { text: 'Posted', link: posted.url ? 'View' : null, onPress: posted.url ? () => Linking.openURL(posted.url) : undefined }
+    : sub;
+  const btnText = youtube ? styles.ytBtnText : styles.ttBtnText;
+  return (
+    <View style={styles.platformRow}>
+      <View style={styles.platformIcon}><Logo size={22} /></View>
+      <View style={styles.platformNameCol}>
+        <Text style={[styles.platformName, { color, flex: 0 }]} numberOfLines={1}>{name}</Text>
+        {line && !comingSoon ? (
+          <TouchableOpacity style={styles.platformSubRow} onPress={line.onPress} disabled={!line.onPress} hitSlop={{ top: 6, bottom: 6 }}>
+            {posted ? <MaterialIcons name="check-circle" size={12} color="#2ECC71" style={{ marginRight: 4 }} /> : null}
+            <Text style={[styles.platformSub, styles.platformSubName, posted && styles.postedText]} numberOfLines={1}>{line.text}</Text>
+            {line.link ? <Text style={[styles.platformSub, styles.platformSubLink]}>{` \u00b7 ${line.link}`}</Text> : null}
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      {comingSoon ? (
+        <Text style={[styles.comingSoon, { color: theme.subtext }]}>Coming soon</Text>
+      ) : (
+        <>
+          {connected && !line ? <Text style={styles.connectedText} numberOfLines={1}>{connectedText}</Text> : null}
+          <TouchableOpacity style={youtube ? [styles.ytBtn, !isPremium && styles.ytBtnLocked] : styles.ttBtn} onPress={onPress} disabled={posting}>
+            {posting ? <ActivityIndicator color={youtube ? '#fff' : '#000'} size="small" />
+              : !isPremium ? <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={btnText}>Pro</Text></>
+                : <Text style={btnText}>{connected ? 'Post' : connectLabel}</Text>}
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
+// Live progress of a background Post Now - one line per platform/account.
+function PostProgress({ job, labels, theme }) {
+  if (!job?.posts?.length) return null;
+  return (
+    <View style={[styles.jobPanel, { borderColor: theme.border }]}>
+      {job.posts.map((p, i) => (
+        <View key={i} style={styles.jobRow}>
+          {p.status === 'posting' ? <ActivityIndicator size="small" color="#00d4d4" />
+            : <MaterialIcons
+                name={p.status === 'posted' ? 'check-circle' : p.status === 'failed' ? 'error-outline' : 'schedule'}
+                size={20} color={p.status === 'posted' ? '#2ECC71' : p.status === 'failed' ? '#ff6b6b' : '#888'} />}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.jobName, { color: theme.text }]} numberOfLines={1}>
+              {labels[p.platform] || p.platform}{p.accountId ? ` \u00b7 ${p.accountId}` : ''}
+            </Text>
+            <Text style={[styles.jobStatus, p.status === 'failed' && { color: '#ff6b6b' }]} numberOfLines={2}>
+              {p.status === 'posted' ? 'Posted' : p.status === 'failed' ? (p.error || 'Failed') : p.status === 'posting' ? 'Posting...' : 'Waiting'}
+            </Text>
+          </View>
+          {p.status === 'posted' && p.url ? (
+            <TouchableOpacity onPress={() => Linking.openURL(p.url)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.jobView}>View</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function EditPostVideoScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
@@ -112,6 +187,41 @@ export default function EditPostVideoScreen({ navigation, route }) {
   const [pinterest, setPinterest] = useState(null);
   // The board each Pinterest account last posted to: { accountId: { id, name } }. Opens
   // the board sheet on that board, and is what Post Now / Save to queue use.
+  // What was posted from this screen, per platform: { url }. Drives "Posted · View".
+  const [posted, setPosted] = useState({});
+  const markPosted = (platform, url) => setPosted(p => ({ ...p, [platform]: { url } }));
+  // Which accounts a multi-account platform posts to: { platform: [ids] }; absent = all.
+  const [chosenAccts, setChosenAccts] = useState({});
+  const [acctSheet, setAcctSheet] = useState(null);   // platform id whose picker is open
+  const accountsBody = (ids) => {
+    const a = {};
+    for (const id of ids) if (chosenAccts[id]?.length) a[id] = chosenAccts[id];
+    return Object.keys(a).length ? { accounts: a } : {};
+  };
+  // YouTube: the audience answer (remembered on the account) and which sheet mode is open.
+  const [ytKids, setYtKids] = useState(null);
+  const [ytSheet, setYtSheet] = useState(null);   // null | 'post' | 'settings'
+  const pendingPostNow = useRef(false);
+  // TikTok's sheet now serves single posts, Post Now and scheduling.
+  const [ttFor, setTtFor] = useState('single');   // 'single' | 'all' | 'queue'
+  // A running background Post Now: the job as last polled.
+  const [postJob, setPostJob] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try { const raw = await AsyncStorage.getItem(YT_KIDS_KEY); if (raw !== null) setYtKids(raw === 'true'); } catch { /* ask */ }
+      try {
+        const uid = auth.currentUser?.uid;
+        const v = uid ? (await getDoc(doc(db, 'users', uid))).data()?.youtubeMadeForKids : undefined;
+        if (typeof v === 'boolean') setYtKids(v);
+      } catch { /* the phone copy stands */ }
+    })();
+  }, []);
+  function rememberYtKids(v) {
+    setYtKids(v);
+    AsyncStorage.setItem(YT_KIDS_KEY, String(v)).catch(() => {});
+    const uid = auth.currentUser?.uid;
+    if (uid) setDoc(doc(db, 'users', uid), { youtubeMadeForKids: v }, { merge: true }).catch(() => {});
+  }
   const [pinBoards, setPinBoards] = useState({});
   const [pinSheet, setPinSheet] = useState(null);   // null | 'post' | 'choose'
   // The remembered board is kept on the ACCOUNT (users/{uid}.pinterestBoards) so it follows a
@@ -251,13 +361,25 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
   async function uploadToYouTube() {
     if (needsCaption(['youtube'])) return;
+    setYtSheet('post');
+  }
+
+  async function confirmYouTube({ title, madeForKids }) {
+    rememberYtKids(madeForKids);
+    if (ytSheet === 'settings') {
+      setYtSheet(null);
+      // The audience was asked for because Post Now needed it - carry on with that post.
+      if (pendingPostNow.current) { pendingPostNow.current = false; postNow(); }
+      return;
+    }
+    setYtSheet(null);   // closed before posting: the result alert must not sit under a Modal
     setYtPosting(true);
     try {
       const token = await user.getIdToken();
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'] }),
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'], youtube: { title, madeForKids } }),
       });
       const d = await r.json();
       const result = d.results?.[0];
@@ -265,9 +387,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
       if (!result.ok) throw new Error(result.error);
       // Said here rather than discovered later: the video really is on the channel, and
       // it really is private until Google's audit clears.
+      markPosted('youtube', result.url);
       showAlert('Posted to YouTube',
-        'It is on your channel as a private video while our YouTube app is under review.',
-        [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
+        'It is on your channel as a private video while our YouTube app is under review. Open it in YouTube Studio to make it public.',
+        doneButtons(result.url));
     } catch (e) {
       showAlert('YouTube', e.message || 'The upload failed.');
     } finally {
@@ -282,6 +405,20 @@ export default function EditPostVideoScreen({ navigation, route }) {
     const n = st?.accounts?.length || 0;
     return n > 1 ? `${n} ${noun}` : 'Connected';
   };
+  // With several accounts on a platform, the row says how many a post goes to and lets the
+  // user choose (Creator). One account needs no line.
+  const accountsLine = (id, st, noun = 'accounts') => {
+    const n = st?.accounts?.length || 0;
+    if (!st?.connected || n < 2) return null;
+    const sel = chosenAccts[id]?.length || n;
+    return { text: `${sel} of ${n} ${noun}`, link: 'Choose', onPress: () => setAcctSheet(id) };
+  };
+  // After a post: a "View" button where there is a link, and no jump to the Calendar - the
+  // user is usually about to post the same video somewhere else.
+  const doneButtons = (url) => [
+    ...(url ? [{ text: 'View post', onPress: () => { Linking.openURL(url); recordWinAndMaybeAsk(); } }] : []),
+    { text: 'OK', onPress: () => recordWinAndMaybeAsk() },
+  ];
 
   async function loadFacebook() {
     try {
@@ -339,14 +476,19 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: [id], ...extraBody }),
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: [id], ...accountsBody([id]), ...extraBody }),
       });
       const d = await r.json();
-      const result = d.results?.[0];
-      if (!result) throw new Error(d.error || 'The post failed.');
-      if (!result.ok) throw new Error(result.error);
-      showAlert(`Posted to ${cfg.label}`, cfg.done,
-        [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
+      if (!d.results?.length) throw new Error(d.error || 'The post failed.');
+      // Several accounts can mean several results; any success is a post, and the
+      // failures are named rather than hidden.
+      const ok = d.results.filter(x => x.ok);
+      const bad = d.results.filter(x => !x.ok);
+      if (!ok.length) throw new Error(bad.map(x => x.error).join('\n'));
+      markPosted(id, ok[0].url);
+      showAlert(`Posted to ${cfg.label}`,
+        bad.length ? `${cfg.done}\n\nNot posted to ${bad.length} account${bad.length === 1 ? '' : 's'}: ${bad.map(x => x.error).join('; ')}` : cfg.done,
+        doneButtons(ok[0].url));
     } catch (e) {
       showAlert(cfg.label, e.message || 'The post failed.');
     } finally {
@@ -364,12 +506,18 @@ export default function EditPostVideoScreen({ navigation, route }) {
     if (!videoPath) return showAlert('TikTok', 'There is no video to post yet.');
     if (!isPremium) return showAlert('TikTok', 'Posting to social media is available on the Pro and Creator plans.');
     if (!tiktokConnected) return navigation.navigate('ConnectAccounts');
+    setTtFor('single');
     setTtSheet(true);
   }
 
   // Runs after the sheet collects the user's choices. `options` is the TikTok post_info
   // (privacy, comment/duet/stitch, brand disclosure) built to TikTok's spec.
   async function uploadTikTok(options) {
+    // Post Now and Save to queue open this same sheet first, so TikTok always gets the
+    // user's own privacy/interaction/disclosure choices - without them the server defaults
+    // to SELF_ONLY and the post is visible to no one.
+    if (ttFor === 'all') { setTtSheet(false); return runPostNow(options); }
+    if (ttFor === 'queue') { setTtSheet(false); return saveToQueue(options); }
     setTtPosting(true);
     try {
       const token = await user.getIdToken();
@@ -404,13 +552,13 @@ export default function EditPostVideoScreen({ navigation, route }) {
       setTtSheet(false);
       // 'direct' once the app is audited for Direct Post; 'draft' until then (the video
       // lands in the TikTok inbox for the user to finish).
+      markPosted('tiktok', tiktokUrl(options.username));
       if (result.mode === 'direct') {
-        showAlert('Posted to TikTok', 'Your video has been posted to your TikTok account.',
-          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
+        showAlert('Posted to TikTok', 'Your video has been posted to your TikTok account.', doneButtons(tiktokUrl(options.username)));
       } else {
         showAlert('Sent to TikTok',
           'Your video is now in your TikTok inbox as a draft. Open TikTok to add your caption and publish it.',
-          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
+          doneButtons(null));
       }
     } catch (e) {
       showAlert('TikTok', e.message || 'The post failed.');
@@ -483,30 +631,59 @@ export default function EditPostVideoScreen({ navigation, route }) {
     const platforms = connectedPlatforms;
     if (platforms.length === 0) { showAlert('Post Now', 'Connect an account first - use the Connect buttons above.'); return; }
     if (needsCaption(platforms)) return;
+    // YouTube needs the audience answer before anything posts.
+    if (platforms.includes('youtube') && typeof ytKids !== 'boolean') {
+      pendingPostNow.current = true;
+      setYtSheet('settings');
+      return;
+    }
+    if (platforms.includes('tiktok')) { setTtFor('all'); setTtSheet(true); return; }
+    return runPostNow(null);
+  }
+
+  // The background Post Now: one request returns a job id, the server posts platform by
+  // platform, and this polls the job to draw each one's progress.
+  async function runPostNow(ttOptions) {
+    const platforms = connectedPlatforms;
     setPosting(true);
+    setPostJob(null);
     try {
       const token = await user.getIdToken();
+      const { accountId, accountIds, caption: ttCaption, username, ...tiktokOptions } = ttOptions || {};
+      const accounts = { ...(accountsBody(platforms).accounts || {}) };
+      if (ttOptions) {
+        if (accountIds?.length) accounts.tiktok = accountIds;
+        else if (accountId && accountId !== 'all') accounts.tiktok = [accountId];
+      }
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms, ...pinterestBody() }),
+        body: JSON.stringify({
+          async: true, videoUrl: `${BACKEND}${videoPath}`, caption, platforms, ...pinterestBody(),
+          youtube: { title: youtubeTitleFrom(caption) || undefined, madeForKids: ytKids === true },
+          ...(ttOptions ? { tiktok: { ...tiktokOptions, caption: ttCaption } } : {}),
+          ...(Object.keys(accounts).length ? { accounts } : {}),
+        }),
       });
       const d = await r.json();
-      const failed = (d.results || []).filter(x => !x.ok);
-      if (!d.results) throw new Error(d.error || 'The post failed.');
-      if (failed.length === 0) {
-        showAlert('Posted', `Posted to ${namePlatforms(platforms)}!`,
-          [{ text: 'OK', onPress: () => { navigation.navigate('Calendar'); recordWinAndMaybeAsk(); } }]);
-      } else if (failed.length < (d.results || []).length) {
-        // Partial success is its own outcome. Reporting it as failure would have someone
-        // retry a platform that already posted.
-        showAlert('Partly posted', failed.map(f => `${PLATFORM_LABELS[f.platform] || f.platform}: ${f.error}`).join('\n'));
-      } else {
-        throw new Error(failed.map(f => f.error).join('\n'));
+      if (!d.jobId) throw new Error(d.error || 'The post could not start.');
+      let job = null;
+      for (let i = 0; i < 300; i++) {
+        await new Promise(z => setTimeout(z, 3000));
+        const jr = await fetch(`${BACKEND}/api/job/${d.jobId}`, { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
+        if (!jr.ok) continue;
+        job = await jr.json();
+        setPostJob(job);
+        if (job.status === 'done' || job.status === 'error') break;
       }
-    } catch (e) { showAlert('Error', e.message); }
+      const posts = job?.posts || [];
+      for (const p of posts) if (p.status === 'posted') markPosted(p.platform, p.platform === 'tiktok' ? tiktokUrl(username) : p.url);
+      if (posts.some(p => p.status === 'posted')) recordWinAndMaybeAsk();
+    } catch (e) { showAlert('Post Now', e.message); }
     setPosting(false);
   }
+
+
 
   // Every platform this account can actually publish to right now.
   //
@@ -517,14 +694,28 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // while the Calendar showed it as pending.
   const connectedPlatforms = useMemo(() => {
     const on = [];
-    if (facebook?.connected) on.push('facebook');
-    if (instagram?.connected) on.push('instagram');
+    // Meta while in development mode counts only for those it is available to (admins).
+    if (facebook?.connected && facebook.available !== false) on.push('facebook');
+    if (instagram?.connected && instagram.available !== false) on.push('instagram');
     if (pinterest?.connected) on.push('pinterest');
     if (linkedin?.connected) on.push('linkedin');
     if (tiktokConnected) on.push('tiktok');
     if (youtube?.connected) on.push('youtube');
     return on;
   }, [facebook, instagram, pinterest, linkedin, tiktokConnected, youtube]);
+
+  const captionNotes = useMemo(() => {
+    const on = new Set(connectedPlatforms);
+    const len = caption.length;
+    const tags = (caption.match(/(^|\s)#[^\s#]+/g) || []).length;
+    const notes = [];
+    if (on.has('instagram') && tags > 30) notes.push(`Instagram allows up to 30 hashtags - this caption has ${tags}.`);
+    if (on.has('instagram') && len > 2200) notes.push('Instagram shows the first 2,200 characters.');
+    if (on.has('pinterest') && len > 800) notes.push('Pinterest shows the first 800 characters.');
+    if (on.has('linkedin') && len > 3000) notes.push('LinkedIn shows the first 3,000 characters.');
+    if (on.has('youtube') && len > 5000) notes.push('YouTube shows the first 5,000 characters.');
+    return notes;
+  }, [caption, connectedPlatforms]);
 
   const PLATFORM_LABELS = {
     facebook: 'Facebook', instagram: 'Instagram', pinterest: 'Pinterest',
@@ -555,7 +746,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }) };
   }), []);
 
-  async function saveToQueue() {
+  async function saveToQueue(ttOptions) {
     if (!isPremium) { showAlert('Schedule', 'Scheduling posts is available on the Pro and Creator plans.'); return; }
     const platforms = connectedPlatforms;
     // Refused rather than written empty. The sweep skips a post with no platforms, so an
@@ -566,10 +757,22 @@ export default function EditPostVideoScreen({ navigation, route }) {
       return;
     }
     if (needsCaption(platforms)) return;
+    if (platforms.includes('youtube') && typeof ytKids !== 'boolean') { setYtSheet('settings'); return; }
+    // TikTok's choices are made NOW, at scheduling, and stored with the post for the sweep.
+    if (platforms.includes('tiktok') && !ttOptions?.privacyLevel) { setTtFor('queue'); setTtSheet(true); return; }
+    const { accountId, accountIds, caption: ttCaption, username, ...tiktokOptions } = ttOptions || {};
+    const accounts = { ...(accountsBody(platforms).accounts || {}) };
+    if (ttOptions) {
+      if (accountIds?.length) accounts.tiktok = accountIds;
+      else if (accountId && accountId !== 'all') accounts.tiktok = [accountId];
+    }
     setSaving(true);
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '', ...pinterestBody(),
+        youtube: { title: youtubeTitleFrom(caption) || null, madeForKids: ytKids === true },
+        ...(ttOptions ? { tiktok: { ...tiktokOptions, caption: ttCaption } } : {}),
+        ...(Object.keys(accounts).length ? { accounts } : {}),
         platforms,
         scheduledFor: scheduledAt.toISOString(),
         scheduleMode: schedMode === 'immediate' ? 'queued' : 'scheduled',
@@ -673,150 +876,80 @@ export default function EditPostVideoScreen({ navigation, route }) {
           multiline
           numberOfLines={3}
         />
+        {/* Platform limits, said BEFORE posting, only for platforms this account posts to.
+            The server trims to the limit so nothing fails, but the user should know what
+            will be cut. */}
+        {captionNotes.map(n => (
+          <View key={n} style={styles.captionNoteRow}>
+            <MaterialIcons name="info-outline" size={12} color="#888" />
+            <Text style={styles.captionNote}>{n}</Text>
+          </View>
+        ))}
 
         {/* Post To */}
         <Text style={[styles.sectionLabel, { color: theme.subtext }]}>POST TO</Text>
         <View style={[styles.platformsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><FacebookLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: '#1877F2' }]}>Facebook</Text>
-            {facebook?.connected ? <Text style={styles.connectedText}>{connectedLabel(facebook, 'Pages')}</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('facebook')} disabled={fbPosting}>
-              {fbPosting ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                !isPremium ? (
-                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
-                ) : (
-                  <Text style={styles.ttBtnText}>{facebook?.connected ? 'Post' : 'Connect'}</Text>
-                )
-              )}
-            </TouchableOpacity>
-          </View>
+          <PostRow
+            Logo={FacebookLogo} name="Facebook" color="#1877F2" theme={theme}
+            comingSoon={facebook?.available === false}
+            connected={facebook?.connected} connectedText={connectedLabel(facebook, 'Pages')}
+            sub={accountsLine('facebook', facebook, 'Pages')}
+            posted={posted.facebook} posting={fbPosting} isPremium={isPremium}
+            onPress={() => postToBrowserPlatform('facebook')}
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><InstagramLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: '#E4405F' }]}>Instagram</Text>
-            {instagram?.connected ? <Text style={styles.connectedText}>{connectedLabel(instagram)}</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('instagram')} disabled={igPosting}>
-              {igPosting ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                !isPremium ? (
-                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
-                ) : (
-                  <Text style={styles.ttBtnText}>{instagram?.connected ? 'Post' : 'Connect'}</Text>
-                )
-              )}
-            </TouchableOpacity>
-          </View>
+          <PostRow
+            Logo={InstagramLogo} name="Instagram" color="#E4405F" theme={theme}
+            comingSoon={instagram?.available === false}
+            connected={instagram?.connected} connectedText={connectedLabel(instagram)}
+            sub={accountsLine('instagram', instagram)}
+            posted={posted.instagram} posting={igPosting} isPremium={isPremium}
+            onPress={() => postToBrowserPlatform('instagram')}
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><PinterestLogo size={22} /></View>
-            {/* The chosen board sits on its OWN line under the name. It used to be appended to
-                the "Connected" label, which has no width limit: a long board name squeezed the
-                name to zero (it then wrapped letter by letter, making the row tall) and pushed
-                the Post button off the screen (owner's device, Oct 4 2026). */}
-            <View style={styles.platformNameCol}>
-              {/* flex: 0 here: platformName's flex: 1 is for a ROW; inside this column it would
-                  mean grow-vertically, and with no fixed height that collapses the text. */}
-              <Text style={[styles.platformName, { color: '#E60023', flex: 0 }]} numberOfLines={1}>Pinterest</Text>
-              {/* Where Post Now / Save to queue will send the Pin - always visible, one tap to change. */}
-              {pinterest?.connected && Object.keys(pinBoards).length ? (
-                <TouchableOpacity style={styles.platformSubRow} onPress={() => setPinSheet('choose')} hitSlop={{ top: 6, bottom: 6 }}>
-                  {/* Two Texts, not one: a single truncating line cuts from the END, which would
-                      drop "Change" first. The board name shrinks; the link never does. */}
-                  <Text style={[styles.platformSub, styles.platformSubName]} numberOfLines={1}>
-                    {Object.keys(pinBoards).length === 1 ? Object.values(pinBoards)[0].name : `${Object.keys(pinBoards).length} boards`}
-                  </Text>
-                  <Text style={[styles.platformSub, styles.platformSubLink]}>{' \u00b7 Change'}</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            {/* The board line already says it is connected; dropping the word gives the board
-                name the room (measured with Yoga: 73px with it, 154px without). */}
-            {pinterest?.connected && !Object.keys(pinBoards).length ? <Text style={styles.connectedText} numberOfLines={1}>{connectedLabel(pinterest)}</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={openPinterest} disabled={pinPosting}>
-              {pinPosting ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                !isPremium ? (
-                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
-                ) : (
-                  <Text style={styles.ttBtnText}>{pinterest?.connected ? 'Post' : 'Connect'}</Text>
-                )
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* The chosen board sits on its own line under the name (see PostRow): appended to
+              the unbounded "Connected" label it once squeezed the name to zero and pushed Post
+              off screen (Oct 4 2026). Always visible, so Post Now / Save to queue never send a
+              Pin somewhere unseen; one tap to change. */}
+          <PostRow
+            Logo={PinterestLogo} name="Pinterest" color="#E60023" theme={theme}
+            connected={pinterest?.connected} connectedText={connectedLabel(pinterest)}
+            sub={pinterest?.connected && Object.keys(pinBoards).length ? {
+              text: Object.keys(pinBoards).length === 1 ? Object.values(pinBoards)[0].name : `${Object.keys(pinBoards).length} boards`,
+              link: 'Change', onPress: () => setPinSheet('choose'),
+            } : null}
+            posted={posted.pinterest} posting={pinPosting} isPremium={isPremium}
+            onPress={openPinterest}
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><LinkedInLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: '#0A66C2' }]}>LinkedIn</Text>
-            {linkedin?.connected ? <Text style={styles.connectedText}>{connectedLabel(linkedin)}</Text> : null}
-            <TouchableOpacity style={styles.ttBtn} onPress={() => postToBrowserPlatform('linkedin')} disabled={liPosting}>
-              {liPosting ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                !isPremium ? (
-                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
-                ) : (
-                  <Text style={styles.ttBtnText}>{linkedin?.connected ? 'Post' : 'Connect'}</Text>
-                )
-              )}
-            </TouchableOpacity>
-          </View>
+          <PostRow
+            Logo={LinkedInLogo} name="LinkedIn" color="#0A66C2" theme={theme}
+            connected={linkedin?.connected} connectedText={connectedLabel(linkedin)}
+            sub={accountsLine('linkedin', linkedin)}
+            posted={posted.linkedin} posting={liPosting} isPremium={isPremium}
+            onPress={() => postToBrowserPlatform('linkedin')}
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><TikTokLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: theme.text }]}>TikTok</Text>
-            {tiktokConnected ? <Text style={styles.connectedText}>{tiktokAccounts > 1 ? `${tiktokAccounts} accounts` : 'Connected'}</Text> : null}
-            {/* A button, not a toggle - the same one-tap flow as YouTube below. Flipping a
-                toggle here appeared to do nothing because the action lived at the bottom of
-                the screen; this runs the whole sequence in one tap. */}
-            <TouchableOpacity style={styles.ttBtn} onPress={postToTikTok} disabled={ttPosting}>
-              {ttPosting ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                !isPremium ? (
-                  <><MaterialIcons name="diamond" size={11} color="#f5c451" /><Text style={styles.ttBtnText}>Pro</Text></>
-                ) : (
-                  <Text style={styles.ttBtnText}>{tiktokConnected ? 'Post' : 'Connect & post'}</Text>
-                )
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* TikTok: Post opens the compliant sheet (privacy, interactions, disclosure, which
+              account) - TikTok's Direct Post audit requires the user to choose there. */}
+          <PostRow
+            Logo={TikTokLogo} name="TikTok" color={theme.text} theme={theme}
+            connected={tiktokConnected} connectedText={tiktokAccounts > 1 ? `${tiktokAccounts} accounts` : 'Connected'}
+            posted={posted.tiktok} posting={ttPosting} isPremium={isPremium}
+            onPress={postToTikTok} connectLabel="Connect & post"
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          {/* YouTube. Live, and a paid benefit - the diamond marks an offer, never a
-              padlock, because everything gated here is on a plan that is for sale.
-              The server refuses a free account inside the publisher regardless, so this
-              is the explanation rather than the enforcement. */}
-          <View style={styles.platformRow}>
-            <View style={styles.platformIcon}><YouTubeLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: theme.text }]}>YouTube</Text>
-            {isPremium && youtube?.connected
-              ? <Text style={styles.connectedText}>Connected</Text>
-              : null}
-            {/* A button, not a toggle. A toggle states an intention and needs a second
-                action to carry it out - and that second action was at the bottom of the
-                screen, so flipping this appeared to do nothing. This runs the whole
-                sequence: plan check, sign in if needed, upload. */}
-            <TouchableOpacity
-              style={[styles.ytBtn, !isPremium && styles.ytBtnLocked]}
-              onPress={postToYouTube}
-              disabled={ytPosting}
-            >
-              {ytPosting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  {!isPremium && <MaterialIcons name="diamond" size={11} color="#f5c451" />}
-                  <Text style={styles.ytBtnText}>
-                    {!isPremium ? 'Pro' : youtube?.connected ? 'Post' : 'Connect & post'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* YouTube: Post opens its sheet (title + the audience YouTube requires). The red
+              button is YouTube's own colour - a platform's identity, not one of ours. */}
+          <PostRow
+            Logo={YouTubeLogo} name="YouTube" color={theme.text} theme={theme}
+            connected={isPremium && youtube?.connected} connectedText="Connected"
+            sub={isPremium && youtube?.connected && typeof ytKids === 'boolean' ? {
+              text: ytKids ? 'Made for kids' : 'Not made for kids', link: 'Change', onPress: () => setYtSheet('settings'),
+            } : null}
+            posted={posted.youtube} posting={ytPosting} isPremium={isPremium}
+            onPress={postToYouTube} connectLabel="Connect & post" youtube
+          />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <MaterialIcons name="close" size={22} color={theme.text} style={styles.platformIcon} />
@@ -902,7 +1035,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.btnQueue} onPress={saveToQueue} disabled={saving}>
+          <TouchableOpacity style={styles.btnQueue} onPress={() => saveToQueue()} disabled={saving}>
             {saving ? <ActivityIndicator color="#2ecc71" size="small" />
               : <Text style={styles.btnQueueText}>{schedMode === 'later' ? 'Schedule' : 'Save to Queue'}</Text>}
           </TouchableOpacity>
@@ -910,6 +1043,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
             {posting ? <ActivityIndicator color="#000" size="small" /> : <Text style={styles.btnPostText}>Post Now</Text>}
           </TouchableOpacity>
         </View>
+        <PostProgress job={postJob} labels={PLATFORM_LABELS} theme={theme} />
 
         {/* Recently Queued */}
         <Text style={[styles.sectionLabel, { color: theme.subtext }]}>RECENTLY QUEUED</Text>
@@ -927,6 +1061,27 @@ export default function EditPostVideoScreen({ navigation, route }) {
         ))}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <YouTubePostSheet
+        visible={!!ytSheet}
+        mode={ytSheet || 'post'}
+        onClose={() => { pendingPostNow.current = false; setYtSheet(null); }}
+        onConfirm={confirmYouTube}
+        caption={caption}
+        madeForKids={ytKids}
+        posting={ytPosting}
+      />
+
+      <AccountPickerSheet
+        visible={!!acctSheet}
+        onClose={() => setAcctSheet(null)}
+        onConfirm={(ids) => { setChosenAccts(c => ({ ...c, [acctSheet]: ids || undefined })); setAcctSheet(null); }}
+        label={acctSheet ? PLATFORM_LABELS[acctSheet] : ''}
+        color={{ facebook: '#1877F2', instagram: '#E4405F', linkedin: '#0A66C2', pinterest: '#E60023' }[acctSheet] || '#fff'}
+        Logo={{ facebook: FacebookLogo, instagram: InstagramLogo, linkedin: LinkedInLogo, pinterest: PinterestLogo }[acctSheet]}
+        accounts={({ facebook, instagram, linkedin, pinterest }[acctSheet])?.accounts || []}
+        selected={acctSheet ? chosenAccts[acctSheet] : null}
+      />
 
       <PinterestBoardSheet
         visible={!!pinSheet}
@@ -1018,6 +1173,14 @@ const styles = StyleSheet.create({
   platformSubRow: { flexDirection: 'row', alignItems: 'center' },
   platformSubName: { flexShrink: 1 },
   platformSubLink: { color: '#2ECC71', fontWeight: '600', flexShrink: 0 },
+  postedText: { color: '#2ECC71' },
+  captionNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  captionNote: { color: '#888', fontSize: 12, flex: 1 },
+  jobPanel: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12, gap: 10 },
+  jobRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  jobName: { fontSize: 14, fontWeight: '600' },
+  jobStatus: { color: '#888', fontSize: 12, marginTop: 1 },
+  jobView: { color: '#2ECC71', fontSize: 13, fontWeight: '700' },
   connectLink: { color: '#2ecc71', fontSize: 12, fontWeight: '600', marginRight: 8 },
   divider: { height: 1, backgroundColor: '#2a2a2a', marginHorizontal: 14 },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#333', justifyContent: 'center', paddingHorizontal: 2 },

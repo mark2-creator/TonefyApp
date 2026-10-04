@@ -541,7 +541,9 @@ export default function ConnectAccountsScreen({ navigation }) {
         )}
 
         {/* Facebook */}
-        {facebook?.configured !== false && (
+        {/* available === false: Meta is in development mode and only admins can connect -
+            a stranger would land on Meta's "app not active" page. Shown as coming soon below. */}
+        {facebook?.configured !== false && facebook?.available !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.cardLogoBadge}>
               <FacebookLogo size={40} />
@@ -598,7 +600,7 @@ export default function ConnectAccountsScreen({ navigation }) {
         )}
 
         {/* Instagram */}
-        {instagram?.configured !== false && (
+        {instagram?.configured !== false && instagram?.available !== false && (
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.cardLogoBadge}>
               <InstagramLogo size={40} />
@@ -760,7 +762,11 @@ export default function ConnectAccountsScreen({ navigation }) {
         )}
 
         {/* Coming soon platforms */}
-        {['X (Twitter)'].map((p, i) => (
+        {[
+          ...(facebook?.available === false ? ['Facebook'] : []),
+          ...(instagram?.available === false ? ['Instagram'] : []),
+          'X (Twitter)',
+        ].map((p, i) => (
           <View key={i} style={[styles.comingSoonCard, { backgroundColor: isDark ? '#1a1a2e' : '#eef0fa', borderColor: isDark ? '#2a2a4a' : '#d8dcf0' }]}>
             <Text style={[styles.comingSoonTitle, { color: theme.text }]}>{p} Coming Soon</Text>
             <Text style={[styles.comingSoonSub, { color: theme.subtext }]}>{p} integration is in development.</Text>
