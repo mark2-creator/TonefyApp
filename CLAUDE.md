@@ -181,15 +181,18 @@ per-user allowance; first cap trip per day emails the owner. App row `components
 defaults to "First scene" for anyone with scenes to spend.
 
 **Social posting** (details `docs/social-posting.md`). Paid-only (`/api/post-now` and the sweep refuse
-free). One registry `PUBLISHERS`; `/api/post-now` and `scheduledPostSweep` (5 min) share it.
+free). One registry `PUBLISHERS`; `/api/post-now` and `scheduledPostSweep` (5 min) share it. **Post Now is a
+background job** (`async: true` → `job.posts` per platform/account with status + url); every publisher
+returns a `url` and Edit & Post rows show "Posted · View" (one `PostRow` component). Multi-account
+platforms have an account picker. LinkedIn captions are escaped as little text.
 
 | Platform | Usable by anyone? | Notes |
 |---|---|---|
-| TikTok | yes | production app, **Direct Post audit approved Sep 24**; caption written in `TikTokPostSheet` |
+| TikTok | yes | production app, **Direct Post audit approved Sep 24**; `TikTokPostSheet` (caption, privacy, disclosure) now opens for single posts, **Post Now AND Save to queue** - without it the server defaults to SELF_ONLY |
 | Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
-| YouTube | capped | **uploads forced PRIVATE until the YouTube API audit passes**; OAuth app unverified (warning + 100-user cap) |
-| Facebook / Instagram | no | Meta dev mode; Business Verification blocked on a URSB registration (funds) |
+| YouTube | capped | **uploads forced PRIVATE until the YouTube API audit passes**; OAuth app unverified (warning + 100-user cap); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |
+| Facebook / Instagram | no | Meta dev mode; Business Verification blocked on a URSB registration. **Shown "Coming soon" to non-admins** (app + website) until `META_LIVE=true` in `.env`; connect refuses them |
 | X | not built | paid API |
 
 Multi-account per platform (Creator) except YouTube. Tokens live in Admin-only collections
@@ -222,7 +225,6 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
 - Google: YouTube API audit decision; OAuth verification decision.
 - Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
-- `publishToLinkedIn` should escape LinkedIn "little text" (`()[]{}<>@|#*_~\`) in captions.
 - Pinterest blocks links to the whole `fitlifesolutions.site` domain as spam (an appeal is the owner's).
 - Editor known gaps: no pinch-zoom on the timeline; `ImagePicker` sometimes omits a video's duration
   (falls back to 3s); 75 toolbar tools defined, ~25 built - **keep the unbuilt ones visible** (roadmap).

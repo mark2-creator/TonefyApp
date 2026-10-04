@@ -331,3 +331,33 @@ token (`GET /api/pinterest/boards`) - nobody sees anyone else's boards.
 - **Remembered board on the account** (`users/{uid}.pinterestBoards`, client write allowed by the
   rules - tested) as well as the phone, so it survives a phone change.
 All server pieces tested on the owner's account with the test board and Pins deleted afterwards.
+
+## All-platform posting UX review and fixes (Oct 4 2026, app `e2ae976d-a429-4e9b-9189-34c79158d8d1`)
+
+Owner asked for every channel to be reviewed like Pinterest, then approved all eight fixes.
+- **TikTok via Post Now (and the queue) went out as SELF_ONLY.** Only the TikTok row opened the
+  compliant sheet; Post Now sent no options and the registry defaults `privacyLevel` to SELF_ONLY - so
+  "posted to TikTok" meant visible to no one, and it skipped the user choice TikTok's audit requires.
+  Scheduled posts had the same hole (the sweep passed no TikTok options). Now Post Now and Save to
+  queue open the sheet first; the sheet's caption travels as `tiktok.caption`; queued posts store
+  `tiktok` and the sweep passes it.
+- **Meta for strangers:** `metaAvailableFor()` - Facebook/Instagram available only to admins until
+  `META_LIVE=true`; `/api/platforms` and the two `/status` routes report `available`; connect answers
+  403 `comingSoon`. App rows, Connect Accounts and the website show "Coming soon". Tested with a
+  disposable non-admin account.
+- **After posting:** no jump to the Calendar; rows show "Posted · View"; alerts offer "View post".
+  Links: YouTube Studio edit page (the video is private), Pin URL, LinkedIn `feed/update/<urn>`,
+  Facebook `/<videoId>`, Instagram permalink (one extra read), TikTok the @profile (creator-info now
+  returns `username`; a direct post's publish id is not a video id).
+- **LinkedIn:** commentary escaped with FitLife's proven `li_escape` rule (all of `\|{}@[]()<>#*_~`),
+  so hashtags show as text; the `{hashtag|...}` template was not adopted untested. Max 3000.
+- **Limits:** Pinterest description 800, Instagram caption 2200, YouTube drops `<` `>` and caps the
+  description at 5000; the app shows notes under the caption (incl. Instagram's 30-hashtag cap).
+- **Post Now as a job** with a live per-platform list (`PostProgress`); tested live on Pinterest.
+- **YouTube sheet:** title prefilled from the caption's first line minus hashtags, made-for-kids
+  answered once and remembered (`users/{uid}.youtubeMadeForKids`); Post Now asks for it if unknown.
+- **Account picker** (`AccountPickerSheet`) for Facebook/Instagram/LinkedIn with 2+ accounts; Pinterest
+  multi-account still posts to every account's chosen board.
+- **Found while building:** "Save to Queue" was wired `onPress={saveToQueue}`, so once that function
+  took an argument it received the press EVENT - fixed to `() => saveToQueue()` (the bug pattern).
+- Not device-tested yet: the sheets, rows and progress list. Server paths were tested live.
