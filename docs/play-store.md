@@ -281,4 +281,5 @@ with text from the last 7 days - not a total). The public listing showed no aver
 aggregate only after enough ratings and with a processing lag; Google does not publish the threshold.
 The owner asked why ratings show for other apps and not his, and why there is no rating option before
 download: **Play shows "Rate this app" only to accounts that installed the app - true for every app.**
-Replies were drafted for the owner's approval (`reviews.reply` can post them).
+**All three replied to on Oct 4** (owner approved) with `reviews.reply`. Note: `reviews.list` did not
+show the replies for a while afterwards - `reviews.get` per review did. Reply to every new review.
