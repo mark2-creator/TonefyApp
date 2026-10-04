@@ -120,7 +120,9 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 - **`onPress={fn}` passes the press event as the first argument**; `showAlert` dismissal runs no
   button - pass `{ cancelable: false }` when awaiting its outcome.
 - **A server-side default that fills a user-visible field publishes words the user never wrote**
-  ("Created with Tonefy AI", "Tonefy video") - no fallbacks on captions/titles.
+  ("Tonefy video" on Pinterest/LinkedIn, removed Oct 3). One deliberate exception: TikTok keeps
+  `title || 'Created with Tonefy AI'` by the OWNER's decision (Sep 27, commented in `publishToTikTok`)
+  as a safety net behind the sheet's AI-written caption - do not "fix" it without asking.
 - **A purge list is a place new work must be added**: a new platform's token collection goes into
   `/api/account/delete` in the same commit.
 - **A backup that commits but cannot push protects nothing.** Check `@{upstream}..HEAD`.
