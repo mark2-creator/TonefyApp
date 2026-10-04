@@ -679,8 +679,21 @@ export default function EditPostVideoScreen({ navigation, route }) {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <View style={styles.platformRow}>
             <View style={styles.platformIcon}><PinterestLogo size={22} /></View>
-            <Text style={[styles.platformName, { color: '#E60023' }]}>Pinterest</Text>
-            {pinterest?.connected ? <Text style={styles.connectedText} numberOfLines={1}>{connectedLabel(pinterest)}{Object.keys(pinBoards).length === 1 ? ` \u00b7 ${Object.values(pinBoards)[0].name}` : ''}</Text> : null}
+            {/* The chosen board sits on its OWN line under the name. It used to be appended to
+                the "Connected" label, which has no width limit: a long board name squeezed the
+                name to zero (it then wrapped letter by letter, making the row tall) and pushed
+                the Post button off the screen (owner's device, Oct 4 2026). */}
+            <View style={styles.platformNameCol}>
+              {/* flex: 0 here: platformName's flex: 1 is for a ROW; inside this column it would
+                  mean grow-vertically, and with no fixed height that collapses the text. */}
+              <Text style={[styles.platformName, { color: '#E60023', flex: 0 }]} numberOfLines={1}>Pinterest</Text>
+              {pinterest?.connected && Object.keys(pinBoards).length === 1 ? (
+                <Text style={styles.platformSub} numberOfLines={1}>{Object.values(pinBoards)[0].name}</Text>
+              ) : null}
+            </View>
+            {/* The board line already says it is connected; dropping the word gives the board
+                name the room (measured with Yoga: 73px with it, 154px without). */}
+            {pinterest?.connected && Object.keys(pinBoards).length !== 1 ? <Text style={styles.connectedText} numberOfLines={1}>{connectedLabel(pinterest)}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={openPinterest} disabled={pinPosting}>
               {pinPosting ? (
                 <ActivityIndicator color="#000" size="small" />
@@ -954,6 +967,10 @@ const styles = StyleSheet.create({
   platformName: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600' },
   comingSoon: { color: '#666', fontSize: 12, marginRight: 8 },
   connectedText: { color: '#2ecc71', fontSize: 12, marginRight: 8 },
+  // A name with a second line (the Pinterest board). The column takes the flex, so the
+  // name and its sub-line shrink and truncate instead of the button leaving the row.
+  platformNameCol: { flex: 1, minWidth: 0 },
+  platformSub: { color: '#888', fontSize: 12, marginTop: 2 },
   connectLink: { color: '#2ecc71', fontSize: 12, fontWeight: '600', marginRight: 8 },
   divider: { height: 1, backgroundColor: '#2a2a2a', marginHorizontal: 14 },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#333', justifyContent: 'center', paddingHorizontal: 2 },
