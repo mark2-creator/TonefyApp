@@ -109,6 +109,10 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 - **User text meeting a command line:** all binaries via `execFile` + arg arrays (never a shell); make
   text safe for EACH tool's syntax at the boundary (ffmpeg filter commas, ImageMagick `%` escapes via
   `imText()`, ASS braces/newlines). Motions must use ops in `MOTION_ALLOWED_OPS` or they silently don't render.
+- **Unbounded text beside a `flex: 1` sibling in a row** squeezes that sibling to 0 (it then wraps
+  letter by letter - a tall row) and pushes trailing buttons off screen. Give long text its own
+  truncating line in a `flex:1, minWidth:0` column. **Layout bugs can be reproduced off-device with
+  `yoga-layout` (npm)** - RN's own engine; done for the Pinterest row Oct 4 2026.
 - **`useSheetInset()` returns a style OBJECT** - spread it (`[styles.sheet, inset]`), never
   `{ paddingBottom: inset }`. Nothing interactive under the Android nav bar.
 - **Never a Modal inside a Modal** (Android drops or buries the inner one); close a sheet before

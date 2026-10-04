@@ -296,3 +296,15 @@ Business account, accurately, today.
 (YouTube open, Meta blocked on URSB, TikTok Direct Post approved only Sep 24). The cheap
 move meanwhile is to keep recording post metadata richly so there is history to join
 against the day the scopes land.
+
+## Pinterest row layout broke once a board was chosen (fixed Oct 4 2026)
+
+Owner's screenshots: after picking the board "Make Money Online & AI", the Pinterest row on Edit &
+Post lost its name, grew very tall, and the Post button was cut off at the right edge. The board picker
+had appended the board to the "Connected" label (`connectedText`, no width limit) while `platformName`
+is `flex: 1` - so the name shrank to 0 and wrapped one letter per line. **Reproduced with `yoga-layout`
+before touching it:** row 208px, name 0x180, button right edge 416 of 314. Fix: the board sits on its
+own `numberOfLines={1}` line under the name inside a `flex:1, minWidth:0` column (name gets `flex: 0`
+there - `flex:1` in a column collapses it), and "Connected" is hidden when the board line shows, which
+gives the board 154px instead of 73px. After: row 66px, button 314 of 314. Update group
+`390957b5-c53f-42a1-b2e6-53e29d51944b`.
