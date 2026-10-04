@@ -1,0 +1,2904 @@
+# History log - the former "IMMEDIATE NEXT STEPS" (items 1-45)
+
+Moved verbatim out of CLAUDE.md on Oct 4 2026 to keep that file small. Facts here are a
+record of when they were written; CLAUDE.md holds the current state.
+
+## IMMEDIATE NEXT STEPS
+
+1. ~~Set up a separate `recovery-test` channel~~ — **dropped Aug 6 2026.** Publishing
+   straight to `preview` is approved (single user, nothing to protect). Test there.
+2. On-device test of `rebuild/phase-4` is in progress. Latest publish to `preview` is
+   update group `6ae72ff8-619c-40b0-90ba-beb34d4b62c0` (commit `e8683619`, runtime
+   1.1.0, filmstrip trim sheet + trim/replace correctness + PostRecording colours)
+   on Aug 7 2026.
+
+   **A commit is not a publish.** Four changes landed on `main` before this update
+   went out, and a device test of them reported the *old* screen back - correctly,
+   because the phone was still running `25b02b2d` from nineteen commits earlier.
+   `eas update --branch preview` is the step that makes work testable; running it is
+   part of finishing a change, not a separate errand. Cheap way to tell which bundle
+   a phone is on: pick any colour that moved recently. The modal Apply button was
+   `#00d4d4` at `25b02b2d` and is `#2ECC71` now, so a teal Apply dates the build
+   without any guessing.
+
+   Superseding
+   `b9008c6b-6dae-43a6-aa81-9becc1e0fc73` (commit `310644df`, a header add bar —
+   reverted, the buttons belong on their own rows),
+   `d884a9b4-b92d-43ba-ba69-050f3c648ebc` (commit `24c2ec84`, the per-frame fallback
+   that made the filmstrip actually render — **confirmed working on device**),
+   `6ac0e67a-91f3-41fd-9d94-f45fa41ce3df` (commit `22cbb059`,
+   the timeline filmstrip + time-proportional clips + clip trim handles),
+   `6a6076f6-6c26-4632-94cc-e09a13cea57b` (commit `b67b08cb`,
+   the corner handle winning its own finger + `averageTouches`),
+   `a9d57a65-71d1-4c7a-9a8c-bb335cd2759b` (commit `05e26d3b`, the guard
+   script and updater purity), `e7850ff7-a5d7-494f-bba3-9507196d21f0` (commit
+   `75198f47`, the Add Text grey-screen fix — anything published before this one
+   grey-screens on mount, so it is not worth testing),
+   `9be0586f-0d06-4de4-a475-0b966df5d7c6` (commit `256fff8e`, on-canvas typing +
+   text background chip + the `size / 18` scaling fixes),
+   `e3705693-3ccd-49d9-ae60-de700a4e3af9` (commit `50570dc9`,
+   the 130-style caption catalogue),
+   `f63025f2-1c0e-4262-871b-19fa019004bd` (commit `b289df85`),
+   `24fa85fa-d9e5-4449-9d40-34a9a8b6af57`
+   (commit `ef882e58`), `42422470-8b9d-4381-b2ae-f831fff19ff8`
+   (commit `734d746e`) and `9f403a24-2afb-4454-a741-505825af5584` (commit
+   `f8b0d7ec`). Awaiting confirmation:
+   - **Timeline filmstrip (`48c35bec`, `24c2ec84`)** — ✅ frames confirmed rendering on
+     device Aug 7 2026. Still unconfirmed on this surface: the **alignment** claim,
+     which is the real point of the change — add a voiceover and a moment in the audio
+     should sit under the frame it belongs to, with **two or more clips of different
+     lengths** as the discriminating case, since the old fixed-width chips were only
+     ever right when every clip was the same length as every other.
+   - **Clip trim handles (`22cbb059`)** — a selected clip has a handle at each end.
+     Test: drag each and confirm the frames slide under it live rather than the strip
+     going blank and repainting on release, that it stops dead at the end of the
+     footage rather than running past and snapping back, and that the clip cannot go
+     below ~0.3s. Trim, then play, and confirm the export starts where the handle was
+     left. A **still image** clip is its own case: both edges just change how long it
+     is held, up to 30s.
+   - **Per-row floating add buttons (`25b02b2d`)** — clip, voiceover, music, text,
+     captions, stacked down the right edge, each floating over its own row. Test: scroll
+     the timeline a long way and confirm all five stay put and still open the right
+     thing; scrub by dragging across the right-hand end of the strip and confirm the
+     rail does not swallow it (that is the `box-none` claim). Each button should sit
+     centred on its row, including after a row changes height — adding the first text
+     overlay swaps a chip in and is the case that would expose a hardcoded height
+     table. Note `310644df` put these in a header bar instead and was reverted in
+     `25b02b2d`; the time markers it removed are back, and are still the static
+     `[0,1,2,3,4]` ruler they always were — a real ruler is unbuilt work, not a bug.
+   - **Corner handle and two-finger rotate (`b67b08cb`)** — dragging the corner
+     handle used to move the overlay instead of turning it, and a two-finger turn
+     threw it across the frame. Test: drag the handle on a selected overlay and
+     confirm it rotates and resizes without translating; then two-finger rotate and
+     confirm the overlay turns about its centre rather than bolting. Tap-to-select,
+     tap-again-to-type and the long-press style sheet must all still work, since
+     `blocksExternalGesture` makes them wait for the handle to fail — the failure
+     mode to watch for is a tap that now feels laggy or gets dropped near the corner.
+     Rotation should snap within 4° of level.
+   - **On-canvas typing (`dd1c0a81`)** — tap an overlay to select, tap again to put a
+     caret in it. Test: type into a stroked style and confirm the stroke and glow stay
+     on while editing (a plain input would drop them); place the caret mid-word and
+     confirm it lands between the letters it looks like it lands between, which is the
+     `captionMetrics` shared-layout claim; drag the keyboard's own selection handles,
+     which only work if the canvas gestures really are off. Long press should open the
+     style sheet. Clearing an overlay to empty should delete it rather than leave an
+     invisible tap target. The discriminating case is a **tracked or large style**,
+     where a caret laid out from different metrics than the render drifts visibly.
+   - **Text background chip (`dd1c0a81`)** — Add Text now has colour, opacity, radius
+     and padding for a chip behind the words. Test: set one, then export and confirm the
+     burned-in chip matches; it travels as a spec `box`, so it shares the server path
+     with boxed caption styles and needs the backend restart below to draw at all.
+   - **Chip corners and shadow blur (`4d47c7cc`)** — both were fixed on this side while
+     everything around them scaled with the font size. Test: put a rounded boxed style
+     (Sticker, Reels, Cobalt) on the canvas at a large size and check the corner
+     rounding matches its own tile in the picker and the burned-in export — this is
+     three renders of one number and they should now agree. A pill style (`radius: 999`)
+     must still be a pill at every size. Then a heavy shadow style (Heavyweight,
+     Clickbait) large, where the blur should grow with the word instead of staying a
+     hard second copy of it. All three are invisible at size 18, which is exactly the
+     size a swatch is nearest — check on the canvas, not in the sheet.
+   - **Font grid (`734d746e`, specimen word `ef882e58`, group order `b289df85`)** —
+     the font sheet lays the families out as a three-column grid of specimen tiles
+     (the word "Quick" set in the family, name beneath in the system face) instead
+     of one full-width row each. The specimen
+     is a whole word rather than a letter pair because a typeface's character is in
+     its rhythm; it shrinks to fit (`adjustsFontSizeToFit`, floor 0.6) since the
+     families are nowhere near equal in width at a given size, and carries no fixed
+     `lineHeight`, which would clip the taller display faces. Group headers keep a
+     full-width row of their own, so the grid is built by chunking each group into
+     rows of three and making each row one FlatList item — `numColumns` cannot do
+     this, as it lays every item into a cell, headers included. Groups run
+     Handwriting, Display, Sans, Serif, Mono — that order is `GROUP_ORDER` in
+     `FontPicker.js`, not in `constants/fonts.js`, whose "GENERATED" header means an
+     order set there would be lost on regeneration; groups it does not name keep
+     their upstream position behind the ones it does. System/Default stays pinned
+     above all of them, being the current-value fallback rather than a category.
+     Test: the last row of a group should keep its tiles at column width rather
+     than stretching them,
+     and search should still return a flat grid with no headers.
+   - **Fonts (`f8b0d7ec`)** — the text sheet now offers 130 families instead of
+     `['Default','Bold','Italic','Mono']`, which were never families at all and
+     mapped to nothing in the export. TTFs ship in `assets/fonts` (6.2MB, Google's
+     latin subsets) and in `backend/fonts`; `constants/fonts.js` is generated by
+     `scripts/fetch-fonts.py` from `scripts/fonts.families.txt`, and the backend
+     reads `fonts/manifest.json` rather than a hardcoded map. **The backend was
+     restarted Aug 6 2026 and now serves the 130-family manifest** — the old
+     21-entry fallback is no longer in play (it only applies if manifest.json goes
+     missing or unreadable, which logs a `[fonts]` warning). Verified before the
+     restart: 130 manifest families, 130 TTFs in `assets/fonts`, every manifest
+     entry resolving to a file that exists, and no family in the app list absent
+     from the backend manifest. Test: pick a font, check the preview, then export
+     and confirm the burned-in text matches.
+   - **Colour picker (`f56257a7`)** — Add Text / Add Caption now carries a full
+     picker (saturation-value plane, hue slider, hex field) behind the tune button
+     at the end of the swatch row, drawn with `react-native-svg` gradients. Colours
+     mixed on the plane persist to recents via AsyncStorage (`tonefy.recentTextColors`,
+     8 entries, presets excluded). Test: drag on the plane (the sheet must not
+     scroll under the finger), type a hex, then reopen the sheet on an existing
+     overlay and confirm the plane adopts that overlay's colour. Solid colours only
+     — but note the export path already renders gradients: `server.js:1983` fills
+     from `t.gradient` when an overlay carries a two-stop array, so a Gradient tab
+     is frontend-only work, not blocked on the backend as previously recorded.
+
+     As first published (`f56257a7`) the plane and hue slider took no touches at
+     all: `useDragTracker` returned the `PanResponder.create` wrapper instead of
+     the `panHandlers` inside it, so spreading it onto a View set one ignored prop
+     and attached no responder callbacks. Fixed in `bf87b82e`. Worth remembering as
+     a class of bug — it bundles clean, renders correctly, and fails only on touch,
+     so nothing short of a device catches it.
+
+     The Auto Captions sheet carries the same picker as of `8869e8b5`, seeded from
+     the selected style with a "Match style" revert. It appears only when a
+     voiceover track exists: that path times words on device and emits text
+     overlays, whose `color` survives to `/api/render`. With no voiceover,
+     `/api/edit-video` burns captions in via `buildAssFile` from the server's own
+     `STYLES` table, so the sheet explains that instead of offering a dead control.
+     Closing that gap — a `captionColor` param through `buildAssFile` — would also
+     give the Idea/Script/Url→Video screens caption colour, which they likewise
+     lack. Not done; would be backend work in `~/Tonefy-react/backend/server.js`.
+
+     Note the app has no other colour-choosing surface. The `boxColors` arrays in
+     the generation screens are a loading animation, not a picker.
+   - **Preview/scroll sync (`712adbda`)** — the timeline now follows the video
+     decoder's reported position instead of seeking the decoder to match a wall
+     clock. The old correction could not converge on Android, where a seek lands on
+     the nearest preceding keyframe, so it re-fired every 200ms pass. Play-start and
+     paused scrubbing also now seek the canvas, which they never did.
+     Test: scrub somewhere mid-timeline while paused (canvas should follow the
+     scrubber, not hold a stale frame), then hit play — the first frame should be the
+     one under the scrubber, and clip boundaries should not jump. Multi-clip and
+     trimmed clips are the discriminating cases; a single untrimmed clip starting at 0
+     exercises a path that was never broken.
+   - Audio track durations are now measured rather than falling back to a hardcoded
+     5s, which had been truncating each track's mixer window (`609b06e1`), and the
+     throwaway duration probe that stole audio focus mid-playback is gone (`e1937cfe`).
+   - The music library audition sound could be adopted *after* the stop that was
+     meant to cancel it, leaving an orphaned sound outside the mixer — audible over
+     the timeline, deaf to play/pause, never seeking. This is what made Add Music
+     ignore playback control while voiceover, which has no audition path, stayed in
+     sync (`0286a94c`). The discriminating test is to hit Add **while the preview is
+     still buffering**; waiting for the audition to start playing first exercises a
+     path that was never broken.
+
+   - **Caption styles (`5ff8992d`)** — the Auto Captions sheet's style row opens a
+     searchable sheet of 138 styles across 13 categories, each tile previewing the
+     real style rather than a coloured word. Test: pick a stroke-heavy style
+     (Punch, Impact) and a boxed one (Newsroom, Sticker) and check the canvas
+     overlay matches its tile; pick a gradient style (Sunset) and confirm the fill
+     ramps across the characters; then override the colour and confirm the gradient
+     gives way to it. The discriminating cases are a **two-line caption** — the
+     outline's line breaks must land where the fill's do — and a **long word in a
+     boxed style**, where the chip should hug the text rather than the caption's
+     80%-width column.
+
+   **Backend restarted Aug 7 2026, 09:12** — `pm2 restart tonefy-backend`, pid 3872,
+   restart #7, no unstable restarts, font manifest loaded without a `[fonts]` warning.
+   The spec-driven caption rendering is live, so stroke, glow, box and the word chip now
+   survive to the export instead of being dropped. Verified by process start time
+   (09:12:51) postdating the last `server.js` edit (08:55:32) — the check to repeat,
+   since "I restarted it" and "it is running that code" are not the same claim.
+
+   Note what was actually deployed: HEAD is `02a75a25`, not the `e2e2c670` this file used
+   to name, **plus uncommitted `server.js` changes** — the backend half of the word chip
+   (`labelWidth`/`labelPad`/`wordBoxInLabel`, the fill recolour, the chip layer). A
+   restart deploys the working tree, not the last commit, so read `git diff` before
+   restarting rather than trusting the commit id. ~~Those changes are still
+   uncommitted.~~ **They were committed long ago; `~/Tonefy-react` has had a clean tree
+   since (checked Sep 20 2026).** Left struck rather than deleted because this line was
+   read as current and repeated as fact on Sep 20 - the two untracked directories there
+   were generated artifacts (`__pycache__/`, the 321 voice-preview mp3s), not modified
+   source. **`git status` answers this in one line; do not answer it from this file.**
+
+   **No longer blocked (Aug 8 2026).** `git -C ~/Tonefy-react push origin master`
+   now succeeds — verified by pushing seven backend commits and confirming
+   `origin/master` matches local at `2b7bccc1`, 0 ahead / 0 behind. Whatever denied
+   the credential 403 has been resolved. The backend is no longer single-disk, so
+   "commit it but you cannot push" is not a constraint to plan around any more.
+   Push backend work as normal.
+
+   Once confirmed on device, open a PR into `main` and merge.
+3. ~~Eight caption styles have never been verified against the export.~~ — **closed
+   Aug 11 2026.** The eight `hl-*` (Highlight) styles added in `33b4ef33` are the only
+   styles in the catalogue carrying a `highlight` field, so neither export path had ever
+   actually exercised it. Verified against both real renderers, not by reading the code:
+
+   - **ImageMagick path (`/api/media-to-video`, voiceover-driven auto-captions) — all
+     eight correct.** Ran the actual extracted `labelWidth`/`labelPad`/`wordBoxInLabel`
+     functions against the real font files and real `convert`/`identify` binaries: the
+     spoken word's box lands inside the canvas for all eight, and a pixel-histogram check
+     of the composited PNG confirms the recoloured word takes exactly `highlight.textColor`
+     while its neighbour keeps the base fill colour, for every style tested.
+   - **ASS path (`/api/edit-video`, the no-voiceover route `handleAutoCaption()` in
+     `EditVideoScreen.js` actually calls) — all eight were broken, silently.**
+     `assStyleFromSpec`/`buildAssFile` never read `spec.highlight` anywhere. Confirmed by
+     extracting the exact deployed function and running it against real specs: one flat
+     Dialogue line per chunk, zero per-word emphasis, no trace of the highlight colour in
+     the output. Not a crash, not an error — a Highlight-category style picked with no
+     voiceover rendered indistinguishable from a plain stroke style, which is the "ships
+     clean, wrong on screen" failure shape this file keeps flagging as the dangerous kind.
+
+   **Fixed in `036aad9f`** (`~/Tonefy-react/backend`, pushed, deployed via `pm2 restart`
+   Aug 11 2026). Not a chip — a real chip needs the same glyph-offset measurement the
+   ImageMagick path gets from ImageMagick's own `identify`, which this string-only ASS
+   builder has no equivalent of. What it does instead: inline `\1c` colour-override tags
+   recolour just the active word within the phrase (the phrase itself stays fully visible
+   throughout, matching the "chip follows the voice" intent minus the chip), using real
+   per-word whisper timing when available and an even split of the chunk's own window
+   otherwise — the only case actually reachable today, since `handleAutoCaption` never
+   sends `voiceoverUrl` to this endpoint. Verified by burning the generated `.ass` into a
+   real frame with the exact `ass=...:fontsdir=...` filter this file already uses: libass
+   parses the new tags without error, and the frame's colour histogram shows two distinct
+   colours landing on the right words. Known, accepted limitation: some `highlight.textColor`
+   values (e.g. `hl-yellow`, `hl-mono`'s `#1A1400`) were designed to sit on a bright chip:
+   without one they're low-contrast against a dark background in this fallback path. Worse
+   than the chip version, better than rendering no differently from a plain stroke style.
+
+4. ~~Remove the `/tmp/tonefy-build` backup copy~~ — **done Aug 11 2026.** Checked before
+   deleting: its last commit (`b2ea9216`) was already present in `~/tonefy-build`'s
+   history, and the one non-trivial uncommitted diff on top of it (766 lines in
+   `EditVideoScreen.js`) introduced identifiers - `AudioTrackRow`, `ClipsRow`,
+   `TextRow`, `CaptionsRow`, `applyAudioTrimEdit`, `captionPreviewGroups` - that exactly
+   match Phase 2-4 features already documented complete above. An earlier draft of
+   already-shipped work, not anything unique. Removed with `rm -rf`.
+5. ~~Rotate the exposed GitHub PAT in `xauusd_scalper` repo config~~ — **RESOLVED
+   Sep 20 2026, and it was not merely cosmetic.** That token was DEAD, so the repo's
+   hourly `git-backup.sh` had been committing and then failing its push with
+   `Invalid username or token` into a log nothing reads: **369 commits were stranded on
+   this disk, and the remote had not moved since 12 July.** Fixed by dropping the inline
+   token from the remote URL so git falls back to the working `store` credential helper;
+   all 369 pushed. The exposed PAT is out of `.git/config` as a side effect.
+   **The general shape, seen three times in one day:** a backup that commits but cannot
+   push reports success locally and protects nothing. Check `git rev-list --count
+   @{upstream}..HEAD`, not whether the last commit exists.
+6. **Sign-up now asks for full name and country** (commit `7b6d26e7`, published Aug 10
+   2026 as update group `c29281a5-c78d-4a01-9bf6-cfe6f30aacb8`, runtime 1.1.0) — new
+   `components/CountryPicker.js` (searchable sheet) and `constants/countries.js` (194
+   names, no flag emoji, per the no-emoji rule). `fullName` goes through
+   `updateProfile` the same way `ProfileScreen.js` already reads `displayName`; country
+   has nowhere in Auth to live, so it gets its own minimal Firestore doc at
+   `users/{uid}`, written while still authenticated and wrapped in its own try/catch so
+   a Firestore failure can't block the verification email. **Untested on device** —
+   this is a new sign-up path, not a hot-reloadable screen tweak, so the discriminating
+   test is a real signup: full name saved as `displayName` (check via ProfileScreen),
+   country saved to Firestore `users/{uid}`, and — the case most likely to actually
+   break — Firestore security rules actually permitting an unauthenticated-a-moment-ago
+   user to write their own new doc right after `createUserWithEmailAndPassword`
+   resolves.
+7. **Profile screen: real brand marks + Dark Mode now persists** (commits `44069a7b`,
+   `1e259396`, published Aug 10 2026 as update groups `2d273779-afa0-430c-99ff-c0afc58f8989`
+   and `f9c13a95-3a8f-40cf-872e-6019669af765`, runtime 1.1.0). TikTok/Facebook/Instagram
+   now use `FontAwesome6`'s brand glyphs (bundled with `@expo/vector-icons`, no new
+   native module) with each platform's real badge colour, replacing MaterialIcons
+   stand-ins that had no actual TikTok or Instagram glyph to draw from. Test Crash
+   (a Sentry-wiring check, not a real control) is gone.
+
+   Separately: `context/ThemeContext.js`'s `isDark` was plain `useState`, so the Dark
+   Mode switch on the Settings sheet reset to dark on every restart. Persisted to
+   AsyncStorage (`tonefy.darkMode`). While in there, the Settings sheet's own divider,
+   Close button and grabber handle were found hardcoded to the dark palette regardless
+   of `theme.*` — fixed, since shipping "the toggle now persists" while the sheet it
+   lives in still breaks in light mode would not actually be done.
+8. **Dark Mode extended to the app's chrome screens** (commit `d1df1ffa`, published
+   Aug 10 2026 as update group `bc60b6f4-5d39-4607-9ed2-7e3769f2c662`, runtime 1.1.0).
+   `AuthScreen.js`, `ProfileScreen.js`, `MyVideosScreen.js`, `CalendarScreen.js`,
+   `ConnectAccountsScreen.js`, `components/CountryPicker.js` and the bottom tab bar
+   (`MainTabs.js`) now pull from `ThemeContext` instead of hardcoding the dark palette.
+   Added `inputBg`/`inputBorder`/`handle` tokens for form fields and sheet grabbers
+   that had no prior token. Semantic status chips (connected/soon badges, danger
+   buttons, the 2FA lock badge) get their own light-mode tint inline per screen rather
+   than new shared tokens, since each is a one-off state colour, not a reusable surface
+   — worth checking those specifically on a real light-mode pass, since they're the
+   most likely spot for a missed hardcoded value the build check can't catch (wrong
+   colors compile fine).
+
+   **Deliberately still dark-only, on purpose, not by omission:** the editor
+   (`EditVideoScreen.js`) and everything in its family — `EditPostVideoScreen.js`,
+   `RecordingScreen.js`, `RecordToVideoScreen.js`, `PostRecordingScreen.js`, the three
+   `*ToVideoScreen.js` generation screens, and the audio generation/result screens
+   (`IdeaToAudioScreen.js`, `ScriptToAudioScreen.js`, `GeneratingAudioScreen.js`,
+   `AudioResultScreen.js`) — matching every serious competitor (CapCut, Canva,
+   Lightroom mobile keep the editing canvas dark regardless of system theme) and this
+   app's own dark-first identity. `LandingScreen.js` is also excluded: a pre-auth
+   marketing splash built on ambient glow effects tuned to sit against near-black, not
+   a colour-swap job, for a screen most people see once before signing up. Extending
+   further needs an explicit ask, same as before.
+9. **MyVideosScreen status-bar overlap + stacked back button** (commit `8d85d988`,
+   published Aug 10 2026 as update group `7579ca1f-58e1-4319-8c2e-f353a2a0a146`,
+   runtime 1.1.0). `MyVideosScreen.js` never consumed `useSafeAreaInsets` — same class
+   of bug as the App.js `SafeAreaProvider` fix, just a screen that hadn't been touched
+   yet; now uses the same `insets.top` pattern as `PostRecordingScreen.js`. Separately,
+   its back arrow + "Back" label were laid out as unstyled siblings inside a
+   `TouchableOpacity` with no `flexDirection`, so RN's default column layout stacked
+   the arrow above the text. `ConnectAccountsScreen.js` had the identical copy-pasted
+   bug, fixed alongside. **Same stacked-back-button pattern still exists** in
+   `IdeaToVideoScreen.js`, `UrlToVideoScreen.js`, `ScriptToVideoScreen.js`,
+   `EditPostVideoScreen.js` and `RecordToVideoScreen.js` (grepped, not fixed) — same
+   one-line fix (`style={{flexDirection:'row',alignItems:'center',gap:4}}` on the
+   TouchableOpacity) whenever one of those is touched next.
+10. **Notifications and Help & Support screens** (commit `137e46c9`, published Aug 10
+    2026 as update group `7b69b572-bd5a-40c7-a247-2c698bae15ea`, runtime 1.1.0). Both
+    Settings-sheet rows had no `onPress` — tapping did nothing. `NotificationsScreen.js`
+    surfaces the re-engagement reminder toggle that `utils/notifications.js` already
+    implemented (permission request, schedule, cancel) but that nothing in the UI had
+    ever exposed — it was only ever triggered from inside `EditVideoScreen` after an
+    export. When the installed build lacks the native notifications module, the toggle
+    disables itself with an explanation rather than looking broken (same OTA-safety
+    pattern the file already documents). Added `remindersEnabled()` to read the
+    scheduled-state back for the toggle's initial value. `HelpSupportScreen.js` is a
+    self-written FAQ plus a **Report an Issue** action that opens a prefilled `mailto:`
+    to the app owner's real address — deliberately not a fabricated support inbox or
+    help-center URL, since neither exists yet (checked both this repo and the live
+    site's page list before writing it). Both screens are new chrome, themed like the
+    rest of today's batch. **Untested on device.**
+11. **Dark Mode now covers the whole app except EditVideoScreen** (commits `6daa7e16`,
+    `a517f2f4`, `e29fa27b`, `d557f2f4`, `22d1e38c`, published Aug 10 2026 as update
+    group `9c1916cd-6358-4ae7-b116-8240e0d020fb`, runtime 1.1.0). Direct instruction,
+    overriding the earlier scoped-rollout call: theme everything, explicitly excluding
+    only the editor. Twelve more screens converted on top of the seven from item 8 —
+    `GeneratingAudioScreen`, `IdeaToAudioScreen`, `RecordToVideoScreen`,
+    `AudioResultScreen`, `PostRecordingScreen`, `ScriptToAudioScreen`, `LandingScreen`,
+    `EditPostVideoScreen`, `UrlToVideoScreen`, `ScriptToVideoScreen`,
+    `IdeaToVideoScreen`, plus `RecordingScreen` assessed and left dark on purpose.
+
+    **Three screens stayed dark despite the "theme everything" instruction, each
+    flagged to the user rather than silently decided:**
+    - `RecordingScreen.js` — a live camera viewfinder. Every element is a translucent
+      dark chip meant to float over unpredictable camera footage (the same convention
+      every camera app uses), not chrome sitting on a background color. There is no
+      "screen background" to theme; the camera feed is the background.
+    - `LandingScreen.js` — themed for surfaces/text, but its ambient glow blobs
+      (translucent color circles tuned to sit against near-black) were left at their
+      existing low opacity rather than redesigned. In light mode they read as a
+      subtle tint rather than a glow — a cosmetic softening, not a break.
+    - Media/camera-preview surfaces *within* otherwise-themed screens stay dark by
+      established convention (first set in item 8's MyVideosScreen pass): video
+      canvases, `RecordToVideoScreen`'s camera-preview placeholder and its overlay
+      chips, `PostRecordingScreen`'s raw-preview box, `TransitionPreview`'s animated
+      demo thumbnails. A surface standing in for camera/video content isn't chrome.
+
+    `UrlToVideoScreen`, `ScriptToVideoScreen` and `IdeaToVideoScreen` share a near-
+    identical wizard template (`SelectorRow`/`SettingCard`, `CaptionOptionRow`,
+    `TransitionModal`, `OptionModal`, `StepDots`, `ProgressBar` as separate function
+    components declared in each file) — each needed its own `useTheme()` call or a
+    `theme` prop, since none of them inherit it automatically. `IdeaToVideoScreen`
+    additionally has `SettingCard` (icon-badge rows) and `MusicTrackRow`/`MusicModal`
+    (background-music picker with audition playback), unique to that screen.
+
+    **The same stacked-back-button bug (icon and label as unstyled siblings, no
+    `flexDirection`, RN's default column layout stacking them) turned up in six of
+    these screens** — `EditPostVideoScreen`, `UrlToVideoScreen`, `ScriptToVideoScreen`,
+    `IdeaToVideoScreen`, on top of the `MyVideosScreen`/`ConnectAccountsScreen` pair
+    from item 9 — and was fixed in all of them alongside the theming, since they were
+    already open. One incidental correctness fix along the way:
+    `IdeaToVideoScreen`'s Preview Voiceover button used black text
+    (`styles.btnText`'s default) on a dark navy background, already near-invisible
+    before any theming; the new `theme.text` override fixes it in both modes.
+
+    One overreach caught before committing, worth remembering as a class of mistake:
+    while theming `UrlToVideoScreen`'s Copy Link button, its background was changed
+    from green to neutral gray. Copy Link had never had an explicit color override —
+    it inherited the shared green `.btn` style, same as Post/Schedule — so recoloring
+    it to "neutral" was a button-hierarchy change smuggled in under a theming task,
+    not a light/dark difference. Reverted before commit. Green vs. neutral is the
+    separate, already-documented, not-yet-done teal/green rebrand — a task like this
+    should touch *only* colors that differ between the two theme objects, nothing
+    that was a fixed, unstyled value in both.
+12. **Tiered video retention — "your videos, saved" as a paid feature** (four
+    bisectable commits, Aug 10 2026, plus a crontab/system change with no commit of
+    its own). App repo: `95666dc4`, published as update group
+    `d8795acf-d750-43cb-bbcf-a5cf8283a67e`, runtime 1.1.0. Backend repo (`~/Tonefy-react`):
+    `aaa0f043`, `22769cc3` (cron removal has no commit — see below), deployed via
+    `pm2 restart tonefy-backend` at 15:46:59, confirmed postdating the last edit
+    (15:45) with a clean startup log and no unstable restarts.
+
+    **The prerequisite this whole feature was blocked on:** there was no plan/
+    subscription field anywhere — `constants/plan.js` was a device-local AsyncStorage
+    mock (explicitly documented as such in its own comment), the backend had zero
+    concept of plan/tier, and `ProfileScreen.js`'s "Free Plan" badge was hardcoded
+    text shown to every user. Now: `users/{uid}.plan` in Firestore, values `"free"` |
+    `"pro"` | `"creator"`, missing/absent = free. **No billing integration** — set by
+    hand in the Firestore console. To test paid retention or the Profile badge on a
+    real account: open Firestore console → `users/{uid}` → add/edit `plan` field.
+    `ProfileScreen.js` and the `EditVideoScreen.js:3514` premium gate both read this
+    live via `usePlan()` (`constants/plan.js`, rewritten to `onSnapshot` +
+    `onAuthStateChanged` instead of AsyncStorage) — a Firestore console edit should
+    show up in the app without a restart.
+
+    **Commit 1** (`aaa0f043`) — `txtrender-*.png` (the composited text-overlay image
+    burned into every export with text) was never unlinked anywhere: 1,764 files, 174MB
+    at time of fix, growing with every render that has text. Wrapped the overlay-burn
+    ffmpeg call in try/finally so cleanup happens whether it succeeds or fails. Same
+    fix shape for `wavesrc`/`wavepcm` in `/api/audio-waveform`, which only cleaned up
+    on the success path before. **Neither retroactively cleans the existing
+    accumulation** — that's Commit 3's uploads sweep.
+
+    **Commit 2** (no commit — not a git-tracked file) — `crontab -l` ran
+    `/home/ahumuza/cleanup_videos.sh` every 3 days: a blind `find -mmin +X -delete`
+    against `public/videos`/`public/audios` with **zero Firestore or plan awareness**.
+    It had deleted nothing since it was added (its own log shows "0 files" on every
+    run since June) purely because the in-process 10-minute sweep always won the race
+    and deleted first — invisible, silent redundancy that would have become an active
+    bug the moment the in-process sweep started skipping paid users' files. Removed
+    from crontab (verified via diff: exactly one line gone, nothing else touched).
+    Script file kept at its path but disabled — `exit 1` guard at the top, execute
+    bit stripped, header explains why and points at `cleanupOldFiles()` as the one
+    remaining mechanism. **Worth checking crontab again if disk cleanup ever looks
+    wrong** — this class of "a second thing was doing the same job" is exactly what
+    bit this feature before it shipped.
+
+    **Commit 3** (`22769cc3`) — `cleanupOldFiles()` now resolves a video's plan via
+    `userVideos.userId` → `users/{uid}.plan` before deleting: 72h if free (unchanged —
+    that promise was never broken), 30 days otherwise. Three states, handled on
+    purpose: no matching record/no plan field → `'free'` (nothing to protect); the
+    Firestore lookup itself throwing → **treated as paid, file held one more cycle**
+    (a lookup failure must never cost a paying user their video); a real plan value →
+    applied directly. `getOwnerPlan()` carries a comment marking where a future
+    subscription-lapse grace period hooks in — not built, since there's no billing yet
+    for a plan to lapse from, but the shape was designed so it fits without rework.
+    Also added `cleanupUploads()`, which never existed before: scratch-prefixed files
+    (`wavesrc-`, `wavepcm-`, `transcribesrc-`, `captionsrc-`, `txtrender-`) at 48h,
+    genuine uploads (random-hash filenames from `/api/upload-media`) at a flat,
+    **not plan-aware**, generous 30 days — uploads have no per-file owner record the
+    way `userVideos` does, and `utils/draft.js` drafts have no expiry of their own to
+    key a shorter window off safely without real risk of breaking an in-progress edit.
+
+    **Commit 4** (`95666dc4`) — `usePlan()` rewritten to read `users/{uid}.plan` live
+    (`onSnapshot`, following `onAuthStateChanged` so it resolves correctly regardless
+    of mount order relative to auth) instead of AsyncStorage. Tier constants aligned
+    to what the backend actually uses — `TIER_STANDARD` (`'standard'`) never
+    corresponded to a real value anywhere and is gone; added `TIER_CREATOR`.
+    `EditVideoScreen.js`'s premium gate needed zero changes — it only ever
+    destructured `isPremium`, confirmed by grep before touching anything, which is
+    the entire reason `usePlan()` was built as one hook in the first place.
+
+    **What's explicitly not built, on purpose:** cloud storage (Firebase Storage stays
+    initialized-but-unused; both retention tiers are VPS disk, a deliberate call per
+    "upgrading the promise is easy, downgrading one is not"), ~~subscription-lapse
+    behavior~~ (**BUILT — `subscriptionSweep`, see item 13; the plan reverts to free and
+    credits are clamped, and videos then age out at the free 72h**), and billing itself. **Untested on device or against a
+    real paid account** — the retention logic has never actually held a video past
+    72h end-to-end; verifying that needs a real `users/{uid}.plan = "pro"` account,
+    a generated video older than 72h, and confirming it survives a cleanup cycle
+    rather than reading the code and trusting it.
+13. **Subscription pricing, Phase 1 (Aug 10 2026) — credits, per-tier caps, no billing yet.**
+    Nine backend commits (`~/Tonefy-react`, `1a1084de`..`0a9bc0dc`) plus four app commits
+    (`4e683f4d`..`a0dab42c`, published as update group `3c5211c5-9666-4d8b-9345-7082643d1ede`,
+    runtime 1.1.0). Payment provider is **Google Play Billing, not Stripe** — a mid-planning
+    pivot (the original proposal below item 12 assumed Stripe; that's superseded). Play
+    Console is still under identity verification, so this phase is deliberately scoped to
+    everything that doesn't depend on it: credit tracking, tier caps, enforcement,
+    UI — no purchase flow, no `react-native-iap`, no native build.
+
+    **Tiers** (`~/Tonefy-react/backend/tiers.js`, new module — kept separate from the
+    ~2900-line `server.js` since three endpoints sharing this logic inline would drift
+    the first time one got a fix the others didn't): free (5 credits/mo, 1 min/export,
+    720p, watermark, 12 legacy caption styles, 3 gTTS voices), pro (60 credits, 15 min,
+    1080p, no watermark, everything), creator (300 credits, 40 min, 1080p, no watermark,
+    everything, jumps the render queue). **`FREE_CAPTION_STYLES`/`FREE_VOICES` are stated
+    defaults, not a confirmed product decision** — the 12 legacy styles and 3 gTTS voices
+    are the most defensible lines available without guessing at one (both already-existing
+    boundaries in the app's own history, not invented here). One array each to edit once
+    the real answer is known. `constants/plan.js` on the app side mirrors these as
+    `TIER_CAPS`, UI-only — the backend is what actually enforces every cap.
+
+    **A real security gap found and fixed first, before anything else** (`aaa0f043`... no,
+    `1a1084de`/`975e73a3`): `/api/media-to-video` and `/api/edit-video` both derived the
+    Firestore-record owner from `req.body.userId` — a client-supplied value — instead of
+    `req.user.uid` from the verified token. Harmless before credits existed (just
+    misattributed a record); would have made credit enforcement trivially bypassable
+    (claim any uid, render for free or drain someone else's balance) had it shipped
+    unfixed. **The first commit's message claimed this was already fine everywhere else,
+    based on checking one endpoint (`idea-to-video-v2`) — it wasn't; `edit-video` had the
+    identical bug, caught and fixed in a follow-up commit.** Worth remembering: "every
+    other endpoint already does X" is a claim to verify per-endpoint, not infer from one.
+
+    **Per-endpoint reality, not force-fitted uniformly** — each of the three render
+    endpoints got exactly the checks its own parameters support, confirmed by reading
+    actual request bodies rather than assuming symmetry:
+    - `/api/media-to-video` (timeline editor export) — full synchronous check before
+      `createJob()` (duration estimable up front from `mediaItems`' trim/speed data).
+      Gained watermarking, which it had **zero** of before this — idea-to-video/v2
+      already burned one in unconditionally, but the editor's own export path had none
+      at all, which would have made "no watermark" a Pro benefit only for AI-generated
+      videos. No caption-style/voice gating — this endpoint doesn't accept either param.
+    - `/api/idea-to-video-v2` — credits/caption-style checked synchronously up front; a
+      rough word-count duration estimate (~150 wpm) catches obviously-oversized requests
+      before spending anything on TTS/Pexels, with a **precise** recheck once real audio
+      duration is known, before the expensive per-segment work starts (fails the *job*
+      at that point, not the HTTP request, since a jobId was already returned — still
+      surfaces clearly via job status). Gained **real 1080p output** — it had no
+      resolution parameter at all before, a fixed ~720p `scaleFilter` regardless of
+      plan; now driven by the same `frameSize()`/`SHORT_EDGE` helper `media-to-video`
+      already used. Watermark made conditional (was unconditional). No voice param here
+      at all — it consumes audio `/api/generate-audio` already generated, so **voice
+      gating lives on `/api/generate-audio` instead**, which also covers the standalone
+      Idea/Script-to-Audio screens correctly (voice access is a plan property regardless
+      of whether the audio ends up in a video).
+    - `/api/edit-video` (caption burn-in onto an existing video) — full synchronous
+      check like media-to-video (duration cheaply known via one ffprobe on the source,
+      moved earlier in the handler). **No resolution cap** — this endpoint doesn't scale
+      or re-encode to a chosen resolution at all, it burns captions at whatever
+      resolution the input already is; adding a cap would mean adding a re-encode step
+      that isn't otherwise part of the job. Gained watermarking (had none), folded into
+      the same filter chain as caption burn-in so a watermark-only export still gets a
+      real encode instead of the original `-c copy` fast path (which can't add a filter).
+
+    **Credits deducted once, after success, from `ffprobe` on the real output — never
+    the pre-flight estimate**, via a new shared `probeDurationSeconds()` helper (the
+    same `ffprobe -show_entries format=duration` line already existed inline three
+    times elsewhere for audio; not retrofitted there, out of scope, just reused for the
+    new call sites). `deductCredits()` uses `FieldValue.increment`, not read-modify-
+    write, so two renders finishing close together for one account can't clobber each
+    other's deduction. **Deliberately allowed to go negative** — a render that already
+    finished slightly over budget is real compute already spent; discarding finished
+    work to keep a counter non-negative wastes more than it protects. Deduction is
+    non-fatal on its own (wrapped separately, logs rather than fails the job) since the
+    video is already done and saved by that point — a Firestore hiccup must not turn a
+    successful render into a failed one.
+
+    **Fail-safe direction, explicit and tested**: if the plan lookup itself throws (not
+    "no record" — a genuine Firestore error), `checkRenderAllowed` treats the account as
+    paid and holds the render rather than risk rejecting or undercharging a real
+    subscriber over a transient blip.
+
+    **Priority render queue** — only `idea-to-video-v2` ever called
+    `acquireVideoSlot()`/`releaseVideoSlot()`; `media-to-video`/`edit-video` have no
+    concurrency limiter at all (confirmed by grep, not assumed) — scoped to what
+    exists rather than adding a limiter to two endpoints that never had one. Two queues
+    now: Creator-tier requests drain first once a slot frees up, but this only changes
+    which *waiter* gets the next slot — never touches `activeVideoJobs` or preempts
+    anything already running.
+
+    **Monthly credit reset — a deliberate deviation from the original Stripe-era
+    design.** That design was free-only-via-cron, paid-driven-by-webhooks-on-the-real-
+    billing-period (correct once Play Billing/Phase 2 exists — a generic sweep drifting
+    from the actual renewal date is exactly the mismatch a subscriber notices). Since
+    Phase 2 is deferred, the sweep applies to **every** plan for now — a paid-only-via-
+    webhook design today would mean a hand-set Pro/Creator test account never resets via
+    *any* mechanism. Commented clearly for narrowing to `plan == 'free'` once Play's
+    RTDN/purchase-verification flow exists.
+
+    **App side**: `usePlan()` (`constants/plan.js`) extended, not replaced, with
+    `creditsRemaining`/`creditsResetAt`/`caps` off the same `onSnapshot` listener — no
+    new subscription. `EditVideoScreen.js`'s premium gate (`isPremium`) needed zero
+    changes both times this session it could have broken, confirmed by grep before
+    touching anything — the whole point of building it as one hook. Signup
+    (`AuthScreen.js`) now seeds `plan`/`creditsRemaining`/`creditsResetAt`/
+    `subscriptionStatus` explicitly rather than relying on the backend's lazy-init
+    (`getUserPlanData`), which is a migration safety net for pre-existing accounts, not
+    meant to be the primary path — without this a brand-new account showed no credits
+    at all until its first render attempt. **5 credits / 30-day window is duplicated
+    across both repos on purpose** (no shared package) — flagged in comments on both
+    sides so it can't drift silently.
+
+    **Soft paywall**: extended the *existing* `promptUpgrade()` in `EditVideoScreen.js`
+    rather than building a parallel mechanism — it already had the right honest framing
+    ("plans aren't on sale yet," no fake checkout link) and just needed its stale
+    "Standard and Pro" copy fixed (`TIER_STANDARD` was removed earlier this session; this
+    reference was missed) and a way to show the backend's specific rejection reason.
+    Wired into all three places that can now receive a 402/403. **The original ask's
+    "deep-link to the web pricing page for checkout" is explicitly not implemented** —
+    written for the Stripe assumption; Play Billing checkout happens entirely inside the
+    Android app via `react-native-iap`, not on a website, and no pricing page exists
+    regardless. Also gated the resolution picker UI itself (grey out 1080p/4K, lock icon,
+    tap prompts upgrade) using the same rank comparison the backend clamps with — UI-only,
+    the server-side clamp was already the real enforcement. **Known minor gap, not
+    fixed**: the picker's default state is `'1080p'` regardless of plan, so a free
+    account that never opens it sees "1080p" as selected even though every export is
+    still correctly clamped to 720p server-side — cosmetic only, left alone rather than
+    risk auto-overriding a paid user's own deliberate lower-resolution choice.
+
+    **Verification, matching the retention work's discipline — every backend commit
+    tested against the live server, not just read through**: real Firebase ID tokens via
+    custom-token exchange against disposable test accounts, real HTTP requests. Every
+    rejection path confirmed (zero credits → 402, over-cap → 403, locked caption
+    style/voice → 403, all with no `jobId` issued). **One full success-path run** on
+    `edit-video`: real 5s render completed, credits correctly deducted 5→4
+    (`ceil(5/60)=1`), a real `userVideos` record written with the right duration — the
+    render→deduct→record chain confirmed working end to end, not just individually
+    plausible (not repeated for the other two endpoints, which share the identical
+    `tiers.js` functions — diminishing returns past the first full proof). The priority
+    queue verified via an isolated reproduction of the exact algorithm (pure logic, no
+    I/O — legitimate here unlike everything else, which needed the real deployed server
+    because it involved external state). The credit reset sweep verified against a real
+    ~10-minute wait for the actual scheduled `setInterval` tick, not a manual trigger —
+    three fixtures (overdue free, overdue pro, not-yet-due), all three outcomes correct.
+    All test accounts, Firestore fixtures and rendered files removed after each check.
+
+    **What's still not built, on purpose**: everything Play-Billing-specific (Phase 2,
+    blocked on Play Console identity verification) — `react-native-iap`, the purchase
+    flow, server-side purchase verification, Real-time Developer Notifications, the
+    native build that adding a native module requires. iOS monetization — explicitly
+    out of scope per direct instruction (Android-only for now). The web pricing/account
+    page from the original ask — superseded by the Play Billing pivot; a website can't
+    process a Play Billing purchase, so it would be marketing copy at most, not built.
+    ~~Subscription-lapse behavior~~ — **BUILT and proven Sep 16 2026 against the live
+    Play API; see item 13.** The answer it settled on is neither delete nor read-only:
+    the plan reverts to free, credits are clamped rather than zeroed, and a CANCELLED
+    subscription keeps working until the date already paid for.
+14. **Captions/overlays could render partially or fully outside the exported frame**
+    (Aug 11 2026, `~/Tonefy-react/backend@e410f2e9`, deployed via `pm2 restart`) — two
+    independent, unclamped mechanisms, both closed:
+
+    - **ImageMagick path (`/api/media-to-video`)** — the composite position was computed
+      straight from the overlay's centre x/y with no check against the frame, and the
+      rendered PNG's own size was never capped either. `CanvasOverlay.js`'s pan/pinch
+      clamps only bound the centre point and the scale factor (`[0.25, 6]`) independently
+      — never the overlay's actual rendered bounding box — so a drag near an edge, a 6x
+      pinch, or a caption whose wrapped lines simply ran wide at that font/size all
+      produced a PNG that ffmpeg's `overlay` filter draws at whatever raw x/y it's given,
+      with anything past `[0,W]x[0,H]` silently cut off by the frame boundary. Fixed by
+      shrinking an oversized overlay to fit a safe zone (margin matches `CanvasOverlay`'s
+      own `EDGE_MARGIN=8`, scaled to the export resolution, so the safe zone agrees with
+      what the drag gesture already respects on-screen) before placement, then clamping
+      `placeX`/`placeY` so the box can never leave the frame. The resize always leaves
+      room for a valid clamp by construction (checked algebraically, not just tested).
+    - **ASS path (`buildAssFile`, all 3 call sites)** — `PlayResX`/`PlayResY` were
+      hardcoded to `720`/`1280` regardless of the real output frame. libass maps that
+      virtual canvas onto the actual encoded resolution, stretching it non-uniformly
+      whenever the two disagree, so `MarginL`/`MarginR`'s promised safe zone stopped
+      corresponding to the real edges for any source that wasn't 720×1280. Confirmed by
+      burning a real caption onto a 1280×720 (16:9) frame with the old hardcoded values
+      vs. the real dimensions: measured rendered width differed by **1.776x**, matching
+      the predicted `1280/720 = 1.778` distortion almost exactly — the exact mechanism
+      that pushes a caption from safely inside the margin to past the real edge for
+      longer/wider text. Fixed by threading the real output width/height through to
+      `buildAssFile` at all three call sites: `frameSize()`'s own `scaleW`/`scaleH` where
+      already computed, and a new `probeVideoDimensions()` ffprobe helper for
+      `/api/edit-video`, which has no prior scale step to borrow dimensions from.
+
+    Verified directly, not by reading: the ImageMagick clamp math against edge-drag,
+    pinch-6x, long-word and normal-caption cases (all land fully inside the frame, the
+    normal case unaffected — no change in behaviour for a caption that was already fine),
+    and the ASS fix by burning real `.ass` output through the exact `ffmpeg`+`libass`
+    filter this file already uses. **Not fixed on the app side** — `CanvasOverlay.js`'s
+    pan/pinch clamps still only bound the centre point and scale independently, so a user
+    can still drag/pinch an overlay into a state that looks off-frame in the live preview
+    (`previewFrame` has `overflow:hidden`, so preview and the old export agreed — a user
+    saw the crop coming). The export fix means the finished file no longer matches that
+    preview in this situation: instead of a clipped fragment, the overlay now shrinks to
+    fit and stays fully visible, smaller than it was dragged/pinched to. Extending the
+    same bounding-box-aware clamp to `CanvasOverlay.js`'s own pan/pinch handlers (lines
+    116-119, 131, 195 — it already measures the real box via `onLayout`, at `size.w`/
+    `size.h`, just never consults it there) would make the preview match again, but
+    touching gesture composition code carries its own established landmine risk in this
+    file (see "Known bug pattern: gesture composition + config methods") and wasn't
+    asked for — flagged rather than done.
+15. **On-canvas text editing had no explicit way out and no shortcut to its style
+    sheet** (commit `f6de3b07`, published Aug 11 2026 as update group
+    `98f66e39-a024-44d9-a9a4-2eb90bd6d339`, runtime 1.1.0) — direct feedback from an
+    on-device test of the on-canvas typing feature (item under Phase 3). Every gesture
+    on an overlay is switched off while typing into it (needed so a tap lands in the
+    text, not on the element - see "Type on the canvas" under Phase 3), which also hides
+    the corner resize handle. That left editing with no visible exit besides tapping
+    elsewhere on the canvas or the keyboard's own back action, and no route to
+    font/colour/background without first leaving edit mode, deselecting, then
+    long-pressing to find the gesture existed at all.
+
+    Two small buttons now sit at the same corners the resize handle already uses when
+    selected (its own bottom-right corner is free during editing regardless, since the
+    handle is hidden then) - both counter-scaled the same way the handle already is, or
+    a caption pinched to 4x would carry a button the size of a thumb: a close (`X`)
+    button wired to the existing `endInlineEdit` (commit-or-delete-if-empty, unchanged),
+    and a `tune` button wired to the existing `openOverlayStyleSheet` - the same callback
+    the long-press gesture already calls, now also reachable without knowing long-press
+    is the way in. `CanvasOverlay` gained one new prop (`onEditDone`) and reuses the
+    existing `onLongPress` prop for the second button rather than adding another.
+    `scripts/check-gesture-composition.py` run clean after, since this touched the same
+    file the gesture-composition bug pattern lives in - no `.enabled()` was added to a
+    composition, only two plain `TouchableOpacity`s as siblings of the existing gestures.
+
+    **First on-device pass (same day) found two follow-ups, both fixed:**
+    - The buttons themselves were too loud at 28px/20px icon sitting over caption-sized
+      text - shrunk to a 20px circle / 13px icon (commit `6c58771b`, update group
+      `849c864a-b34b-4a06-ad32-35c9a3702f8f`). Hit area held steady via the existing
+      10px `hitSlop`, so the smaller circle didn't also shrink what you actually have to
+      hit.
+    - **A second, differently-coloured copy of the text appeared while typing**, offset
+      from and wrapped differently than the real one, tracking every keystroke live, then
+      vanishing the instant editing ended. Diagnosed with two questions rather than
+      guessed: it updated with live typing (had to be the caret's own `TextInput`, not a
+      stale render of something else) and disappeared the moment editing ended (so not a
+      second persisted overlay - ruled out `textOverlays` holding a duplicate object).
+      That combination points at Android's own IME **composing-span highlight** - some
+      keyboards paint the still-uncommitted word (on at least this device, evidently the
+      whole uncommitted buffer) in their own colour, as a system-drawn decoration that
+      `color:'transparent'` has no authority over, since RN's `color` style only sets the
+      base text paint, not the keyboard's own composing overlay. First attempt (commit
+      `28f32b2f`, update group `2ab73009-6dd9-45bb-ac87-425fef57f264`) turned `autoCorrect`/
+      `spellCheck` off on the caret `TextInput`, betting that committing each character
+      immediately would leave nothing for the keyboard to paint a highlight on.
+
+      **Confirmed on-device (same day, latest build) that this did not hold** - same bug,
+      now showing black instead of the user's selected red, still tracking keystrokes live,
+      still correcting the instant editing ended. Whichever keyboard this device runs
+      apparently paints its composing highlight regardless of `autoCorrect`/`spellCheck`.
+      Rather than chase that OEM by OEM, `withCaret()` (commit `4ae5a661`, update group
+      `ee7bacd4-0140-4530-8741-a8bbd081ff77`) now takes an optional `caretColor`. Left
+      `null` (the caption-styled call site, unchanged), it is the original trick - content
+      stays visible, the input sits on top fully transparent - which a stroked/glowing
+      style still needs, since a plain `TextInput` cannot reproduce those layers and this
+      app already tested that they survive editing. Given a real colour (the plain-overlay
+      call site, wired to `overlay.color`), it flips the trick instead of fighting the
+      keyboard: content is hidden (`opacity: 0`, not unmounted, so it still sizes the box
+      exactly as before) and the `TextInput` itself becomes the one visible copy, already
+      in the right colour - there is no wrong colour left for any keyboard to paint over.
+      **Untested on device.**
+16. **Canva-style side-handle box-width resize for manual text overlays** (commit
+    `0d215089`, published Aug 11 2026 as update group
+    `7b22455d-f32b-4895-a001-e319aa9afeca`, runtime 1.1.0; backend half
+    `Tonefy-react@7c22d107`, deployed same day via `pm2 restart`). Direct request,
+    following a design discussion: the existing corner handle scales an overlay
+    uniformly, font size included - Canva instead gives a text box two *independent*
+    controls, a width (side handles) and a font size (corner), so a side-drag
+    rewraps the text into more or fewer lines without touching how big it reads.
+    Scoped to manual text overlays only, on purpose - a caption style has no
+    independent box-width concept, and captions are short/style-driven in a way
+    that doesn't benefit from it; the corner handle stays the only control there,
+    unchanged.
+
+    - **`CanvasOverlay.js`** — two new `Gesture.Pan` handles at the left/right-middle
+      edges (`resizableWidth` prop, gated to `!captionStyleId && !isAutoCaption` at the
+      call site), reusing the corner handle's own rotation-aware projection trick: a
+      handle's "outward" direction is only meaningful in the overlay's own rotated
+      frame, so the finger's screen-space translation is projected onto that axis via
+      a dot product before it's allowed to change anything. Resizes **symmetrically
+      about the centre** rather than pinning the opposite edge - the latter would also
+      need x/y to move in a way that stays correct under rotation, solvable but
+      meaningfully more state for a first version.
+    - **Live drag shows a dashed ghost-box outline**, not a live text reflow - the
+      outline is a pure Reanimated transform (`useSharedValue`/`useAnimatedStyle`,
+      60fps, UI-thread only), while actual text reflow needs a real Yoga layout pass
+      from committed React state. The text catches up to the outline the instant the
+      finger lifts rather than continuously during the drag. A disclosed
+      simplification, not a limitation of the interaction model - live reflow is
+      buildable later if wanted.
+    - **New overlay field `boxWidthPercent`** — width at scale 1, as a percentage of
+      the frame, matching how `x`/`y` are already stored (resolution-independent,
+      composes correctly with a later corner-handle pinch: `scale` multiplies both
+      font size and box width the same way, so the two stay proportionally
+      consistent). `undefined` by default - every existing overlay, and every overlay
+      nobody has dragged, renders exactly as it did before this shipped.
+    - **The export side needed real work, not just plumbing.** The existing
+      `wrapTextLinesServer` wraps by a fixed word count (4/line), with zero knowledge
+      of font, size or frame width - fine as an approximation for auto-captions, which
+      never carry a box width, but would have silently disagreed with whatever the
+      user actually dragged on screen for a manual overlay, the exact "ships clean,
+      wrong on screen" shape this file's own history keeps warning about. New
+      `wrapTextLinesByWidth()` measures real candidate-line widths with the same
+      `labelWidth()` the highlight chip's word-boxing already uses, breaking only when
+      the next word would push a line past the target; a single word wider than the
+      target still gets its own line rather than splitting mid-word, matching what the
+      app's own `Text` component does at that same edge. Wired in only when
+      `boxWidthPercent` is present - every auto-caption and every un-resized overlay
+      keeps the unchanged word-count wrap, zero behaviour change for them.
+
+    Verified directly, not by reading: the wrap function against real ImageMagick
+    across three target widths (every multi-word line measured at or under its
+    target, the long-single-word edge case landing correctly on its own line), `expo
+    export` clean, and `check-gesture-composition.py` clean (two new leaf
+    `Gesture.Pan` instances - `.enabled()`/`.blocksExternalGesture()` only ever called
+    on those, never on a composition).
+
+    **First on-device pass found the handles unreliable** (commit `2b40d386`, update
+    group `a934f15d-76b0-46c5-8aa5-69584f89d9b2`) - dragging either side handle moved
+    the whole overlay instead of resizing it. Not `blocksExternalGesture` failing (the
+    same mechanism the corner handle already relies on) but how much of each handle's
+    hit box overlapped the element's own draggable area: the corner handle sits at an
+    actual corner, offset in both x *and* y, so only a small sliver overlaps; a side
+    handle offset in x only (vertically centred on the edge) had its hit box's whole
+    *height* already inside the box's own bounds on a single-line overlay, and at the
+    original `-HANDLE/2` offset half its *width* too - a much larger contested area for
+    the same arbitration to get right, and evidently enough for the element's pan to
+    win often. Fixed by pushing the hit box to sit almost entirely outside the box
+    (`-HANDLE*0.9`, matching the corner handle's own near-zero overlap) and adding an
+    explicit `hitSlop` to the gesture itself, so its actual catch area is meaningfully
+    larger than its 8pt visible bar.
+
+    **Second on-device pass found that fix real but incomplete** (commit `082d5a59`,
+    update group `d2f6e472-23a7-4289-a50b-2f5f2b812ff2`) - narrowed down together with
+    the user to a precise, reproducible split: works fine with no background on the
+    overlay, still very hard to drag with one. The actual mechanism: a plain text
+    overlay's own touchable area is sparse (just the glyphs), so a handle's hitSlop
+    reaching a little way back toward the box barely competed with anything real. A
+    background chip turns that same area into one solid, fully opaque `View` the main
+    pan gesture hits reliably everywhere inside it - and the first fix's `hitSlop`
+    (`{left:16,right:16,top:20,bottom:20}` on *both* handles) was extending 16-20px
+    **inward**, directly handing part of the handle's own catch area to that now much
+    more competitive surface. Two changes closed it: `hitSlop` is now asymmetric per
+    handle and never grows inward (left handle `{left:20,right:0,...}`, right handle
+    `{left:0,right:20,...}`), and the resting position moved from `-HANDLE*0.9` to
+    `-HANDLE` (fully outside, zero base overlap, not just mostly). Between the two
+    there is no hit-region overlap with the box's own content left at all, whether
+    that content is bare text or an opaque chip. **Untested on device** past this fix.
+17. **Firestore rules had no entry at all for `users/{userId}` — every account's plan/
+    credits read and write had been silently failing since the rules were last deployed
+    (Jun 19 2026).** Found Aug 11 2026 while checking a fresh signup's Firestore write
+    for item 6 (country capture) - `users/{uid}` simply didn't exist after signup, with
+    no error surfaced anywhere (the write is deliberately non-fatal, per item 6's own
+    design, so a Firestore failure can't cost someone their verification email). The
+    real cause was one level up: the deployed rules had `match` blocks for
+    `scheduledPosts`, `connectedAccounts` and `userVideos`, but nothing for `users` at
+    all - Firestore denies by default when no rule matches a path, so this was never a
+    timing race (the risk item 6 flagged when it was built), it was a flat permission
+    denial for every account, on every read and write, the entire time the credits
+    feature has existed. This is also what the "—" on the Plan & Credits section earlier
+    in this same testing session actually was - not a lazy-init delay, a rules bug.
+
+    **Fixed by deploying the missing rule**, matching the exact pattern already proven
+    safe for `connectedAccounts`:
+    ```
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    ```
+    No `firestore.rules` file exists in either repo - rules here are Console/Admin-SDK-
+    managed only, so this is the only record of them outside Firebase itself; worth a
+    real `firestore.rules` file + deploy tooling at some point, not done now.
+
+    **Verified with real client-authenticated requests, not admin access and not just
+    trusting the deploy**: minted a real ID token, confirmed a real REST write to
+    `users/{uid}` returned 403 *before* the fix (proving the bug, not assuming it),
+    deployed the corrected rules, confirmed the identical write returned 200 immediately
+    after, and confirmed a *different* uid was still correctly denied (the fix isn't
+    permissive beyond each user's own doc). A separate real GET request (same
+    client-auth path `usePlan()`'s own `onSnapshot` listener uses) confirmed reads work
+    too.
+
+    **Backfilled the two accounts this bug had already caught**, since the app has no
+    retroactive sweep and both were missing data an actual user would need:
+    `mumberemike4@gmail.com` (today's fresh signup - now has `country: 'Uganda'`,
+    confirmed with the user rather than guessed, plus the same free/5-credit/30-day
+    defaults signup already writes) and `ahumuzamark21213@gmail.com` (the project's own
+    main account, which predates the credits feature entirely and so was never seeded at
+    signup - given the same free-tier defaults, `country` deliberately left unset since
+    it was never asked for at that account's signup and there's no real value to write).
+    Every other pre-existing account, if any, remains unbackfilled - would need a real
+    migration sweep rather than a one-off script if that turns out to matter.
+18. **Verification email is now genuinely Tonefy-branded** (Aug 11 2026, app commit
+    `23a65afd`, published as update group `5a627f61-7fa0-445a-a211-a1527cf64dc3`, runtime
+    1.1.0; backend `Tonefy-react@469216cc`, deployed via `pm2 restart`). Direct request
+    after seeing the old email's raw unstyled link during item 6's signup test.
+
+    **Editing Firebase's own template turned out not to work for this project.** Tried
+    first, since it needed no new infrastructure: PATCHing
+    `notification.sendEmail.verifyEmailTemplate.body` via the Identity Platform admin
+    API (`identitytoolkit.googleapis.com/v2/projects/{id}/config`), authenticated with
+    the existing service account via `google-auth-library`. Every attempt - a
+    parent-object mask, a full leaf-level mask naming all five sub-fields, a body-only
+    mask with a trivially small test value - returned HTTP 200, and every single time a
+    **fresh, separate GET** (never trusting the write response) showed the body
+    completely unchanged. Nothing was damaged in the process - the other templates
+    (password reset, change-email, 2FA-added) were re-checked intact after every
+    attempt. The likely cause, not fully confirmed: this project's `notification.
+    sendEmail.method` is `CUSTOM_SMTP` (already routed through `ahumuzamark21213@
+    gmail.com`'s Gmail SMTP, not Firebase's default mailer), and the template-body
+    field may simply be inert once that's active - Console UI editing was not tried,
+    since it does not gate signup on that test.
+
+    **Fixed by bypassing Firebase's template system entirely.** New backend endpoint
+    `POST /api/send-verification-email` (`~/Tonefy-react/backend/server.js`) generates
+    the real link via `generateEmailVerificationLink()` and sends a genuinely branded
+    HTML email (Tonefy AI header, a real green `#2ECC71` "Verify Email" button, not a
+    raw link) through **the same Gmail SMTP account already configured for this
+    project**, via `nodemailer` with a new Gmail App Password
+    (`EMAIL_USER`/`EMAIL_APP_PASSWORD` in `~/Tonefy-react/backend/.env`, gitignored,
+    confirmed before committing). uid/email are read from the verified token
+    (`req.user`, via `getAuth().getUser()`), never the request body - the same lesson
+    the `media-to-video`/`edit-video` `userId` bug already taught this file (item 13):
+    a client-supplied email here would let anyone request a verification link for an
+    address that isn't theirs. `AuthScreen.js` calls this new endpoint in place of the
+    direct `sendEmailVerification()` call, and **falls back to Firebase's own default**
+    if the backend call fails for any reason - a plainer email beats no email at all.
+
+    **Verified for real, twice, not by reading**: a live test send to a real inbox,
+    visually confirmed by the user as correctly branded and rendering properly; then a
+    full run of the app's *actual* signup sequence from Node against the live backend -
+    create user, update profile, the Firestore write (confirming item 17's rules fix in
+    the real flow, not just in isolation), this new endpoint, a doc readback - all
+    succeeding together. Test account and its Firestore doc fully removed via Admin SDK
+    afterward (the client-side delete attempt correctly failed with permission-denied,
+    since it ran after signing out - confirming the rules are doing their job, not a
+    bug). **Password-reset and change-email templates were left exactly as Firebase's
+    defaults** - only the signup-blocking verification email was in scope; the same
+    branding treatment could extend to those later using the same pattern.
+
+    **BUG FOUND + FIXED Sep 14 2026 (`a312f21b`, published):** the SIGNUP path called the
+    backend endpoint (works), but the LOGIN screen's "Resend Email" (shown when an
+    unverified user tries to log in) called Firebase's own `sendEmailVerification` directly
+    - which does NOT deliver on this project (the very CUSTOM_SMTP inertness this item
+    documents) - so it showed "Sent!" and no email arrived, blocking anyone who signed up,
+    didn't get the mail, and tried again from the login screen. Fixed: the resend now
+    captures the ID token BEFORE `auth.signOut()` and calls `/api/send-verification-email`
+    (same working Gmail-SMTP path as signup), with a re-sign-in + Firebase fallback.
+    Verified the backend path end to end Sep 14: `transporter.verify()` OK, a real send
+    accepted 250 OK, and the live endpoint returned `{success:true}` for a fresh user.
+    **REAL deliverability problem found + fixed by switching to Brevo (Sep 14-15 2026).**
+    Gmail personal-account SMTP *accepts* the send (250 OK) but **does NOT deliver to an
+    EXTERNAL inbox** - the earlier "works" test was Gmail->itself (a `+alias`, always lands);
+    a genuine send to a different Gmail never arrived anywhere (inbox/spam/promotions), which
+    is what actually blocked new signups. Fixed by routing the mailer through **Brevo**
+    (the owner already had an account, 300 emails/day free): `emailTransporter` now uses
+    `smtp-relay.brevo.com:587` with `BREVO_SMTP_LOGIN` + `BREVO_SMTP_KEY` when set (else falls
+    back to Gmail), logging `[email] transport: Brevo` at boot. The `from` is `EMAIL_FROM`
+    (`ahumuzamark254@gmail.com` - the address the owner VERIFIED as a Brevo sender; Brevo
+    refuses an unverified from). **Verified Sep 15: a real cross-account send AND the real
+    /api/send-verification-email endpoint both land in Gmail PRIMARY inbox.** Signups
+    unblocked. Two follow-ups: (a) **regenerate the Brevo SMTP key** - it was pasted into the
+    chat during setup (low risk, but rotate it: Brevo -> SMTP & API -> regenerate, then
+    update `.env`); (b) OPTIONAL long-term: authenticate the `fitlifesolutions.site` domain
+    in Brevo (Cloudflare DNS: DKIM/SPF/DMARC) and send from `noreply@fitlifesolutions.site` -
+    Brevo warns the gmail freemail from-address isn't compliant with Google/Yahoo bulk-sender
+    rules; it lands in Primary today on Brevo's reputation, but domain auth is the gold
+    standard if volume grows.
+    **Verification RETURN-TO-APP (Sep 15 2026):** the link used to dead-end on Firebase's
+    bare "email verified" page. `generateEmailVerificationLink` now passes
+    `ActionCodeSettings.url = https://tonefy-ai.fitlifesolutions.site/verified.html` (already
+    an authorized domain), so after Firebase verifies, its page shows a Continue that lands
+    on the branded `verified.html`, which deep-links back into the app via the `tonefyai://`
+    scheme (registered in app.json + AndroidManifest). Not fully seamless - Firebase still
+    shows its interstitial with a Continue tap; a **custom action handler** (our own page
+    calling `applyActionCode`, set as the Console "action URL") would remove that
+    interstitial entirely if wanted - not done.
+    Also note: **Google Sign-In users are intentionally NOT asked to verify** - Google has
+    already verified the email (`emailVerified:true`), so `handleGoogleSignIn` correctly
+    skips the check that the email/password path applies. Working as intended.
+19. **Every popup in the app is now Tonefy-branded** (Aug 11 2026, commit `d8570d98`,
+    published as update group `17363fc2-4e7a-4497-8e27-8732c80cf56a`, runtime 1.1.0).
+    Direct request following the verification-email work above. Native `Alert.alert`
+    renders the OS's own dialog - nothing in RN can style it - so every popup in the
+    app had looked like stock Android regardless of how the rest of the screen was
+    themed.
+
+    **`components/BrandedAlert.js`** is a drop-in replacement: identical signature
+    (`title, message, buttons, options`), identical `{text, style, onPress}` button
+    shape, so every call site converts with a literal token swap
+    (`Alert.alert(` → `showAlert(`) rather than a rewrite. Renders the same bottom-sheet
+    chrome every other modal in the app already uses - `#111` sheet, rounded top
+    corners only, green `#2ECC71` for the default/commit button (matching the
+    established brand rule - see "Design/brand note" above), red-bordered destructive,
+    neutral cancel. Imperative by design, like the thing it replaces: a module-level
+    ref to the mounted host's own `setState`, set once by `<BrandedAlertHost />` in
+    `App.js` (inside `GestureHandlerRootView`, alongside `NavigationContainer`, so it
+    survives every screen) rather than each of ~114 call sites needing its own modal
+    state.
+
+    **All 114 real `Alert.alert(...)` calls across 10 screens converted mechanically**
+    (`ConnectAccountsScreen`, `UrlToVideoScreen`, `AuthScreen`, `CalendarScreen`,
+    `EditVideoScreen`, `EditPostVideoScreen`, `ProfileScreen`, `IdeaToVideoScreen`,
+    `NotificationsScreen`, `ScriptToVideoScreen`) - a scripted replace verified 1:1 by
+    count per file (before-count of `Alert.alert(` matched after-count of `showAlert(`
+    for every file, not just eyeballed), plus the matching import added to each. The
+    `.bak_*` recovery snapshots were correctly left alone - grepped and confirmed not
+    part of the live build. Every button pattern already in use (single-button info,
+    cancel/destructive pairs, 3-button) maps onto the new component with no call-site
+    rewrite beyond the token swap, confirmed by spot-checking a converted
+    destructive-delete call site to make sure its button array survived intact.
+
+    Verified: `expo export` clean, `scratchpad/jsxrefs.py` clean (the new
+    `BrandedAlertHost` tag resolves). **Untested on device.**
+20. **Export ANR on projects with many overlays — fixed** (Aug 11 2026, commit
+    `22dae4d0`, update group `89dcde4c-c720-4387-98e1-b01f61b94744`, runtime 1.1.0).
+    Reported from a device test: export looked stuck at 60% ("Adding text &
+    overlays..."), then Android showed "Tonefy AI isn't responding." Checked the
+    backend's own `jobs.json` directly rather than trusting the symptom - the job had
+    actually finished (`status:"done", progress:100`) several minutes after the app's
+    poll log showed its last request. The server was never the problem.
+
+    **Root cause: the text-overlay render loop had no memoization at all**, unlike
+    `mediaOverlayViews` right above it, which already solved this exact problem with
+    `useMemo`. Every unrelated re-render - an export progress tick from `pollJob`'s
+    `setProgress`/`setMessage`, firing every 2s and having nothing to do with overlay
+    content - rebuilt every `CanvasOverlay` from scratch for every overlay in the
+    project, each one constructing seven `Gesture.Pan` objects (five pre-existing, two
+    added by item 16's box-width resize). On a project with enough overlays
+    accumulated - this session's test project had several, including one long
+    paragraph duplicated across multiple clips - that per-tick cost was apparently
+    enough to eventually freeze the JS thread. Since `pollJob`'s own `setInterval` runs
+    on that same thread, the freeze stopped its own timer from firing too, which is
+    what turned a slow export into an apparently-stuck one and triggered the ANR.
+
+    Fixed by wrapping the render in `useMemo`, matching `mediaOverlayViews`' existing
+    pattern exactly (new `textOverlayViews`). `position` stays a real dependency -
+    auto-captions gate on it and a highlight style's active word depends on it - so it
+    still recomputes correctly during playback; only state this list has nothing to do
+    with (export progress, poll messages) no longer forces a recompute. One correctness
+    fix needed alongside it: `onChangeText` was an inline per-render closure over each
+    overlay's key, which would have defeated the memo for every overlay on every
+    render - replaced with the stable `setOverlayText(key, text)` callback itself, with
+    `TextOverlayContent`'s caret `TextInput` now supplying `overlay.key` at the call
+    site instead of the parent closing over it.
+
+    Verified: `expo export` clean, `scratchpad/jsxrefs.py` clean. **Untested on
+    device** - the mechanism fits every symptom reported, but not yet confirmed closed.
+21. **Text overlays hidden on canvas during an active transition blend** (Aug 11 2026,
+    commit `00c93e1d`, update group `c7c1c95b-944e-4b95-b34d-89e93bc34fba`, runtime
+    1.1.0). Same device-test session as item 20 - text/captions looked visually wrong
+    ("squeeze tall") while a transition was blending. Direct request rather than a
+    root-cause chase: a caption or manual overlay has no transition of its own, so it
+    was sitting flat on top of a clip that's moving/masked/scaled underneath it - not
+    shown for that span is the simplest correct behaviour.
+
+    Gated on `joinLayers.active` specifically, not `activeJoin` - the latter is true
+    for the whole 1.5s lookahead window the incoming clip pre-mounts during
+    (deliberately invisible prep, not yet blending, see the comment above `activeJoin`
+    itself), while `.active` is only the actual 0.3s the two clips are visibly
+    crossing. Gating on the longer window would have made text disappear noticeably
+    before anything was happening on screen. **Preview-only** - the export's own
+    transition rendering (ffmpeg `xfade`) is a separate mechanism from this RN-side
+    approximation and was not in scope of what was reported. **Untested on device.**
+22. **"Stuck at 60%" was real the second time, not the same bug as item 20** (Aug 11
+    2026, `~/Tonefy-react/backend@38549dfc`, deployed via `pm2 restart`). After item 20
+    shipped, a fresh export attempt still reported the same symptom. Checked
+    `jobs.json` directly rather than assuming the fix hadn't landed: this time the job
+    itself genuinely showed `status:"pending", progress:60` for **over six minutes**,
+    re-checked later and confirmed it had eventually reached `status:"done"` - a real,
+    multi-minute stretch of the export doing something with zero progress reported,
+    not the client losing track of an already-finished job like item 20 was.
+
+    **The gap**: `/api/media-to-video`'s own progress markers jump straight from 60%
+    ("Adding text & overlays...") to 80% ("Mixing audio...") with nothing reported in
+    between, regardless of how many overlays there are or how long the mask/alpha/
+    fill/composite chain (several `convert` shell-outs per overlay) takes for each one.
+    A project with several overlays - especially a long one, which pays per-word for
+    `wrapTextLinesByWidth`'s real measurement when `boxWidthPercent` is set (item 16) -
+    could sit on that one frozen message for minutes with no visible sign anything was
+    happening.
+
+    **Fixed by reporting progress after every overlay finishes**, scaled across the
+    same 60-80% band the two existing markers already bracket, with a running count in
+    the message (`"Adding text & overlays... (3/7)"`). Does not make the loop faster -
+    the underlying per-overlay cost is unchanged - only makes the number the client
+    polls actually move instead of sitting frozen for the whole span, which is what
+    read as hung. Whether `wrapTextLinesByWidth`'s per-word cost is itself worth
+    optimizing (e.g. a smarter search instead of linear word-by-word measurement) is a
+    real open question this did not attempt to answer - flagged, not fixed, since
+    changing that measurement's actual algorithm risks a correctness regression under
+    time pressure and the progress-reporting fix already addresses the reported
+    symptom. **Untested on device** past a real completed job confirmed via `jobs.json`.
+23. **The real cause of item 22's slowness: 391 overlays, rendered fully sequentially**
+    (Aug 11 2026, `~/Tonefy-react/backend@9f2e9ca9`, deployed via `pm2 restart` once
+    confirmed no render was in-flight). The count came straight from the device's own
+    progress message once item 22 made it visible (`"Adding text & overlays...
+    (353/391)"`) - a highlight-style caption sends one overlay per spoken word (the
+    phrase stays on screen, only which word is chipped changes - see "Type on the
+    canvas" above), so a normal-length voiceover means hundreds of these, each paying
+    several real `convert` process-spawns on top of its own image work, fully
+    sequentially.
+
+    **New `mapWithConcurrency`** runs 4 at a time instead of one, overlapping that
+    spawn overhead. Kept modest rather than higher - this VPS runs other pm2 processes
+    too, and a mask/alpha/fill/composite chain is real CPU work (dilate, blur), not I/O
+    wait that more workers would help hide.
+
+    **Naively parallelizing would have undercut `phraseLayerCache` itself** - that
+    cache only writes the shared shadow/glow/stroke layers back once a word finishes
+    (the single most expensive call in the whole caption path, 380ms, identical for
+    every word of a phrase per its own comment), so two words of the *same* phrase
+    running at once would both miss the cache and both pay that cost redundantly - not
+    wrong output, but exactly the wasted work that cache exists to avoid, potentially
+    offsetting whatever concurrency gained. Fixed by grouping `textOverlays` by
+    `(text, font, size, captionSpec)` before anything runs - every word of one phrase
+    carries the identical tuple - so each phrase's own words stay together and run
+    sequentially (the cache still helps exactly as before), while different
+    phrases/overlays run concurrently with each other.
+
+    Verified: `node -c` clean, and the grouping logic checked in isolation against a
+    realistic three-phrase input (one 3-word and one 2-word highlight-style phrase,
+    plus an ordinary singleton overlay) - correctly formed three groups with each
+    phrase's words kept together in original `activeWord` order. The per-overlay
+    rendering logic itself is completely unchanged, only the outer iteration structure.
+    **Not independently verified end-to-end against a real 391-overlay render or
+    compared byte-for-byte against the old sequential output** - deployed given the
+    user was actively waiting and the reasoning is solid, but this is the piece most
+    worth double-checking (word timing, which word is highlighted, chip position) on
+    the next real export if anything looks even slightly different.
+24. **Overlay render concurrency tuned from 4 to 6, measured not guessed**
+    (`~/Tonefy-react/backend@cb8fc8b1`). Direct request - "make it faster, check before
+    implementing" - after item 23's fix confirmed working. Benchmarked the actual
+    mask/alpha/dilate/composite chain this loop runs (the real four `convert` calls,
+    not a synthetic stand-in) at concurrency 1/4/6/8/12, live, with this VPS's other
+    pm2 processes already running: 208/41/29/36/29 ms/overlay. 6 - this box's real
+    core count, confirmed via `nproc`, not assumed - beat the previous setting of 4 by
+    ~30%; 8 was worse than 6 (contention past the real core count, exactly as expected
+    for CPU-bound work); 12 matched 6 with no further gain. 6 is the measured ceiling
+    for this specific hardware, not a round number picked by feel - revisit if this
+    VPS's core count or its other workload changes.
+
+    Checked the rest of the export pipeline for the same class of opportunity before
+    stopping: the clip-combining/transition stage builds one ffmpeg `filter_complex`
+    graph and runs it as a single process, not a loop of shell-outs, so there is
+    nothing to parallelize there the same way - its speed is bounded by ffmpeg's own
+    internal threading. The one per-clip loop there (duration probing) is unlikely to
+    matter in practice, since real projects have a handful of clips, not the hundreds a
+    highlight-caption's one-overlay-per-word count reaches.
+
+    **A bigger, unexplored option**: this benchmark's own sequential number (208ms for
+    an operation ImageMagick itself completes in a few ms) says most of that cost is
+    process-spawn overhead, not image work - `convert` is invoked as a fresh OS process
+    per call, four times per overlay. A persistent-worker or native-binding approach
+    (avoiding the spawn entirely) could plausibly beat even concurrency=6 by a wide
+    margin, but is a real architecture change - a new dependency or a long-lived
+    ImageMagick process to manage - not attempted here. Worth a dedicated look if
+    export speed is still a priority after this.
+25. **`readJson()` threw before its own callers' 402/403 branches could ever run -
+    every rejection showed a raw JSON dump instead of the branded upgrade prompt**
+    (app commit `61d552eb`, published as update group
+    `6e711407-fe92-490b-afe0-494daa0225aa`, runtime 1.1.0; backend wording change
+    `Tonefy-react@c2e95557`). Reported from a device screenshot: the credit-limit
+    rejection showed `Server error (402). {"error":"No credits remaining..."}` inside a
+    plain "Error" alert, not `promptUpgrade`'s branded sheet - a feature this app
+    already has, that never fired.
+
+    **The actual bug**: `readJson()` threw immediately on any non-ok response, but
+    nearly every one of its ~13 call sites in `EditVideoScreen.js` was written
+    expecting it to *return* the parsed body instead - `const data = await
+    readJson(res); if (data.error) throw new Error(data.error)` is the dominant
+    pattern in this file, and the three call sites with explicit 402/403 handling for
+    `promptUpgrade` follow the identical shape. Since `readJson` threw before any of
+    those lines ever ran, every one of those branches was dead code - every
+    rejection, credit-limit included, fell through to the generic catch block showing
+    whatever `readJson`'s own raw-text fallback produced. That fallback is what put
+    unparsed JSON on screen.
+
+    **Fixed at the source** rather than patching each call site: a non-ok response now
+    returns its parsed JSON body (matching what almost every caller already assumed)
+    as long as the body is real JSON - only a response with nothing parseable at all
+    (an nginx error page, a timeout) still throws a translated message, since there is
+    nothing structured to hand back in that case. Verified against a real 402 from the
+    live backend, not by reading: minted a token for a 0-credit test account, hit
+    `/api/media-to-video` for real, confirmed `readJson` now returns `{jobId:
+    undefined, error: "..."}` instead of throwing - exactly the shape the export
+    flow's `if (!jobId) { promptUpgrade(...) }` needs to finally run.
+
+    **Also softened the wording** of all five plan-limit rejections while in there (a
+    second, separate part of the same request) - credits exhausted, export-too-long
+    (x2, the sync check and the async-job-failure check), voice/caption-style locked
+    (x2) - to read as an explanation rather than a command: "You've used all your
+    credits... they'll refresh automatically" instead of "No credits remaining...
+    Upgrade or wait", "is available on the Pro and Creator plans" instead of "needs a
+    Pro or Creator plan". No change to when these fire or their status codes.
+    **Untested on device.**
+26. **"This cycle" replaced with the actual reset date** (`~/Tonefy-react/backend@
+    4fa04238`). Direct follow-up question - "cycle" didn't say whether that meant
+    daily, weekly or monthly. Checked against the code rather than assumed:
+    `FREE_RESET_MS` is a rolling **30 days** from whenever an account's credits were
+    last set, not a calendar month - so "monthly" would have been a real, and
+    inaccurate, claim. `checkRenderAllowed` already had `creditsResetAt` sitting on
+    the same account record it was already reading `plan`/`creditsRemaining` from -
+    just never destructured it. Now formats it directly into the message ("They
+    refresh every 30 days - yours reset on August 23") instead of making someone open
+    Profile to find out when "later" actually is, with a plain "every 30 days"
+    fallback for the should-be-impossible case where the field is missing. Verified
+    against a real 402 from the live backend with a test account 12 days from reset.
+    Backend-only, already live - no app update needed.
+27. **Video/audio/uploads/music static routes had no cache headers at all** -
+    `~/Tonefy-react/backend@3e28e8d2`. Reported symptom: restoring a saved draft (and,
+    separately, adding a music track or voiceover) took a very long time. Checked
+    before touching anything, per direct instruction: `/videos` and `/audios`'
+    `express.static` config had no `maxAge` set, unlike `/stickers`/`/filters`/
+    `/transitions` a few lines below, which already had `maxAge: "30d"`. `/music` and
+    `/uploads` were missing it too - four of the routes this app depends on most were
+    the ones with no caching at all.
+
+    Every filename under these routes is unique per render or upload (`uniqueName()`
+    bakes in a timestamp and a UUID) - a URL's content can never change under this
+    app, exactly the "safe to cache forever" case the sticker/filter/transition routes
+    already covered. Without `Cache-Control`, the device had no reason to believe a
+    repeat request for the same clip or voiceover could be served from its own cache -
+    restoring a draft, reopening the editor, even re-selecting a track already played
+    once this session, was a full re-download from zero every time.
+
+    Verified against a real request, not by reading: `curl` against `/music` before
+    was missing `Cache-Control` entirely; after, it sends `public, max-age=2592000` -
+    byte-identical in shape to `/stickers`' own header, confirming the same
+    `express.static` mechanism applies correctly. **Known limit of this fix, stated
+    plainly**: it helps *repeat* loads of a file already fetched this device has ever
+    fetched before within the 30-day window - the very first download of any file is
+    unchanged, still a full fetch. Also unverified: whether `expo-av`'s audio playback
+    layer (as opposed to plain `fetch`/`Image` requests, more standard territory)
+    actually honours this header on-device - a real, not just a plausible, remaining
+    question, since native media player HTTP caching behaviour varies by platform and
+    wasn't checked directly. Backend-only, already live.
+
+28. **Google Sign-In was broken by a Play App Signing key rotation, not by any app
+    code** (Aug 15 2026, app commits `a0c2bbb0`, `52470e62`; nothing rebuilt, nothing
+    published - the whole fix was server side at Google). This had survived a full
+    prior session of troubleshooting that verified the right things and still missed
+    it, so the reasoning is worth keeping in full.
+
+    **Symptom history, which is itself the clue.** First `signIn()` returned
+    `{"type":"cancelled","data":null}` *after* the account picker had appeared and an
+    account had been chosen ("Checking info…", then silence). Later the same build,
+    untouched, started throwing `DEVELOPER_ERROR` instead. Both are the same
+    underlying rejection: with the legacy `GoogleSignInClient`, an app whose
+    certificate resolves to no OAuth client is refused, and whether that surfaces as
+    12501 `SIGN_IN_CANCELLED` or status 10 `DEVELOPER_ERROR` is not stable enough to
+    diagnose from. **A "cancelled" that the user did not cause is a config rejection**,
+    not a UI event - that is the reading that was missed the first time round.
+
+    **Root cause: the app signing key had been rotated on 11 Aug 2026, 19:45**, visible
+    in Play Console → Test and release → Setup → App integrity → App signing as a
+    "Previous app signing keys" row. Only the *current* key's fingerprint
+    (`441012e0…`) had ever been registered on the Firebase Android app. The
+    pre-rotation key, `afdd7e07…`, was registered nowhere - and the install on the test
+    device dated from around the rotation, so it still presented the old certificate.
+    Google's own guidance for Play App Signing key rotation is to register **both** the
+    old and the new fingerprint with every API provider: Play services APIs resolve app
+    identity through the rotation lineage rather than simply switching to the newest
+    key. Fixed by registering `afdd7e07…` via the Firebase Management API
+    (`projects.androidApps.sha.create`); Google auto-created a third `client_type=1`
+    OAuth client for it, confirmed by re-pulling the config. **Confirmed working on
+    device immediately after, with no rebuild and no `eas update`.**
+
+    **Why the earlier session's checks all passed and still missed it.** Every
+    individual thing it verified was true: both SHA-1s "registered in Firebase" (they
+    were - just not *all* the relevant ones), webClientId matching, OAuth consent
+    screen in production, Credential Manager ruled out. The gap was that "both SHA-1s"
+    meant *upload key + current app signing key* - the two a normal project has. A
+    rotated key means there are **three**, and nothing about the Firebase Console
+    prompts you to notice a fourth is possible. The device-state theory that session
+    landed on (Google anti-abuse restricting a churned device) was wrong, and it is
+    worth noting how plausible it looked: it explained the symptom, required no further
+    checking, and would have kept looking right forever.
+
+    **The check that would have found it in one step**, for next time: read the App
+    signing page for *how many* certificates exist, not for whether one number matches.
+    A rotated key shows a "Previous app signing keys" table; a Quantum-ready-beta
+    enrolment shows a second "Post-quantum cryptography key" fingerprint alongside the
+    Classical one. Both are extra certificates the app can present and both need
+    registering. **The post-quantum fingerprint is still unregistered** - it was queued
+    as the next thing to try and turned out not to be needed. If sign-in ever regresses
+    on a fresh install, that is the first thing to add.
+
+    **Also fixed along the way:** the committed `android/app/google-services.json` was
+    stale - it carried only the upload key's OAuth client, missing the current app
+    signing key's. Refreshed from `projects.androidApps.getConfig`. Worth being precise
+    about what this did and did not do: **that file is not read at runtime for this
+    flow** (Play services validates package + certificate against Google's servers, not
+    against the file), so refreshing it fixed nothing on device - it was fixed because
+    it was wrong. This is also why the whole repair needed no new build. Note the file
+    would have gone stale again on any future SHA change, since this project's
+    committed `android/` folder means nothing regenerates it automatically.
+
+    **Play Billing: the purchase failure is Google's, not ours - stop testing it.**
+    `requestSubscription()` returning "That item is unavailable" (`ITEM_UNAVAILABLE`,
+    Billing response code 4, from `launchBillingFlow`) was traced to the **payments
+    profile still being under review**. Play cannot process a subscription purchase
+    until the merchant account is active, and this is how that surfaces. Everything
+    else was verified correct against the Play Developer API rather than the Console:
+    both products Active, all four base plans Active with
+    `newSubscriberAvailability: true`, Uganda in the region list at the exact prices the
+    device displayed ($8.25 / $17.69 - which also **rules out propagation delay**, the
+    previous session's leading theory, since prices only render if `getSubscriptions`
+    found the products), versionCode 8 `completed` on the alpha track, and product /
+    base-plan ids matching `SubscriptionScreen.js` and `planFromBasePlanId` exactly. The
+    app-side and native purchase path was read end to end and is correct. Retest when
+    the bank verification clears; nothing to change before then.
+
+    **The Google Play Android Developer API was disabled in the Cloud project**
+    (`527163602306`) and was enabled during this session. This is not cosmetic:
+    `/api/verify-purchase` calls `purchases.subscriptionsv2.get`, so **every purchase
+    verification would have failed** with the generic "Could not verify this purchase",
+    granting nothing after a real payment. It had never been exercised because no
+    purchase had ever completed. The service account could not enable it itself
+    (`serviceusage.services.enable` denied) - this needs a project owner in the Console.
+
+    **`~/Tonefy-react` was tracking 7,034 files under `backend/node_modules`**
+    (`5571116f`). `node_modules/` had been in `.gitignore` all along, but gitignore has
+    no effect on files git already tracks. The concrete risk, not a theoretical one:
+    the previous session's `npm audit fix` showed up as hundreds of modified files
+    indistinguishable from real work, and a `git checkout`/`git stash` there would have
+    silently reverted the security fix to the vulnerable versions. Untracked with
+    `--cached` (working tree and the running pm2 process untouched), along with six
+    rendered test videos; `server.js.bak_*` snapshots now ignored.
+
+    **Still open from this session:** the temporary raw-response diagnostic in
+    `handleGoogleSignIn` (`57d29b2f`) is still shipped and can now be removed, since the
+    thing it was added to diagnose is understood. The security fixes committed last
+    session (`utils/secureAuthPersistence.js`, password strength) still need a native
+    build to reach a device - `expo-secure-store` is a native module. The 12-tester /
+    14-day production-eligibility window still has not been started, and now only waits
+    on the purchase flow, which waits on Google.
+
+
+29. **Upgrade Plan grey-screened; an ErrorBoundary now makes a render throw say what it
+    hit** (Aug 15 2026, commits `180425ff`, `980cdb22`, `07a3691a`). Three separate
+    things, in the order they were found, because the order is the lesson.
+
+    **`components/ErrorBoundary.js` is the durable part.** A render-time throw unmounts
+    the tree and leaves the bare window background - the grey screen this project has
+    now hit four times (`75198f47` gesture composition, `bf87b82e` useDragTracker,
+    a deleted component's surviving call site, and this). Every one passed
+    `expo export`, `node --check` and lint; every one cost a round trip to a device
+    just to learn the *name* of what failed. It prevents none of them. It only makes
+    the tree report the error and its component stack instead of vanishing. Wrapped
+    around `Stack.Navigator` from inside `NavigationContainer`, so `navigationRef` and
+    `BrandedAlertHost` survive and "Try again" re-renders the navigator rather than the
+    app. **Kept permanently, not as a temporary diagnostic** - the failures it covers
+    are reachable only on a device, so the moment it pays off is always in someone's
+    hands and never in front of a build check. It paid off on first use: the answer
+    came back as `E_IAP_NOT_AVAILABLE at SubscriptionScreen` on the very next launch,
+    after static inspection (route registered, every theme token present, jsxrefs
+    clean, `usePlan()` guarded on every path) had already been exhausted.
+
+    **The crash: `purchaseUpdatedListener`/`purchaseErrorListener` are not passive.**
+    Each constructs a `NativeEventEmitter` over the IAP native module, so each calls
+    `checkNativeAndroidAvailable()` and throws synchronously when the module is absent
+    (`react-native-iap/src/internal/platform.ts:23`). Both sat *outside* the try/catch
+    already wrapping `initConnection`/`getSubscriptions` - whose own comment says the
+    intent was to fall back to the hardcoded prices. The listeners defeated that
+    intent, and a throw in an unwrapped effect unmounts the tree. `endConnection()` in
+    the cleanup reaches the same module and needed the same wrapping. The screen now
+    degrades: fallback prices, an explicit notice, and Subscribe reporting why. Worth
+    keeping as a shape, not just a fix - **an `await x()` inside a try tells you
+    nothing about the un-awaited call two lines below it**.
+
+    **The mistake I made in the middle of this, which cost a publish cycle.**
+    `180425ff` was published to `production` while carrying `cefa6fed`, which had added
+    `expo-secure-store` *after* versionCode 8 was built. That module's JS calls
+    `requireNativeModule('ExpoSecureStore')` at import time and reads constants off the
+    result, so `import * as SecureStore` throws while the file is being evaluated -
+    and `firebase.js` imports it, and every screen imports `firebase.js`. That is not a
+    degraded feature, it is the app failing to launch. **CLAUDE.md already stated this
+    rule** under "Working conventions to keep"; it was published straight past without
+    checking. Fixed in `980cdb22` by requiring it lazily inside a `try` with a guard at
+    each of the three call sites, matching `utils/notifications.js`. Two things worth
+    carrying forward: it never reached the device (which is *also* why the ErrorBoundary
+    in that same update did not appear, and the user's "still grey" report was the old
+    bundle - a stale-bundle reading that could easily have been mistaken for the fix not
+    working); and `removeItem`'s existing `.catch(() => {})` was not protection, since a
+    missing method throws synchronously when called and a catch on the returned promise
+    never sees it. **Before any `eas update`, diff `package.json` against the commit the
+    installed build was cut from.** One line, and it would have caught this.
+
+    **Resolved: Play served the internal-testing build, not the closed-testing one.**
+    Google Play ranks tracks - **internal > closed > open > production** - and serves a
+    tester the build from the highest-priority track they are opted into, regardless of
+    which link they installed from or how much newer another track is. This account was
+    on both, so every install had been quietly getting `internal`, which still held
+    **versionCode 2** from long before the subscription work existed, while `alpha`
+    moved from 6 to 8. The Play Store listing says so plainly once you know to look -
+    "Tonefy AI (Internal Early Access)". Fixed by promoting versionCode 9 to **both**
+    tracks; confirmed on device, with the notice gone and all four prices matching what
+    the Play Developer API reports for Uganda exactly ($8.25/$17.69 monthly,
+    $82.59/$176.99 yearly). **Keep the tracks in step from now on** - releasing to
+    closed testing alone does not reach a tester who is also an internal tester, and it
+    fails silently, looking exactly like an app bug rather than a distribution one.
+
+    The evidence that had looked contradictory resolves cleanly under this: the same
+    device really did show live converted prices in an earlier session, on a build
+    installed directly from EAS rather than through Play. Everything else followed -
+    Google Sign-In worked because those native modules are old and present, the
+    subscription screen appeared because it is JS delivered over the air, and Play
+    Billing was absent because it was never compiled into versionCode 2.
+
+    **How it was chased, since the same trap is easy to fall into again.** The notice reports `Installed 1.0.0 (build ?)` with the
+    fallback prices `$6.99`/`$14.99` showing, so the module is genuinely absent rather
+    than misbehaving. Ruled out rather than assumed: `react-native-iap` is unchanged at
+    12.16.4 across every commit since the session where this same device *did* show real
+    converted Play prices ($8.25/$17.69, matching the Play Developer API for Uganda);
+    the APK published on the website has no billing classes at all but is on the
+    `preview` channel and so cannot take a `production` update; and both finished
+    production builds (versionCode 6 from `b42353e4`, versionCode 8 from `040879c0`)
+    post-date the react-native-iap commit, so both contain it. Build 8 certainly does -
+    `missingDimensionStrategy "store", "play"` was only *needed* because Gradle was
+    linking the module, and the Kotlin patch only mattered because it was being
+    compiled. The leading explanation is versionCode 2, still sitting on the internal
+    testing track, which predates the subscription work entirely - which is what it
+    turned out to be. `Constants.nativeBuildVersion` came back undefined and did not
+    identify the binary; the reliable device-side reads are Settings -> Apps -> Tonefy
+    AI, and the Play Store listing's own title.
+
+    **The one query that would have found it immediately** is the track listing, which
+    names the installed-build problem in two lines and needs no device:
+
+    ```
+    alpha:    versionCodes=["9"] completed
+    internal: versionCodes=["2"] completed   <- what the phone was actually being served
+    ```
+
+    Reachable via `edits.insert` -> `edits.tracks.list` -> `edits.delete` on the
+    Play Developer API. Worth running whenever a device's behaviour disagrees with what
+    was built, before anything else is suspected.
+
+    **Build 9 was cut at `07a3691a`** to settle this and to carry the
+    two fixes that cannot ship over the air (`utils/secureAuthPersistence.js`,
+    password strength). `eas.json` has `appVersionSource: remote` with `autoIncrement`
+    on the production profile, so the versionCode is assigned by EAS rather than by
+    `android/app/build.gradle` - which still reads `versionCode 1` and is not the
+    number that ships. `runtimeVersion` stays 1.1.0, so every update already published
+    applies to it. Verified inside the artifact rather than trusting the green tick -
+    the AAB's dex carries 33 `RNIapModule` references plus `PendingPurchasesParams` and
+    `QueryProductDetailsResult` (so the Billing 8.0.0 patch really did apply on EAS's
+    machine, which is the part `patch-package` could silently skip) and
+    `com.android.vending.BILLING` is in the manifest.
+
+    **`eas submit` could not be used** - it wants a Google service account key set up
+    interactively and refuses in `--non-interactive`. Uploaded straight through the
+    Play Developer API instead (`edits.bundles.upload` -> `edits.tracks.update` ->
+    `edits.commit`), which the existing Firebase service account already had permission
+    for, so no new credential was needed.
+
+
+30. **A real Play Billing purchase completed end to end — Pro granted, credits set,
+    purchase acknowledged** (Aug 15 2026; app `82518c5b`, `3e008f1c`; build 9 =
+    versionCode 9 from `07a3691a`, on both Play tracks). This is the first time the
+    subscription chain has ever run: `/api/verify-purchase` had **zero** entries in the
+    backend log before tonight, so every part of it downstream of Play was unproven
+    code. Confirmed on device and in Firestore, not inferred: `plan=pro`,
+    `creditsRemaining=60`, `subscriptionProductId=tonefy_pro_monthly`,
+    `processedPurchases=1`, with the app showing "You're upgraded!", the Pro card
+    switching to "Current Plan", and ProfileScreen moving to **Pro Plan / 60 of 60** with
+    no restart - which is `usePlan()`'s `onSnapshot` listener working as designed.
+
+    **The payments profile was never the blocker, and saying it was, was a mistake.**
+    Google's test sheet ("Test card, always approves", `US$8.25/5 min` - test
+    subscriptions renew every 5 minutes rather than monthly) processed fine with bank
+    verification still under review. The earlier `ITEM_UNAVAILABLE` had a second
+    candidate explanation all along - Play Billing refuses to sell to an app the Play
+    Store did not install, and that earlier attempt ran on a build installed straight
+    from EAS. The reasoning that picked the wrong one is worth naming because it
+    appeared **twice in one session**: *everything else checks out, therefore it must be
+    X*. Both times "everything else" had not actually been checked - the binary was
+    wrong (item 29) and the install path was wrong here. An elimination argument is only
+    as good as the enumeration behind it.
+
+    **The bug this exposed is the one that would have cost real money.**
+    `purchaseUpdatedListener` is registered in `SubscriptionScreen`'s effect and removed
+    on unmount, alongside `endConnection()`. Play delivers a purchase asynchronously,
+    after its own "require authentication for purchases?" prompt - by which point the
+    sheet was dismissed and the user was on Profile. The screen had unmounted, nothing
+    was listening, and the backend was never called. **Nothing picked it up afterwards
+    either**, because no code path ever asked Play what the account already owns.
+
+    That second half is the serious one: an unverified purchase is also an
+    **unacknowledged** purchase, and Google auto-refunds those after three days. A real
+    customer would pay, receive nothing, and be silently refunded, with no error
+    anywhere for anyone to notice. **A listener alone cannot close this** - it only fires
+    while one particular screen happens to be mounted.
+
+    Fixed in `82518c5b`: `getAvailablePurchases()` now runs once after
+    `initConnection()`, and anything still unacknowledged is verified. Silent on that
+    path, since on the ordinary route the listener has already handled it and the pass
+    finds nothing. Verification is one `useCallback` shared by both routes, so the
+    ordering that matters - **acknowledge only after the backend has recorded the
+    grant**, never before - cannot drift between them. Deliberately not moved to an
+    app-level listener: the restore pass covers that case *and* one an app-level
+    listener still would not, a purchase landing while the app is not running.
+
+    **`3e008f1c` is a follow-up to a defect introduced by the fix itself.** `82518c5b`
+    listed `verifyPurchase` in the setup effect's dependencies, so a change in its
+    identity re-ran the whole effect - repeating `initConnection`, both listener
+    registrations and the restore pass. The grant log shows the result: **four parallel
+    POSTs for one purchase token within 55ms**. Held in a ref instead, effect back to
+    empty deps.
+
+    **Which incidentally gave the replay protection its first real test, and it held.**
+    The atomic `.create()` claim on `users/{uid}/processedPurchases/{sha256(token)}`
+    (`Tonefy-react@d7881a63`) had never been exercised. Four genuinely *concurrent*
+    claims on one token is a sharper case than the sequential retry it was written for:
+    one `processedPurchases` doc, `creditsRemaining` exactly 60 rather than 240.
+
+    **A renewal was then observed for the first time** (order
+    `GPA.3399-...-22190..2`, ~30 min after the purchase, on the 5-minute test cycle) and
+    it changed **nothing** in Firestore: still `plan=pro`, `credits=60`,
+    `processedPurchases=1`. That is correct rather than broken, and worth understanding
+    before anyone "fixes" it - Play keeps the **same purchase token across renewals**, so
+    the sha256-keyed claim refuses to grant twice by design, and credits are refreshed by
+    the backend's own 30-day sweep instead (item 13). It works for a monthly plan,
+    approximately, and it means a renewal top-up is not a thing that exists.
+
+    **`1ece3bab` fixes a Sentry unhandled rejection - and it is my own earlier fix being
+    wrong about what it covered.** `E_NOT_PREPARED` / "Unable to auto-initialize
+    connection", `mechanism: onunhandledrejection`, on build 9 minutes after the grant.
+    `07a3691a` had wrapped `endConnection()` in a try/catch with a comment claiming it
+    "reaches the same native module and throws the same way". It does not. **Two
+    failures, two shapes:** a synchronous throw when the native module is absent
+    entirely, and a *rejected* `Promise<boolean>` when the billing client is merely
+    already gone - the ordinary state on unmount. A try/catch around the call sees the
+    first and never the second. The bare call it replaced had the same hole; what the
+    try/catch added was the *appearance* of being handled, which is why it shipped.
+    Generalise this: **wrapping a promise-returning call in try/catch does not catch its
+    rejection**, and a comment asserting it does is worse than no guard at all.
+
+    **Subscription-lapse handling IS built and now PROVEN** (this line used to say it was
+    not - it was written before `subscriptionSweep` existed and was read as current twice).
+    `subscriptionSweep` polls Play every six hours for accounts on pro/creator that carry a
+    `subscriptionPurchaseToken`, and downgrades the ones Play says have ended. The
+    classification is careful and worth not "simplifying": **CANCELED is not ended** -
+    cancelling turns auto-renew off and the subscription runs to the date already paid for,
+    so it only counts once `expiryTime` has passed. Credits are **clamped, not zeroed**: a
+    cycle someone paid for may have credits left, and taking those too punishes them for
+    the ending rather than simply ending it.
+
+    **It had never once run** - the only paid account is the owner's, and the sweep skips
+    admins by design (an admin's Creator comes from being an admin, not a purchase), so
+    nothing in the logs had ever come from it. Proven Sep 16 2026 against the LIVE Play API
+    with a disposable paid account carrying the owner's own real, expired purchase token:
+    `creator -> free (SUBSCRIPTION_STATE_EXPIRED), credits 300 -> 10`, with
+    `subscriptionStatus: 'expired'`, `subscriptionEndedAt` and `subscriptionLastState` all
+    written. **A fixture could not have proven this** - the Play lookup and the state
+    classification are the parts that matter. Test account removed.
+
+    **What the app then did with that was nothing**, which was the real gap: it never read
+    `subscriptionStatus`, so a lapse arrived as features locking and credits dropping with
+    no explanation - indistinguishable from the app breaking. `usePlan` now carries
+    `subscriptionStatus`/`subscriptionEndedAt` off the same snapshot listener and exposes
+    `subscriptionExpired`, which requires BOTH the expired status AND the free tier, since
+    someone who was always on free must never be told theirs ran out. Profile shows it as a
+    diamond row that opens the plans screen. `verify-purchase` now clears the flag, or a
+    resubscriber would keep 'expired' beside an active plan.
+
+    **Real-time Developer Notifications: BUILT AND LIVE (Sep 16 2026).** A lapse is now
+    acted on in seconds rather than within six hours, and the six-hourly sweep stays as the
+    backstop. See "Play RTDN" below for the wiring and the two things that are easy to get
+    wrong.
+
+
+31. **Rate limiting audit — every limit had been one shared bucket for all users at
+    once** (Aug 16 2026, `~/Tonefy-react/backend@983748b6`, deployed via `pm2 restart`,
+    process start 08:20:08 postdating the 08:18:44 edit).
+
+    **The core defect.** nginx in front of this app sets `X-Real-IP` and **never**
+    `X-Forwarded-For`: `/etc/nginx/sites-available/api.fitlifesolutions.site` sets its
+    headers inline and does not `include proxy_params;`, unlike mission-control, pages
+    and webhook on the same box, which do. Express derives `req.ip` from
+    `X-Forwarded-For`, so with `app.set("trust proxy", 1)` on and that header absent,
+    **`req.ip` was `127.0.0.1` for every request this server has ever received.** All
+    four limiters were therefore a single global counter - 500 requests / 15 min for the
+    entire world, 20 video generations / hour across all accounts - and any one caller
+    could lock out everybody else. `validate: { xForwardedForHeader: false }` was
+    silencing the check that warns about precisely this.
+
+    Fixed app-side with a shared `keyGenerator` rather than by changing nginx, which
+    needs root. **Keying an authenticated API by account is the better answer anyway**:
+    it survives a phone moving between wifi and mobile data and does not lump a whole
+    NAT behind one counter. Falls back to `X-Real-IP` for routes that run before
+    `verifyToken`. `ipKeyGenerator` is required rather than decorative - it collapses
+    IPv6 to a /56, without which one client can walk its own address space for a fresh
+    bucket per request.
+
+    **Registration order, not path, decides what middleware a route gets.** Three routes
+    sat above the global limiter and so had *no* rate limiting at all - not even the
+    global one - and above the request logger and CORS too:
+    `/api/transcribe-voiceover` (runs faster_whisper), `/api/audio-waveform` (shells out
+    to ffmpeg), and `/api/music-tracks`, which is above `app.use("/api", verifyToken)`
+    as well and is therefore **unauthenticated**. Note this contradicts the claim under
+    "One backend, two clients" above that *every* `/api` route is behind `verifyToken`;
+    that is true only of routes registered after line 633.
+
+    **The three heaviest endpoints had no limiter either** - only the global one:
+    `/api/media-to-video`, `/api/edit-video`, `/api/upload-media`, which is the editor's
+    entire export path. Credits already cap how much anyone can render, so
+    `renderLimiter` (40/hr) is deliberately loose and exists for retry loops rather than
+    as business logic. **Uploads are not credit-gated at all**, so `uploadLimiter`
+    (100/hr) is their only ceiling. `/api/send-verification-email` gets the tightest
+    limit at 5/hr: it sends real mail through a Gmail account with a daily cap, and
+    burning that cap does not degrade one feature, it stops every new signup from being
+    able to verify.
+
+    Limiter definitions had to move above all routes - `const` is not hoisted, so
+    attaching one to a route registered earlier in the file throws at startup.
+
+    **Verified against a real booted instance on a spare port, not by reading**:
+    requests 1-60 to `/api/music-tracks` return 200 and 61 onward return 429, and a
+    request carrying a different `X-Real-IP` still returns 200 while the first bucket is
+    exhausted - the separation that did not exist before.
+
+    **Both nginx findings closed the same day** (owner ran the edits; no passwordless
+    sudo here). `/etc/nginx/sites-available/api.fitlifesolutions.site` now sends
+    `X-Forwarded-For` and `X-Forwarded-Proto` alongside `X-Real-IP`, and
+    `client_max_body_size` went 50M -> **1G**. 1G rather than 500M on purpose: multer
+    caps each *file* at 500MB while nginx caps the whole *request*, so at 1G a single
+    large clip always reaches multer - which returns a clear JSON error naming the cap -
+    instead of nginx answering with a bare 413 the app cannot explain.
+
+    Verified rather than assumed, because the first reload silently did not happen:
+    `sudo nginx -t && sudo systemctl reload nginx` typed as one line ran only the test,
+    and nginx kept serving two-day-old workers with the old config. **A passing
+    `nginx -t` is not a deployed config.** The checks that caught it and then confirmed
+    the fix: worker process start times (a reload spawns new ones), and a 60MB
+    unauthenticated POST to `/api/upload-media`, which returned 413 before the reload
+    and 401 after - 401 meaning the body got past nginx and the app rejected the auth.
+
+    **The rate-limit key cannot be forged**, which matters now that it reads a header:
+    `proxy_set_header X-Real-IP $remote_addr` *replaces* whatever a client sent with
+    nginx's own view of the socket, and `$proxy_add_x_forwarded_for` *appends* the real
+    address, so with `trust proxy: 1` Express reads the rightmost entry and a
+    client-supplied prefix is ignored.
+
+    **`0e1af968` — multer's own limits now get a real status code.** They are signalled
+    by `next(err)` before the handler runs, so `/api/upload-media`'s try/catch never saw
+    them: the global error handler knew `LIMIT_FILE_SIZE` and `LIMIT_UNEXPECTED_FILE`
+    but not the fileFilter rejection, so an unsupported file returned **500** and an
+    oversized one a 400 that never said what the limit was. Now 413 with the 500MB cap
+    stated, 400 naming the accepted types. Verified with a real ID token against a
+    booted instance, all three paths including the success case.
+
+    Worth recording how nearly that shipped unverified: the first run of that test
+    reported the *old* messages, which read exactly like the patch not taking. It was a
+    stale test server from an earlier boot still holding the port - `kill $BGPID` had
+    killed the wrapping shell, not node. **When a test reports pre-change behaviour,
+    establish which process answered before concluding anything about the code.** The
+    rate-limit verification above is unaffected; that instance postdated the limiter
+    work and did contain it.
+
+
+31b. **CORS was registered AFTER half the routes, and only a browser could tell**
+    (Sep 18 2026). `app.use(cors(...))` sat at line 1414 while `/api/admin/stats` and
+    `/api/admin/users` are registered at 828 and 972 - so those two answered with **no CORS
+    headers at all**. The website's admin page showed *"Could not load stats. Failed to
+    fetch"*, which is what a browser reports when it blocks a response: a network-level
+    failure with no status code behind it, naming nothing.
+
+    **Every check I had run on those endpoints was curl, and curl does not enforce CORS** -
+    they returned 200 with correct JSON throughout. That is the trap: a server-side test
+    cannot see a browser-side block. When a page says "Failed to fetch" while curl is
+    happy, suspect CORS before anything else.
+
+    Fixed by moving the middleware **above every route** rather than adding it to the two
+    that needed it, so a route added later cannot land in the same gap. Same shape as the
+    three unlimited routes in item 31, and the third time this file has recorded it.
+
+32. **Capacity: one VPS is the right size, and two scaling cliffs were fixed rather
+    than scaled around** (Aug 16 2026, `~/Tonefy-react/backend@8bb766a8`, deployed).
+
+    **The measurements**, so this is not re-derived: 6 cores, 11GB RAM (8.3GB free),
+    132GB disk free, load average ~1.3, sharing the box with five other pm2 processes
+    that sit at ~0% CPU. A caption-heavy export is ~390 overlay renders at ~29ms each
+    (item 24's own benchmark) plus the ffmpeg encode - call it **30-90s of nearly the
+    whole box per export**, so roughly **one export per minute sustained**. 100 users at
+    two exports a day is ~200/day against a ceiling near 1,400. **Volume is not the
+    constraint; simultaneity is.** No load balancer, second server or Kubernetes is
+    warranted at this size, and adding them would cost more than it buys.
+
+    **Cliff 1 - the editor's export path had no concurrency limit at all.**
+    `acquireVideoSlot` has capped renders at 4 since it was written, but from exactly
+    one call site: `idea-to-video-v2`. `media-to-video` and `edit-video` had none, so
+    ten simultaneous exports all started at once, each spawning ffmpeg plus up to 6
+    parallel ImageMagick processes on 6 cores - all ten running ~10x slower. Worse than
+    queuing in every respect: it degrades every user at once instead of making the last
+    arrival wait, and **a single slow export has already been mistaken for a hang here
+    and triggered an Android ANR** (item 20).
+
+    Acquired *after* `res.json`, so the caller already holds its jobId and polls
+    normally while queued, with the job message saying so. **Released in a `finally`,
+    which is the part that has to be right** - a throw or early return that skipped it
+    leaks a slot permanently, and four leaked slots stop every render on the server for
+    good. Verified by extracting the real algorithm and running 11 jobs through it, two
+    of which throw: never more than 4 concurrent, zero leaked, no stranded waiters, and
+    a Creator-tier job still jumps ahead of queued free ones.
+
+    **Cliff 2 - a blocking whole-file write per progress tick.** `saveJobsToDisk` was
+    `writeFileSync` of the entire job store on every `updateJob`, and `updateJob` runs
+    once per overlay since item 22 added per-overlay progress - so a 391-overlay render
+    performed **391 blocking rewrites of the whole store, on the single thread serving
+    every HTTP request for every user**. The cost is (jobs stored) x (ticks per render)
+    and grows on both axes at once.
+
+    Coalesced to at most one write per second, with an immediate flush for job creation
+    and terminal states, where losing a second to a crash would strand a caller polling
+    for a result the store no longer admits exists. **Note these handlers set status
+    `'error'`, not `'failed'`** - the flush condition covers all three. Now also writes
+    to a temp file and renames: the old version could leave truncated JSON on a crash
+    mid-write, and truncated JSON fails to parse, **losing every job rather than the one
+    in flight**. A pending write is flushed on SIGINT/SIGTERM so a pm2 restart cannot
+    drop it. Verified on a booted instance - auth still enforced, jobs.json valid, no
+    stray `.tmp`, all 37 jobs intact after a SIGKILL.
+
+    **What would actually justify more hardware**, when the time comes: sustained
+    queue depth on the 4 render slots, not user count. Watch how long jobs sit at
+    "Waiting for a free render slot..." - that message exists now and is the signal. The
+    first move then is a bigger box (renders are CPU-bound and scale with cores), not
+    more boxes: the job store is in-process memory and the rate limiters are in-process
+    counters, so a second instance would need both externalised before it helped.
+
+
+33. **Five toolbar tools built, all zero running cost** (Aug 16 2026; app `f3500816`,
+    `8896a509`, `703bb0fa`; backend `2df35786`, `8646efba`, `12035a72`). First delivery
+    against the "free half of the toolbar first" order. All five are `premium: true`, so
+    building them turns them into real Pro/Creator benefits rather than free additions.
+
+    **Reverse, Reduce noise, Motion blur** are one property each on the media item,
+    consumed in the existing per-clip filter chain: `reverse`+`areverse`, `afftdn`,
+    `tmix=frames=3`. Chain order is deliberate - reverse before `setpts` so speed applies
+    to the reversed clip, `tmix` last so it blends the frames actually shown. Stills are
+    refused with a reason rather than silently no-op.
+
+    **Reverse needed a cap.** The filter holds every decoded frame in memory at once,
+    since the last frame must be written first - ~1.4MB/frame at 720x1280, so 15s at
+    30fps is ~620MB for one clip, with four renders able to run concurrently. Refused
+    past 15s, with the number in the message, on both sides. The per-clip `exec` timeout
+    was 60s (sized for a plain transcode) and goes to 180s for these.
+
+    **Stabilize is two passes**, and the trap is that `vidstabdetect`'s `.trf` is
+    **indexed by frame number**: the detect pass must read *exactly* the frames the
+    transform pass will - same `-ss`/`-t`, same source crop ahead of it. Mismatch them
+    and nothing fails, the corrections just land on the wrong frames. That is why `vf` is
+    now split into `vfHead`/`vfTail` - the transform has to splice in *before* the fit
+    into the output frame, or the pad moves around with the picture. `unsharp` after is
+    ffmpeg's own recommendation. The `.trf` is unlinked in a `finally` (the
+    `txtrender-*.png` leak of `aaa0f043` is the precedent). Timeout 300s.
+
+    **Video Translator** is whisper -> Groq -> edge-tts, all already on the box.
+    14 languages; **voice names were read from `edge_tts.list_voices()` on this machine,
+    not written from memory** - several are `Multilingual` variants whose obvious
+    per-locale names do not exist. LLM call is `temperature: 0.2`, `max_tokens: 2000`
+    against the helper's 0.8/400 defaults, and the system prompt insists on the
+    translation alone: an LLM told to "translate" adds a preamble, and the preamble then
+    gets spoken aloud as if it were the script.
+
+    **It returns a jobId, and that was a correction forced by measurement.** Written
+    synchronously first; then whisper was timed at **slower than realtime** - 74s of
+    audio did not finish inside two minutes - so a 5-minute clip is 10+ minutes, past
+    nginx's 600s `proxy_read_timeout`. Reuses the existing `/api/job/:jobId` polling. It
+    also takes one of the four render slots (released in a `finally`), since whisper is
+    as CPU-hungry as an export. Input capped at 5 minutes. Enforced Pro/Creator
+    server-side, not only by the toolbar's `premium: true`.
+
+    App side: the clip is uploaded on demand (clips live on the device until an export
+    uploads them) and the URL is remembered on the item so a second translate does not
+    re-send it. The result becomes a voiceover track **and the source clip is muted** -
+    without that the original narration plays under the translation, which is worse than
+    not translating. Its own poller rather than `pollJob`, which ends by handing an
+    exported video to the result screen.
+
+    **Verified against real inputs, not stubs.** Reverse proven to actually reverse (the
+    output's first frame matches the source's *last* at PSNR 28.3 vs 16.0 for the
+    source's first). Stabilize's exact two-command pair run composed with source crop,
+    frame fit, motion blur, speed and denoise. Translation run end to end producing real
+    Swahili and French from real English. Test account, Firestore doc, uploads and
+    generated audio all removed.
+
+    **What is not verified: vidstab's actual effectiveness on real shake.** Two attempts
+    to synthesise shaky footage produced clips that were not shaky - caught by measuring
+    rather than assuming, but not worth more scaffolding for a well-established ffmpeg
+    filter. **Real handheld footage on a device is the remaining check.** Also unverified
+    on device: all five tools, and whether Stabilize's "this takes longer" warning makes
+    the wait feel explained.
+
+
+34. **My Videos had three broken controls; all three fixed** (Aug 16 2026; app
+    `c67bd6db`, `7dada187`, `d6633d1d`, `ce278ff8`). All reported from a real tester's
+    device, none reproducible on the owner's.
+
+    **The filter chips were clipped through the middle, and the first fix was wrong.**
+    `filterRow` had `maxHeight: 44`; removing it changed nothing, confirmed on device -
+    and confirmed *usefully*, because the other half of that same commit (the stat
+    values) did land, which proved the bundle was current and the diagnosis simply
+    wrong. Three things were needed together: `paddingHorizontal` moved from the
+    ScrollView's `style` to `contentContainerStyle` (on a ScrollView, `style` is the
+    outer clipping box, so padding there shrinks the visible area rather than insetting
+    content); `alignItems: 'center'` on the content container, because it defaults to
+    `stretch` and every chip was taking the row's height instead of defining it - which
+    is why they came out cut through the middle rather than overflowing; and
+    `flexShrink: 0` on the row plus `flex: 1` on the FlatList, so a long grid cannot
+    compress the controls above it. **A horizontal ScrollView clipping its children
+    vertically is nearly always cross-axis stretch plus padding on the wrong style, not
+    a height that is too small** - reaching for a height is what put the original
+    `maxHeight: 44` there, and it clipped again the moment a device used a larger font
+    scale.
+
+    **"26.5MB" was wrapping onto two lines** as "26.5M"/"B" on that same device.
+    `numberOfLines={1}` with `adjustsFontSizeToFit`. Both symptoms came from **system
+    font scaling**, which is worth testing deliberately - it breaks any layout with a
+    hardcoded height.
+
+    **Download was `Linking.openURL(url)`** - the video's URL handed to Chrome, leaving
+    the user to download it from the browser. Now `utils/saveVideo.js` fetches the file
+    and takes whichever route the *installed binary* supports: gallery (in a Tonefy
+    album) when `expo-media-library` is present, share sheet when it is not. Required
+    lazily inside a `try`, so build 9 got a working Download over the air and the
+    gallery path switches itself on with no further edit. **Its manifest permissions
+    had to be written by hand** - the library's own manifest merges three in, but
+    `READ_MEDIA_VIDEO`/`READ_MEDIA_IMAGES` come from its **config plugin**, and a
+    committed `android/` folder means EAS never runs prebuild so no plugin ever applies.
+    Without them gallery saving fails on Android 13+. **Third time this project has been
+    caught by that** (after the BILLING permission and react-native-iap's Gradle flavour).
+
+    **"Use"/"Use This" navigated to Idea-to-Video with a `reuseVideoUrl` param that
+    nothing read** - written in one place, consumed nowhere, so the video was dropped
+    and you landed on an empty generator screen. Now opens it in the editor as a clip.
+    **The file is downloaded before navigating, and that is load-bearing rather than
+    polish:** `processVideo` builds its upload straight from `item.uri` for every item
+    and maps the server's replies back **by position**, so a remote https uri in that
+    list would upload nothing usable *and* shift every clip after it. Duration comes
+    from the record's `durationSeconds` when present and is measured on device with the
+    existing `measureVideoDuration` when absent - needed because **only two of the three
+    `userVideos` writers store it, and the one that does not is Idea-to-Video**, which
+    is where most of these videos come from. The clip is appended only after
+    `draftChecked` (earlier and the restore wipes it), guarded by a ref against
+    re-render, with the nav param cleared afterwards, and `persistInto`d out of cache
+    like any picked clip.
+
+
+35. **Extract audio, 23 audio effects, and the Empty Audio misroute** (Aug 21 2026; app
+    `rebuild/phase-4`, published as update group `5c9ca907-1274-4aa4-887f-ce8707ae3d16`,
+    runtime 1.1.0; backend `~/Tonefy-react@HEAD`, deployed via `pm2 restart` at 13:45:49,
+    confirmed postdating the 13:45:48 edit).
+
+    **`/api/extract-audio`** pulls a clip's sound into a file of its own so it can live on
+    the timeline as a real track. Synchronous, unlike `/api/translate-video` which it
+    otherwise mirrors: that one returns a jobId because whisper runs slower than realtime,
+    while this is a demux-and-encode with no model in it. It **probes for an audio stream
+    first** - without that a silent clip yields a valid but empty mp3 and the user gets a
+    track that plays nothing with no explanation, which is worse than being told the clip
+    has no sound. Offsite URLs are refused (SSRF: this box runs other services on
+    localhost) and the scratch download is unlinked in a `finally`.
+
+    App side it does **not** mute the source clip, deliberately unlike Translate - which
+    must, or the original narration plays under the translation. Here the extracted audio
+    is the *same sound*, so muting would leave the timeline sounding identical while
+    looking changed.
+
+    **`AUDIO_FX` is 23 chains, and the app sends an ID and never a filter string** -
+    deliberately unlike the effect/motion/transition paths, which ship a chain and have the
+    backend validate it. Those catalogues are large and change without a deploy; this one
+    is small enough to afford the safer shape, so no caller-supplied text reaches a command
+    line at all. **The cost, stated so it is not rediscovered:** adding one to
+    `constants/audioFx.js` alone does nothing - it needs a matching `server.js` entry and a
+    restart. A cross-check that both sides carry the same 23 ids is worth re-running after
+    any edit to either.
+
+    **The durable lesson is about instruments, not audio.** Every chain was rendered against
+    real speech and measured, and the *first* pass reported a third of them dead:
+
+    - **Reverbs.** A whole-file FFT magnitude spectrum is nearly blind to an echo - a delay
+      moves phase, not magnitude - so all five measured ~0.00 and looked like no-ops. By
+      **autocorrelation at the delay lag** they lift it from ~0.00 to +0.27 (room) .. +0.60
+      (stadium). All five were working the entire time.
+    - **Pitch.** Autocorrelation f0 **octave-errored** and reported `deep` as unchanged. By
+      **median spectral-peak ratio across voiced frames** it is exactly 0.700. Note this is
+      the opposite correction to the music work, where a spectral centroid was the wrong
+      pitch instrument and autocorrelation was right - **neither method is "the" pitch
+      instrument; each fails differently, so a pitch claim needs two that agree.**
+    - **Loudness.** `loudnorm` is *supposed* to leave tone alone. Judged on a spectral
+      measure it looks dead while working perfectly (x1.40 level).
+
+    **One genuine defect did come out of that pass, and telling it apart from the
+    false alarms is the point**: `bassboost` at `g=8:f=110` measured x1.10 on speech -
+    applied, but inaudible, because voice carries almost nothing below 110Hz. It was
+    credible *because the same instrument correctly read `warm` at x1.17 and `treble` at
+    x3.19*. Retuned to `g=12:f=180`, which measures x2.06. An instrument that is wrong for
+    one class can still be right for another; the way to tell is whether it succeeds on
+    comparable cases.
+
+    **`AudioFxSheet` is deliberately not `RecipeSheet`**, which every other catalogue uses.
+    That sheet is built around an animated WebP preview tile per item, and there is no such
+    thing as a picture of a reverb - it would render 23 identical grey squares looking like
+    a failed load. **There is also no audition**: the preview canvas plays the raw clip, and
+    `expo-av` can shift rate and pitch but has no reverb or EQ, so an honest preview would
+    mean a server round trip per tap. The descriptions carry that weight instead and each
+    says what the result *sounds like* rather than naming the filter. The sheet says so.
+
+    **The export payload was edited first, for both clips and tracks**, because a tool whose
+    flag never reaches the server is the bug this file already shipped four times.
+
+    **Two things checked rather than reasoned about**, both settled with a real repro:
+    - **TDZ.** `clipToolActions` references `extractClipAudio` 141 lines before its `const`.
+      Safe, because it sits inside an **arrow body**, which resolves on call. Confirmed by
+      running both forms: the arrow form runs fine, and only the immediate-eval form (a
+      `useMemo` factory, which is what bit before) throws. **Arrow-wrapped forward
+      references in the action maps are fine; a factory that runs during render is not.**
+    - **`items[i].audioFx` vs `item.audioFx`.** The per-clip hook was written with `items[i]`,
+      but the in-scope name in that loop is `item`. `node --check` cannot see this - same
+      shape as the `transitionSpec` destructuring miss. Caught before deploy by grepping the
+      enclosing block for what the neighbouring lines actually use.
+      Note `\b` in **awk** is backspace, not a word boundary, so `awk '/\bitem\b/'` silently
+      matches nothing - that cost two empty searches here. Use grep for word boundaries.
+
+    **Verified against the deployed server, not by reading**: extract-audio returns
+    200/400/404/400/401 across sound, no-sound, missing, offsite and unauthenticated, and
+    the returned mp3 **correlates 1.000** with the source. Two full `/api/media-to-video`
+    renders confirm the effects reach the finished mp4 - cathedral lifts the 150ms lag from
+    -0.023 to +0.581, chipmunk shifts pitch x1.400. Test accounts and Firestore docs removed.
+
+    **Dashboard**: the **Empty Audio** card said "start creating audio from a blank file" and
+    navigated to **Idea to Audio**, which asks for an idea and writes the script for you -
+    the opposite of starting blank. Now opens Script to Audio with an empty box. It was not
+    a dead control, which is why the dead-control sweep never flagged it: **a card whose
+    description and destination disagree passes every check that only asks whether something
+    happens on tap.**
+
+    **Untested on device.** ~~Also still not built from this group: **Beats / Beat Sync**~~ -
+    **BUILT, see item 36.** ~~**Thumbnail**~~ - **BUILT, see item 37.** The Dashboard
+    no longer marks it "soon". The blocker recorded here - no view-capture library, and a
+    text renderer trapped as closures inside the `media-to-video` handler - was resolved by
+    extracting the renderer rather than by adding a binary.
+
+36. **Beat Sync** (Aug 21 2026; app published as update group
+    `ef2bca23-c176-403a-ad6a-da6ae59c756b`, runtime 1.1.0; backend `/api/detect-beats` +
+    `backend/detect_beats.py`, deployed via `pm2 restart` at 14:41:08).
+
+    **Tempo is not enough to place a marker, and that is the whole problem.** The
+    autocorrelation in `scripts/analyse-music.py` gives the beat **period** - how far apart
+    beats are - which is all a tempo band needs and is why the library has BPM but no beat
+    times. A marker needs the **phase** as well: where the first beat actually falls. A
+    right period with a wrong phase puts every marker exactly *between* the beats, which is
+    worse than no markers, because it is confidently wrong rather than absent.
+
+    `detect_beats.py` does both: spectral-flux onset envelope autocorrelated for the period,
+    then a pulse train slid across that envelope to find the offset with the most onset
+    energy under its pulses. Phase is summed over the **whole track**, so an intro that
+    starts off-grid cannot set the phase for everything after it.
+
+    **It returns a grid, not raw onsets.** A grid is what a musician means by "the beat" and
+    what a cut wants to land on; raw onsets include every snare flam and vocal consonant,
+    and cutting to those looks nervous rather than rhythmic.
+
+    **The two halves needed different checks, and only one of them was already proven:**
+    - **period** - 12/12 agreement with the library's own measurement across real tracks
+      (half/double time counted as agreement; both are musically correct readings). This
+      reuses the method already checked against 68 tracks, so it was the cheap half.
+    - **phase** - the NEW part, so measured separately: onset energy under the chosen grid
+      versus half a beat off, on 10 tracks. The chosen phase won every one, and several
+      anti-phase scores came out **negative** - those points land on below-mean flux, i.e.
+      in the quiet gaps between beats, which is the strongest confirmation available.
+
+    **`strength` is reported by the server and gated in the app**, deliberately. The honest
+    answer for spoken word is "there is no beat in this", and the app is where there is a
+    user to tell. Meditation music measures 0.116 against 0.44-0.86 for tracks with a real
+    pulse. Under 0.25 the grid is still stored - a weak reading is not always a wrong one -
+    but the message says plainly not to trust it.
+
+    **The snap is the feature; the markers are how you aim it.** `splitAtPlayhead` snaps to
+    the nearest beat within **0.12s**, which is under a sixteenth note at 120bpm. The
+    detector only reports 60-180 BPM, which puts beats at least 0.33s apart, so a snap can
+    never cross to the wrong beat at any tempo it finds. Markers you can see but cannot land
+    on would be decoration.
+
+    **The correctness property worth re-checking after any timeline change:** where a marker
+    is DRAWN is block-relative (`beat - trimStart`), and where a split SNAPS is
+    timeline-absolute (`beat + startOffset - trimStart`). **Two mappings of one number, and
+    if they disagree the cut lands somewhere other than the tick it was aimed at.** Verified
+    against real detector output across four placements including offset and trimmed tracks.
+
+    **`components/BeatMarkers.js` caps at 240 ticks and nests them in groups of 16**, because
+    beats scale with content length exactly as Waveform's bars did - a 3-minute track is ~300
+    of them. See the O(n^2) sibling item above. 240 is well past legible on a 26px row at
+    40px/s (beats land ~24px apart at 100bpm), so the cap only bites where the extra ticks
+    are off-screen anyway. Its group wrapper fills the same box as the layer, which
+    **resembles the FilmStrip bug (`03557326`) and is not**: those tiles FLOWED, so a wrapper
+    narrower than the row truncated it, while these ticks each carry their own absolute
+    `left` measured from a group that fills the layer exactly. **Grouping is transparent for
+    absolutely-positioned children and not for flowing ones** - that is the distinction, not
+    whether the wrapper is positioned.
+
+    Premium, matching the clip-side `beats` tool and the real cost: ~6 seconds of a core per
+    track. Synchronous, like `/api/extract-audio` and unlike `/api/translate-video` - 5-7s
+    measured against nginx's 600s `proxy_read_timeout`.
+
+    **Untested on device.**
+
+37. **Thumbnail, and the renderer extraction that made it possible** (Aug 21 2026; backend
+    `textRender.js` + `/api/thumbnail`; app published as update group
+    `7ce58089-ece7-427c-9c75-950fe2e89050`, runtime 1.1.0).
+
+    **The choice, and why it is the durable one.** A thumbnail needs a frame with styled
+    text on it, and there were two routes: `react-native-view-shot` (capture the existing
+    `CaptionText` component in-app) or render it server-side. View-shot is a **native
+    module**, so it needs a new binary and a review cycle, and it would have left **two
+    renderers** for one thing. Server-side reuse needed the export's text renderer, which
+    was ~550 lines of closures **inside the `/api/media-to-video` handler** and therefore
+    callable by nothing. Extracting it was the larger job and the right one: it ships over
+    the air, and it means one definition of what a caption looks like across the editor
+    canvas, the style picker, the export and now thumbnails.
+
+    **`backend/textRender.js` is a verbatim move**, `createTextRenderer({...})`. Values the
+    handler had in scope (`W`, `H`, export scale, font map) became arguments; per-overlay
+    progress became a callback instead of a direct `updateJob`. Helpers are **injected, not
+    imported from `server.js`** - no circular import, the module is independently testable,
+    and there is still exactly one definition of `run`/`uniqueName`/`mapWithConcurrency`/
+    `num`/`safeColor`.
+
+    **The boundary is the part to get right, and getting it wrong is the mistake this move
+    made.** The module renders each overlay to a PNG and says **where it goes**; it does not
+    composite. The ffmpeg overlay chain pushes into the handler's own `inputs`/`filterParts`
+    and is the *export's* way of using that output - a thumbnail uses one `composite` per
+    overlay instead. Taking it along produced `inputs is not defined`, caught by a real
+    render rather than by reading the diff.
+
+    **Verified by A/B against the live server, which is the only proof worth having for a
+    refactor of a working hot path**: rendered one request through the old code, deployed,
+    rendered the identical request, compared frames. **Absolute pixel difference 0, RMSE 0,
+    byte-identical frame size.** The fixture exercised what a move is most likely to break -
+    a stroked and glowing spec, a box with a corner radius, letter tracking, and a second
+    overlay with `boxWidthPercent`, which is the measured-wrap path.
+
+    **`/api/thumbnail`** takes a frame (`-ss` before `-i`, so ffmpeg seeks rather than
+    decoding up to the timestamp), scales and crops to **fill** rather than letterbox, burns
+    the overlays through the shared renderer, and writes JPEG q92. Three sizes: 16:9, 9:16,
+    1:1. Seeking past the end of a file produces **no frame and no ffmpeg error**, so the
+    missing output is checked for explicitly rather than becoming a 500.
+
+    **`previewWidth` is measured with `onLayout` and sent, never hardcoded.** Every length in
+    a caption spec is points at the app's 18pt base and the renderer scales by
+    `output width / previewWidth`, so **previewWidth is the app telling the server what the
+    numbers on screen were drawn against**. A constant 360 against a stage that is 380 on a
+    wider phone puts every thumbnail's text ~5% off its own preview.
+
+    **The instrument was wrong again, and this one is worth keeping** because the first
+    reading looked like a real bug. Halving `previewWidth` should double the rendered text;
+    measured on a **glowing** overlay at size 34 it grew only **1.22x**, which reads exactly
+    like broken scaling. It was the **safe-zone shrink from item 14** doing its job: at 2x
+    the text overflowed the frame and was scaled to fit. Re-measured with **no glow and a
+    size below the clamp**, it is 33x62 -> 65x122 px - **1.97x, exact**. *A measurement taken
+    where a clamp is active measures the clamp.*
+
+    **Also:** the source duration comes back in the response, because only two of the three
+    `userVideos` writers store `durationSeconds` and the one that does not is Idea-to-Video -
+    where most of these videos come from. Relying on the record would hide the frame slider
+    and pin every thumbnail to frame zero. `utils/saveVideo.js` gained `saveImageToDevice`,
+    kept separate from the audio one because a `createAssetAsync` failure means different
+    things for an image than an mp3.
+
+    **Three prop mistakes lint could not see**, caught by reading the components instead of
+    assuming: `CaptionText` takes `style` (the spec) plus a separate `color`, not `spec`;
+    `ProgressButton`'s outline is `variant="outline"`, not a boolean; a caption style's
+    display name is `label`, not `name`. **`no-undef` proves an identifier exists, never that
+    a prop name is the one the component reads.**
+
+    **Untested on device.**
+
+38. **Deleting an account left the YouTube refresh token behind forever** (Aug 26 2026;
+    backend `~/Tonefy-react@03d49128`, deployed via `pm2 restart` 12:53:11, confirmed
+    postdating the 12:51:27 edit; app `295f858d`, **not yet published**).
+
+    **The defect.** `handleDelete` in `ProfileScreen.js` deleted `users/{uid}` and the
+    Auth user, which is everything the client is *permitted* to reach. `youtubeTokens`
+    and `tiktokTokens` are Admin-SDK-only by construction - no security rule mentions
+    either, and Firestore denies where no rule matches. That is the right home for a
+    bearer credential and it is exactly why the client could never clean them up. So a
+    deleted account left a live, refreshable YouTube refresh token in Firestore
+    permanently, with no path anywhere to remove it, alongside the channel id/title, the
+    `scheduledPosts` the sweep then retried every five minutes forever, and the
+    `userVideos` records.
+
+    **Blast radius, measured rather than assumed:** nothing could be POSTED with it.
+    `publishToYouTube`'s plan gate reads `users/{uid}`, which is gone by then, and fails
+    closed. The credential simply persisted. That is smaller than it first looks and
+    still not acceptable.
+
+    **Why it mattered on that particular day:** privacy policy section 6(g) states that
+    deleting your account deletes the tokens immediately and that no copy is kept after
+    revocation - in the section the **YouTube API Services audit reads**. The policy
+    described the behaviour we want, so the code was what was wrong. Fixing the code
+    rather than softening the policy is the direction that generalises: **when a document
+    and an implementation disagree, decide which one states the intent before deciding
+    which one to change.**
+
+    `POST /api/account/delete` purges all six collections and **revokes the refresh token
+    at Google** rather than merely dropping our copy - a token we forget is still a token
+    that works. Revocation is best effort and logged, since an already-dead token answers
+    400 and must not stop us deleting our own row.
+
+    **Two ordering rules, both load-bearing and commented at both ends:** it runs BEFORE
+    the client deletes the Auth user, because `verifyToken` needs a live ID token; and if
+    any step fails it returns 500 so the caller **leaves the login alone**. Deleting it
+    would destroy the only key those leftovers are filed under - causing the exact failure
+    the endpoint exists to prevent. A destructive endpoint that reports partial success as
+    success is the same class of lie as the bug it is fixing.
+
+    Deleting the `userVideos` records does not strand files on disk: `getOwnerPlan`
+    returns `'free'` when `snap.empty`, so the sweep removes them at 72h. Checked, not
+    assumed.
+
+    **Verified against the deployed server** with a disposable account seeded into all six
+    collections: HTTP 200, `{users,youtubeTokens,connectedAccounts,tiktokTokens,
+    scheduledPosts,userVideos}` all zero afterwards, unauthenticated refused 401, and the
+    revoke-failure branch exercised for real (`[account-delete] youtube revoke:
+    invalid_token` logged, purge completed regardless). Test account and every fixture
+    removed.
+
+    **REOPENED ONCE PER PLATFORM, and closed again Sep 15 2026.** Every social platform that
+    landed after this item - Meta, Instagram, Pinterest, LinkedIn - put its tokens in its own
+    Admin-SDK-only collection and none of them was added to this purge, so a deleted account
+    left four live credentials behind. The privacy policy already promised that access tokens
+    for **every** connected platform are deleted when the account is deleted, so the policy
+    was right and the code was wrong - the same direction this item settled for YouTube.
+    `metaTokens`, `igTokens`, `pinterestTokens` and `linkedinTokens` are now purged too
+    (Facebook's grant revoked at Meta as well, reusing its own disconnect's call; the other
+    three deleted rather than revoked, matching what their disconnect routes do). Verified
+    with a disposable account seeded into all eight collections and a deliberately invalid
+    Meta user token so the revoke would fail: HTTP 200, ten steps, everything gone.
+    **The lesson is the shape, not the fix: a purge list is a place new work has to be
+    added, and nothing fails loudly when it is not.** Adding a platform means adding its
+    token collection here, in the same commit.
+
+    **Published Aug 26 2026** to `production` as update group
+    `a36dec11-0cfb-46ea-ad9a-cb7fb0fed42a` (commit `d2e4da75`, runtime 1.1.0), alongside
+    item 39's Profile fix - channel confirmed serving it. Held back at first because
+    `production` is the channel the 12 closed testers are on and CLAUDE.md's standing
+    "publish freely" permission was written when Ahumuza was the only user, a premise that
+    no longer holds there; published on his explicit say-so. The pre-update `package.json`
+    diff against build 11 (`17fd20a9`) was clean - eslint devDependencies and a script, no
+    runtime or native module. **Untested on device.**
+
+    **Also fixed on the site the same day** (`tonefy-website@2614729`): the homepage was
+    the only surface still badging Instagram, Facebook and X as **"Connected"** when none
+    has any integration - every other page and the app already said "Coming soon". It is
+    the page a Google reviewer lands on, and a false claim about one platform is a poor
+    advertisement for the truthfulness of the claims about YouTube.
+
+39. **Profile's YouTube row hardcoded "Connect" and never changed** (Aug 26 2026, app
+    `d2e4da75`, published in the group named in item 38). Reported from a device: the row
+    said Connect whether or not the account was connected.
+
+    The row carried a comment justifying it - connection state lives server-side, so the
+    row "routes there rather than asserting something it cannot check". **It was
+    asserting.** "Connect" is a claim that you are not connected, and it was wrong for
+    anyone who was. Declining to know would have been a row with no badge at all. TikTok,
+    directly above it, was reading `connectedAccounts/{uid}` correctly the whole time -
+    and YouTube lives in that same document, which this screen had already fetched, so
+    the state was one property access away at zero extra cost.
+
+    Also now reloads on `focus`. Connecting happens on ConnectAccounts and, for YouTube,
+    in a browser, so a mount-only effect never sees it: you come BACK to the screen
+    already connected. Same reasoning `SocialScreen` had already written down for its own
+    `useFocusEffect`.
+
+    **Audited all eleven files mentioning YouTube; Profile was the only one wrong.**
+    Social reads `/api/platforms` plus `connectedAccounts` on focus, Connect Accounts and
+    Edit & Post both read `/api/youtube/status`. The rest - Thumbnail, Landing, the three
+    generation screens, My Videos - say "YouTube" as a 16:9 aspect-ratio label or a
+    marketing link, and have no connection state to get wrong.
+
+    **Known gap, flagged and not fixed:** the WEBSITE's `profile.html` and
+    `connect-accounts.html` do not list YouTube at all - they know only TikTok, Facebook,
+    Instagram and X. Connect YouTube in the app and the site shows no trace of it.
+
+    **The diagnosis that cost a round trip:** the first device report after the fix still
+    showed "Connect", which reads exactly like the fix not working. The fix had never been
+    published - it was committed and pushed only. `ProfileScreen`'s own Build section said
+    "Update applied", which refers to whatever update last applied and is not evidence that
+    YOURS did. **Item 29's lesson again: check the publish, not just the commit.**
+
+
+40. **Submission 1 — the YouTube API Services audit went in** (Aug 27 2026, 07:42, ack
+    received from `youtube-disputes+2jhcu7ixwv9891n@google.com`). What was sent, and the
+    things that cost time getting there.
+
+    **What was filed:** `videos.insert` only, no other endpoint ticked. Quota split across
+    the form's TWO boxes - the first is the total for every endpoint EXCEPT `search.list`
+    and `videos.insert` (set to the 10,000 default, since this app calls nothing else) and
+    the second is the additional ask for `videos.insert` (250,000/day, 30,000/min, about
+    156 uploads a day). Filling both with the same number, which is the obvious mistake,
+    asks for double and claims quota for endpoints that are never called.
+
+    **`requests per day` is not `quota units per day`, and the form asks for both.**
+    One upload is one request but 1,600 units. "10,000 to 100,000 requests per day" was
+    selected at first and would have meant 16,000,000 units - 320x the ask sitting a few
+    fields below it. An internally inconsistent form is what gets an application returned.
+
+    **The consent screen showing `fitlifesolutions.site` instead of "Tonefy AI" is
+    CORRECT and is not a misconfiguration.** This was diagnosed wrong first, and the wrong
+    answer sent the owner to the Branding page to check a setting that was already right.
+    Google **suppresses the app name and logo for unverified apps requesting sensitive
+    scopes** and shows the registered authorised domain instead - otherwise any app could
+    put any brand on a consent screen. It resolves when OAuth verification passes, which
+    is a different submission. **The lesson: "the UI is showing the wrong value" is not
+    evidence the value is set wrong** - check whether the platform is deliberately
+    overriding it before sending anyone to change a setting.
+
+    **The demo account's password did not match what was typed into the form.**
+    `youtube.audit@tonefyai.app` existed with plan `creator` and sample videos, but
+    `TonefyReview2026!` failed with `INVALID_LOGIN_CREDENTIALS` against the real Identity
+    Toolkit endpoint. A reviewer would have been locked out at step one. Reset and
+    re-verified by actually signing in. **Test a credential before handing it to a
+    reviewer; existence of the account is not the claim being made.** `emailVerified` is
+    load-bearing here too - `AuthScreen.js:208` blocks unverified logins and `tonefyai.app`
+    cannot receive mail, so it has to be set with the Admin SDK.
+
+    **Uploads failing was never the 10 MB limit.** Two PNGs (204 KB, 1.2 MB) failed while
+    two PDFs (106 KB, 84 KB) succeeded, which reads like a size threshold - and then three
+    PDFs of 43-58 KB failed later in the same session, which kills that theory. The link
+    was running at 1.2 KB/s and the page had been open two hours; slow uploads and an aged
+    session, not file size. **Two data points either side of a boundary is not a threshold.**
+
+    **Palette quantisation is enormously effective on UI screenshots** and this is worth
+    reusing. The evidence sheet went **1.21 MB -> 94 KB** with the small text still
+    legible, because flat UI uses very few distinct colours. Three measured findings:
+    - **`+dither` (dithering OFF) is both smaller and cleaner.** Dithered 12-colour output
+      had teal speckle across the dark backgrounds that looks like a corrupted file -
+      exactly what the form's "no heavy compression artifacts" standard rejects.
+    - **Fewer colours beat fewer pixels.** Downscaling to 2600px produced a LARGER file
+      (196 KB) than full 3050px at 32 colours (182 KB), because resampling invents
+      intermediate colours. Measured, not assumed.
+    - JPEG was worse than quantised PNG for this content at every quality tried.
+
+    **The evidence sheet's earlier 68% downscale was the real legibility bug.** `compose.py`
+    fitted 1612px-tall screenshots into an 1100px cell. The YouTube Studio panel is a
+    desktop page rendered on a phone, so its text was already small; at 68% it was
+    unreadable. Composing at native size fixed it and made the file *smaller*.
+
+    **Documents produced, all in `~/ytshots/`** (originals of the oversized versions in
+    `~/ytshots/originals/`): the four-panel OAuth/upload evidence sheet, a homepage
+    evidence image (YouTube card + privacy-policy footer link), privacy and terms as
+    vector PDFs rendered with headless chromium, plus an architecture diagram, a user-flow
+    diagram and a "notes for the reviewer" page. The diagrams are hand-written SVG printed
+    to PDF - vector, so they stay sharp at any zoom, which the evidence standards demand.
+    **The first architecture attempt used three columns and every arrow had to cross the
+    backend to reach Google**; one struck through a box and the legend collided with a
+    panel. Two left-to-right flows (connecting, publishing) removed every crossing.
+
+    **Site fixes forced by the evidence itself** (`tonefy-website`): the homepage was
+    badging Instagram/Facebook/X as "Connected" (`2614729`), the footer read © 2024
+    (`5255026`), and every platform card used a Material stand-in rather than the real
+    brand mark - `face_nod` for Facebook, `smart_display` for YouTube (`00b6037`). That
+    last one mattered: the card being submitted as proof of *YouTube branding* did not
+    carry YouTube's mark. Every other surface already had real marks, so these are
+    `profile.html`'s own SVGs reused. The Instagram gradient needed a fresh id, since two
+    SVGs sharing one gradient id on a page resolve to whichever parsed last.
+
+    **Still true and still unfixed:** the website's `profile.html` and
+    `connect-accounts.html` do not list YouTube at all, so connecting in the app leaves no
+    trace on the site.
+
+41. **TikTok: the production app is a blank draft, and the blocker is the Play listing**
+    (Aug 28-29 2026; backend `9bbc55a7`).
+
+    **The note in this file that said "the TikTok credentials are sandbox-only" was stale.**
+    Production credentials were sitting in `.env` all along and are live - both pairs
+    verified against TikTok's `client_credentials` endpoint, HTTP 200. What was actually
+    true is that `server.js` hardcoded the SANDBOX pair two lines below them.
+
+    Now an env switch: `TIKTOK_ENV=production` selects the production app, anything else
+    keeps sandbox, and startup logs which is in use. **Flipping it invalidates every
+    existing connection** - a sandbox-issued token is not accepted by the production app,
+    so each connected account must reconnect. Deployed defaulting to sandbox, so nothing
+    changed.
+
+    **Do not flip it yet.** The production app in TikTok's portal is a **Draft that has
+    never been submitted**: no products, `No scopes yet`, no icon, no URLs. The credentials
+    exist only because TikTok issues them at creation. Switching would authorise nothing.
+
+    **What blocks the submission is not ours to fix with code.** TikTok's Android config
+    requires a **Google Play Store URL**, and
+    `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp` returns **404** -
+    the app is in closed testing and has no public listing. A reviewer clicking a required
+    URL and getting a 404 rejects. So the form is filled and SAVED, not submitted, until
+    the app reaches production on Play.
+
+    **Prepared and ready for when it does** (drafted against the code, not aspirationally):
+    package name `com.ahumuza21213.TonefyApp`, the 107-char description, the 975-char
+    product/scope explanation covering Login Kit + Content Posting API, icon at 1024x1024
+    from `assets/icon.png`, and the existing privacy/terms URLs - whose section 5 already
+    describes draft posting, which is what `video.upload` does, so the two agree.
+
+    **UPDATE Sep 8 2026 - the Play blocker is gone and TikTok posting now works
+    (sandbox, verified end to end).** The 404 that blocked the submission is resolved: the
+    app is live on production, so `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp`
+    returns 200. And the "does a sandbox post complete" question below is answered - YES,
+    once the real bug was fixed:
+
+    - **The June 17 TikTok connection was stale.** `connectedAccounts/{uid}.tiktok` still
+      said "Connected" (@Fitlifesolutions) but `tiktokTokens` had 0 docs - the token was
+      long gone, so every post returned "TikTok not connected" while the app showed
+      Connected. Same stale-badge class as the YouTube row in item 39. Cleared the dead
+      flag server-side; the user reconnected (sandbox creds, their account is a sandbox
+      Target User) and a fresh token with all three scopes landed.
+    - **The real bug: the code used TikTok's DIRECT POST endpoint, which needs audit
+      approval the app does not have.** `/v2/post/publish/video/init/` on an unaudited app
+      returns `"Please review our integration guidelines"` and posts nothing (seen live).
+      Fixed in `~/Tonefy-react@4b9c4a33`: `publishToTikTok` now uses the INBOX endpoint
+      `/v2/post/publish/inbox/video/init/`, which uploads the video to the user's TikTok
+      inbox as a DRAFT they finish in TikTok - the supported unaudited path, and exactly
+      what the privacy policy/terms already promise ("uploaded as drafts"). Takes
+      source_info only (no post_info; title/privacy are set by the user in TikTok).
+      **Verified end to end through the real `/api/post-now`: HTTP 200, ok:true, draft,
+      `publish_id: v_inbox_file~...`.** App-side success copy updated to say "draft" and
+      published to production (update group `a25b5ed3`). The TikTok row also got a one-tap
+      Post button matching YouTube (commit `9dfcdb85`, update group `e7cdb8fa`).
+    - **Then, per owner's decision (Sep 8), Direct Post was made the No.1 path**
+      (`~/Tonefy-react@d99d8c08`): the app is for paying users, so the premium one-step
+      post should be primary and draft the fallback. `publishToTikTok` now **tries Direct
+      Post first and falls back to the inbox draft** if it is refused. Returns
+      `mode:'direct'|'draft'`; the app messages accordingly (update group `a9817d01`).
+      **This auto-upgrades: the moment TikTok audits the app for `video.publish`, direct
+      posting goes live with no code change.** Verified today it still falls back to draft
+      (HTTP 200, mode:draft).
+    - **Layer 2 - the compliant posting UI - BUILT Sep 8 2026** (app `95476939`, update
+      group `fe3115a4`; backend `d9a9477d`). This is the screen TikTok's Direct Post audit
+      reviews. New `components/TikTokPostSheet.js`: on open it calls the new
+      `GET /tiktok/creator-info` (which wraps `/v2/post/publish/creator_info/query/`) and
+      shows only the creator's allowed privacy levels with **no default** (Post stays
+      disabled until one is chosen - a TikTok requirement), Comment/Duet/Stitch toggles that
+      respect the account-level disables, and a commercial-content disclosure
+      (**Your brand** = brand_organic, **Branded content** = brand_content) that forbids
+      private branded content and shows the required Music Usage / Branded Content
+      declarations. The TikTok Post button on Edit & Post opens this sheet; the choices ride
+      to `/api/post-now` as `req.body.tiktok` and into `publishToTikTok`'s post_info.
+      Backend verified: creator-info returns the real privacy options for the live sandbox
+      account. **What remains for actual Direct Post is not code - it is TikTok's audit**:
+      submit the app (with this sheet in the demo video) and get `video.publish` approved,
+      after which the direct-first path (Layer 1) goes live automatically.
+    - So the demo video TikTok requires IS now makeable - record the app posting to TikTok
+      (draft) then the draft appearing in the TikTok app. Two test drafts from this session
+      sit in the owner's TikTok inbox; harmless (drafts, never published), delete in TikTok.
+    - **APPROVED AND LIVE IN PRODUCTION Sep 16 2026.** TikTok emailed "Your app is
+      approved"; the portal shows Production / Live since Sep 16 10:20. `TIKTOK_ENV=production`
+      is set and the boot log says `[tiktok] using PRODUCTION credentials`.
+      **`video.publish` was granted, but that is NOT the same as Direct Post being live -
+      and reading it that way was wrong.** The token does come back with
+      `user.info.basic,video.publish,video.upload`, and the consent screen does offer "Post
+      content to TikTok". From that it was announced here that Direct Post was live. It is
+      not. Asking TikTok's own endpoint settles it:
+
+      ```
+      POST /v2/post/publish/video/init/  ->  403
+      unaudited_client_can_only_post_to_private_accounts
+      ```
+
+      **The SCOPE is granted; the Direct Post AUDIT is separate** - it had not passed then,
+      and until it did, TikTok permitted direct posting only to accounts that are PRIVATE, so
+      a public account correctly fell back to the inbox draft.
+      **The general lesson: a granted scope is permission to CALL an endpoint, not proof the
+      call will be allowed.** Only the endpoint's own answer is proof.
+
+      **DIRECT POST AUDIT APPROVED Sep 24 2026 - and it IS live this time, asked rather
+      than assumed.** TikTok emailed "Your Content Posting API - Direct Post application is
+      approved". The same probe that refused before now answers a different question
+      entirely:
+
+      ```
+      POST /v2/post/publish/video/init/  ->  400 invalid_params ("The video info is empty")
+      ```
+
+      That is the audit gate GONE - it is now complaining about the deliberately bad
+      payload rather than about who is asking. **Probing with an invalid payload is the
+      cheap non-destructive check**: an unaudited app is refused before its parameters are
+      ever looked at, so the error that comes back tells you which wall you hit without
+      posting anything. Then proven for real through the deployed `/api/post-now`:
+      `mode: 'direct'`, publish id `v_pub_file~v2-1.7689070843848476692`, and
+      `/v2/post/publish/status/fetch/` reporting `PUBLISH_COMPLETE`. **The id prefix is
+      itself the discriminator - `v_pub_file~` is a direct post, `v_inbox_file~` a draft.**
+      Posted at `SELF_ONLY` so a verification post is real without being public; it is on
+      the owner's profile privately and can be deleted in the TikTok app.
+      `creator_info` now offers all three privacy levels (`PUBLIC_TO_EVERYONE`,
+      `MUTUAL_FOLLOW_FRIENDS`, `SELF_ONLY`) with `max_video_post_duration_sec` 3600.
+      **No code change was needed on either side** - the direct-first path and the app's
+      `result.mode === 'direct'` branch were both written for this day. The inbox-draft
+      fallback stays as the safety net, no longer the ordinary path.
+      **Published to `production` Sep 24 2026 as update group
+      `861e079d-3646-480d-ac03-3e3bc7a38e5c`** (runtime 1.1.0, commit `71191f3a`). The app
+      change in it is a stale comment only - both features went live through the BACKEND -
+      but the channel is kept in step with the repo on the standing rule that a commit is
+      not a publish. `eas update` reported "no new assets found", so it costs an installed
+      device almost nothing to take.
+
+      **AUDIT APPLIED FOR Sep 17 2026, reference `20260917112025`** ("Content Posting API -
+      Direct Post", acknowledged by email); TikTok says 2-4 weeks, status on the Manage apps
+      page. Quote that reference in any follow-up. App ID
+      `7650884728652466193`, organisation given as **Fitlifesolutions** (matching the legal
+      docs rather than the product name), cap requested "Less than 100" with the real
+      figures behind it (23 accounts, 34 posts in 30 days, 16 of them TikTok). The answers
+      are kept as an artifact so a returned application does not mean rewriting them.
+      **Before applying, the sheet was audited against TikTok's content-sharing guidelines
+      and three requirements were NOT met** - the interaction toggles defaulted ON
+      ("none should be checked by default"), there was no content preview, and neither
+      `max_video_post_duration_sec` nor the "creator cannot post" signal (an EMPTY
+      `privacy_level_options`) was enforced. All three shipped the same day. **Checking the
+      guidelines before submitting rather than learning from a rejection is what a 2-4 week
+      review cycle is worth.**
+      **DIRECT POST CONFIRMED ON DEVICE Sep 27 2026** - the owner posted twice from the
+      app, both landed on the real account. The device test then found what no server-side
+      check could: **the posts had no description and no hashtags, and carried OUR name.**
+      Three causes, all fixed the same day:
+      - **The sheet had no caption field.** It collected privacy and the disclosures - the
+        things the audit requires - and the description was inherited silently from the
+        screen behind it. Hashtags and @mentions inside a TikTok caption are LIVE, so that
+        field is the difference between a post that can be found and one that cannot. It
+        now sits beside the privacy choice, the way TikTok's own composer has it, 2200
+        characters with a counter. Seeded when the sheet OPENS, not on mount - the caller's
+        caption changes between posts and a stale seed publishes the wrong words.
+      - **`MyVideosScreen` seeded the caption from `video.prompt`**, which is a real idea
+        for a generated video and the literal placeholder `"Uploaded media video"` for an
+        uploaded one (written by the upload route, `server.js:7271`). That phrase was going
+        out as people's captions. Known placeholders are dropped now.
+      - **The backend substituted `'Created with Tonefy AI'` for an empty caption**, which
+        published our name in the user's own video description because they had not written
+        one. **No fallback now** - `undefined` is dropped by `JSON.stringify` and TikTok
+        accepts a post with no description. **Verified both ways against the live API,
+        because "is `title` optional" was the whole risk in removing it:** a post WITH a
+        caption and hashtags and a post with NONE both returned `mode: 'direct'` and
+        reached `PUBLISH_COMPLETE`.
+
+      **The general shape: a field the server can fill in for you is a field that will be
+      wrong on someone's public profile.** A default caption is not a convenience, it is
+      publishing words the user never chose.
+
+      ~~**Cheap way to verify the direct path today without the audit:** set one TikTok
+      account to private, post, confirm `mode: 'direct'`, set it back.~~ - moot, the audit
+      passed; a normal post is now the direct path.
+      The fallback now LOGS the refusal reason; discarding it is what made "it went to
+      drafts again" undiagnosable without another device round trip.
+      **The order that mattered on the flip:** the old account was disconnected while
+      SANDBOX was still active, so its token was revoked at TikTok rather than orphaned -
+      a sandbox token cannot be revoked once the production app is the active one. Every
+      connected account must reconnect after this flip; sandbox-issued tokens are refused.
+      The reconnect also gave the new link-code flow (see the client-written-record bug
+      pattern) its first real TikTok round trip: `uid bound: true` on the token doc.
+      **Cosmetic bug fixed the same day:** connecting from the phone landed on the
+      WEBSITE's connect-accounts page, because both clients start at the same
+      `/tiktok/auth` and the callback gets only `code` and `state` back. "Who asked" now
+      rides on the server-side PKCE entry (`?from=app`), so TikTok still sees a byte-for-byte
+      identical OAuth request with an opaque state - worth preserving for a freshly
+      approved app.
+    - **SUBMITTED Sep 9 2026 - TikTok app was "In review."** The production TikTok app
+      (Login Kit + Content Posting API, scopes user.info.basic/video.publish/video.upload,
+      Direct Post ON) was completed and submitted. What went in: app icon 1024, name,
+      Photo&Video category, description, Terms/Privacy URLs, Web platform (site
+      `https://tonefy-ai.fitlifesolutions.site`) + Android platform (package
+      `com.ahumuza21213.TonefyApp`, Play URL, App signature MD5 `209BFA1189F978700A6DDAEBC615C258`,
+      SHA-256 `C1:C5:12:D5:…:6E:09:E7` - the current Classical app-signing key), Login Kit
+      redirect under the WEB tab = `https://api.fitlifesolutions.site/tiktok/callback`
+      (Android tab left empty - the flow is web OAuth, not an App Link), a demo video
+      (compressed to 11MB, shows sign-in + compliant sheet + post), and the ~991-char
+      product/scope explanation. Domain verification skipped (we use FILE_UPLOAD /
+      push_by_file, not pull_by_url). Backend still on SANDBOX creds - when TikTok approves,
+      flip `TIKTOK_ENV=production` and restart, then reconnect accounts. Now waiting on
+      TikTok's review, same as the YouTube + Play reviews.
+    - **DEMO VIDEO RECORDED Sep 8** (owner-hosted, Unlisted):
+      `https://youtube.com/shorts/WupTWthv9H0` ("Tonefy AI TikTok integration"). Owner
+      confirmed it shows the compliant posting sheet (privacy Everyone/Friends/Only me +
+      Comment/Duet/Stitch + disclosure) AND a successful result, with English narration -
+      the two things the audit checks. Reachable via oEmbed (public/unlisted). Ready to drop
+      into the TikTok app submission's demo-video field.
+    - **Cosmetic bug, not fixed:** after connecting TikTok in-browser, the OAuth callback
+      lands on the website homepage instead of deep-linking back into the app. Connection
+      still succeeds (token stored before the redirect). Worth fixing (`tiktok-success.html`
+      / the callback redirect) but not blocking.
+    - **Disconnect FIXED Sep 8** (backend `6488d18f`, app update group `26b5b81d`): the
+      app's TikTok disconnect used to only delete `connectedAccounts.tiktok` client-side,
+      leaving the token in `tiktokTokens/{openId}` (Admin-only) AND still valid at TikTok -
+      contradicting privacy policy 5(e) ("deleted immediately on disconnect") and TikTok's
+      audit expectation. New `POST /tiktok/disconnect` (auth-gated, verified 401 unauth)
+      revokes at `/v2/oauth/revoke/` (best-effort), deletes the Firestore token doc, clears
+      the in-memory cache, and removes the display flag. `ConnectAccountsScreen`'s disconnect
+      now calls it. **Switching accounts = disconnect then connect** (the UI shows Disconnect
+      while connected), so the old token is now properly revoked rather than orphaned.
+      Note `getTikTokToken` keeps an in-memory `tiktokTokens{}` cache over the Firestore
+      store - any future token deletion must `delete tiktokTokens[openId]` too or it serves
+      a dead token until restart.
+    - **`spam_risk_too_many_pending_share`** seen on device Sep 8: TikTok's rolling
+      per-window upload quota (tight in SANDBOX) - hit after a burst of test uploads. NOT a
+      bug; deleting the inbox notifications does not clear it (it counts uploads made, not
+      currently-pending), it resets on time (~24h). Real users posting occasionally won't
+      hit it. When recording the demo, do ONE clean post, not repeated attempts.
+    - **TRACKED FOLLOW-UP (do AFTER TikTok approves the single-account flow, not before -
+      don't change the posting path mid-audit): multiple TikTok accounts per user, as a
+      paid-tier benefit.** Today it is ONE TikTok account per Tonefy user - `connectedAccounts/
+      {uid}.tiktok` is a single object, so connecting another REPLACES it (YouTube is
+      likewise one channel per user). The token store `tiktokTokens/{openId}` is already
+      keyed per-account so it can hold several; what is single is the app's "which account"
+      pointer. To support multi-account: store a LIST of connected TikTok accounts, add an
+      account selector at the top of the posting sheet, and gate the count by tier (e.g.
+      Free 1 / Pro 3 / Creator unlimited) - a natural Pro/Creator upsell for a creator tool.
+      Owner wants this built, but only once the current single-account flow is approved.
+
+    **Two things still unverified** (historical - the first is now RESOLVED above):
+    - **Whether a sandbox post actually completes.** RESOLVED Sep 8 - yes, via the inbox
+      endpoint (see update above). Left here for context.
+    - **MD5 and SHA-256 signing fingerprints.** Firebase holds only SHA-1 for this app
+      (`441012e0…`, `e20bd97e…`, `afdd7e07…`); MD5 and SHA-256 live in Play Console under
+      App integrity. **Register the previous app signing key as well as the current one** -
+      the 11 Aug rotation means older installs present the old certificate, which is
+      exactly what broke Google Sign-In in item 28.
+
+42. **Production access APPLIED FOR (Sep 3 2026, 22:23) — in Google's review queue.**
+    All three closed-testing gates were met (12 testers, 14 days, a published closed
+    release), so the Dashboard's "Apply for production" flow opened. Filled its
+    three-step questionnaire (closed test / about the app / production readiness) with
+    honest answers drawn from the real test - the build-12 notification fix, the My
+    Videos download/layout fixes, profile-photo upload, and the real Play Billing
+    purchase that completed end to end (item 30) - selected recruitment "Easy",
+    installs "0-10K". Google says it emails the account owner with a decision, "usually
+    seven days or less."
+
+    **This is application review, not the production launch.** It grants *eligibility*
+    to publish to production; the actual release is a separate step afterwards -
+    promote a build (versionCode 12 is the current one, on alpha, carrying
+    POST_NOTIFICATIONS + BILLING and device-verified) and it goes through its own
+    review. The 12 alpha testers are untouched by this application.
+
+    **What this unblocks once approved and a production release is live:** item 41's
+    TikTok submission, which is stuck only on
+    `play.google.com/store/apps/details?id=com.ahumuza21213.TonefyApp` returning 404
+    (no public listing while the app is closed-testing only). A production listing makes
+    that URL resolve. Nothing to do now but wait for Google's email.
+
+    **GRANTED Sep 8 2026.** Google emailed production access approved for
+    `com.ahumuza21213.TonefyApp`. This is eligibility, not a live release - a production
+    release still has to be created (promote a build; versionCode 12 is the current one,
+    on alpha, device-verified, carrying POST_NOTIFICATIONS + BILLING). Once a production
+    release is live, item 41's TikTok Play Store URL resolves and that submission unblocks.
+    **Next action when ready: promote build 12 (or later) to the production track.**
+
+    **RELEASED to production Sep 8 2026 - build 12 (versionCode 12), 100%, all 177
+    countries.** Done via the Play Developer API with the Firebase service account
+    (`edits.insert` -> `tracks.update` track=production, `status:'completed'`,
+    `versionCodes:['12']` -> `validate` -> `commit`), read back as `production: completed
+    | vc 12`. **The gotcha, for next time:** a first production release fails with
+    `403 "Release in track targeting no countries"` until the production track's
+    Countries/regions are set, and you **cannot** set them on a `completed` (full) release
+    via the API - `countryTargeting` is "only supported for staged releases". It is a
+    one-time Console step (Test and release -> Production -> Countries/regions -> Select
+    all); once saved (177 targeted here), the full API commit works. `committed` comes
+    back `undefined` from `edits.commit` - the authoritative confirmation is reading the
+    track back, not that field. Expect a Google review before it is publicly visible
+    ("In review"/"Pending publication" -> "Published"), normal for a first production
+    release. **This is what unblocks item 41's TikTok Play Store URL** once the listing
+    goes live.
+
+43. **YouTube API audit — Google's follow-up answered (Sep 3 2026, reply sent).** After
+    item 40's submission, the YouTube API Services team replied asking for two things: a
+    screencast of a video being uploaded to YouTube, and working demo credentials. Both
+    supplied; reply sent.
+
+    **The correction that matters most for next time: the app HAS been uploading to
+    YouTube successfully, and a confident "it never has" was wrong because I grepped the
+    wrong route name.** The publish route is **`/api/post-now`** (EditPostVideoScreen ->
+    `publishToYouTube` -> `videos.insert`). There is no `/api/publish`; grepping for that
+    found nothing and produced a false "no upload ever ran" claim that nearly sent the
+    owner to record a screencast of a flow believed broken. The source of truth is
+    Firestore `scheduledPosts` where `status:'posted'` carries a real `publishId`: **five
+    real successful uploads** exist - `hEcd6J9PZ5k` (Aug 22), `JdT0QBwYFKo`/`TF4F32U1P0E`
+    (Aug 23), `LBwSuh6JRD0` (Aug 27 10:56), `a9I3eze1h6I` (Aug 27 11:11). **Confirm which
+    route a feature actually calls before concluding from logs that it has never run** -
+    `publishToYouTube` logs only failures (`[youtube] upload failed`), never successes, so
+    absence of an error is not absence of a call; the `scheduledPosts` record is.
+
+    **The screencast was already on the VPS** (`~/ytshots/tonefy-oauth-demo.mp4`) and is a
+    genuine end-to-end demo - its YouTube Studio frame is literally
+    `studio.youtube.com/video/LBwSuh6JRD0/edit`, i.e. one of the five real uploads, not a
+    staged shot. The owner hosted it on his own channel and sent the watch link
+    (`https://www.youtube.com/watch?v=diNcnX-CIKU`, title "Tonefy AI — YouTube OAuth
+    consent flow and video upload", reachable via oEmbed = public/unlisted, not private).
+
+    **Demo credentials, set and VERIFIED by a real sign-in** (item 40's lesson - existence
+    is not the claim): `youtube.audit@tonefyai.app` / `TonefyReview2026!`, uid
+    `bHhCH2XiYWcUfYz6zt9B9Jj7A132`, plan **creator** (so the Pro/Creator YouTube gate
+    passes), emailVerified true, not disabled. Password was (re)set via Admin SDK this
+    session and confirmed against Identity Toolkit `signInWithPassword` (returns a valid
+    idToken). The demo account has **no** YouTube channel connected - a reviewer connects
+    their own in-app to test posting, which is expected.
+
+    **The app requests only the `youtube.upload` scope** (minimal - good for the OAuth
+    review). Consequence: it cannot `videos.delete` or `channels.list` - both return
+    "insufficient authentication scopes", which is why `publishToYouTube`'s channel-title
+    lookup logs `[youtube] channel lookup failed` harmlessly, and why a test upload cannot
+    be auto-deleted. **A private test clip uploaded server-side this session to confirm the
+    pipeline (`Bnn5ltIPBwg`, on the owner's channel `sWyTCf…`) is still there as Private -
+    delete it manually in Studio.** It uploaded fine; only the cleanup couldn't run.
+
+    **Follow-ups (the review is iterative - each answer earns the next question):**
+    - **2nd screencast (Sep 5).** Google asked again for the COMPLETE upload process +
+      end result, "English translated version" - the first video (`diNcnX-CIKU`) was the
+      OAuth-verification demo, jumpy and heavy on the consent screen, and did not clearly
+      show the in-app success + the video landing on the channel. Owner recorded a fresh
+      clean take following a 7-step shot list (dashboard -> Connect Accounts shows YouTube
+      Connected -> open a video -> Edit & Post -> select YouTube -> Post Now -> "Posted to
+      YouTube!" -> open YouTube app showing the video). Uploaded Unlisted:
+      `https://youtube.com/shorts/2Dciwsx1vLs`. The "English translated" line was satisfied
+      by a numbered English written walkthrough in the reply, since the app UI is English.
+      **This was accepted** - Google's next email thanked us and moved to a new topic.
+      Note: a 120MB recording could not be scp'd over the owner's ~KB/s link, and YouTube
+      blocks datacenter yt-dlp downloads (bot check) so the video could not be pulled back
+      to verify - uploading straight to YouTube Unlisted from the phone was the working
+      path, verified via the oEmbed title + the auto-thumbnail (which showed the real app).
+    - **Website-usage question (Sep 8).** Google asked whether the API is used on the
+      WEBSITE too. **Verified answer: NO** - the website (`/var/www/tonefy-ai`) has zero
+      YouTube API usage. `connect-accounts.html` offers only TikTok/FB/IG/X, no page calls
+      `videos.insert`/`youtube/connect`, and the only YouTube strings are a "YouTube 16:9"
+      aspect label, legal/marketing copy about the APP's feature, and `youtube-success.html`
+      (a static "Connected, return to the app" landing page shown at the end of the app's
+      OAuth - it makes no API calls). The consent screen shows `fitlifesolutions.site`
+      only because that domain hosts the OAuth redirect / is the authorized domain; the
+      client is used exclusively by the mobile app. Replied confirming the website does
+      not use the API, so there is no website upload flow to record.
+    - **Quota-breakdown question (Sep 9).** Google said the quota methodology changed
+      (framed as ~100 quota/day, 1 quota per API call) and asked for an updated per-endpoint
+      breakdown + video size/duration/upload frequency. Replied with the real endpoints
+      (verified in code: `videos.insert` per upload, `channels.list` once per connect - no
+      `search.list` or anything else), realistic new-app numbers (current single-digits/day,
+      projected peak ~150 uploads/day ≈ ~200 quota/day with headroom), and short-form video
+      profile (~30-60s, ~10-30MB, a few uploads/week per active user, never bulk/automated).
+      Deliberately modest and internally consistent - the first submission's inflated
+      250k/day is what triggered this re-assessment. Awaiting their reply.
+    - **Google's last word was Sep 9:** "We will conduct our review based on the information you
+      provided... notify you if we need additional information, or when we've completed our review."
+      **24 days of silence, so a polite status request went out on the SAME thread on Oct 3 2026**
+      (reply to Google's Sep 9 message, project id + the three answers already given + the practical
+      cost: every user upload is private until the review clears). Same thread on purpose - a new
+      request can restart a review. The owner asked why his uploads are private; this is the answer.
+
+    **Still open / separate:** the OAuth verification (consent screen branding) is a
+    different Google review from this API audit - see item 40. And a separate Google Play
+    email (Sep 3) requires all apps + signing keys **registered for Android developer
+    verification by Sep 30 2026**; >99% auto-registered, so almost certainly Tonefy already
+    is - a 30-second check on the Play Console Home page (filter for unregistered), not yet
+    confirmed. This also dovetails with item 41's need to register the MD5/SHA-256 and the
+    previous app signing key.
+
+44. **Privacy policy / terms aligned with the app, and the one false promise made true**
+    (Sep 4 2026; app `8871df58`, published to production as update group
+    `09df15a6-6bee-4592-8daa-db3f379f45c3`, runtime 1.1.0; website `tonefy-website@917f516`).
+    Audited both legal docs against what the app and backend actually do. Mostly aligned
+    and well written; the gaps found and closed:
+
+    **The material one: the privacy policy promised a "Settings → Privacy" opt-out that did
+    not exist, and claimed "analytics SDKs" the app does not run** (only Sentry, which is
+    crash/diagnostics, not usage analytics). A promised control that isn't there is worse
+    than none. **Chosen fix was to make the promise true, not delete it** (owner asked for
+    the premium/long-term option): new `screens/PrivacyScreen.js` reachable from the
+    Dashboard Settings sheet, with a real **"Share diagnostics & crash reports"** toggle
+    that genuinely gates Sentry. The gate is `utils/diagnostics.js` - a module-level
+    `sendEnabled` flag (default true) that `App.js`'s `Sentry.init` reads in
+    `beforeSend`/`beforeSendTransaction`, dropping every event when off; persisted to
+    AsyncStorage (`tonefy.diagnostics`), hydrated at boot by `hydrateDiagnostics()`. Sync
+    flag rather than a per-event async read because a crash handler cannot await; the cost
+    is a sub-second window at cold start before hydration where an opted-out user could
+    still send, which is the standard trade for a synchronous gate. No new dependency
+    (Sentry + AsyncStorage already in build 12), so it shipped OTA. `lock` icon on the
+    Settings row is correct per the design rule - it means "protected", not "pay".
+
+    **Other alignment fixes (website `privacy.html`/`terms.html`):** country added to the
+    data-collected list (it was collected at signup, undisclosed); §2.2 rewritten from
+    invented usage-analytics to the real diagnostics + functional records + server logs;
+    Google Play Billing named instead of a vague "payment processor"; retention stated
+    honestly as the 72h-free / 30-day-paid split; in-app **Profile → Delete Account**
+    documented (item 38 shipped it; the policy still said "email us"); the YouTube §6(d)
+    channel-**name** claim softened to "confirmation of the connected channel" to match the
+    upload-only scope (the app cannot read the channel name - `channels.list` needs a scope
+    it does not request). **Terms had no mention of YouTube at all** - the live,
+    under-review integration - only TikTok/IG/FB/X; added it to the feature list, the
+    platform-terms clause, and a new **4.3 YouTube API** subsection, renumbering §4.
+
+    **Mistake made and corrected in the same session:** `git --git-dir=~/tonefy-website.git
+    add -A` swept an unrelated `vitablast/` PWA (five files that happen to sit in the
+    webroot `/var/www/tonefy-ai`) into the website repo and it was pushed. Untracked it with
+    `rm -r --cached` (files left on disk) in a follow-up commit. **The website work-tree is
+    a live webroot with unrelated things in it - `add -A` is not safe there; stage the
+    specific pages** (`git ... add privacy.html terms.html`) rather than everything. The
+    CLAUDE.md website-workflow example that shows `add -A` is what led into this.
+
+44. **Facebook + Instagram publishing - being built (Sep 9 2026).** Owner asked to add
+    IG/FB posting. Backend built and deployed (`~/Tonefy-react`, latest `5904b724`); NOT
+    yet usable - blocked on Meta App Review + Business Verification (dev-mode only until
+    then) and on some console activation still pending.
+
+    **Design decision (owner's, for the public):** TWO separate connections, not one, so
+    users aren't forced to own a Facebook Page just to post to Instagram:
+    - **Facebook = Facebook Login -> a Page** (Meta forbids posting to personal profiles).
+      Scopes `pages_show_list, pages_read_engagement, pages_manage_posts`. Tokens in
+      `metaTokens/{uid}`. Publish: `POST /{pageId}/videos` with `file_url`.
+    - **Instagram = direct Instagram Login** (no Page needed - Meta's newer, low-friction
+      path). Its OWN app credentials (Instagram app id/secret, separate from the Facebook
+      app), OAuth on `instagram.com`, host `graph.instagram.com`, scopes
+      `instagram_business_basic, instagram_business_content_publish`. Tokens in
+      `igTokens/{uid}`. Publish: Reels container -> poll status -> media_publish.
+    - App will show two buttons: "Connect Facebook" and "Connect Instagram".
+
+    Both OAuth flows mirror YouTube's HMAC-signed state (`signState`/`readState`). Routes:
+    `/api/facebook/connect` + `/facebook/callback` + `/api/facebook/disconnect`;
+    `/api/instagram/connect` + `/instagram/callback` + `/api/instagram/disconnect`. Both
+    registered in `PUBLISHERS` (`fbConfigured()`/`igConfigured()`), so `/api/post-now` and
+    the sweep route to them. Redirect URIs: `https://api.fitlifesolutions.site/facebook/callback`
+    and `.../instagram/callback`. `facebook-success.html` created on the website as the
+    landing page.
+
+    **The Meta app** is the existing `FitlifeSolutions` app (App ID `2023140918300014`,
+    business "Ahumuza Mark", dev mode). Use cases added: "Manage everything on your Page"
+    (Facebook) + "Manage messaging & content on Instagram" (which we're using via its
+    **Instagram-login** setup, not the Facebook-login one). `.env` has
+    `FACEBOOK_APP_ID/SECRET/REDIRECT_URI`; **still needs `INSTAGRAM_APP_ID/SECRET/REDIRECT_URI`**.
+
+    **Meta gotcha, seen live:** a permission is refused in the OAuth request ("Invalid
+    Scopes ... only shown to developers") until it is ADDED/activated in the use case's
+    Permissions list. `pages_show_list` was active; `pages_manage_posts` +
+    `pages_read_engagement` (Facebook) and the IG permissions need activating in their use
+    cases before the connect works.
+
+    **FACEBOOK verified working end to end (Sep 11 2026).** Owner completed the OAuth
+    (Page "Fit life solutions", id `944030155454496`); token stored in `metaTokens/{uid}`.
+    A test video upload to the Page via `/{pageId}/videos` returned HTTP 200 with a video
+    id, done with `published:false` (unpublished, so nothing went live on the real Page)
+    and deleted right after - non-disruptive proof, per the owner's "with care for the
+    public" ask. The `/api/post-now` path uses the same call (published), so it is proven.
+    OAuth gotcha logged: the connect link's signed state lives 10 min; a link opened ~2
+    days later was rejected as expired (landed on the site homepage, not
+    `facebook-success.html`) - regenerate and complete promptly.
+
+    **INSTAGRAM verified end to end (Sep 11 2026).** Env is set (IG app id
+    `1794252245220274`, secret + redirect); the redirect is registered and the two
+    scopes activated. The owner's account (@fitlifesolutions.site, a Business account)
+    connected through the real app flow - which required (a) accepting the Meta
+    **Instagram Tester** invite, and the acceptance UI is **only on instagram.com in a
+    browser** (Settings -> Apps and websites -> **Tester Invites**), NOT in the mobile
+    app, whose "Apps and websites" shows only Active/Expired/Removed; and (b) converting
+    the account to **Professional** (the OAuth screen offers this inline). Tokens stored
+    in `igTokens/{uid}`. The Reels pipeline was proven against the live account by
+    creating a REELS container from a real 75s export and polling to `FINISHED`, with the
+    final `media_publish` **deliberately skipped so nothing posted** (Instagram has no
+    unpublished mode and no reliable delete-via-API, so this is the non-disruptive test).
+
+    **The bug this exposed (fixed `bb3413d4`):** the callback stored `short.user_id` from
+    the token exchange, but the `/media` publish endpoint needs the `user_id` from
+    `graph.instagram.com/me` - a DIFFERENT id (and different again from `/me`'s `id`
+    field). All three are "user_id"-ish; only `/me`'s works, and the wrong one fails with
+    subcode 33 ("does not exist ... or does not support this operation"). Every connected
+    account could authenticate but not publish. Now `igUserId` comes from `/me`. The
+    owner's stored doc was corrected in place.
+
+    **FRONTEND built and published (Sep 11 2026, update group
+    `8ae1cf7d-7077-42f5-986b-af2b9edc55ac`, commit `84e4fdf3`, production, runtime
+    1.1.0).** ConnectAccounts has real Facebook and Instagram cards (connect / status /
+    disconnect, server-authoritative status via the new `/api/facebook/status` +
+    `/api/instagram/status`, `bb3413d4`/`60bccb3e`); both leave the Coming Soon list (only
+    X remains). Edit & Post's FB/IG rows are real Post buttons: connected -> `/api/post-now`
+    (`[facebook]` posts a Page video, `[instagram]` a Reel); not connected -> route to
+    ConnectAccounts, same model as TikTok (both need browser OAuth, so posting does not try
+    to resume mid-flow on return). No new native module - safe OTA. **Untested on device**
+    (backend paths verified live). `facebook-success.html` cosmetic YouTube logo fixed
+    (`tonefy-website@c56c08d`): real FB+IG marks, reads `facebook_error`/`instagram_error`.
+
+    **Still to do:** Meta go-live - **Business Verification** + **App Review** with demos,
+    both required before anyone but app admins/testers can connect (dev mode today).
+    `business_management` was dropped from FB scopes (not needed for posting). Then
+    TRACKED, same as TikTok: multiple FB Pages / IG accounts per user as a paid tier.
+
+    **BLOCKED ON FUNDS (owner, Sep 11 2026): Meta Business Verification needs a document
+    in a BUSINESS's legal name, which the owner does not have - only personal documents.**
+    The fix is a **URSB business-name registration** (Uganda; a sole proprietorship's
+    Certificate of Registration is what Meta/TikTok/Play all accept), but the owner
+    **currently cannot afford the URSB fee and is still raising the money** - so this is
+    parked, not abandoned. Nothing here needs Claude action until then; when funds arrive,
+    the next step is the URSB OBRS registration, then the Meta App Review pack (not yet
+    written - offered and deferred). **What is NOT blocked and works today:** the owner (an
+    app admin/tester) can post to their OWN connected Facebook Page and Instagram in dev
+    mode, verified end to end this session. The same URSB document later unblocks Pinterest
+    and LinkedIn public launch too (see item 45) - it is the one shared gate for opening
+    ANY social platform to real users, so the whole social-posting roadmap waits on it.
+
+    **Business vs product name (owner decided Sep 11 2026): the business is
+    "Fitlifesolutions" (ONE word), the product/app is "Tonefy AI" - a normal
+    company->product split, not a problem.** All identity infra already points at it
+    (domain `fitlifesolutions.site`, the OAuth consent screen, IG `@fitlifesolutions.site`,
+    TikTok `@Fitlifesolutions`), and the privacy policy + terms + site footer state "Tonefy
+    AI ... developed and operated by Fitlifesolutions" - so the relationship is documented
+    where reviewers look. **The owner chose the one-word spelling "Fitlifesolutions" over
+    the two-word "Fitlife Solutions"; the site legal docs were changed to match
+    (`tonefy-website`, Sep 11 2026) - use "Fitlifesolutions" everywhere from now on.** Two
+    things to get right at registration, both consistency not code: (a) register URSB as
+    **"Fitlifesolutions"** (one word) - do NOT reintroduce the two-word or any third
+    spelling. (b) **DONE Sep 11 2026:** the Meta Business Manager portfolio (ID
+    732676555725838) was renamed from "Ahumuza Mark" to **"Fitlifesolutions"**, and the
+    brand Page **"Fit life solutions"** (id 944030155454496) was added to the portfolio and
+    set as its **Primary Page** (it previously had only an unrelated "Make money online"
+    page). Still empty on that portfolio, to fill against the URSB certificate at
+    verification time: Legal business name, address, phone; Website should be the COMPANY
+    site `https://www.fitlifesolutions.site` (apex→www, live), NOT the Tonefy product
+    subdomain. Note the actual Facebook Page keeps its own name "Fit life solutions" (three
+    words) on FB's side - a real page name only the owner can rename in Facebook, left
+    factual where referenced.
+
+45. **Pinterest + LinkedIn backend scaffolded - WRITTEN BUT UNTESTED, gated off**
+    (Sep 11 2026, `~/Tonefy-react/backend@HEAD`, deployed; app side not built yet). Owner
+    asked to keep adding social channels while the URSB/Meta gate (item 44) is parked on
+    funds. Both platforms now have the full registry shape - `/api/{pinterest,linkedin}/
+    connect|callback|disconnect|status`, a `PUBLISHERS` entry with a real `publish()`, and
+    success pages (`pinterest-success.html`, `linkedin-success.html`, brand-coloured per
+    the social-platform rule) - following the exact YouTube/Meta code-flow pattern.
+
+    **Nothing is reachable yet, on purpose.** `enabled()` reads the env, and no credentials
+    are set, so `connect` answers **503** and `/api/platforms` reports `enabled:false` (both
+    verified live). Turning either on is a credential + the platform's own app review, not a
+    build - the same staging Facebook/Instagram had.
+
+    **The publish() flows are drafts to VERIFY, not proven** - written from the v5 /
+    versioned REST docs, never run against the real API (there are no credentials to run
+    them with, and won't be until the funds/registration gate clears). A future session
+    with real credentials MUST test, not trust:
+    - **Pinterest** (`publishToPinterest`, API v5): register media -> upload bytes to the
+      returned URL with Pinterest's own form fields -> poll -> create pin. A video pin
+      requires `cover_image_url`, so we grab frame 0 with ffmpeg and host it under
+      `/videos`. Tokens in `pinterestTokens/{uid}` with a refresh path (`pinValidToken`).
+      Env: `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_REDIRECT_URI`
+      (`.../pinterest/callback`).
+      **CREDENTIALS SET + OAUTH VERIFIED Sep 11 2026** (App id `1552947`, "FitlifeSolutions"
+      dev app; token stored in `pinterestTokens/{uid}` with refresh + ~30-day expiry). Two
+      real-API findings from live test pins: (1) creating a pin needs **`boards:write`**,
+      not just `pins:write` - added to `PIN_SCOPES` (`0a134b35`); (2) **Pinterest TRIAL
+      access cannot create pins in production at all** ("use API Sandbox instead") - the
+      sandbox needs its own token (production OAuth token is 401 there), so real pins are
+      blocked until **Standard access**, requested via the **"Upgrade access"** button on
+      the Pinterest app page (Pinterest's review). That review does NOT require the URSB
+      business registration - it asks for use-case + privacy URL - so Pinterest could be
+      the FIRST public channel, independent of the Meta/URSB gate. The publish CODE is
+      verified correct as far as Trial allows (Pinterest returns specific policy responses,
+      never a code error). The owner has 7 boards (all public).
+      **STANDARD-ACCESS SUBMITTED Sep 11 2026 - "under review" (email confirmed).** The
+      upgrade form went in with: a screen-recorded demo (padded to 9:16 in CapCut because
+      Pinterest rejects portrait phone recordings - needs aspect ratio between 1:2 and
+      1.91:1), Company website `https://tonefy-ai.fitlifesolutions.site/`, Privacy
+      `https://tonefy-ai.fitlifesolutions.site/privacy.html` (both must contain the company
+      name AND differ from each other - a play.google.com store link is REJECTED in the
+      website field), the Tonefy-AI-video app-purpose text, use case Pin creation &
+      scheduling, audience Pinners+Creators. **When approved, real pins post with NO code
+      change.** Also built the app-side Pinterest UI this session (ConnectAccounts card +
+      Edit&Post row, published), so the whole Pinterest chain is done pending review.
+      **STANDARD ACCESS APPROVED Sep 24 2026, and the "no code change" claim held.**
+      Pinterest emailed "approved for Standard access". Proven the same way as TikTok -
+      first the cheap probe (a pin create with a deliberately unfetchable image answered
+      `"Sorry we could not fetch the image."`, a CONTENT complaint, where Trial used to
+      refuse the call outright with "use API Sandbox instead"), then for real through the
+      deployed `/api/post-now`: a video pin published in 54s, `publishId
+      1043216701211124835`, confirmed live with a GET and then **deleted** (`DELETE
+      /v5/pins/{id}` -> 204, re-read -> 404). Unlike Instagram, Pinterest HAS a working
+      delete, so an end-to-end test here leaves nothing behind.
+      **Pinterest is therefore the first fully public social channel** - it never needed the
+      URSB business registration that still gates Meta.
+    - **LinkedIn** (`publishToLinkedIn`, versioned REST, member share): `initializeUpload`
+      -> PUT the bytes to each instruction, collecting ETags -> `finalizeUpload` with the
+      part ids -> create a post referencing the video URN. Member id/name come from OpenID
+      `/v2/userinfo` (`sub`). Tokens in `linkedinTokens/{uid}`. Env: `LINKEDIN_CLIENT_ID`,
+      `LINKEDIN_CLIENT_SECRET`, `LINKEDIN_REDIRECT_URI` (`.../linkedin/callback`). Products:
+      **Sign In with LinkedIn using OpenID Connect** + **Share on LinkedIn** (both self-serve,
+      grant `openid profile w_member_social`) - **Community Management API is NOT needed** for
+      member video posts, confirmed by a real post.
+      **WORKING END TO END, verified Sep 13 2026** (app id `779gqah04k4cyf`): a real member
+      video post was created (`urn:li:ugcPost:...`) and deleted (204) through the live
+      `/api/post-now`. App-side UI shipped this session (ConnectAccounts card + Edit&Post row
+      + Profile status). **`LI_VERSION` must be a CURRENT dated version** (`YYYYMM`): LinkedIn
+      retires versions after ~12 months, and a stale one fails with "Requested version ... is
+      not active" - `202405` was retired; bumped to **`202606`** (`36b2cbbe`). Bump it again
+      when that error reappears. The `X-Restli-Protocol-Version: 2.0.0` header is also
+      mandatory. Getting here required LinkedIn **identity verification via Persona**, which
+      for Uganda needs a **passport with an NFC chip scanned on an NFC phone** - the owner's
+      phone has no NFC, so he verified on a **borrowed NFC phone** (verification is
+      account-tied, so it persisted). Creating the developer app also required first creating
+      the **Fitlifesolutions Company Page** (blocked until identity verified).
+      **SECURITY TODO:** the LinkedIn Client Secret was pasted into the chat during setup, so
+      it should be **regenerated** in the LinkedIn Auth tab ("Generate a new Client Secret")
+      and updated in `.env` when convenient - low risk (private transcript, dev app) but
+      best practice.
+      **Company-Page posting: deliberately NOT built (owner decision, Sep 13 2026).** The
+      integration posts to the member's PERSONAL profile only, which is what Tonefy's
+      individual-creator users want (personal profiles get the reach; LinkedIn is a minor
+      channel for short-form creators anyway). Posting to a Company Page would need the
+      **Community Management API** (LinkedIn review required, unlike the self-serve member
+      products) + `w_organization_social` + an org-URN author. Revisit only if a
+      business/agency tier or real user demand appears - not before.
+
+    **Still to build when a platform goes live:** the app-side connect/post UI (mirror the
+    Facebook/Instagram cards in `ConnectAccountsScreen` and rows in `EditPostVideoScreen` -
+    they're driven by `/api/platforms` + the per-platform `/status`, so it's the same
+    shape), and the cosmetic redirect deep-link. Both success pages already exist.
+
+    **X (Twitter) DEFERRED, not built (Sep 11 2026), and deliberately so:** unlike every
+    other platform here, X's API is PAID for writes - video posting needs at least the
+    Basic tier (~$100/month) and the free tier effectively cannot post video. So building
+    an X publisher now would be code that costs a recurring fee to run, which is a bad
+    trade while the owner is funds-blocked. Revisit only when revenue justifies the monthly
+    cost; the registry pattern makes it a drop-in when that day comes.
