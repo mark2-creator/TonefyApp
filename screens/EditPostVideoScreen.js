@@ -11,7 +11,7 @@ import { createEta } from '../utils/eta';
 import { TikTokLogo, InstagramLogo, FacebookLogo, YouTubeLogo, PinterestLogo, LinkedInLogo } from '../components/BrandLogos';
 import { usePlan } from '../constants/plan';
 import { auth, db } from '../firebase';
-import { doc, getDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
@@ -19,7 +19,7 @@ import { showAlert } from '../components/BrandedAlert';
 // their video is live. utils/rateApp.js picks Google's in-app sheet or the Play listing.
 import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import TikTokPostSheet from '../components/TikTokPostSheet';
-import PinterestBoardSheet from '../components/PinterestBoardSheet';
+import PinterestBoardSheet, { loadPinterestBoards } from '../components/PinterestBoardSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -113,16 +113,46 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // The board each Pinterest account last posted to: { accountId: { id, name } }. Opens
   // the board sheet on that board, and is what Post Now / Save to queue use.
   const [pinBoards, setPinBoards] = useState({});
-  const [pinSheet, setPinSheet] = useState(false);
+  const [pinSheet, setPinSheet] = useState(null);   // null | 'post' | 'choose'
+  // The remembered board is kept on the ACCOUNT (users/{uid}.pinterestBoards) so it follows a
+  // phone change, with the phone's copy as the fast first answer.
   useEffect(() => {
-    AsyncStorage.getItem(PIN_BOARDS_KEY)
-      .then(raw => { if (raw) setPinBoards(JSON.parse(raw)); })
-      .catch(() => {});   // no memory is fine - the sheet falls back to the first board
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(PIN_BOARDS_KEY);
+        if (raw) setPinBoards(prev => (Object.keys(prev).length ? prev : JSON.parse(raw)));
+      } catch { /* no phone copy */ }
+      try {
+        const uid = auth.currentUser?.uid;
+        const saved = uid ? (await getDoc(doc(db, 'users', uid))).data()?.pinterestBoards : null;
+        if (saved && Object.keys(saved).length) setPinBoards(saved);
+      } catch { /* the phone copy stands */ }
+    })();
   }, []);
+  function rememberBoards(chosen) {
+    setPinBoards(chosen);
+    AsyncStorage.setItem(PIN_BOARDS_KEY, JSON.stringify(chosen)).catch(() => {});
+    const uid = auth.currentUser?.uid;
+    if (uid) setDoc(doc(db, 'users', uid), { pinterestBoards: chosen }, { merge: true }).catch(() => {});
+  }
   const pinterestBody = () => {
     const boards = Object.fromEntries(Object.entries(pinBoards).map(([acc, b]) => [acc, b.id]));
     return Object.keys(boards).length ? { pinterest: { boards } } : {};
   };
+  // Nothing remembered yet: show each account's FIRST board on the row, so Post Now / Save to
+  // queue never send a Pin somewhere the user could not see. Not saved - only a choice is.
+  useEffect(() => {
+    if (!pinterest?.connected || Object.keys(pinBoards).length) return;
+    let live = true;
+    const fill = (list) => {
+      if (!live || !list?.length) return;
+      const first = {};
+      for (const a of list) if (a.boards[0]) first[a.accountId] = { id: a.boards[0].id, name: a.boards[0].name };
+      setPinBoards(prev => (Object.keys(prev).length ? prev : first));
+    };
+    loadPinterestBoards({ onCached: fill }).then(fill).catch(() => {});
+    return () => { live = false; };
+  }, [pinterest?.connected, pinBoards]);
   const [pinPosting, setPinPosting] = useState(false);
   const [linkedin, setLinkedin] = useState(null);
   const [liPosting, setLiPosting] = useState(false);
@@ -430,17 +460,21 @@ export default function EditPostVideoScreen({ navigation, route }) {
     if (!isPremium) return showAlert('Pinterest', 'Posting to social media is available on the Pro and Creator plans.');
     if (!pinterest?.connected) return navigation.navigate('ConnectAccounts');
     if (needsCaption(['pinterest'])) return;
-    setPinSheet(true);
+    setPinSheet('post');
   }
 
-  async function postToChosenBoards(chosen) {
-    setPinBoards(chosen);
-    AsyncStorage.setItem(PIN_BOARDS_KEY, JSON.stringify(chosen)).catch(() => {});
+  async function postToChosenBoards({ boards: chosen, link, coverSeconds }) {
+    rememberBoards(chosen);
     // Closed BEFORE posting: the result is a BrandedAlert, and a Modal still open on top
     // would hide it (two modals at once is the Android trap ProfileGate documents).
-    setPinSheet(false);
+    setPinSheet(null);
     const boards = Object.fromEntries(Object.entries(chosen).map(([acc, b]) => [acc, b.id]));
-    await postToBrowserPlatform('pinterest', { pinterest: { boards } });
+    await postToBrowserPlatform('pinterest', { pinterest: { boards, link, coverSeconds } });
+  }
+
+  function chooseBoards({ boards: chosen }) {
+    rememberBoards(chosen);
+    setPinSheet(null);
   }
 
   async function postNow() {
@@ -687,13 +721,21 @@ export default function EditPostVideoScreen({ navigation, route }) {
               {/* flex: 0 here: platformName's flex: 1 is for a ROW; inside this column it would
                   mean grow-vertically, and with no fixed height that collapses the text. */}
               <Text style={[styles.platformName, { color: '#E60023', flex: 0 }]} numberOfLines={1}>Pinterest</Text>
-              {pinterest?.connected && Object.keys(pinBoards).length === 1 ? (
-                <Text style={styles.platformSub} numberOfLines={1}>{Object.values(pinBoards)[0].name}</Text>
+              {/* Where Post Now / Save to queue will send the Pin - always visible, one tap to change. */}
+              {pinterest?.connected && Object.keys(pinBoards).length ? (
+                <TouchableOpacity style={styles.platformSubRow} onPress={() => setPinSheet('choose')} hitSlop={{ top: 6, bottom: 6 }}>
+                  {/* Two Texts, not one: a single truncating line cuts from the END, which would
+                      drop "Change" first. The board name shrinks; the link never does. */}
+                  <Text style={[styles.platformSub, styles.platformSubName]} numberOfLines={1}>
+                    {Object.keys(pinBoards).length === 1 ? Object.values(pinBoards)[0].name : `${Object.keys(pinBoards).length} boards`}
+                  </Text>
+                  <Text style={[styles.platformSub, styles.platformSubLink]}>{' \u00b7 Change'}</Text>
+                </TouchableOpacity>
               ) : null}
             </View>
             {/* The board line already says it is connected; dropping the word gives the board
                 name the room (measured with Yoga: 73px with it, 154px without). */}
-            {pinterest?.connected && Object.keys(pinBoards).length !== 1 ? <Text style={styles.connectedText} numberOfLines={1}>{connectedLabel(pinterest)}</Text> : null}
+            {pinterest?.connected && !Object.keys(pinBoards).length ? <Text style={styles.connectedText} numberOfLines={1}>{connectedLabel(pinterest)}</Text> : null}
             <TouchableOpacity style={styles.ttBtn} onPress={openPinterest} disabled={pinPosting}>
               {pinPosting ? (
                 <ActivityIndicator color="#000" size="small" />
@@ -887,11 +929,13 @@ export default function EditPostVideoScreen({ navigation, route }) {
       </ScrollView>
 
       <PinterestBoardSheet
-        visible={pinSheet}
-        onClose={() => setPinSheet(false)}
-        onConfirm={postToChosenBoards}
+        visible={!!pinSheet}
+        mode={pinSheet || 'post'}
+        onClose={() => setPinSheet(null)}
+        onConfirm={pinSheet === 'choose' ? chooseBoards : postToChosenBoards}
         remembered={pinBoards}
         posting={pinPosting}
+        videoUrl={videoPath ? `${BACKEND}${videoPath}` : null}
       />
 
       <TikTokPostSheet
@@ -971,6 +1015,9 @@ const styles = StyleSheet.create({
   // name and its sub-line shrink and truncate instead of the button leaving the row.
   platformNameCol: { flex: 1, minWidth: 0 },
   platformSub: { color: '#888', fontSize: 12, marginTop: 2 },
+  platformSubRow: { flexDirection: 'row', alignItems: 'center' },
+  platformSubName: { flexShrink: 1 },
+  platformSubLink: { color: '#2ECC71', fontWeight: '600', flexShrink: 0 },
   connectLink: { color: '#2ecc71', fontSize: 12, fontWeight: '600', marginRight: 8 },
   divider: { height: 1, backgroundColor: '#2a2a2a', marginHorizontal: 14 },
   toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#333', justifyContent: 'center', paddingHorizontal: 2 },
