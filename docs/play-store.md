@@ -270,3 +270,15 @@ regions) exactly 176 changed, every one in the approved list, ratio 2.00-2.13 (.
   (10 Pro / 40 Creator). Published as update group `c0b06482-8635-42de-9dcb-d8dc9eb53194`.
 - Margin at the new US prices, worst-case AI use: Pro $11.89 net - $1.73 = **$10.16**, Creator
   $25.49 - $6.91 = **$18.58** per subscriber per month.
+
+## First public reviews (Oct 3-4 2026)
+
+After the testers were removed from the tester list (their Play Store needed "Clear storage" to
+notice), build 13 went to production with the rating prompt after any finished video. Three public
+5-star reviews followed within a day, all on **vc13**, all from Ugandan devices (Galaxy A23, Nokia 2.4,
+Galaxy A16), each praising posting to all platforms. `reviews.list` returns them (it only shows reviews
+with text from the last 7 days - not a total). The public listing showed no average yet: Play shows the
+aggregate only after enough ratings and with a processing lag; Google does not publish the threshold.
+The owner asked why ratings show for other apps and not his, and why there is no rating option before
+download: **Play shows "Rate this app" only to accounts that installed the app - true for every app.**
+Replies were drafted for the owner's approval (`reviews.reply` can post them).

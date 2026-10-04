@@ -141,7 +141,9 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 **Play / builds.** Production, alpha and internal all on **vc13** (released Oct 3; adds Google's
 in-app review sheet). Runtime `1.1.0`. Title "Tonefy AI: AI Video Generator", 8 screenshots, no promo
-video (deliberate). Category Video Players & Editors. Public rating: 0 so far. Details: `docs/play-store.md`.
+video (deliberate). Category Video Players & Editors. **First public reviews: 3 x 5 stars (Oct 3-4, all
+on vc13, all unreplied)**; no average shows on the listing yet - Play needs enough ratings first and
+lags a day or more. Only installers can rate (Play rule for every app). Details: `docs/play-store.md`.
 
 **Plans and prices** (`backend/tiers.js` enforces; `constants/plan.js` mirrors for UI):
 
