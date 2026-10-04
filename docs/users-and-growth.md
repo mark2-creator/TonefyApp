@@ -188,3 +188,22 @@ signup time:
   exactly the recruitment window), and **9 after the Sep 8 launch** - the only real strangers. Of
   those 9, none has made a video and one (Sep 22) tried and hit the extract-segments bug. So the
   activation finding stands, on a sample of 9 rather than 33.
+
+## My Videos: real thumbnails and titles (Oct 4 2026, app `25d7fc2e-b7f0-41e9-a60f-46f1e88a7a1d`)
+
+Owner: "the thumbnails take a very long time". They never loaded: each card was a deliberate placeholder,
+because the first version mounted an expo-video player per card and froze low-end phones (the
+"My Videos stops responding" ANR), and real posters were left as "a future enhancement".
+- **`ensurePoster()`** (server) writes `<video>.poster.jpg` beside each video - frame at 1s (frame 0 for
+  shorter clips), 360 wide, 5-33KB. Made by all three `userVideos` writers when a video is recorded,
+  and on request by **`POST /api/video-posters`** (caller's own videos only, <=60, 3 at a time).
+  Deduplicated per file, written atomically. `cleanupOldFiles` keeps a poster while its .mp4 exists and
+  deletes it after - it does NOT age out at 72h like other non-video files. Measured on the owner's 11
+  videos: 2.1s cold, 78ms warm; served with a 30-day cache.
+- **Titles:** a video is named from the caption it was FIRST posted with (first line, hashtags removed,
+  cut at a word with an ellipsis past 60 chars) - `setVideoTitleFromCaption` in post-now. The old
+  "Uploaded media video" placeholder is never a title (it was once sent out as a caption, before Sep 27 -
+  the dry run caught two). Display rule everywhere: `title` → idea/prompt → "Edited video". Backfilled 4.
+- App: `MyVideosScreen` (poster Image + play button, one request per list) and the Thumbnail screen's
+  list. Website `my-videos.html`: posters instead of a `<video preload>` per card, the same titles, text
+  now escaped before innerHTML, and its last two emoji replaced by Material SVGs.

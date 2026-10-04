@@ -202,7 +202,8 @@ Pinterest and LinkedIn **require a caption** in the app (it is the post's title)
 
 **Users and growth** (`docs/users-and-growth.md`). 32 accounts = 4 owner, 5 review/test, 15 closed-test
 recruits (Aug 16-19), **9 post-launch strangers - none has finished a video**. Google's pre-launch
-robot (`@cloudtestlabaccounts.com`) is excluded from admin stats and labelled "Google test device".
+robot (`@cloudtestlabaccounts.com`) is excluded from admin stats and labelled "Google test device". My Videos
+shows server-made posters (`/api/video-posters`) and titles from the first posted caption.
 ProfileGate asks name + country after sign-in. **Rating prompt** fires after any finished video
 (JobsContext) - native in-app sheet on vc13, neutral Linking prompt on older builds; never on the first
 success, max every 60 days. **Reminders**: 19 local notifications at 18:00 (days 1-7 daily, then every
