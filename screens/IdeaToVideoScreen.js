@@ -27,6 +27,7 @@ import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
 import { useJobs } from '../context/JobsContext';
+import { friendlyError } from '../utils/friendlyError';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -553,7 +554,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       stopProgress(100);
       if (data.script) { setScript(data.script); setStep(2); }
       else showAlert('Error', data.error || 'Failed to generate script');
-    } catch (err) { showAlert('Error', err.message); }
+    } catch (err) { showAlert('Error', friendlyError(err, 'Could not write a script. Please try again.')); }
     resetLoading();
   };
 
@@ -570,7 +571,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       stopProgress(100);
       if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
       else showAlert('Error', data.error || 'Failed to generate voiceover');
-    } catch (err) { showAlert('Error', err.message); }
+    } catch (err) { showAlert('Error', friendlyError(err, 'Could not make the voiceover.')); }
     resetLoading();
   };
 
@@ -640,7 +641,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       stopProgress(100);
       if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(4); }
       else showAlert('Error', 'Failed to generate video');
-    } catch (err) { stopProgress(0); showAlert('Error', err.message); }
+    } catch (err) { stopProgress(0); showAlert('Error', friendlyError(err, 'Your video could not be made. Please try again.')); }
     resetLoading();
   };
 
@@ -673,7 +674,7 @@ export default function IdeaToVideoScreen({ navigation }) {
       if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
     } catch (err) {
       setDownloading(false);
-      showAlert('Download', err.message || 'Download failed.');
+      showAlert('Download', friendlyError(err, 'Download failed.'));
     }
   };
 

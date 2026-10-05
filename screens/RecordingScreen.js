@@ -5,6 +5,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../components/BrandedAlert';
+import { friendlyError } from '../utils/friendlyError';
 
 // A real camera, replacing a screen that had none.
 //
@@ -109,7 +110,7 @@ export default function RecordingScreen({ navigation, route }) {
     } catch (e) {
       setRecording(false);
       stoppingRef.current = false;
-      showAlert('Recording', e?.message || 'The recording could not be saved.');
+      showAlert('Recording', friendlyError(e, 'The recording could not be saved.'));
     }
   }, [recording, navigation, quality, filter, effect]);
 

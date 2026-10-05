@@ -2902,3 +2902,40 @@ record of when they were written; CLAUDE.md holds the current state.
     an X publisher now would be code that costs a recurring fee to run, which is a bad
     trade while the owner is funds-blocked. Revisit only when revenue justifies the monthly
     cost; the registry pattern makes it a drop-in when that day comes.
+
+46. **Friendly error messages everywhere + a shell-injection hole closed (Oct 5 2026).**
+    A friend of the owner lost his connection and Save video said `Unable to resolve host
+    "api.fitlifesolutions.site": No address associated with hostname` instead of "you seem
+    to be offline". Cause: ~60 call sites did `showAlert(title, e.message)`, and ~30
+    backend catch blocks sent `e.message` (ffmpeg stderr, ENOENT paths, third-party API
+    bodies, "status code 429") straight to clients.
+    - **App:** `utils/friendlyError.js` - `friendlyError(err, fallback)` classifies
+      offline / timeout / server / safe-sentence / unknown and returns words for a person;
+      the raw text goes to `console.warn` + a Sentry breadcrumb (sent only with an event,
+      which passes the diagnostics opt-out). `friendlyText(text, fallback)` for server
+      fields (`job.error`). Every alert and inline error converted (23 screens/components,
+      plus JobsContext notifications, ActiveJobsBar, Calendar post errors, the editor's
+      `readJson`, which used to append 120 chars of the response body). `showAlert`
+      itself translates raw offline/timeout text as a safety net. ErrorBoundary now leads
+      with a plain sentence and keeps the message + stack behind "Show details" (the owner
+      still diagnoses from it). FilmStrip shows "No preview" instead of the decoder error.
+      No NetInfo: native, not in vc13; the error text is enough.
+      Check: `node scripts/check-friendly-error.mjs` (17 real error strings).
+    - **Backend:** `backend/publicError.js` - `publicError(e, fallback, tag)` passes a
+      message only if it is a plain sentence (no URL/host/path/stack/exception/code/JSON),
+      else logs it as `[publicError] <tag> withheld from client:` and returns the
+      fallback. Applied to every `error: e.message` / job `error`/`message` and the
+      Meta/TikTok/YouTube/Pinterest/LinkedIn passthroughs. Deliberate messages (plan limits,
+      "too large", "Translation works on clips up to N minutes") still reach users.
+      Live-tested: audio-waveform on a missing file now answers "Could not read this audio
+      track." and the log has the real cause.
+    - **SECURITY - `/api/generate-audio` ran user text through a shell.** It built
+      `exec(\`python3 gtts_generate.py ${JSON.stringify(text)} ...\`)`; JSON quoting gives a
+      double-quoted word and `sh` still expands `$(...)` and backticks there, so any
+      signed-in (free) user could run commands on the VPS. Spotted from an error-log line
+      where a PNG had been posted as `text`. Now `execFile('python3', [script, text, ...])`.
+      Live-tested with `$(touch /tmp/...)` + backticks in the text: audio made, nothing
+      executed. No failed injection attempt in the pm2 logs (a successful one would not
+      log). The other `exec()` calls build commands only from server-made paths and numbers
+      (`buildCaptionFilter`, the one with user text in a drawtext, is dead code) - convert
+      them to execFile as a follow-up.

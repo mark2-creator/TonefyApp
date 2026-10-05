@@ -11,6 +11,7 @@ import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore'
 import { useTheme } from '../context/ThemeContext';
 import { usePlan } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -148,7 +149,7 @@ export default function ConnectAccountsScreen({ navigation }) {
       // specifically, because returning from a browser BACKGROUNDS the app rather than
       // navigating away, so a navigation focus effect would never fire.
     } catch (e) {
-      showAlert('YouTube', e.message || 'Could not open the YouTube sign-in page.');
+      showAlert('YouTube', friendlyError(e, 'Could not open the YouTube sign-in page.'));
     } finally {
       setYtBusy(false);
     }
@@ -188,7 +189,7 @@ export default function ConnectAccountsScreen({ navigation }) {
       // Consent runs in a browser with no callback into the app; AppState refresh (above)
       // picks up the result when the user returns.
     } catch (e) {
-      showAlert('Facebook', e.message || 'Could not open the Facebook sign-in page.');
+      showAlert('Facebook', friendlyError(e, 'Could not open the Facebook sign-in page.'));
     } finally { setFbBusy(false); }
   }
 
@@ -228,7 +229,7 @@ export default function ConnectAccountsScreen({ navigation }) {
       if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
       await Linking.openURL(data.authUrl);
     } catch (e) {
-      showAlert('Instagram', e.message || 'Could not open the Instagram sign-in page.');
+      showAlert('Instagram', friendlyError(e, 'Could not open the Instagram sign-in page.'));
     } finally { setIgBusy(false); }
   }
 
@@ -268,7 +269,7 @@ export default function ConnectAccountsScreen({ navigation }) {
       if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
       await Linking.openURL(data.authUrl);
     } catch (e) {
-      showAlert('Pinterest', e.message || 'Could not open the Pinterest sign-in page.');
+      showAlert('Pinterest', friendlyError(e, 'Could not open the Pinterest sign-in page.'));
     } finally { setPinBusy(false); }
   }
 
@@ -308,7 +309,7 @@ export default function ConnectAccountsScreen({ navigation }) {
       if (!data.authUrl) throw new Error(data.error || 'Could not start the connection.');
       await Linking.openURL(data.authUrl);
     } catch (e) {
-      showAlert('LinkedIn', e.message || 'Could not open the LinkedIn sign-in page.');
+      showAlert('LinkedIn', friendlyError(e, 'Could not open the LinkedIn sign-in page.'));
     } finally { setLiBusy(false); }
   }
 
@@ -408,7 +409,7 @@ export default function ConnectAccountsScreen({ navigation }) {
             });
             if (r?.error) throw new Error(r.error);
             await loadTikTok();
-          } catch (e) { showAlert('Error', e.message || 'Could not disconnect.'); }
+          } catch (e) { showAlert('Error', friendlyError(e, 'Could not disconnect.')); }
         }
       }
     ]);

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAuth } from 'firebase/auth';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const BARS = 8;
@@ -129,7 +130,7 @@ export default function GeneratingAudioScreen({ navigation, route }) {
         // so it is shown as written rather than replaced with a generic one.
         showAlert(
           e.status === 403 ? 'Not on your plan' : 'Could not generate audio',
-          e.message || 'Something went wrong. Please try again.',
+          friendlyError(e, 'Something went wrong. Please try again.'),
         );
         navigation.goBack();
       }

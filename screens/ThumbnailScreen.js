@@ -18,6 +18,7 @@ import FontPicker from '../components/FontPicker';
 import ProgressButton from '../components/ProgressButton';
 import { saveImageToDevice, SAVE_PLATFORM_NOTE } from '../utils/saveVideo';
 import { usePlan } from '../constants/plan';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -209,7 +210,7 @@ export default function ThumbnailScreen({ navigation }) {
       });
       setAtSeconds(0);
     } catch (e) {
-      showAlert('Upload', e.message || 'That file could not be uploaded.');
+      showAlert('Upload', friendlyError(e, 'That file could not be uploaded.'));
     } finally {
       setUploading(false);
     }
@@ -282,7 +283,7 @@ export default function ThumbnailScreen({ navigation }) {
       setResult(BACKEND + data.thumbnailUrl);
       if (Number(data.durationSeconds) > 0) setKnownDuration(Math.floor(Number(data.durationSeconds)));
     } catch (e) {
-      showAlert('Thumbnail', e.message || 'Could not make a thumbnail.');
+      showAlert('Thumbnail', friendlyError(e, 'Could not make a thumbnail.'));
     } finally {
       setBusy(false);
     }
@@ -297,7 +298,7 @@ export default function ThumbnailScreen({ navigation }) {
       showAlert('Thumbnail',
         out.method === 'gallery' ? 'Saved to your gallery.' : SAVE_PLATFORM_NOTE);
     } catch (e) {
-      showAlert('Thumbnail', e.message || 'Could not save the thumbnail.');
+      showAlert('Thumbnail', friendlyError(e, 'Could not save the thumbnail.'));
     } finally {
       setSaving(0);
     }

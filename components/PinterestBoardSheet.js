@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 import { SheetHeader, useSheetInset } from './SheetHeader';
 import { PinterestLogo } from './BrandLogos';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const CACHE_KEY = 'tonefy.pinterestBoardsCache';
@@ -90,7 +91,7 @@ export default function PinterestBoardSheet({
         }
         return next;
       });
-    }).catch((e) => { if (live) setError(e.message || 'Could not load your boards. Check your connection and try again.'); });
+    }).catch((e) => { if (live) setError(friendlyError(e, 'Could not load your boards. Check your connection and try again.')); });
     return () => { live = false; };
     // remembered is read once per opening on purpose; a change mid-sheet would undo a tap.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,7 +123,7 @@ export default function PinterestBoardSheet({
       setChosen(c => ({ ...c, [accountId]: { id: b.id, name: b.name } }));
       setNewName(n => ({ ...n, [accountId]: '' }));
     } catch (e) {
-      setError(e.message);
+      setError(friendlyError(e, 'Could not create the board.'));
     } finally {
       setCreating(null);
     }

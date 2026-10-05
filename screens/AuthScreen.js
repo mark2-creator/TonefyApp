@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientBorder from '../components/GradientBorder';
 import Animated from 'react-native-reanimated';
 import { useAuthIntro, AuthStage } from '../components/AuthIntro';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const MAX_ATTEMPTS = 5;
@@ -196,7 +197,7 @@ export default function AuthScreen({ navigation }) {
       setLockedUntil(null);
     } catch (error) {
       handleFailedAttempt();
-      showAlert('Google Sign-In Error', error.message);
+      showAlert('Google Sign-In Error', friendlyError(error, 'Google sign-in did not complete. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -217,7 +218,7 @@ export default function AuthScreen({ navigation }) {
       case 'auth/too-many-requests':
         return 'Too many attempts. Please try again later';
       default:
-        return error.message;
+        return friendlyError(error, 'Could not sign you in. Please try again.');
     }
   };
 
@@ -388,7 +389,7 @@ export default function AuthScreen({ navigation }) {
       await AsyncStorage.setItem(key, Date.now().toString());
       showAlert('Success', 'Password reset email sent!');
     } catch (error) {
-      showAlert('Error', error.message);
+      showAlert('Password reset', friendlyError(error, 'Could not send the reset email. Please try again.'));
     }
   };
 

@@ -19,7 +19,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null, info: null };
+    this.state = { error: null, info: null, showDetails: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -48,18 +48,25 @@ export default class ErrorBoundary extends React.Component {
           </View>
 
           <Text style={styles.lead}>
-            Something in it threw an error while drawing. The details below say what and where.
+            Sorry, something went wrong on this screen. Tap Try again, and if it keeps
+            happening, restart the app.
           </Text>
 
-          <Text style={styles.message}>{String(error?.message || error)}</Text>
+          {/* The technical part stays one tap away rather than gone: this screen only
+              ever appears on a device, and the owner diagnoses from it. */}
+          <TouchableOpacity onPress={() => this.setState({ showDetails: !this.state.showDetails })}>
+            <Text style={styles.detailsToggle}>{this.state.showDetails ? 'Hide details' : 'Show details'}</Text>
+          </TouchableOpacity>
 
-          {!!stack && (
+          {this.state.showDetails && <Text style={styles.message}>{String(error?.message || error)}</Text>}
+
+          {this.state.showDetails && !!stack && (
             <ScrollView style={styles.stackBox} contentContainerStyle={styles.stackContent}>
               <Text style={styles.stack}>{stack}</Text>
             </ScrollView>
           )}
 
-          <TouchableOpacity style={styles.retry} onPress={() => this.setState({ error: null, info: null })}>
+          <TouchableOpacity style={styles.retry} onPress={() => this.setState({ error: null, info: null, showDetails: false })}>
             <MaterialIcons name="refresh" size={24} color="#04211f" />
             <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
@@ -75,6 +82,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   title: { color: '#fff', fontSize: 18, fontWeight: '700' },
   lead: { color: '#888', fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  detailsToggle: { color: '#888', fontSize: 13, fontWeight: '600', marginBottom: 14, textDecorationLine: 'underline' },
   message: { color: '#ff6b6b', fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 14 },
   stackBox: { maxHeight: 220, backgroundColor: '#0a0a0a', borderRadius: 12, borderWidth: 1, borderColor: '#2a2a2a', marginBottom: 18 },
   stackContent: { padding: 12 },

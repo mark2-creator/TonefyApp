@@ -11,6 +11,7 @@ import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/fire
 import { useTheme } from '../context/ThemeContext';
 import GradientBorder from '../components/GradientBorder';
 import { showAlert } from '../components/BrandedAlert';
+import { friendlyError, friendlyText } from '../utils/friendlyError';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -48,7 +49,7 @@ export default function CalendarScreen({ navigation }) {
     } catch (e) {
       // Reported, not swallowed. An empty list and a failed read look identical, and the
       // difference is the whole diagnosis - this screen hid it for as long as it existed.
-      setError(e.message || 'Could not load your posts.');
+      setError(friendlyError(e, 'Could not load your posts.'));
     }
     setLoading(false);
   }
@@ -73,7 +74,7 @@ export default function CalendarScreen({ navigation }) {
           try {
             await deleteDoc(doc(db, 'scheduledPosts', id));
             setPosts(posts.filter(p => p.id !== id));
-          } catch (e) { showAlert('Error', e.message); }
+          } catch (e) { showAlert('Delete post', friendlyError(e, 'Could not delete this post.')); }
         }
       }
     ]);
@@ -265,7 +266,7 @@ export default function CalendarScreen({ navigation }) {
                     </Text>
                   </View>
                   {failed && post.error ? (
-                    <Text style={[styles.postError, { color: theme.subtext }]} numberOfLines={3}>{post.error}</Text>
+                    <Text style={[styles.postError, { color: theme.subtext }]} numberOfLines={3}>{friendlyText(post.error, 'This post could not be published.')}</Text>
                   ) : null}
                 </>
               );

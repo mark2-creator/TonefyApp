@@ -4,6 +4,7 @@ import { askForReminders } from '../utils/notifications';
 import { showAlert } from '../components/BrandedAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
+import { friendlyText } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const KEY = 'tonefy.activeJobs.v1';
@@ -42,7 +43,7 @@ async function notifyDone(job) {
         title: job.status === 'done' ? 'Your video is ready' : 'Video failed',
         body: job.status === 'done'
           ? (job.label || 'Tap to open it in Tonefy.')
-          : (job.error || job.message || 'Something went wrong while rendering.'),
+          : friendlyText(job.error || job.message, 'Something went wrong while rendering.'),
       },
       trigger: null,
     });

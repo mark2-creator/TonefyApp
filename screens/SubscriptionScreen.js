@@ -17,6 +17,7 @@ import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
 import Constants from 'expo-constants';
 import { auth } from '../firebase';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -205,7 +206,7 @@ export default function SubscriptionScreen({ navigation }) {
     purchaseErrorSub = purchaseErrorListener((error) => {
       setPurchasing(null);
       if (error.code !== 'E_USER_CANCELLED') {
-        showAlert('Purchase failed', error.message || 'Could not complete the purchase.', [{ text: 'OK' }]);
+        showAlert('Purchase failed', friendlyError(error, 'Could not complete the purchase.'), [{ text: 'OK' }]);
       }
     });
     } catch (e) {
@@ -262,7 +263,7 @@ export default function SubscriptionScreen({ navigation }) {
     } catch (e) {
       setPurchasing(null);
       if (e.code !== 'E_USER_CANCELLED') {
-        showAlert('Purchase failed', e.message || 'Could not start the purchase.', [{ text: 'OK' }]);
+        showAlert('Purchase failed', friendlyError(e, 'Could not start the purchase.'), [{ text: 'OK' }]);
       }
     }
   }, [connected, skuDetails, billingCycle]);

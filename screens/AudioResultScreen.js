@@ -13,6 +13,7 @@ import { VOICES } from '../constants/voices';
 import { saveAudioToDevice } from '../utils/saveVideo';
 import { showAlert } from '../components/BrandedAlert';
 import { recordWinAndMaybeAsk } from '../utils/rateApp';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const BARS = 60;
@@ -154,7 +155,7 @@ export default function AudioResultScreen({ navigation, route }) {
       const { method } = await saveAudioToDevice(audioUrl, { prompt: title || 'Tonefy audio' }, setDownloadPct);
       if (method === 'gallery') showAlert('Saved', 'The audio is on your phone.');
     } catch (e) {
-      showAlert('Download failed', e?.message || 'Could not save this audio.');
+      showAlert('Download failed', friendlyError(e, 'Could not save this audio.'));
     } finally { setDownloading(false); }
   }
 

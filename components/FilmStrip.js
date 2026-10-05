@@ -304,7 +304,9 @@ export default function FilmStrip({
     // where the picker never reported a length so no grid was built and nothing was
     // ever asked for.
     const working = !!count && (!strip || !strip.done);
-    const reason = count ? (strip && strip.error) : 'no duration';
+    // The decoder's own message goes to the log (the console.warn above), not onto the
+    // timeline: 'file: java.io.IOException ...' inside a clip means nothing to a user.
+    const reason = count ? (strip && strip.error ? 'No preview' : null) : 'No preview';
     return (
       <Animated.View style={[styles.window, styles.pending, { width, height }]}>
         <View style={styles.reasonBox}>

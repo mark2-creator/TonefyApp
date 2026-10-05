@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import { SheetHeader, useSheetInset } from './SheetHeader';
 import { showAlert } from './BrandedAlert';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const PLANS = ['free', 'pro', 'creator'];
@@ -105,7 +106,7 @@ export default function AdminPeople({ theme, onChanged, count }) {
       setRows(json.rows || []);
       setTotal(json.total || 0);
     } catch (e) {
-      showAlert('Admin', e.message || 'Could not load accounts.');
+      showAlert('Admin', friendlyError(e, 'Could not load accounts.'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ export default function AdminPeople({ theme, onChanged, count }) {
       setSelected(null);
       onChanged?.();
     } catch (e) {
-      showAlert('Admin', e.message || 'Could not change the plan.');
+      showAlert('Admin', friendlyError(e, 'Could not change the plan.'));
     } finally {
       setSaving(false);
     }

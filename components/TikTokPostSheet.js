@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
 import { useSheetInset } from './SheetHeader';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -108,7 +109,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
         if (!r.ok) throw new Error(d.error || 'Could not load your TikTok settings.');
         setInfo(d);
       } catch (e) {
-        setError(e.message || 'Could not load your TikTok settings.');
+        setError(friendlyError(e, 'Could not load your TikTok settings.'));
       } finally {
         setLoading(false);
       }
@@ -158,7 +159,7 @@ export default function TikTokPostSheet({ visible, onClose, onConfirm, theme, po
       if (!r.ok || !d.caption) throw new Error(d.error || 'Could not write a caption.');
       setCaption(d.caption.slice(0, MAX_CAPTION));
     } catch (e) {
-      setError(e.message || 'Could not write a caption.');
+      setError(friendlyError(e, 'Could not write a caption.'));
     } finally {
       setWriting(false);
     }

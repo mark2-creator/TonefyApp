@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import * as Updates from 'expo-updates';
 import { usePlan, TIER_PRO, TIER_CREATOR } from '../constants/plan';
 import { showAlert } from '../components/BrandedAlert';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -204,7 +205,7 @@ export default function ProfileScreen({ navigation }) {
       setPhotoURL(data.url);
       showToast('Profile photo updated');
     } catch (e) {
-      showAlert('Photo', e.message || 'Could not upload the photo.');
+      showAlert('Photo', friendlyError(e, 'Could not upload the photo.'));
     } finally {
       setPhotoBusy(false);
     }

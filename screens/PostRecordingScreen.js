@@ -22,6 +22,7 @@ import { EFFECTS, resolveEffect, effectCss, effectChain } from '../constants/eff
 import { MOTIONS, resolveMotion, motionChain } from '../constants/motions';
 import { adjustChain } from '../constants/adjustments';
 import { usePlan } from '../constants/plan';
+import { friendlyError } from '../utils/friendlyError';
 
 export default function PostRecordingScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
@@ -94,7 +95,7 @@ export default function PostRecordingScreen({ navigation, route }) {
           : 'Nothing in the catalogue matched that. Try naming a look, a mood or a speed.');
       setRefinement('');
     } catch (e) {
-      showAlert('Refine', e?.message || 'Could not reach the service.');
+      showAlert('Refine', friendlyError(e, 'Could not reach the service.'));
     } finally {
       setRefining(false);
     }
@@ -152,7 +153,7 @@ export default function PostRecordingScreen({ navigation, route }) {
       const { method } = await saveVideoToDevice(uri, { prompt: 'Tonefy recording' }, setSavePct);
       if (method === 'gallery') showAlert('Saved', 'The recording is in your gallery.');
     } catch (e) {
-      showAlert('Save failed', e?.message || 'Could not save the recording.');
+      showAlert('Save failed', friendlyError(e, 'Could not save the recording.'));
     } finally { setSaving(false); }
   }
 
@@ -218,7 +219,7 @@ export default function PostRecordingScreen({ navigation, route }) {
       setFilter('None'); setAdjust(null); setEffect('none'); setMotion('none'); setSpeed(1);
       showAlert('Done', 'Your recording has been enhanced.');
     } catch (e) {
-      showAlert('Could not enhance', e?.message || 'Something went wrong.');
+      showAlert('Could not enhance', friendlyError(e, 'Something went wrong.'));
     } finally {
       setApplying(false); setApplyMsg('');
     }

@@ -6,6 +6,7 @@ import { updateProfile } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import CountrySheet from './CountryPicker';
 import { SheetHeader, useSheetInset } from './SheetHeader';
+import { friendlyError } from '../utils/friendlyError';
 
 // Fills in the profile details a Google sign-in cannot collect.
 //
@@ -98,7 +99,7 @@ export default function ProfileGate({ user }) {
       } catch { /* the profile is saved; a stale displayName is cosmetic */ }
       setVisible(false);
     } catch (e) {
-      setError(e.message || 'Could not save that. Please try again.');
+      setError(friendlyError(e, 'Could not save that. Please try again.'));
     } finally {
       setSaving(false);
     }

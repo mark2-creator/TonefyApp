@@ -6,6 +6,7 @@ import { auth } from '../firebase';
 import { useTheme } from '../context/ThemeContext';
 import { showAlert } from '../components/BrandedAlert';
 import AdminPeople from '../components/AdminPeople';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -43,7 +44,7 @@ export default function AdminScreen({ navigation }) {
       if (!res.ok) throw new Error(json.error || 'Could not load stats.');
       setData(json);
     } catch (e) {
-      showAlert('Admin', e.message || 'Could not load stats.');
+      showAlert('Admin', friendlyError(e, 'Could not load stats.'));
     } finally {
       setLoading(false);
       setRefreshing(false);

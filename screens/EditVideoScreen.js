@@ -70,6 +70,7 @@ import { voiceById } from '../constants/voices';
 import VoiceAvatar from '../components/VoiceAvatar';
 import VoicePicker from '../components/VoicePicker';
 import { navigationRef } from '../utils/navigationRef';
+import { friendlyError, friendlyText } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 
@@ -126,7 +127,11 @@ async function readJson(res) {
       502: 'The server is not responding right now. Try again in a moment.',
       504: 'The upload took too long and the connection timed out. Try again on a faster connection.',
     };
-    throw new Error(known[res.status] || `Server error (${res.status}).${text ? ' ' + text.slice(0, 120) : ''}`);
+    // The body stays in the log: an nginx error page or a stack trace is not something
+    // to show a user. friendlyError() turns the status into a sentence.
+    console.warn('[readJson]', res.status, text.slice(0, 300));
+    if (known[res.status]) throw Object.assign(new Error(known[res.status]), { userMessage: known[res.status] });
+    throw Object.assign(new Error(`Server error (${res.status}).`), { status: res.status });
   }
   try {
     return await res.json();
@@ -2000,7 +2005,7 @@ export default function EditVideoScreen({ navigation, route }) {
       });
     } catch (err) {
       // A picker that throws used to reject into nothing, so the tool looked inert.
-      showAlert('Could not open your library', String(err?.message || err));
+      showAlert('Could not open your library', friendlyError(err, 'Please try again.'));
       return;
     }
     if (result.canceled || !result.assets?.length) return;
@@ -2650,7 +2655,7 @@ export default function EditVideoScreen({ navigation, route }) {
       // for the in-screen progress bar; track() is what keeps it alive beyond it.
       track(jobId, { kind: 'export', label: 'Exporting your video' });
       pollJob(jobId);
-    } catch (e) { showAlert('Error', e.message); setUploading(false); }
+    } catch (e) { showAlert('Export failed', friendlyError(e, 'Your video could not be exported. Please try again.')); setUploading(false); }
   }
 
   async function generateVoiceover() {
@@ -2679,7 +2684,7 @@ export default function EditVideoScreen({ navigation, route }) {
       }]);
       setVoiceoverScript('');
     } catch (e) {
-      showAlert('Error', e.message);
+      showAlert('Voiceover', friendlyError(e, 'Could not make the voiceover.'));
     } finally {
       setGeneratingVoiceover(false);
     }
@@ -2757,7 +2762,7 @@ export default function EditVideoScreen({ navigation, route }) {
       );
     } catch (e) {
       setUploading(false);
-      showAlert('Beat Sync', e.message || 'Could not find a beat in this track.');
+      showAlert('Beat Sync', friendlyError(e, 'Could not find a beat in this track.'));
     }
   }
 
@@ -2816,7 +2821,7 @@ export default function EditVideoScreen({ navigation, route }) {
         : `${data.beats.length} beats found at ${Math.round(data.bpm)} BPM. Split near one and the cut lands on it.`);
     } catch (e) {
       setUploading(false);
-      showAlert('Beats', e.message || 'Could not find a beat in this clip.');
+      showAlert('Beats', friendlyError(e, 'Could not find a beat in this clip.'));
     }
   }
 
@@ -3339,7 +3344,7 @@ export default function EditVideoScreen({ navigation, route }) {
       clearInterval(progressInterval); setProgress(100);
       setUploading(false);
       showAlert('Done', 'Captions generated from your voiceover!');
-    } catch (e) { clearInterval(progressInterval); showAlert('Error', e.message); setUploading(false); }
+    } catch (e) { clearInterval(progressInterval); showAlert('Captions', friendlyError(e, 'Could not make captions for this voiceover.')); setUploading(false); }
   }
 
   async function handleAutoCaption() {
@@ -3386,7 +3391,7 @@ export default function EditVideoScreen({ navigation, route }) {
         return;
       }
       pollCaptionJob(jobId);
-    } catch (e) { showAlert('Error', e.message); setUploading(false); }
+    } catch (e) { showAlert('Captions', friendlyError(e, 'Could not make captions for this video.')); setUploading(false); }
   }
 
   function pollCaptionJob(jobId) {
@@ -3410,13 +3415,13 @@ export default function EditVideoScreen({ navigation, route }) {
           showAlert('Done', 'Captions added to your first clip!');
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);
-          showAlert('Error', job.error || 'Caption generation failed');
+          showAlert('Captions', friendlyText(job.error, 'Caption generation failed.'));
         }
       } catch (e) {
         consecutiveFailures += 1;
         if (consecutiveFailures >= 8) {
           clearInterval(interval); setUploading(false);
-          showAlert('Lost track of the caption job', e.message);
+          showAlert('Lost track of the caption job', friendlyError(e, 'Check My Videos in a moment.'));
         }
       }
     }, 2000);
@@ -3442,7 +3447,7 @@ export default function EditVideoScreen({ navigation, route }) {
           navigation.navigate('EditPostVideo', { videoUrl: job.videoUrl, videoPath: job.videoUrl });
         } else if (job.status === 'error') {
           clearInterval(interval); setUploading(false);
-          showAlert('Export failed', job.error || 'Video creation failed');
+          showAlert('Export failed', friendlyText(job.error, 'Your video could not be exported. Please try again.'));
         }
       } catch (e) {
         // A dropped packet on mobile data is normal and not worth reporting; a poll
@@ -3453,7 +3458,7 @@ export default function EditVideoScreen({ navigation, route }) {
           clearInterval(interval); setUploading(false);
           showAlert(
             'Lost track of the export',
-            `The video may still be rendering. ${e.message}`,
+            `The video may still be rendering. ${friendlyError(e, 'Check My Videos in a moment.')}`,
           );
         }
       }
@@ -4154,7 +4159,7 @@ export default function EditVideoScreen({ navigation, route }) {
         'The clip’s sound is now its own track. Mute the clip if you want only the track to play.');
     } catch (e) {
       setUploading(false);
-      showAlert('Extract audio', e.message || 'Could not extract the audio from this clip.');
+      showAlert('Extract audio', friendlyError(e, 'Could not extract the audio from this clip.'));
     }
   }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4246,7 +4251,7 @@ export default function EditVideoScreen({ navigation, route }) {
       showAlert('Translated', 'The translated voiceover is on your timeline and the clip has been muted. Adjust or delete it like any other track.');
     } catch (e) {
       setUploading(false);
-      showAlert('Translate', e.message || 'Could not translate this clip.');
+      showAlert('Translate', friendlyError(e, 'Could not translate this clip.'));
     }
   }, [items, selectedKey]);
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { friendlyError, isRawNetworkText } from '../utils/friendlyError';
 
 // A drop-in replacement for React Native's Alert.alert - the same signature
 // (title, message, buttons, options), so converting a call site is a literal
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 let _open = null;
 
 export function showAlert(title, message, buttons, options) {
+  if (isRawNetworkText(message)) message = friendlyError(message);
   if (_open) _open(title, message, buttons, options);
   else console.warn('[BrandedAlert] host not mounted yet:', title, message);
 }

@@ -28,6 +28,7 @@ const MUSIC_LEVELS = [
 import VoicePicker from '../components/VoicePicker';
 import VoiceAvatar from '../components/VoiceAvatar';
 import Flag from '../components/Flag';
+import { friendlyError } from '../utils/friendlyError';
 
 const INFLECTIONS = ['Soft', 'Natural', 'Intense', 'Dramatic'];
 
@@ -48,7 +49,7 @@ export default function ScriptToAudioScreen({ navigation, route }) {
       // already typed.
       setScript(prev => (prev ? `${prev.trimEnd()}\n${text.trim()}` : text.trim()));
     } catch (e) {
-      showAlert('Paste', e?.message || 'Could not read the clipboard.');
+      showAlert('Paste', friendlyError(e, 'Could not read the clipboard.'));
     }
   }
 

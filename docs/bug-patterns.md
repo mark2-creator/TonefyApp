@@ -426,3 +426,21 @@ working (proven in the Oct 3 end-to-end test). **DECIDED the same day: the row n
 scene" for any account with scenes to spend** - paying users, admin, and the 3/month unpurchased
 accounts; free stays Off. Applied once per screen visit so a deliberate Off sticks. Update group
 `5cf3b391-d92a-4cc0-a4e8-698ca74ec2ea`.
+
+## Known bug pattern: raw error text shown to users (fixed Oct 5 2026)
+
+`showAlert(title, e.message)` shows whatever layer failed, in its own words. Offline on
+Android that is OkHttp's `Unable to resolve host "api.fitlifesolutions.site": No address
+associated with hostname`: it looks like a crash and hides the one fact the user can act
+on. From the backend, `res.json({ error: e.message })` could carry ffmpeg stderr, an
+ENOENT with a server path, or a third-party API's raw body - an information leak.
+
+Rule: the app shows `friendlyError(e, fallback)`; the server sends `publicError(e,
+fallback, tag)`. Both keep a message only when it is a plain sentence someone wrote for a
+user, and log the rest. To make a specific message always pass, set `e.userMessage`.
+Classifier check: `node scripts/check-friendly-error.mjs` - add the string whenever a
+device shows a new raw error.
+
+Found on the way: `JSON.stringify(text)` inside an `exec()` string is NOT shell quoting -
+`sh` still expands `$(...)` and backticks in double quotes. Anything carrying user input
+goes through `execFile` with an argument array (history item 46).

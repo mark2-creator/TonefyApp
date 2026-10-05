@@ -52,6 +52,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   - `python3 scratchpad/jsxrefs.py <files>` - every JSX tag resolves (after deleting a component)
   - `python3 scripts/check-gesture-composition.py` - after any gesture-handler change
   - `python3 scripts/check-website-js.py` - after ANY website edit (parse + eslint no-undef per page)
+  - `node scripts/check-friendly-error.mjs` - after changing `utils/friendlyError.js` patterns
   - Nothing static checks prop NAMES, style-object SHAPES, Modal nesting or touch handling - only a device.
 - **Backend:** `node --check server.js`, then `pm2 restart tonefy-backend`, then confirm the process
   start time postdates the edit and test the LIVE endpoint (boot takes ~15s - a 502 right after a
@@ -126,6 +127,12 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 - **A purge list is a place new work must be added**: a new platform's token collection goes into
   `/api/account/delete` in the same commit.
 - **A backup that commits but cannot push protects nothing.** Check `@{upstream}..HEAD`.
+- **Never show `e.message` to a user.** App: `friendlyError(e, '<what failed>')` / `friendlyText(job.error, ...)`
+  (`utils/friendlyError.js`; offline/timeout/server get fixed sentences, raw text goes to logs). Backend:
+  `publicError(e, fallback, tag)` (`backend/publicError.js`) for every `error:`/job message. A raw
+  `Unable to resolve host ...` reached users until Oct 5 2026; ffmpeg/ENOENT/API text could too.
+- **`JSON.stringify` is not shell quoting** - `sh` expands `$(...)` inside double quotes. `/api/generate-audio`
+  was a command-injection hole for any signed-in user until Oct 5 2026 (`docs/history-log.md` 46).
 
 ## Design rules (full: `.claude/skills/tonefy-design`; when it and the app disagree, THE APP wins)
 
@@ -229,6 +236,8 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
   the owner: one more polite follow-up on the SAME thread if still silent by ~Oct 12; never resubmit
   the form (a duplicate can restart it) and change nothing in the YouTube/OAuth setup meanwhile.
 - Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
+- Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
+  them today, but one did - see history 46).
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
 - Pinterest blocks links to the whole `fitlifesolutions.site` domain as spam (an appeal is the owner's).
 - Editor known gaps: no pinch-zoom on the timeline; `ImagePicker` sometimes omits a video's duration

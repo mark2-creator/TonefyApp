@@ -9,6 +9,7 @@ import { showAlert } from './BrandedAlert';
 import { VOICES } from '../constants/voices';
 import { usePlan } from '../constants/plan';
 import VoiceAvatar from './VoiceAvatar';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const PREVIEW_LINE = 'Hi, this is a quick preview of my voice.';
@@ -80,7 +81,7 @@ export default function VoicePicker({ visible, selectedId, onSelect, onClose }) 
       setPlayingId(voice.id);
       snd.setOnPlaybackStatusUpdate(st => { if (st.didJustFinish) setPlayingId(null); });
     } catch (e) {
-      showAlert('Preview', e.message || 'Could not play that voice.');
+      showAlert('Preview', friendlyError(e, 'Could not play that voice.'));
     } finally {
       setBusyId(null);
     }

@@ -23,6 +23,7 @@ import PinterestBoardSheet, { loadPinterestBoards } from '../components/Pinteres
 import YouTubePostSheet, { youtubeTitleFrom } from '../components/YouTubePostSheet';
 import AccountPickerSheet from '../components/AccountPickerSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { friendlyError } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -352,7 +353,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         await Linking.openURL(d.authUrl);
       } catch (e) {
         ytPendingRef.current = false;
-        showAlert('YouTube', e.message || 'Could not open the YouTube sign-in page.');
+        showAlert('YouTube', friendlyError(e, 'Could not open the YouTube sign-in page.'));
       }
       return;
     }
@@ -392,7 +393,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         'It is on your channel as a private video while our YouTube app is under review. Open it in YouTube Studio to make it public.',
         doneButtons(result.url));
     } catch (e) {
-      showAlert('YouTube', e.message || 'The upload failed.');
+      showAlert('YouTube', friendlyError(e, 'The upload failed.'));
     } finally {
       setYtPosting(false);
     }
@@ -490,7 +491,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         bad.length ? `${cfg.done}\n\nNot posted to ${bad.length} account${bad.length === 1 ? '' : 's'}: ${bad.map(x => x.error).join('; ')}` : cfg.done,
         doneButtons(ok[0].url));
     } catch (e) {
-      showAlert(cfg.label, e.message || 'The post failed.');
+      showAlert(cfg.label, friendlyError(e, 'The post failed.'));
     } finally {
       cfg.setPosting(false);
     }
@@ -561,7 +562,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
           doneButtons(null));
       }
     } catch (e) {
-      showAlert('TikTok', e.message || 'The post failed.');
+      showAlert('TikTok', friendlyError(e, 'The post failed.'));
     } finally {
       setTtPosting(false);
     }
@@ -679,7 +680,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const posts = job?.posts || [];
       for (const p of posts) if (p.status === 'posted') markPosted(p.platform, p.platform === 'tiktok' ? tiktokUrl(username) : p.url);
       if (posts.some(p => p.status === 'posted')) recordWinAndMaybeAsk();
-    } catch (e) { showAlert('Post Now', e.message); }
+    } catch (e) { showAlert('Post Now', friendlyError(e, 'Your post could not start. Please try again.')); }
     setPosting(false);
   }
 
@@ -785,7 +786,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         ? `It will post to ${namePlatforms(platforms)} within about 5 minutes. You can see it on the Calendar.`
         : `It will post to ${namePlatforms(platforms)} on ${scheduledAt.toLocaleDateString()} at `
           + `${scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`);
-    } catch (e) { showAlert('Error', e.message); }
+    } catch (e) { showAlert('Save to queue', friendlyError(e, 'Could not save your post to the queue.')); }
     setSaving(false);
   }
 
@@ -818,7 +819,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
       });
       if (method === 'gallery') showAlert('Saved', 'The video is in your gallery.');
     } catch (e) {
-      showAlert('Download failed', e?.message || 'Could not download the video.');
+      showAlert('Download failed', friendlyError(e, 'Could not download the video.'));
     } finally {
       setDownloading(false);
       setDownloadEta('');

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useJobs } from '../context/JobsContext';
 import ProgressRing from './ProgressRing';
+import { friendlyText } from '../utils/friendlyError';
 
 // The reason it is safe to walk away from a render.
 //
@@ -65,7 +66,7 @@ export default function ActiveJobsBar({ onOpen }) {
         </Text>
         <Text style={styles.sub} numberOfLines={1}>
           {done ? 'Find it in My Videos · tap to dismiss'
-            : failed ? (job.error || job.message || 'Tap to dismiss')
+            : failed ? friendlyText(job.error || job.message, 'Tap to dismiss')
             : (job.message || 'Working…')}
         </Text>
       </View>
