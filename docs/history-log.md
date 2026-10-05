@@ -2909,6 +2909,7 @@ record of when they were written; CLAUDE.md holds the current state.
     to be offline". Cause: ~60 call sites did `showAlert(title, e.message)`, and ~30
     backend catch blocks sent `e.message` (ffmpeg stderr, ENOENT paths, third-party API
     bodies, "status code 429") straight to clients.
+    Published: update group `4a878b70-c505-4994-8390-744a70f6f2ea` (production, runtime 1.1.0).
     - **App:** `utils/friendlyError.js` - `friendlyError(err, fallback)` classifies
       offline / timeout / server / safe-sentence / unknown and returns words for a person;
       the raw text goes to `console.warn` + a Sentry breadcrumb (sent only with an event,
