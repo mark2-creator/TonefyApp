@@ -218,7 +218,7 @@ success, max every 60 days. **Reminders**: 19 local notifications at 18:00 (days
 after a day; OFF is remembered.
 
 **Google reviews** (`docs/google-verifications.md`): Play identity ✅ Aug 11, payments ✅ Sep 7,
-**YouTube API Services audit OPEN** (status request sent Oct 3 on the `youtube-disputes` thread),
+**YouTube API Services audit OPEN - use case accepted Oct 5, awaiting the completion notice**,
 **OAuth app verification APPROVED Oct 4** for `youtube.upload` (consent screen now shows Tonefy AI, no
 "unverified app" warning, 100-user cap lifted). **Any new scope or ANY change to the OAuth consent
 screen needs a NEW verification** - don't touch it casually. Watch both ...21213@ and ...254@ inboxes. Reviewer login `youtube.audit@tonefyai.app` (Creator, re-tested Oct 2).
@@ -232,9 +232,11 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
   first video, let email signups in before verifying, a first-steps funnel log (needs a privacy-policy
   line), next-day email. Recommended 1, 2 and 4 first.
 - Google: YouTube API Services audit decision (the one that lifts forced-private uploads). Submitted
-  Aug 27, Google's last word Sep 9, status request sent Oct 3 - **no reply as of Oct 5**. Plan agreed with
-  the owner: one more polite follow-up on the SAME thread if still silent by ~Oct 12; never resubmit
-  the form (a duplicate can restart it) and change nothing in the YouTube/OAuth setup meanwhile.
+  Aug 27; **Oct 5 2026 reply (`youtube-disputes` thread): "submitted details sufficiently justify the
+  stated use case", no more info needed, they will notify on completion** - not yet the approval. Do NOT
+  reply (nothing asked) and the Oct 12 follow-up is dropped. Never resubmit the form; change nothing in
+  the YouTube/OAuth setup; keep the reviewer login working. On approval: confirm the quota in Cloud
+  Console, then lift forced-PRIVATE uploads.
 - Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
   them today, but one did - see history 46).

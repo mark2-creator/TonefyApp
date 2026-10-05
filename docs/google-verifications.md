@@ -223,3 +223,12 @@ follow-up on the SAME thread; never resubmit the form (a duplicate can restart t
 nothing in the YouTube scopes or OAuth consent screen meanwhile (OAuth verification passed Oct 4 and
 any change needs re-verification). Until it passes, users publish from YouTube Studio via the app's
 "View" link (Visibility -> Public); afterwards add a Public/Unlisted/Private choice to the YouTube sheet.
+
+**Oct 5 2026 (19:04 UTC) - YouTube API Services audit: use case accepted, review still open.**
+Reply on the `youtube-disputes+2jhcu7ixwv9891n@google.com` thread, answering the Oct 3 status
+request: "We appreciate you providing all the requested information and can confirm that the
+submitted details sufficiently justify the stated use case. At this time, we do not require any
+additional information from you. We will notify you if we need additional information, or when
+we've completed our review." Not the final approval. No reply sent (nothing was asked); the
+planned ~Oct 12 follow-up is dropped. Uploads stay forced PRIVATE until the completion notice;
+then check the project's YouTube Data API quota in Cloud Console and lift the private override.
