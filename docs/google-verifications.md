@@ -211,3 +211,15 @@ inherited). Effect: the consent screen shows "Tonefy AI" with its logo instead o
 "fitlifesolutions.site", the "Google hasn't verified this app" interstitial is gone, and the 100-user cap
 on the sensitive scope is lifted. **It does NOT lift forced-private uploads** - that is the separate
 YouTube API Services compliance audit, still open (status request sent Oct 3).
+
+## YouTube API Services audit - still waiting (Oct 5 2026)
+
+The owner asked why it takes so long. Timeline: submitted Aug 27; three rounds of questions Sep 3-9, each
+answered within a day; Google's Sep 9 "we will conduct our review... and notify you"; silence since;
+polite status request on the same `youtube-disputes` thread Oct 3 (a Saturday) - no reply by Oct 5.
+Google gives these audits no deadline or queue position; several weeks to past two months is common
+once the questions phase ends. Agreed plan: wait about a week; if still silent around Oct 12, one more
+follow-up on the SAME thread; never resubmit the form (a duplicate can restart the review); change
+nothing in the YouTube scopes or OAuth consent screen meanwhile (OAuth verification passed Oct 4 and
+any change needs re-verification). Until it passes, users publish from YouTube Studio via the app's
+"View" link (Visibility -> Public); afterwards add a Public/Unlisted/Private choice to the YouTube sheet.

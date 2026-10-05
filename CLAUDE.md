@@ -224,7 +224,10 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
 - **Drop-off fixes awaiting the owner's decision:** "Make your first video" card, ProfileGate after the
   first video, let email signups in before verifying, a first-steps funnel log (needs a privacy-policy
   line), next-day email. Recommended 1, 2 and 4 first.
-- Google: YouTube API Services audit decision (the one that lifts forced-private uploads).
+- Google: YouTube API Services audit decision (the one that lifts forced-private uploads). Submitted
+  Aug 27, Google's last word Sep 9, status request sent Oct 3 - **no reply as of Oct 5**. Plan agreed with
+  the owner: one more polite follow-up on the SAME thread if still silent by ~Oct 12; never resubmit
+  the form (a duplicate can restart it) and change nothing in the YouTube/OAuth setup meanwhile.
 - Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
 - Pinterest blocks links to the whole `fitlifesolutions.site` domain as spam (an appeal is the owner's).
