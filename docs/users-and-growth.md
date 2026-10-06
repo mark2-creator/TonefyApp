@@ -269,3 +269,26 @@ Owner: "keep going, but mind the UX". Done with the person's point of view first
   headed "OPTIONAL SETTINGS - good choices are already made", so nobody thinks they must pick six things.
 - Not done: next-day email (outward-facing; needs the owner's go-ahead). Not verified on a device: the
   banner layout, the greeting refresh and the new button order - nothing static checks style shapes.
+
+## Next-day reminder email (Oct 6 2026, owner's go-ahead the same day)
+
+`backend/nextDayEmail.js`, wired in `server.js` just before `app.listen` (hourly, first run 2 min after
+boot). One email per account, ever: "Your first video is about 2 minutes away" - thanks, one sentence is
+enough, three example ideas (same as the dashboard card), green "Make my first video", "just reply and we
+will help" (Reply-To is the owner), and a footer saying it is one-time with an unsubscribe link.
+- **Who:** created 22-48 hours ago (only NEW signups - nobody older is suddenly emailed, and an outage cannot
+  cause a late burst), **verified email only** (since the email wall was removed an unverified address may
+  belong to someone who never signed up), no `userVideos`, not admin, not the test-lab robot, not disabled,
+  not opted out, never sent before. `emailPrefs/{uid}.nextDayAt` is written BEFORE sending.
+- **Unsubscribe:** `/email/unsubscribe?u=<uid>&t=<HMAC>` (GET from the link, POST for RFC 8058 one-click via
+  the `List-Unsubscribe(-Post)` headers), outside `/api` so it needs no login. Sets `emailPrefs.optOut`.
+  Key `EMAIL_LINK_SECRET` (random, in `.env` only). Live-tested: forged token 400, real GET 200, POST 200.
+- **Button target** `https://tonefy-ai.fitlifesolutions.site/open.html` - mail apps strip `tonefyai://`, so
+  the page opens the app with an Android `intent:` link (Play Store fallback). The app ignores unknown deep
+  links, so it simply opens on the dashboard, where the first-video card is.
+- Also: `verified.html` no longer says "you can now sign in" (people are already in), and the verification
+  email now HTML-escapes the display name (user-typed text was going into email HTML raw).
+- Privacy policy section 3 (uses) gained the line about this one email.
+- **Dry run before going live** found 5 accounts created in the window: 3 had ALREADY made a video (a good
+  sign for the activation work), 2 had not (both Google accounts). A preview went to the owner first, then
+  the live sweep sent those 2 at 17:45 UTC; flags read `sent`, and a follow-up dry run would send 0.

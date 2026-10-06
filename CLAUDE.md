@@ -234,14 +234,19 @@ screen needs a NEW verification** - don't touch it casually. Watch both ...21213
 
 **Email** goes out through Brevo (`smtp-relay.brevo.com`, from the verified `EMAIL_FROM`), including
 the branded verification email (`/api/send-verification-email`) and AI-cap alerts.
+**Next-day email** (`backend/nextDayEmail.js`, hourly sweep): ONE email, "Your first video is about 2 minutes
+away", to accounts created 22-48h ago with a VERIFIED email, no video, not admin/test robot, not opted out.
+Flag `emailPrefs/{uid}.nextDayAt` is written before sending (never twice). Signed one-click unsubscribe
+`/email/unsubscribe?u=&t=` (HMAC, `EMAIL_LINK_SECRET` in `.env`) + List-Unsubscribe headers -> `emailPrefs.optOut`;
+**any future automated email must check `optOut`**. Reply-To is the owner. Button -> `open.html` (intent link
+to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on account delete.
 
 ## Open / waiting
 
 - **Drop-off fixes: 1, 2 and 4 SHIPPED Oct 6 2026** (first-video card, ProfileGate after the first video,
   first-steps log - see Users and growth). **Read Admin -> FIRST STEPS after a week of new installs** and fix
-  the biggest drop. **Email signups now go straight in (Oct 6)** with a "Confirm your email" card. Still
-  open for the owner: a next-day reminder EMAIL (outward-facing, so it needs a go-ahead; local push
-  reminders already exist).
+  the biggest drop. **Email signups now go straight in (Oct 6)** with a "Confirm your email" card. **Next-day
+  reminder email LIVE Oct 6** (owner's go-ahead; first 2 sent that day).
 - Google: YouTube API Services audit decision (the one that lifts forced-private uploads). Submitted
   Aug 27; **Oct 5 2026 reply (`youtube-disputes` thread): "submitted details sufficiently justify the
   stated use case", no more info needed, they will notify on completion** - not yet the approval. Do NOT
