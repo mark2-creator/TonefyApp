@@ -283,3 +283,7 @@ The owner asked why ratings show for other apps and not his, and why there is no
 download: **Play shows "Rate this app" only to accounts that installed the app - true for every app.**
 **All three replied to on Oct 4** (owner approved) with `reviews.reply`. Note: `reviews.list` did not
 show the replies for a while afterwards - `reviews.get` per review did. Reply to every new review.
+
+**Oct 6 2026 - reviews public on the listing.** The owner confirmed on the Play Store that
+Tonefy AI's reviews (the three 5-star reviews of Oct 3-4, with their developer replies) now
+show publicly on the listing - the first time store visitors can see ratings.
