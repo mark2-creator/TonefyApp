@@ -244,6 +244,8 @@ admin page does not show FIRST STEPS yet (app only).
 
 ### Round two: the email wall and the first-run screens (Oct 6 2026, same day)
 
+Published to production as update group `d46e07e1-ded4-4b43-8db4-bf8cde081737` (runtime 1.1.0).
+
 Owner: "keep going, but mind the UX". Done with the person's point of view first.
 - **Email verification wall removed.** `AuthScreen` signed an unverified email account straight out
   and said "verify first", so a new person had to leave the app, find the mail (often in spam, on slow
