@@ -210,7 +210,7 @@ because the first version mounted an expo-video player per card and froze low-en
 
 ## Activation fixes shipped (Oct 6 2026)
 
-Owner approved the recommended three of the five drop-off fixes. Before building, the whole Idea to
+Owner approved the recommended three of the five drop-off fixes. Published to production as update group `2ae572b6-22d2-48bc-9b93-9f94c5145c1f` (runtime 1.1.0). Before building, the whole Idea to
 Video path was run on the LIVE server as a brand-new free account (custom-token test user, deleted
 after): script 2s, voice 9s, segments 1s, render done at **109s**. The server path works for a free
 user, so the problem is the way in, not the pipeline.
