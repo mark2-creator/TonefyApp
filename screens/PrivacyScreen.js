@@ -52,8 +52,9 @@ export default function PrivacyScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>Share diagnostics &amp; crash reports</Text>
                 <Text style={[styles.rowDesc, { color: theme.subtext }]}>
-                  Helps us find and fix crashes. Includes error details and device type — never
-                  your videos, captions, or account content. Turn this off and nothing is sent.
+                  Helps us fix crashes and see where new users get stuck. Includes error details,
+                  device type and which first steps you have reached — never your videos,
+                  captions, or account content. Turn this off and nothing is sent.
                 </Text>
               </View>
             </View>

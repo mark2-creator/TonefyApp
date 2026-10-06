@@ -211,7 +211,12 @@ Pinterest and LinkedIn **require a caption** in the app (it is the post's title)
 recruits (Aug 16-19), **9 post-launch strangers - none has finished a video**. Google's pre-launch
 robot (`@cloudtestlabaccounts.com`) is excluded from admin stats and labelled "Google test device". My Videos
 shows server-made posters (`/api/video-posters`) and titles from the first posted caption.
-ProfileGate asks name + country after sign-in. **Rating prompt** fires after any finished video
+**Activation (Oct 6 2026):** dashboard card "Make your first video" (green "Start with an idea" + 3 example
+ideas that prefill Idea to Video) until the account has a video (`utils/firstVideo.js`: `userVideos`, cached
+once yes); **ProfileGate now waits for the first video**; **first-steps log** `utils/funnel.js` ->
+`POST /api/funnel` -> `funnel/{uid}.steps` (fixed step list, first time only, off with the diagnostics switch,
+in the privacy policy 2.2, purged on account delete), shown in Admin -> FIRST STEPS. Idea/Script/Url
+render waits survive dropped polls (20 misses) and say "still being made" after 10 min instead of failing. **Rating prompt** fires after any finished video
 (JobsContext) - native in-app sheet on vc13, neutral Linking prompt on older builds; never on the first
 success, max every 60 days. **Reminders**: 19 local notifications at 18:00 (days 1-7 daily, then every
 2 days to day 31), rebuilt on every app open, asked after the first finished video or on the dashboard
@@ -228,9 +233,9 @@ the branded verification email (`/api/send-verification-email`) and AI-cap alert
 
 ## Open / waiting
 
-- **Drop-off fixes awaiting the owner's decision:** "Make your first video" card, ProfileGate after the
-  first video, let email signups in before verifying, a first-steps funnel log (needs a privacy-policy
-  line), next-day email. Recommended 1, 2 and 4 first.
+- **Drop-off fixes: 1, 2 and 4 SHIPPED Oct 6 2026** (first-video card, ProfileGate after the first video,
+  first-steps log - see Users and growth). **Read Admin -> FIRST STEPS after a week of new installs** and fix
+  the biggest drop. Still open for the owner: let email signups in before verifying, next-day email.
 - Google: YouTube API Services audit decision (the one that lifts forced-private uploads). Submitted
   Aug 27; **Oct 5 2026 reply (`youtube-disputes` thread): "submitted details sufficiently justify the
   stated use case", no more info needed, they will notify on completion** - not yet the approval. Do NOT

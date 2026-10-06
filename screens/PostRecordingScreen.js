@@ -23,6 +23,8 @@ import { MOTIONS, resolveMotion, motionChain } from '../constants/motions';
 import { adjustChain } from '../constants/adjustments';
 import { usePlan } from '../constants/plan';
 import { friendlyError } from '../utils/friendlyError';
+import { markMadeVideo } from '../utils/firstVideo';
+import { logStep } from '../utils/funnel';
 
 export default function PostRecordingScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
@@ -215,6 +217,9 @@ export default function PostRecordingScreen({ navigation, route }) {
       // The enhanced file becomes the clip on this screen: the preview, and what Save
       // Raw now saves. The choices are cleared because they are baked in - leaving them
       // set would apply them a second time on a second pass.
+      // This render polls itself rather than through JobsContext, so it reports its
+      // own finish to the first-video card and the first-steps log.
+      markMadeVideo(getAuth().currentUser?.uid); logStep('video_done');
       setEnhancedUri(`${BACKEND}${job.videoUrl}`);
       setFilter('None'); setAdjust(null); setEffect('none'); setMotion('none'); setSpeed(1);
       showAlert('Done', 'Your recording has been enhanced.');

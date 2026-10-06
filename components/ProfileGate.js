@@ -7,6 +7,7 @@ import { db, auth } from '../firebase';
 import CountrySheet from './CountryPicker';
 import { SheetHeader, useSheetInset } from './SheetHeader';
 import { friendlyError } from '../utils/friendlyError';
+import { hasMadeVideo } from '../utils/firstVideo';
 
 // Fills in the profile details a Google sign-in cannot collect.
 //
@@ -31,6 +32,13 @@ import { friendlyError } from '../utils/friendlyError';
 //
 // Deliberately DISMISSIBLE, per the sheet rule that every sheet backs out from its
 // header. It asks again on the next launch instead of holding the app hostage.
+//
+// AND IT WAITS FOR THE FIRST VIDEO (Oct 6 2026). It used to open the moment anyone
+// signed in, so a brand-new user's first sight of Tonefy was a form. Of the nine
+// strangers who installed after launch none finished a video and none set a country -
+// each met this sheet first. Now it asks only once the account has made a video
+// (utils/firstVideo.js), on the next launch after it: by then the app has earned the
+// question. Accounts that already have videos are asked as before.
 let askedThisSession = false;
 
 // First token is the given name, everything after it the family name. Wrong for the
@@ -64,6 +72,8 @@ export default function ProfileGate({ user }) {
         if (cancelled || !snap.exists()) return;
         const d = snap.data() || {};
         if (d.country && d.firstName) return;       // nothing left to ask
+        // true only: false (no video yet) and null (could not tell) both wait.
+        if ((await hasMadeVideo(user.uid)) !== true || cancelled) return;
         askedThisSession = true;
         const seed = splitName(d.fullName || user.displayName);
         setFirst(d.firstName || seed.first);

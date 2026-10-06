@@ -5,6 +5,8 @@ import { showAlert } from '../components/BrandedAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../firebase';
 import { friendlyText } from '../utils/friendlyError';
+import { markMadeVideo } from '../utils/firstVideo';
+import { logStep } from '../utils/funnel';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const KEY = 'tonefy.activeJobs.v1';
@@ -81,6 +83,7 @@ export function JobsProvider({ children }) {
 
   const track = useCallback((id, { kind = 'render', label = '' } = {}) => {
     if (!id) return;
+    logStep('render_started');
     setJobs(prev => (prev.some(j => j.id === id) ? prev : [...prev, { id, kind, label, status: 'pending', progress: 0, message: 'Starting…' }]));
   }, []);
 
@@ -123,6 +126,9 @@ export function JobsProvider({ children }) {
             // used to be asked only after an editor export, so Idea/Script/Url users were
             // never asked). BrandedAlert shows one sheet at a time, so if that question is
             // being asked the rating prompt waits for the next success.
+            // Before the delay: the dashboard's first-video card should be gone by the
+            // time the user gets back to it.
+            if (data.status === 'done') { markMadeVideo(auth.currentUser?.uid); logStep('video_done'); }
             if (data.status === 'done') setTimeout(async () => {
               const asking = await askForReminders(showAlert);
               if (asking) recordWin(); else recordWinAndMaybeAsk();

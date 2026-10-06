@@ -197,6 +197,26 @@ export default function AdminScreen({ navigation }) {
             </>
           )}
 
+          {/* Where new people stop on the way to their first video (/api/funnel). Each
+              row is how many accounts reached that step at least once, in the order the
+              steps happen, so the biggest drop between two rows is the place to fix. */}
+          {!!data?.funnel && (
+            <>
+              <Text style={[styles.section, { color: theme.subtext }]}>FIRST STEPS</Text>
+              <View style={[styles.list, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                {FUNNEL_ROWS.map(([key, label]) => (
+                  <View key={key} style={styles.listRow}>
+                    <Text style={[styles.listName, { color: theme.text }]} numberOfLines={1}>{label}</Text>
+                    <Text style={styles.listCount}>{data.funnel.steps?.[key] || 0}</Text>
+                  </View>
+                ))}
+                <Text style={[styles.listNote, { color: theme.subtext }]}>
+                  {`${data.funnel.accounts} accounts tracked since Oct 6 2026. Admins and test devices are left out, and so is anyone who turned diagnostics off.`}
+                </Text>
+              </View>
+            </>
+          )}
+
           {!!data?.generatedAt && (
             <Text style={[styles.stamp, { color: theme.subtext }]}>
               Updated {new Date(data.generatedAt).toLocaleTimeString()} · pull to refresh
@@ -207,6 +227,23 @@ export default function AdminScreen({ navigation }) {
     </View>
   );
 }
+
+// In the order a new user meets them. Keys match FUNNEL_STEPS in server.js.
+const FUNNEL_ROWS = [
+  ['dashboard', 'Saw the dashboard'],
+  ['first_video_card', 'Tapped "Start with an idea"'],
+  ['idea_example', 'Tapped an example idea'],
+  ['open_idea', 'Opened Idea to Video'],
+  ['open_script', 'Opened Script to Video'],
+  ['open_url', 'Opened URL to Video'],
+  ['open_edit', 'Opened the editor'],
+  ['open_record', 'Opened Record to Video'],
+  ['script_made', 'Got a script'],
+  ['voice_made', 'Got a voiceover'],
+  ['render_started', 'Started a render'],
+  ['video_done', 'Finished a video'],
+  ['video_saved', 'Saved a video to the phone'],
+];
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

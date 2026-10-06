@@ -27,6 +27,7 @@ import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
 import { useJobs } from '../context/JobsContext';
 import { friendlyError } from '../utils/friendlyError';
+import { logStep } from '../utils/funnel';
 
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 const BACKEND = 'https://api.fitlifesolutions.site';
@@ -423,7 +424,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       }, 60000);
       const data = await res.json();
       stopProgress(100);
-      if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(2); }
+      if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(2); logStep('voice_made'); }
       else showAlert('Error', data.error || 'Failed to generate voiceover');
     } catch (err) { showAlert('Error', friendlyError(err, 'Could not make the voiceover.')); }
     resetLoading();
@@ -440,7 +441,7 @@ export default function ScriptToVideoScreen({ navigation }) {
       }, 60000);
       const data = await res.json();
       stopProgress(100);
-      if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); }
+      if (data.audioUrl) { setAudioUrl(data.audioUrl); setStep(3); logStep('voice_made'); }
       else showAlert('Error', data.error || 'Failed to generate voiceover');
     } catch (err) { showAlert('Error', friendlyError(err, 'Could not make the voiceover.')); }
     resetLoading();
@@ -494,24 +495,41 @@ export default function ScriptToVideoScreen({ navigation }) {
       // would fight. 40 is where the previous phase left off, so the bar holds there
       // until the server's first report rather than snapping back to it.
       setLoadingMsg('Generating your video...'); stopProgress(40);
+      // On mobile data a poll can drop while the render carries on, unharmed, on the
+      // server (JobsContext is following it too and will notify). So one failed poll is
+      // not a failed video: give up only after ~a minute of silence or 10 minutes in
+      // all, and then say the video is still coming rather than that it failed.
+      const stillRendering = () => Object.assign(new Error('still rendering'), {
+        stillRendering: true,
+        userMessage: "Your video is still being made. We'll let you know when it's ready, and you'll find it in My Videos.",
+      });
+      let misses = 0;
       const result = await new Promise((resolve, reject) => {
         const interval = setInterval(async () => {
           try {
             const pollRes = await fetchWithTimeout(`${BACKEND}/api/job/${jobId}`, {}, 10000);
             const job = await pollRes.json();
+            misses = 0;
             if (job.message) setLoadingMsg(job.message);
             setServerProgress(job.progress);
             if (job.status === 'done') { clearInterval(interval); resolve(job); }
             else if (job.status === 'failed') { clearInterval(interval); reject(new Error(job.message)); }
-          } catch (e) { clearInterval(interval); reject(e); }
+          } catch (e) {
+            misses += 1;
+            if (misses >= 20) { clearInterval(interval); reject(stillRendering()); }
+          }
         }, 3000);
-        setTimeout(() => { clearInterval(interval); reject(new Error('Video generation timed out')); }, 300000);
+        setTimeout(() => { clearInterval(interval); reject(stillRendering()); }, 600000);
       });
 
       stopProgress(100);
       if (result.videoUrl) { setVideoUrl(result.videoUrl); setStep(3); }
       else showAlert('Error', 'Failed to generate video');
-    } catch (err) { stopProgress(0); showAlert('Error', friendlyError(err, 'Your video could not be made. Please try again.')); }
+    } catch (err) {
+      stopProgress(0);
+      if (err.stillRendering) showAlert('Still working on it', err.userMessage);
+      else showAlert('Error', friendlyError(err, 'Your video could not be made. Please try again.'));
+    }
     resetLoading();
   };
 

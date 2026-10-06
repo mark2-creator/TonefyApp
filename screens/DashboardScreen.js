@@ -11,6 +11,16 @@ import { auth } from '../firebase';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { showAlert } from '../components/BrandedAlert';
 import { askForReminders } from '../utils/notifications';
+import { hasMadeVideo, onMadeVideo } from '../utils/firstVideo';
+import { logStep } from '../utils/funnel';
+
+// Ideas a new user can tap instead of facing an empty box. Short, concrete, and the
+// kind of thing stock footage covers well, so the first video looks good.
+const STARTER_IDEAS = [
+  '3 easy ways to save money',
+  'Why sleep matters for your health',
+  'Fun facts about Lake Victoria',
+];
 
 
 const sections = [
@@ -70,6 +80,18 @@ export default function DashboardScreen({ navigation }) {
     const t = setTimeout(() => { askForReminders(showAlert); }, 1500);
     return () => clearTimeout(t);
   }, [focusTick]);
+  // The "Make your first video" card: shown only when we KNOW this account has not
+  // finished a video (false), never on a guess (null - offline). Rechecked on each visit
+  // and hidden the instant a render finishes anywhere in the app.
+  const [needsFirstVideo, setNeedsFirstVideo] = useState(false);
+  useEffect(() => {
+    let live = true;
+    hasMadeVideo(auth.currentUser?.uid).then((made) => { if (live) setNeedsFirstVideo(made === false); });
+    return () => { live = false; };
+  }, [focusTick]);
+  useEffect(() => onMadeVideo(() => setNeedsFirstVideo(false)), []);
+  useEffect(() => { logStep('dashboard'); }, []);
+
   const user = auth.currentUser;
   const firstName =
     user?.displayName?.split(' ')[0] ||
@@ -88,6 +110,9 @@ export default function DashboardScreen({ navigation }) {
     if (typeof card === 'object' && card.soon) {
       return showAlert(title, 'This one is still being built. It will appear here as soon as it is ready.');
     }
+    const step = { 'Idea to Video': 'open_idea', 'Script to Video': 'open_script', 'URL to Video': 'open_url',
+      'Edit Video': 'open_edit', 'Record to Video': 'open_record' }[title];
+    if (step) logStep(step);
     if (title === 'Idea to Video') navigation.navigate('IdeaToVideo');
     else if (title === 'Script to Video') navigation.navigate('ScriptToVideo');
     else if (title === 'URL to Video') navigation.navigate('UrlToVideo');
@@ -216,6 +241,47 @@ export default function DashboardScreen({ navigation }) {
           <Text style={[styles.subtitle, { color: theme.subtext }]}>Choose a workflow to get started</Text>
         </View>
 
+        {/* First video. Nine strangers installed after launch and none finished a video;
+            the dashboard offered eleven equal cards and no first step. This is that first
+            step: the quickest path (Idea to Video, about two minutes end to end, measured
+            on the live server Oct 6 2026) with example ideas so nobody starts from an
+            empty box. Gone once the account has a video. */}
+        {needsFirstVideo && (
+          <GradientBorder radius={14} backgroundColor={theme.card} style={styles.firstCard}>
+            <Text style={[styles.firstTag, { color: theme.subtext }]}>START HERE</Text>
+            <Text style={[styles.firstTitle, { color: theme.text }]}>Make your first video</Text>
+            <Text style={[styles.firstBody, { color: theme.subtext }]}>
+              Type an idea and Tonefy writes the script, adds a voice and finds the clips for
+              you. It takes about two minutes.
+            </Text>
+            <TouchableOpacity
+              style={styles.firstBtn}
+              activeOpacity={0.85}
+              onPress={() => { logStep('first_video_card'); logStep('open_idea'); navigation.navigate('IdeaToVideo'); }}
+            >
+              <MaterialIcons name="auto-awesome" size={20} color="#000" />
+              <Text style={styles.firstBtnText}>Start with an idea</Text>
+            </TouchableOpacity>
+            <Text style={[styles.firstOr, { color: theme.subtext }]}>Or tap an idea to try:</Text>
+            <View style={styles.ideaRow}>
+              {STARTER_IDEAS.map((idea) => (
+                <TouchableOpacity
+                  key={idea}
+                  style={[styles.ideaChip, { backgroundColor: theme.bg, borderColor: theme.border }]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    logStep('idea_example'); logStep('open_idea');
+                    navigation.navigate('IdeaToVideo', { prompt: idea });
+                  }}
+                >
+                  <MaterialIcons name="lightbulb-outline" size={12} color={theme.subtext} />
+                  <Text style={[styles.ideaText, { color: theme.text }]}>{idea}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </GradientBorder>
+        )}
+
         {/* Sections */}
         {sections.map((section, i) => (
           <View key={i} style={styles.section}>
@@ -304,6 +370,18 @@ const styles = StyleSheet.create({
   cardDesc: { color: '#555', fontSize: 11, lineHeight: 15 },
   cardSoon: { opacity: 0.65 },
   cardSoonTag: { color: '#5a5a5a', fontSize: 10, fontWeight: '600', marginTop: 6 },
+
+  // First-video card
+  firstCard: { marginHorizontal: 16, marginTop: 16, padding: 18 },
+  firstTag: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
+  firstTitle: { fontSize: 20, fontWeight: '700' },
+  firstBody: { fontSize: 13, lineHeight: 19, marginTop: 6 },
+  firstBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2ECC71', borderRadius: 12, paddingVertical: 13, marginTop: 16 },
+  firstBtnText: { color: '#000', fontWeight: '700', fontSize: 15 },
+  firstOr: { fontSize: 12, marginTop: 16, marginBottom: 8 },
+  ideaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  ideaChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
+  ideaText: { fontSize: 12, fontWeight: '600' },
 
   // Banner
   banner: { marginHorizontal: 16, marginTop: 28, borderRadius: 16, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1e1e1e', padding: 20, overflow: 'hidden', minHeight: 140 },

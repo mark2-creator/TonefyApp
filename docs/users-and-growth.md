@@ -207,3 +207,37 @@ because the first version mounted an expo-video player per card and froze low-en
 - App: `MyVideosScreen` (poster Image + play button, one request per list) and the Thumbnail screen's
   list. Website `my-videos.html`: posters instead of a `<video preload>` per card, the same titles, text
   now escaped before innerHTML, and its last two emoji replaced by Material SVGs.
+
+## Activation fixes shipped (Oct 6 2026)
+
+Owner approved the recommended three of the five drop-off fixes. Before building, the whole Idea to
+Video path was run on the LIVE server as a brand-new free account (custom-token test user, deleted
+after): script 2s, voice 9s, segments 1s, render done at **109s**. The server path works for a free
+user, so the problem is the way in, not the pipeline.
+
+1. **"Make your first video" card** (`DashboardScreen`), top of the dashboard, GradientBorder card:
+   green "Start with an idea" (-> Idea to Video) and three example ideas ("3 easy ways to save money",
+   "Why sleep matters for your health", "Fun facts about Lake Victoria") that open Idea to Video with
+   the prompt prefilled (`route.params.prompt`). Shown only when `hasMadeVideo()` is exactly `false`;
+   `null` (offline/unknown) shows nothing. `utils/firstVideo.js` reads `userVideos` (limit 1), caches a
+   yes per uid in AsyncStorage, and `markMadeVideo()` (JobsContext on any finished job, PostRecording on
+   its own render) hides the card at once.
+2. **ProfileGate waits for the first video** - it asks only when `hasMadeVideo() === true`, on the
+   launch after. Accounts that already have videos are asked as before.
+3. **First-steps log.** `logStep(step)` (`utils/funnel.js`) -> `POST /api/funnel` -> `funnel/{uid}`
+   `{ steps: { name: firstISO } }`. Server accepts only `FUNNEL_STEPS` (dashboard, first_video_card,
+   idea_example, open_idea/script/url/edit/record, script_made, voice_made, render_started, video_done,
+   video_saved) and keeps the first time only. Sent once per step per phone; nothing at all when
+   diagnostics are off. Privacy policy 2.2 gained a "First-steps usage" bullet + the section-7 sentence
+   (Last updated Oct 6 2026) and the in-app Privacy toggle text says so. Purged by `/api/account/delete`
+   (step `funnel`). Admin stats return `funnel: { accounts, steps }` (admins + test device excluded);
+   AdminScreen shows FIRST STEPS in journey order. Live-tested: valid 200, duplicate keeps first time,
+   unknown step 400, no token 401, account delete removes the doc.
+
+Also fixed on the way, because they hit exactly these users on mobile data: the Idea/Script/Url
+render wait rejected on ONE failed poll (a network blip mid-render showed an error while the video
+kept rendering) and gave up at 5 minutes. Now 20 consecutive misses (~1 min) or 10 minutes, and then
+"Still working on it - you'll find it in My Videos" instead of an error.
+
+Not done (owner's call still): letting email signups in before verifying; next-day email. The website
+admin page does not show FIRST STEPS yet (app only).
