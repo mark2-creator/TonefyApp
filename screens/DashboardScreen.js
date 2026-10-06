@@ -8,11 +8,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { auth } from '../firebase';
+import { onIdTokenChanged } from 'firebase/auth';
 import SheetHeader, { useSheetInset } from '../components/SheetHeader';
 import { showAlert } from '../components/BrandedAlert';
 import { askForReminders } from '../utils/notifications';
 import { hasMadeVideo, onMadeVideo } from '../utils/firstVideo';
 import { logStep } from '../utils/funnel';
+import VerifyEmailBanner from '../components/VerifyEmailBanner';
 
 // Ideas a new user can tap instead of facing an empty box. Short, concrete, and the
 // kind of thing stock footage covers well, so the first video looks good.
@@ -91,6 +93,12 @@ export default function DashboardScreen({ navigation }) {
   }, [focusTick]);
   useEffect(() => onMadeVideo(() => setNeedsFirstVideo(false)), []);
   useEffect(() => { logStep('dashboard'); }, []);
+
+  // A new email account is signed in the instant it is created, and its name is written a
+  // moment later (AuthScreen's updateProfile). Without this the dashboard greets a brand-new
+  // person with the first half of their email address until something else re-renders it.
+  const [, setNameTick] = useState(0);
+  useEffect(() => onIdTokenChanged(auth, () => setNameTick((t) => t + 1)), []);
 
   const user = auth.currentUser;
   const firstName =
@@ -281,6 +289,11 @@ export default function DashboardScreen({ navigation }) {
             </View>
           </GradientBorder>
         )}
+
+        {/* Below the first-video card on purpose: the first thing a new person should
+            see is what to DO, and this is a reminder, not a gate. Renders nothing for
+            Google accounts and for anyone already confirmed. */}
+        <VerifyEmailBanner theme={theme} focusTick={focusTick} />
 
         {/* Sections */}
         {sections.map((section, i) => (

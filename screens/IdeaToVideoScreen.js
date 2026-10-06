@@ -759,7 +759,7 @@ export default function IdeaToVideoScreen({ navigation, route }) {
             <View style={{ backgroundColor: theme.card, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 16, marginBottom: 8 }}>
               <TextInput
                 style={{ color: theme.text, fontSize: 16, lineHeight: 24, minHeight: 120, textAlignVertical: 'top' }}
-                placeholder="Describe your video idea in detail..."
+                placeholder="What is your video about? For example: 3 easy ways to save money"
                 placeholderTextColor={theme.subtext}
                 value={prompt}
                 onChangeText={setPrompt}
@@ -767,7 +767,16 @@ export default function IdeaToVideoScreen({ navigation, route }) {
                 numberOfLines={5}
               />
             </View>
-            <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 12, marginLeft: 4 }}>PRODUCTION SETTINGS</Text>
+            {/* A first-time user meets six setting cards under the box and may think they must
+                choose all of them before they can start. They do not: every one has a good
+                default, and the button is enabled as soon as there is an idea. */}
+            <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 17, marginLeft: 4, marginTop: 4 }}>
+              One sentence is enough. We write the script, add a voice and find the clips.
+            </Text>
+            <Text style={{ color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, marginTop: 24, marginBottom: 4, marginLeft: 4 }}>OPTIONAL SETTINGS</Text>
+            <Text style={{ color: theme.subtext, fontSize: 12, lineHeight: 17, marginLeft: 4, marginBottom: 12 }}>
+              Good choices are already made. Change any of them if you like.
+            </Text>
             <SettingCard icon="record-voice-over" iconColor="#60a5fa" iconBg="#0f1f35" label="Voice" value={`${selectedVoice.label} · ${selectedVoice.accent}`} onPress={() => setModal('voice')} />
             <SettingCard icon="crop-free" iconColor="#a78bfa" iconBg="#1a1035" label="Format" value={`${selectedRatio.label} · ${selectedRatio.desc}`} onPress={() => setModal('ratio')} />
             <SettingCard icon="subtitles" iconColor="#34d399" iconBg="#0a2a1a" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
@@ -840,6 +849,15 @@ export default function IdeaToVideoScreen({ navigation, route }) {
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Video</Text>}
           </TouchableOpacity>
+          {/* The wait is the longest in the app, and on mobile data people close it. Say how
+              long, and that leaving is safe: JobsContext follows the render app-wide and it
+              lands in My Videos. (Not "we will notify you": the notification permission is
+              only asked after a first video.) */}
+          <Text style={[styles.waitNote, { color: theme.subtext }]}>
+            {loading
+              ? 'Still working. You can leave this screen: your video will be waiting in My Videos.'
+              : 'Making your video takes about 2 minutes. You can leave this screen while it works.'}
+          </Text>
         </View>
       )}
 
@@ -848,16 +866,14 @@ export default function IdeaToVideoScreen({ navigation, route }) {
         <View style={styles.stepContainer}>
           <Text style={[styles.stepTitle, { color: theme.text }]}>Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
-          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2ecc71' }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
-            <Text style={styles.btnText}>Post / Schedule</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.btn} onPress={copyLink}>
-            <Text style={styles.btnText}>Copy Link</Text>
-          </TouchableOpacity>
-          {/* The button IS the bar. Three elements saying one thing - a button, a bar
-              and a caption - became one that answers all of it in the same space. */}
+          {/* Saving is the one green button (Oct 6 2026). The finished screen had four
+              near-identical big buttons with "Post / Schedule" on top - a paid feature for
+              most people - so a first-time user did not know what to do with the video they
+              had just made. What nearly everyone wants first is to have it on their phone;
+              posting and the link are real but secondary, so they are outlined.
+              The button IS the bar: label, progress and time left in one element. */}
           <ProgressButton
-            label={downloading ? `Downloading… ${downloadPct}%` : 'Download MP4'}
+            label={downloading ? `Saving… ${downloadPct}%` : 'Save to my phone'}
             hint={downloadEta}
             progress={downloadPct}
             busy={downloading}
@@ -865,6 +881,12 @@ export default function IdeaToVideoScreen({ navigation, route }) {
             icon="file-download"
             style={styles.btnSpacing}
           />
+          <TouchableOpacity style={[styles.btn, styles.btnQuiet, { borderColor: theme.border }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
+            <Text style={[styles.btnText, { color: theme.text }]}>Post or schedule</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, styles.btnQuiet, { borderColor: theme.border }]} onPress={copyLink}>
+            <Text style={[styles.btnText, { color: theme.text }]}>Copy link</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
           </TouchableOpacity>
@@ -944,6 +966,8 @@ const styles = StyleSheet.create({
   btnOutlineText: { color: '#888', fontWeight: 'bold', fontSize: 15 },
   btnDownload: { backgroundColor: '#1a6b3a' },
   btnPurple: { backgroundColor: '#7c3aed' },
+  waitNote: { fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 4 },
+  btnQuiet: { backgroundColor: 'transparent', borderWidth: 1 },
   successBox: { backgroundColor: '#0d2b1a', borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#2ecc71' },
   successText: { color: '#2ecc71', fontWeight: 'bold', fontSize: 15, marginBottom: 6 },
   successSub: { color: '#888', fontSize: 13 },

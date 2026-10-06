@@ -249,45 +249,12 @@ export default function AuthScreen({ navigation }) {
     setLoading(true);
     try {
       if (isLogin) {
-        const userCred = await signInWithEmailAndPassword(auth, email, password);
-        if (!userCred.user.emailVerified) {
-          // Grab a token BEFORE signing out so Resend can call OUR backend endpoint (which
-          // needs a valid ID token). Firebase's own sendEmailVerification does not deliver
-          // on this project (CUSTOM_SMTP makes its template inert - see the backend's
-          // /api/send-verification-email), which is why the old direct call here showed
-          // "Sent!" but no email ever arrived. Same branded-backend path as signup.
-          let idToken = null;
-          try { idToken = await userCred.user.getIdToken(); } catch (e) { /* fall through */ }
-          await auth.signOut();
-          showAlert('Email Not Verified', 'Please verify your email before logging in.', [
-            {
-              text: 'Resend Email',
-              onPress: async () => {
-                try {
-                  const res = await fetch(BACKEND + '/api/send-verification-email', {
-                    method: 'POST', headers: { Authorization: 'Bearer ' + idToken },
-                  });
-                  if (!res.ok) throw new Error('backend ' + res.status);
-                  showAlert('Sent!', 'Verification email sent. Check your inbox — and your spam folder.');
-                } catch (e) {
-                  // Backend unreachable / token stale: re-sign-in for a fresh session and
-                  // use Firebase's own send as a last resort, then sign back out.
-                  try {
-                    const uc = await signInWithEmailAndPassword(auth, email, password);
-                    await sendEmailVerification(uc.user);
-                    await auth.signOut();
-                    showAlert('Sent!', 'Verification email sent. Check your inbox — and your spam folder.');
-                  } catch (e2) {
-                    showAlert('Error', 'Could not resend the email. Please try again in a moment.');
-                  }
-                }
-              },
-            },
-            { text: 'OK' },
-          ]);
-          setLoading(false);
-          return;
-        }
+        await signInWithEmailAndPassword(auth, email, password);
+        // An unverified email no longer stops the sign-in (Oct 6 2026). It used to sign the
+        // person straight back out with "Email Not Verified" - the wall where new users
+        // were being lost, and a wall in the app only: the server never checked
+        // `email_verified`. The dashboard's "Confirm your email" card (VerifyEmailBanner)
+        // carries the reminder and the resend button instead.
         setFailedAttempts(0);
         setLockedUntil(null);
         if (email) AsyncStorage.removeItem(`lockout_${email.toLowerCase()}`).catch(() => {});
@@ -349,13 +316,10 @@ export default function AuthScreen({ navigation }) {
           console.warn('[signup] branded verification email failed, falling back:', mailErr.message);
           await sendEmailVerification(userCred.user);
         }
-        await auth.signOut();
-        showAlert('Account Created!', 'A verification email has been sent to ' + email + '. Please verify before logging in — check your spam folder if you don\'t see it.');
-        setIsLogin(true);
-        setFullName('');
-        setPassword('');
-        setConfirmPassword('');
-        setCountry('');
+        // Stay signed in. The app swaps to the dashboard on its own, where the "Confirm your
+        // email" card says a link was sent and offers to send it again. Signing the person
+        // out and asking them to verify first (the old behaviour) meant leaving the app
+        // before ever seeing it.
       }
     } catch (error) {
       if (error.code === 'auth/multi-factor-auth-required') {

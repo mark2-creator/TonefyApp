@@ -643,6 +643,15 @@ export default function UrlToVideoScreen({ navigation }) {
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={generateVideo} disabled={loading}>
             {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Generate Video</Text>}
           </TouchableOpacity>
+          {/* The wait is the longest in the app, and on mobile data people close it. Say how
+              long, and that leaving is safe: JobsContext follows the render app-wide and it
+              lands in My Videos. (Not "we will notify you": the notification permission is
+              only asked after a first video.) */}
+          <Text style={[styles.waitNote, { color: theme.subtext }]}>
+            {loading
+              ? 'Still working. You can leave this screen: your video will be waiting in My Videos.'
+              : 'Making your video takes about 2 minutes. You can leave this screen while it works.'}
+          </Text>
         </View>
       )}
 
@@ -651,16 +660,14 @@ export default function UrlToVideoScreen({ navigation }) {
         <View style={styles.stepContainer}>
           <Text style={[styles.stepTitle, { color: theme.text }]}>Your Video is Ready!</Text>
           <VideoPlayer videoUrl={fullVideoUrl} />
-          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2ecc71' }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
-            <Text style={styles.btnText}>Post / Schedule</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.btn} onPress={copyLink}>
-            <Text style={styles.btnText}>Copy Link</Text>
-          </TouchableOpacity>
-          {/* The button IS the bar. Three elements saying one thing - a button, a bar
-              and a caption - became one that answers all of it in the same space. */}
+          {/* Saving is the one green button (Oct 6 2026). The finished screen had four
+              near-identical big buttons with "Post / Schedule" on top - a paid feature for
+              most people - so a first-time user did not know what to do with the video they
+              had just made. What nearly everyone wants first is to have it on their phone;
+              posting and the link are real but secondary, so they are outlined.
+              The button IS the bar: label, progress and time left in one element. */}
           <ProgressButton
-            label={downloading ? `Downloading… ${downloadPct}%` : 'Download MP4'}
+            label={downloading ? `Saving… ${downloadPct}%` : 'Save to my phone'}
             hint={downloadEta}
             progress={downloadPct}
             busy={downloading}
@@ -668,6 +675,12 @@ export default function UrlToVideoScreen({ navigation }) {
             icon="file-download"
             style={styles.btnSpacing}
           />
+          <TouchableOpacity style={[styles.btn, styles.btnQuiet, { borderColor: theme.border }]} onPress={() => navigation.navigate('EditPostVideo', { videoUrl: fullVideoUrl, videoPath: videoUrl })}>
+            <Text style={[styles.btnText, { color: theme.text }]}>Post or schedule</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, styles.btnQuiet, { borderColor: theme.border }]} onPress={copyLink}>
+            <Text style={[styles.btnText, { color: theme.text }]}>Copy link</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
           </TouchableOpacity>
@@ -731,6 +744,8 @@ const styles = StyleSheet.create({
   btnOutlineText: { color: '#888', fontWeight: 'bold', fontSize: 15 },
   btnDownload: { backgroundColor: '#1a6b3a' },
   btnPurple: { backgroundColor: '#7c3aed' },
+  waitNote: { fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 4 },
+  btnQuiet: { backgroundColor: 'transparent', borderWidth: 1 },
   successBox: { backgroundColor: '#0d2b1a', borderRadius: 12, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: '#2ecc71' },
   successText: { color: '#2ecc71', fontWeight: 'bold', fontSize: 15, marginBottom: 6 },
   successSub: { color: '#888', fontSize: 13 },

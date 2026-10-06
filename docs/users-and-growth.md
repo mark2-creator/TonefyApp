@@ -241,3 +241,29 @@ kept rendering) and gave up at 5 minutes. Now 20 consecutive misses (~1 min) or 
 
 Not done (owner's call still): letting email signups in before verifying; next-day email. The website
 admin page does not show FIRST STEPS yet (app only).
+
+### Round two: the email wall and the first-run screens (Oct 6 2026, same day)
+
+Owner: "keep going, but mind the UX". Done with the person's point of view first.
+- **Email verification wall removed.** `AuthScreen` signed an unverified email account straight out
+  and said "verify first", so a new person had to leave the app, find the mail (often in spam, on slow
+  data) and come back before seeing anything; Rita (Sep 18) never did. **The server never checked
+  `email_verified`** (verifyToken only verifies the token; the live funnel/audio tests ran on unverified
+  accounts), so the wall was friction without protection. Now login and signup both stay signed in.
+  `components/VerifyEmailBanner.js` on the dashboard, below the first-video card: says where the link was
+  sent and why it matters (resetting a forgotten password), "Send again" (60s cooldown, via
+  `/api/send-verification-email`, which is rate-limited and takes the address from the token) and "I have
+  confirmed" (reloads the user; says plainly if it is not confirmed yet). Reloads on dashboard focus and
+  when the app returns to the foreground. Hidden for Google accounts and once confirmed. The dashboard
+  also re-reads the name (`onIdTokenChanged`) so a new account is not greeted with half its email address
+  while AuthScreen's `updateProfile` lands.
+- **Finished-video screen (Idea/Script/Url).** Four near-identical big green buttons with "Post / Schedule"
+  on top (a paid feature for most) -> **"Save to my phone" is the single green button**; "Post or
+  schedule" and "Copy link" are outlined (`btnQuiet`); "Create Another Video" unchanged.
+- **Waiting.** Generate Video now says "about 2 minutes, you can leave this screen" and while loading
+  "your video will be waiting in My Videos" - deliberately NOT "we will notify you", because notification
+  permission is only asked after the first finished video.
+- **Idea step 1.** Placeholder now an example, "One sentence is enough...", and the six setting cards are
+  headed "OPTIONAL SETTINGS - good choices are already made", so nobody thinks they must pick six things.
+- Not done: next-day email (outward-facing; needs the owner's go-ahead). Not verified on a device: the
+  banner layout, the greeting refresh and the new button order - nothing static checks style shapes.
