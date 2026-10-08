@@ -263,6 +263,10 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   **Owner's next steps** (App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
   `META_LIVE=true`.
+- **SECURITY, awaiting owner go-ahead (Oct 8 2026): live Firestore rules let any user write their OWN `users` doc
+  entirely (set `plan: creator`, any credits)** and change a scheduled post's `userId` (the sweep then posts with
+  that user's accounts). Fixed rules in `backend/firestore.rules` (now the source of truth, 21/21 in the emulator,
+  `backend/rules-test/`); NOT deployed yet. Audit Oct 8: no account had abused it. Rules were console-only before.
 - **Web payments (Flutterwave) BUILT Oct 8 2026, OFF until `FLW_SECRET_KEY`** - 30-day Pro/Creator passes in UGX
   (30,000 / 65,000) on the website only, mobile money + card, never auto-renew; `upgrade.html`, `/flw-webhook`.
   **The app must never link to or mention web payment** (Play rule). Owner: Flutterwave account + test keys.
