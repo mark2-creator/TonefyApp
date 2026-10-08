@@ -52,3 +52,16 @@ mobile money disappears (MTN/Airtel wallets are UGX). So `PASSES` carries a disp
 and the button "Pay $8.25"; the charge and every check in `confirm` stay UGX (Exness does the same).
 Test mode: only `FLW_TEST_UIDS` can start a payment (a TEST key takes fake cards). The phone's checkout
 spinning forever on Oct 8 was a 390 B/s connection - the page loads in seconds on a normal one.
+
+## Oct 8 2026 (later): shillings for Uganda ONLY - supersedes the section above
+Owner: "Let the shillings be shown to only Ugandan users ... I don't want a user from UK or US to be shown
+shillings." `currencyFor(user, loc)` -> **UGX** (mobile money + card, Pro 30,000 / Creator 65,000) when the
+profile country is Uganda OR Cloudflare's `/cdn-cgi/trace` puts the visitor in UG; otherwise **USD by card
+only** (Pro $8.25 / Creator $17.69). The page reads `loc` and sends it to `/config?loc=` and `/start`; the
+pending record stores the currency + amount and `confirm` checks against THAT (old records: UGX). Both
+signals are claims, deliberately: either answer charges the same money.
+**First end-to-end sandbox payment PASSED Oct 8 2026 22:38 EAT** (owner, MoMo test number, ahumuzamark254@):
+page granted Pro, webhook confirmed the same tx, granted once. Account reset to free, test records deleted.
+Before going live: check the LIVE Flutterwave account may collect USD (test mode allowed it), and empty
+FLW_TEST_UIDS. Open question for the owner: Play charges high-income countries double ($13.99 US Pro) while
+the web pass is $8.25 everywhere outside Uganda.
