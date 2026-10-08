@@ -199,7 +199,7 @@ platforms have an account picker. LinkedIn captions are escaped as little text.
 | Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
 | YouTube | yes, private uploads | **uploads forced PRIVATE until the YouTube API Services audit passes** (OAuth verification passed Oct 4 - a different review); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |
-| Facebook / Instagram | no | Meta dev mode; Business Verification blocked on a URSB registration. **Shown "Coming soon" to non-admins** (app + website) until `META_LIVE=true` in `.env`; connect refuses them |
+| Facebook / Instagram | no | Meta dev mode; URSB registered Oct 8, Business Verification + App Review next (`docs/meta-app-review.md`). **"Coming soon" to everyone except admins and `META_REVIEWER_UIDS`** until `META_LIVE=true`; IG uses Instagram Login (`instagram_business_*` scopes) |
 | X | not built | paid API |
 
 Multi-account per platform (Creator) except YouTube. Tokens live in Admin-only collections
@@ -253,7 +253,12 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   reply (nothing asked) and the Oct 12 follow-up is dropped. Never resubmit the form; change nothing in
   the YouTube/OAuth setup; keep the reviewer login working. On approval: confirm the quota in Cloud
   Console, then lift forced-PRIVATE uploads.
-- Meta go-live: URSB "Fitlifesolutions" registration (one word) → Business Verification → App Review.
+- **Meta go-live: URSB registration DONE Oct 8 2026** - **AHUMUZA FITLIFE SOLUTIONS**, reg. no. 80043893223863,
+  sole proprietorship, Muliro Zone, Luwero Central, Luwero Town Council, Luweero District (commenced Oct 5).
+  Website legal pages now name it; `data-deletion.html` added; reviewer login allowed via `META_REVIEWER_UIDS`.
+  **Owner's next steps** (portfolio, Business Verification with BOTH PDFs - the certificate has no address -
+  App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
+  `META_LIVE=true`.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
   them today, but one did - see history 46).
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
@@ -269,6 +274,7 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
 | `docs/bug-patterns.md` | the full story behind every bug-pattern rule, plus the Sep 17 input-handling security audit |
 | `docs/editor.md` | rebuild phases 1-4, caption catalogue (138 styles) and canvas overlays, filmstrip/trim, live preview filters/motions, backend caption rendering, music library, known nits and gaps |
 | `docs/social-posting.md` | posting chain, TikTok (second account, legacy route, audit), Content Calendar fix, who can use each platform, Oct 3 four-platform check, analytics scopes, FitLife token sharing |
+| `docs/meta-app-review.md` | Meta Business Verification + App Review pack: legal facts, exact permissions, justifications, reviewer steps, screencast script |
 | `docs/play-store.md` | ASO and listing, screenshots, ratings, testing tracks, RTDN, regional pricing details, Profile → Build |
 | `docs/google-verifications.md` | the four Google verifications and the OAuth branding saga |
 | `docs/website.md` | the website: build check, platform parity, Profile/Admin pages, icons |
