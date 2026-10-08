@@ -44,3 +44,11 @@
    secret hash = the same phrase.
 4. Sandbox purchase end to end (test card / test mobile money), check Admin revenue, then swap to LIVE keys.
 - If the account only offers v4 (OAuth client id/secret) keys, the module needs adapting - it speaks v3.
+
+## Oct 8 2026: prices SHOWN in dollars, CHARGED in shillings
+Owner wanted "$ for everyone, like Play". Tested: a Flutterwave checkout in USD offers **card only** -
+mobile money disappears (MTN/Airtel wallets are UGX). So `PASSES` carries a display-only `usd`
+(Pro $8.25, Creator $17.69 = the Uganda Play prices); `upgrade.html` shows "$8.25 ... paid as UGX 30,000"
+and the button "Pay $8.25"; the charge and every check in `confirm` stay UGX (Exness does the same).
+Test mode: only `FLW_TEST_UIDS` can start a payment (a TEST key takes fake cards). The phone's checkout
+spinning forever on Oct 8 was a 390 B/s connection - the page loads in seconds on a normal one.
