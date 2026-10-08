@@ -50,6 +50,11 @@ tabs and read the emailed code from the notification shade instead of switching 
 - Facebook Login redirect URI and Instagram Login redirect URI: already configured (connections work
   for admins today) - do not change them.
 
+**Status: section 2 DONE Oct 8 2026** - display name changed FitlifeSolutions -> **Tonefy AI**, app domain,
+privacy/terms/data-deletion URLs, category Utility & productivity, icon = transparent padded mark
+(`/var/www/tonefy-ai/app-icon-meta.png`; Meta rejects white backgrounds and crops tight). DPO section left
+empty (EU only). App still Unpublished.
+
 ## 3. Permissions to request - EXACTLY these, nothing else
 
 The code asks for these and only these (`FB_SCOPES` / `IG_SCOPES` in server.js). Requesting a
