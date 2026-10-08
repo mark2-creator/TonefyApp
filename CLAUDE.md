@@ -263,10 +263,12 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   **Owner's next steps** (App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
   `META_LIVE=true`.
-- **SECURITY, awaiting owner go-ahead (Oct 8 2026): live Firestore rules let any user write their OWN `users` doc
-  entirely (set `plan: creator`, any credits)** and change a scheduled post's `userId` (the sweep then posts with
-  that user's accounts). Fixed rules in `backend/firestore.rules` (now the source of truth, 21/21 in the emulator,
-  `backend/rules-test/`); NOT deployed yet. Audit Oct 8: no account had abused it. Rules were console-only before.
+- **SECURITY FIXED Oct 8 2026: Firestore rules DEPLOYED** (ruleset `fd5853f6`, 18:20 UTC, owner ran it). Before,
+  any user could write their WHOLE own `users` doc (`plan: creator`, any credits) and change a scheduled post's
+  `userId`. Now clients may only create a free <=10-credit record and update profile fields; plan/credits are
+  server-only. **`backend/firestore.rules` is the source of truth** (emulator test `backend/rules-test/`); old
+  rules backed up `~/ytshots/firestore.rules.bak-2026-10-08`. Live check with a throwaway account: 6/6. Audit:
+  nobody had abused it. **Any new client-written `users` field must be added to `profileFields()` first.**
 - **Web payments (Flutterwave) BUILT Oct 8 2026, OFF until `FLW_SECRET_KEY`** - 30-day Pro/Creator passes in UGX
   (30,000 / 65,000) on the website only, mobile money + card, never auto-renew; `upgrade.html`, `/flw-webhook`.
   **The app must never link to or mention web payment** (Play rule). Owner: Flutterwave account + test keys.
