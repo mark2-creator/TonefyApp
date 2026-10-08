@@ -256,7 +256,10 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
 - **Meta go-live: URSB registration DONE Oct 8 2026** - **AHUMUZA FITLIFE SOLUTIONS**, reg. no. 80043893223863,
   sole proprietorship, Muliro Zone, Luwero Central, Luwero Town Council, Luweero District (commenced Oct 5).
   Website legal pages now name it; `data-deletion.html` added; reviewer login allowed via `META_REVIEWER_UIDS`.
-  **Owner's next steps** (portfolio, Business Verification with BOTH PDFs - the certificate has no address -
+  **Business Verification SUBMITTED Oct 8 2026 ~18:30 EAT** (existing portfolio 732676555725838 renamed to
+  "Ahumuza Fitlife solutions", legal name AHUMUZA FITLIFE SOLUTIONS, Luweero address, website tonefy-ai.,
+  email method via hello@fitlifesolutions.site, certificate + statement of particulars; Meta says ~2 business days).
+  **Owner's next steps** (developer app settings, App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
   `META_LIVE=true`.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches

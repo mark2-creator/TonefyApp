@@ -34,6 +34,10 @@ showing name + address. National ID only if Meta asks for it.
    `fitlifesolutions.site`. If verification asks for domain verification, tell Claude - a DNS TXT
    record or a meta-tag file on the website is a five-minute change on our side.
 
+**Status: Business Verification SUBMITTED Oct 8 2026 ~18:30 Uganda time** ("about 2 business days").
+On a phone with many tabs open, switching apps reloads the page and the form restarts: close other
+tabs and read the emailed code from the notification shade instead of switching to Gmail.
+
 ## 2. Developer app settings (developers.facebook.com -> the Tonefy app)
 
 - App type: Business; Business portfolio: Ahumuza Fitlife Solutions (after verification).
