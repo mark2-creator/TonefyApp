@@ -27,7 +27,10 @@ showing name + address. National ID only if Meta asks for it.
    an app is allowed to have a different name from the business that owns it.
 2. Security Center -> Start verification -> enter the legal name, address and website above -> upload
    the certificate + statement of particulars.
-3. Contact method: phone or email. A domain email is preferred by Meta; the site domain is
+3. Contact method: **Email to hello@fitlifesolutions.site** (Cloudflare Email Routing -> owner's Gmail). NOT
+   phone/SMS/WhatsApp: those need documents showing the phone number, and neither URSB document has one
+   (checked Oct 8 2026). Email needs name + address, which the Statement of Particulars shows.
+   Old note: A domain email is preferred by Meta; the site domain is
    `fitlifesolutions.site`. If verification asks for domain verification, tell Claude - a DNS TXT
    record or a meta-tag file on the website is a five-minute change on our side.
 
