@@ -65,3 +65,25 @@ page granted Pro, webhook confirmed the same tx, granted once. Account reset to 
 Before going live: check the LIVE Flutterwave account may collect USD (test mode allowed it), and empty
 FLW_TEST_UIDS. Open question for the owner: Play charges high-income countries double ($13.99 US Pro) while
 the web pass is $8.25 everywhere outside Uganda.
+
+## Oct 8 2026 (latest): Play's price per country, mobile money across Africa - supersedes both sections above
+Owner: (1) match Play's higher prices in rich countries - "Yes"; (2) "Kenya, Tanzania, Rwanda, most African
+countries pay using mobile money ... we may lock out users who don't have cards."
+`offerFor(regionFor(user, loc), plan)` in `backend/webPayments.js`:
+| Where | Charged | Pro / Creator | Methods |
+|---|---|---|---|
+| UG | UGX | 30,000 / 65,000 | MTN, Airtel, card |
+| RW | RWF | 10,500 / 22,500 (Play $6.99/$14.99 at ~1,504) | mobile money, card |
+| GH | GHS | 90 / 200 (Play) | mobile money, card |
+| ZM | ZMW | 170 / 360 (Play $6.99/$14.99 at ~23.9) | mobile money, card |
+| NG | NGN | 10,000 / 22,000 (Play) | bank transfer, USSD, card |
+| Play's 44 doubled markets | USD | 13.99 / 29.99 | card |
+| everywhere else | USD | 8.25 / 17.69 | card |
+**Probed Oct 8 on the TEST account** (headless checkout, read the payment-method list): mobile money shows for
+UGX/RWF/GHS/ZMW; NGN shows bank transfer + USSD; **TZS, XOF, XAF show card only; KES fails to initialise
+("Initialization failed") even for card** - those currencies are not enabled on the account. Ask Flutterwave
+during activation to enable KES (M-Pesa), TZS mobile money and francophone mobile money; after a test checkout
+shows the method, add one line to `LOCAL` (Play: KE KES 1,000/2,200, TZ TZS 18,000/40,000, CI/SN XOF 4,700/10,000,
+CM XAF 4,700/10,100). Until then those countries pay USD by card. Region = Cloudflare `loc` first, else the
+profile country name -> ISO code via Intl.DisplayNames (retired codes like DD/UK skipped - "Germany" mapped to
+DD and "United Kingdom" to UK before that fix). The LIVE account may differ from test - re-probe after activation.

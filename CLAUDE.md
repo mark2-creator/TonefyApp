@@ -273,8 +273,9 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   (30,000 / 65,000) on the website only, mobile money + card, never auto-renew; `upgrade.html`, `/flw-webhook`.
   **The app must never link to or mention web payment** (Play rule). **TEST keys in `.env` since Oct 8**: with a
   `_TEST` key only `FLW_TEST_UIDS` (owner's ahumuzamark254@ account) can pay - everyone else still sees "coming soon".
-  **Sandbox payment PASSED end to end Oct 8** (page + webhook, granted once). **UGX + mobile money for Ugandans only,
-  USD card for everyone else** (`currencyFor`). Next: Flutterwave account activation + LIVE keys (empty FLW_TEST_UIDS).
+  **Sandbox payment PASSED end to end Oct 8** (page + webhook, granted once). **Play's price per country** (`offerFor`): local
+  currency + mobile money in UG/RW/GH/ZM, bank transfer in NG, USD card elsewhere ($13.99 in Play's 44 doubled markets).
+  KE/TZ/francophone need Flutterwave to enable those currencies. Next: Flutterwave account activation + LIVE keys (empty FLW_TEST_UIDS).
   `docs/web-payments.md`.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
   them today, but one did - see history 46).
