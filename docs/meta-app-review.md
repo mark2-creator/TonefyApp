@@ -21,7 +21,10 @@ showing name + address. National ID only if Meta asks for it.
 
 ## 1. Business portfolio (business.facebook.com)
 
-1. Create the portfolio named exactly **Ahumuza Fitlife Solutions**.
+1. The owner ALREADY has a portfolio, named "Fitlifesolutions" (seen Oct 8 2026). Do not make a second
+   one - **rename it** to **Ahumuza Fitlife Solutions** (Settings -> Business info -> Edit) BEFORE
+   starting verification, so the name matches the URSB documents. The app keeps its own name, Tonefy AI;
+   an app is allowed to have a different name from the business that owns it.
 2. Security Center -> Start verification -> enter the legal name, address and website above -> upload
    the certificate + statement of particulars.
 3. Contact method: phone or email. A domain email is preferred by Meta; the site domain is
