@@ -87,3 +87,14 @@ shows the method, add one line to `LOCAL` (Play: KE KES 1,000/2,200, TZ TZS 18,0
 CM XAF 4,700/10,100). Until then those countries pay USD by card. Region = Cloudflare `loc` first, else the
 profile country name -> ISO code via Intl.DisplayNames (retired codes like DD/UK skipped - "Germany" mapped to
 DD and "United Kingdom" to UK before that fix). The LIVE account may differ from test - re-probe after activation.
+
+## Oct 8 2026 (night): the Flutterwave account is NIGERIAN - a Ugandan one is applied for
+The owner's account (ahumuzamark21213@, phone shown +234) was created under **Nigeria**, the self-serve
+signup's only country; activation then demands a Nigerian NIN + BVN. **Never fill those in.** Self-serve
+signup is Nigeria-only (read off app.flutterwave.com/register Oct 8); every other country, Uganda included,
+goes through **flutterwave.com/ug/contact-sales**. Submitted Oct 8 ~23:30 EAT from hello@fitlifesolutions.site
+(company AHUMUZA FITLIFE SOLUTIONS, registered, under $1M, asked for UGX/KES/TZS/RWF/GHS/ZMW/XOF/XAF/USD and to
+close or move the Nigerian account); auto-reply "a member of our team will contact you shortly". The Nigerian
+account's TEST keys stay in .env for sandbox only. When the Ugandan account arrives: new keys, re-run the
+currency probes, adjust `LOCAL`. Fee seen in the test receipt: UGX 900 on 30,000 (3%, mobile money).
+**Fallback if no reply in ~a week: Pesapal** (signs up Ugandan businesses directly; MTN, Airtel, M-Pesa, cards).
