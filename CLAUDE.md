@@ -263,6 +263,10 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   **Owner's next steps** (App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
   `META_LIVE=true`.
+- **Web payments (Flutterwave) BUILT Oct 8 2026, OFF until `FLW_SECRET_KEY`** - 30-day Pro/Creator passes in UGX
+  (30,000 / 65,000) on the website only, mobile money + card, never auto-renew; `upgrade.html`, `/flw-webhook`.
+  **The app must never link to or mention web payment** (Play rule). Owner: Flutterwave account + test keys.
+  `docs/web-payments.md`.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
   them today, but one did - see history 46).
 - Rotate: Brevo SMTP key and LinkedIn client secret (both were pasted into chat once).
@@ -279,6 +283,7 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
 | `docs/editor.md` | rebuild phases 1-4, caption catalogue (138 styles) and canvas overlays, filmstrip/trim, live preview filters/motions, backend caption rendering, music library, known nits and gaps |
 | `docs/social-posting.md` | posting chain, TikTok (second account, legacy route, audit), Content Calendar fix, who can use each platform, Oct 3 four-platform check, analytics scopes, FitLife token sharing |
 | `docs/meta-app-review.md` | Meta Business Verification + App Review pack: legal facts, exact permissions, justifications, reviewer steps, screencast script |
+| `docs/web-payments.md` | Flutterwave web passes: prices, grant/verify design, Play rule, how to switch on |
 | `docs/play-store.md` | ASO and listing, screenshots, ratings, testing tracks, RTDN, regional pricing details, Profile → Build |
 | `docs/google-verifications.md` | the four Google verifications and the OAuth branding saga |
 | `docs/website.md` | the website: build check, platform parity, Profile/Admin pages, icons |
