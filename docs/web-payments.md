@@ -105,5 +105,7 @@ Oluwafolakemi A (Support Shift Lead, hi@flutterwavego.com) wrote to hello@ on Oc
 expansion plans, customer base, services of interest, annual processing volume, anything else.
 **The contact-sales form had said "Annual Processing Volume: $5m - $25m"** - far above reality (0 paying
 users, ~32 accounts). The reply must correct it to a small honest figure: an overstated volume is checked
-during KYC and is a reason to refuse or freeze an account later. Reply drafted for the owner to send
-from hello@.
+during KYC and is a reason to refuse or freeze an account later. **Owner's decision (Oct 9): keep $5m+**
+(he believes sales routes smaller volumes away). The Gmail draft states it as a TARGET while expanding
+across Africa, with first months smaller - true, and consistent with "about 30 users" in point 4.
+Draft left in Gmail for the owner to read and send himself.
