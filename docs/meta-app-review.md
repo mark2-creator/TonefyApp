@@ -35,6 +35,13 @@ showing name + address. National ID only if Meta asks for it.
    record or a meta-tag file on the website is a five-minute change on our side.
 
 **Status: Business Verification SUBMITTED Oct 8 2026 ~18:30 Uganda time** ("about 2 business days").
+**Oct 9 2026 07:55Z: "More info needed"** (noreply@business.facebook.com): *"The document submitted to verify
+the business address didn't include or match the information entered: Muliro Zone, Luwero Central, Luwero Town
+Council, , Luweero, Central region, 00000, UG."* Name and number passed; only the ADDRESS failed. Likely causes:
+"Zone" and the spelling/split differ from the Statement of Particulars (which reads roughly "muliro, luwero
+central, luwero town council ... district luweero"), plus the made-up 00000 postcode. Fix: retype the address
+exactly as printed on the document (field by field), or upload a document that shows name + address together
+(Luwero Town Council trading licence, business bank statement, utility bill in the business name).
 On a phone with many tabs open, switching apps reloads the page and the form restarts: close other
 tabs and read the emailed code from the notification shade instead of switching to Gmail.
 
