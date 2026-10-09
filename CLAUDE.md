@@ -261,7 +261,10 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   email method via hello@fitlifesolutions.site, certificate + statement of particulars; Meta says ~2 business days). **Oct 9: "more info needed" - address
   didn't match the document; RESUBMITTED Oct 9 ~16:19 EAT with the address exactly as on the Statement of Particulars.** **Same day: address matched
   but the Statement "isn't an accepted type" - needs a trading licence, bank letter/statement or utility bill showing
-  name + address (owner to obtain).**
+  name + address. ON HOLD Oct 9 (owner): no money for a trading licence / Stanbic business account
+  (Stanbic wants a trading licence from sole proprietors; Pamoja UGX 100k to open + 25k/month) while Tonefy earns
+  nothing - resume when it does. Meanwhile ask Flutterwave whether a sole proprietor can settle to mobile money or
+  a personal account.**
   Developer app settings DONE Oct 8 (display name now Tonefy AI).
   **Owner's next steps** (App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +
