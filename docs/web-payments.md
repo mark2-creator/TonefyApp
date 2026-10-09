@@ -109,3 +109,8 @@ during KYC and is a reason to refuse or freeze an account later. **Owner's decis
 (he believes sales routes smaller volumes away). The Gmail draft states it as a TARGET while expanding
 across Africa, with first months smaller - true, and consistent with "about 30 users" in point 4.
 Draft left in Gmail for the owner to read and send himself.
+**SENT Oct 9 2026 04:24Z** by the owner, from ahumuzamark21213@gmail.com to hi@flutterwavego.com (same thread).
+Final wording: app + website both run by AHUMUZA FITLIFE SOLUTIONS; customer base = "live on Google Play with
+5-star reviews, early stage" (no user count - a 30,000 figure was removed: Play shows real installs); volume
+"USD 5m+ per year is our target". FitLife ebook store deliberately NOT mentioned (owner). Next: wait for the
+team they route us to; they will likely ask for URSB docs + ID.
