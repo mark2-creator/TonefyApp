@@ -98,3 +98,12 @@ close or move the Nigerian account); auto-reply "a member of our team will conta
 account's TEST keys stay in .env for sandbox only. When the Ugandan account arrives: new keys, re-run the
 currency probes, adjust `LOCAL`. Fee seen in the test receipt: UGX 900 on 30,000 (3%, mobile money).
 **Fallback if no reply in ~a week: Pesapal** (signs up Ugandan businesses directly; MTN, Airtel, M-Pesa, cards).
+
+### Oct 9 2026 - Flutterwave sales replied (a person, not the auto-reply)
+Oluwafolakemi A (Support Shift Lead, hi@flutterwavego.com) wrote to hello@ on Oct 8 21:39Z, subject
+"FLUTTERWAVE SALES HELPDESK!", asking for 7 details: business description, country of incorporation,
+expansion plans, customer base, services of interest, annual processing volume, anything else.
+**The contact-sales form had said "Annual Processing Volume: $5m - $25m"** - far above reality (0 paying
+users, ~32 accounts). The reply must correct it to a small honest figure: an overstated volume is checked
+during KYC and is a reason to refuse or freeze an account later. Reply drafted for the owner to send
+from hello@.
