@@ -258,7 +258,8 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   Website legal pages now name it; `data-deletion.html` added; reviewer login allowed via `META_REVIEWER_UIDS`.
   **Business Verification SUBMITTED Oct 8 2026 ~18:30 EAT** (existing portfolio 732676555725838 renamed to
   "Ahumuza Fitlife solutions", legal name AHUMUZA FITLIFE SOLUTIONS, Luweero address, website tonefy-ai.,
-  email method via hello@fitlifesolutions.site, certificate + statement of particulars; Meta says ~2 business days).
+  email method via hello@fitlifesolutions.site, certificate + statement of particulars; Meta says ~2 business days). **Oct 9: "more info needed" - address
+  didn't match the document; RESUBMITTED Oct 9 ~16:19 EAT with the address exactly as on the Statement of Particulars.**
   Developer app settings DONE Oct 8 (display name now Tonefy AI).
   **Owner's next steps** (App Review with exactly 5 permissions, screencasts; done: portfolio, Business Verification with BOTH PDFs - the certificate has no address -
   App Review with exactly 5 permissions, screencasts): `docs/meta-app-review.md`. After approval: Live +

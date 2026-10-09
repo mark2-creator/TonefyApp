@@ -48,6 +48,8 @@ exactly as printed on the document (field by field), or upload a document that s
 business address; don't mix them). Resubmission field by field: line 1 `Muliro, Luwero Central`, line 2
 `Luwero Town Council`, city `Luwero`, region Central, postcode blank (Uganda has none; 00000 is not on the
 paper), upload the Statement of Particulars (page 1 shows name + address together).
+**RESUBMITTED Oct 9 2026 ~16:19 Uganda time** with: `Muliro, Luwero Central,` / `Luwero Town Council` / `Luwero` /
+`Central` / postcode `256` (Meta requires one; Uganda has none). Meta: "about 2 business days".
 On a phone with many tabs open, switching apps reloads the page and the form restarts: close other
 tabs and read the emailed code from the notification shade instead of switching to Gmail.
 
