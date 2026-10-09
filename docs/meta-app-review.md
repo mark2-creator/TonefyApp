@@ -50,6 +50,12 @@ business address; don't mix them). Resubmission field by field: line 1 `Muliro, 
 paper), upload the Statement of Particulars (page 1 shows name + address together).
 **RESUBMITTED Oct 9 2026 ~16:19 Uganda time** with: `Muliro, Luwero Central,` / `Luwero Town Council` / `Luwero` /
 `Central` / postcode `256` (Meta requires one; Uganda has none). Meta: "about 2 business days".
+**Oct 9 14:23Z (2h later): "More info needed" again - the ADDRESS NOW MATCHED, but the Statement of Particulars
+"isn't an accepted type".** Accepted: certificate/articles of incorporation (ours has no address), business
+licence/permit, bank statement/summary/letter, utility bill (water, gas, electric, phone) - showing BOTH the
+legal name and the address. Plan: a **Luwero Town Council trading licence** (fastest) or a **bank letter for a
+business account in the name AHUMUZA FITLIFE SOLUTIONS** (also needed for Flutterwave settlement). When the new
+document arrives, retype the address exactly as THAT document prints it. Do not upload the Statement again.
 On a phone with many tabs open, switching apps reloads the page and the form restarts: close other
 tabs and read the emailed code from the notification shade instead of switching to Gmail.
 
