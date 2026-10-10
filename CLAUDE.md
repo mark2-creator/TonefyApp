@@ -195,7 +195,7 @@ platforms have an account picker. LinkedIn captions are escaped as little text.
 
 | Platform | Usable by anyone? | Notes |
 |---|---|---|
-| TikTok | yes | production app, **Direct Post audit approved Sep 24**; `TikTokPostSheet` (caption, privacy, disclosure) now opens for single posts, **Post Now AND Save to queue** - without it the server defaults to SELF_ONLY |
+| TikTok | yes | production app, **Direct Post audit approved Sep 24**; **app connect links via `/api/tiktok/connect` (signed uid) since Oct 10 - before, it used the BROWSER's sign-in**; `TikTokPostSheet` (caption, privacy, disclosure) now opens for single posts, **Post Now AND Save to queue** - without it the server defaults to SELF_ONLY |
 | Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
 | YouTube | yes, private uploads | **uploads forced PRIVATE until the YouTube API Services audit passes** (OAuth verification passed Oct 4 - a different review); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |

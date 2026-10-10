@@ -113,7 +113,7 @@ export default function ConnectAccountsScreen({ navigation }) {
     loadLinkedIn();
     // Re-check on return from the browser, which is exactly when the answer changes.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') { loadYouTube(); loadFacebook(); loadInstagram(); loadPinterest(); loadLinkedIn(); }
+      if (next === 'active') { loadTikTok(); loadYouTube(); loadFacebook(); loadInstagram(); loadPinterest(); loadLinkedIn(); }
     });
     return () => sub.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -385,7 +385,17 @@ export default function ConnectAccountsScreen({ navigation }) {
       // add=1 makes the backend ask TikTok to show its authorisation page, which is the
       // only place to switch accounts; without it TikTok skips that page for a valid
       // session and silently re-authorises the account already connected.
-      await Linking.openURL(`${BACKEND}/tiktok/auth?from=app${adding ? '&add=1' : ''}`);
+      //
+      // The URL comes from /api/tiktok/connect, asked with THIS user's ID token, so the
+      // server links the account to whoever is signed in to the app - not to whoever the
+      // phone's browser happens to be signed in as (Oct 10 2026: it linked the owner's
+      // TikTok to his other Tonefy account). The plain URL is only a fallback.
+      let url = `${BACKEND}/tiktok/auth?from=app${adding ? '&add=1' : ''}`;
+      try {
+        const r = await api(`/api/tiktok/connect${adding ? '?add=1' : ''}`);
+        if (r?.url) url = r.url;
+      } catch (e) { /* fall back to the plain URL */ }
+      await Linking.openURL(url);
     } catch (e) {
       showAlert('Error', 'Could not open TikTok auth page');
     }

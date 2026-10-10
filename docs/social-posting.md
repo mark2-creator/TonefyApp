@@ -361,3 +361,18 @@ Owner asked for every channel to be reviewed like Pinterest, then approved all e
 - **Found while building:** "Save to Queue" was wired `onPress={saveToQueue}`, so once that function
   took an argument it received the press EVENT - fixed to `() => saveToQueue()` (the bug pattern).
 - Not device-tested yet: the sheets, rows and progress list. Server paths were tested live.
+
+## Oct 10 2026 - TikTok linked to the BROWSER's account, not the app's (fixed)
+Owner connected @tonefy.ai from the app; the success page said "Connected!" but the app kept saying "Not
+connected". Cause: the app flow opened `/tiktok/auth` in the phone browser and `tiktok-success.html` called
+`/api/tiktok/link` with the BROWSER's Firebase session - signed in to his other account (ahumuzamark254@,
+from the Flutterwave test), so TikTok went to that account. A browser with NO session linked nothing and still
+said "Connected!" - so any app user not signed in to the website could never connect TikTok.
+Fix (TikTok OAuth request unchanged - it is under review): the app first calls `GET /api/tiktok/connect`
+(its own ID token) -> URL with `who=` = HMAC-signed uid, 10 min (`signState`, same as YouTube); `/tiktok/auth`
+keeps the uid server-side next to the PKCE verifier; the callback links via `linkTikTokAccount()` and
+redirects with `linked=1`/`link_error=`, so the page links nothing itself. `linkTikTokAccount` also removes
+the openId from a PREVIOUS owner's connectedAccounts. The old link-code path stays for the website and
+older builds; a page with no session now says "Almost done… connect again" instead of "Connected!".
+ConnectAccounts now re-reads TikTok on return to the app. Live-tested: 401 without token, signed URL -> TikTok,
+`who` not sent to TikTok, forged `who` ignored. OTA update a07f73a6. Backup `~/ytshots/server.js.bak-2026-10-10-tiktok`.
