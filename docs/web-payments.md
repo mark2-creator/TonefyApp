@@ -124,3 +124,13 @@ stay OFF for everyone except `FLW_TEST_UIDS` (test keys). The page/webhook code 
 (`backend/webPayments.js`); a different provider means a new adapter, not a rewrite of upgrade.html's plans/prices.
 Next: pick a Uganda provider that onboards sole proprietors (candidates to check: Pesapal, DPO Pay, Yo! Payments,
 Relworx) before building anything.
+
+### Oct 11 2026 - alternatives researched (web, not yet confirmed with the providers)
+
+| Provider | Fits a sole proprietor? | Documents | Fees | Settles to |
+|---|---|---|---|---|
+| **Relworx** (1st choice) | says it serves "startups, NGOs, developers" | KYC PDF on site - ask | not published - ask | ask (mobile money hoped) |
+| **Yo! Payments** (fallback) | business account | registration doc + proof of address in business name (trading licence) + signed letter + NDA for API | 3% inbound; UGX 250 per payout to mobile money | mobile money (no bank needed); mobile money only, no cards |
+| Pesapal | yes (sole proprietor contract) | ID, registration, business permit, **bank letter/statement** | ~1.5-3.5% | bank only -> blocked while no business bank account |
+| DPO Pay (now "Network") | no | 1 year trading, financial statements | - | - |
+Plan: email Relworx (sole proprietor OK? settle to mobile money? fees? KYC list?); Yo! once the trading licence exists.
