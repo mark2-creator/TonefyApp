@@ -134,3 +134,12 @@ Relworx) before building anything.
 | Pesapal | yes (sole proprietor contract) | ID, registration, business permit, **bank letter/statement** | ~1.5-3.5% | bank only -> blocked while no business bank account |
 | DPO Pay (now "Network") | no | 1 year trading, financial statements | - | - |
 Plan: email Relworx (sole proprietor OK? settle to mobile money? fees? KYC list?); Yo! once the trading licence exists.
+
+### Oct 11 2026 - Pesapal chosen (cards + mobile money); account CREATED
+
+Owner's choice: Pesapal, because it takes cards. Business account opened Oct 11 ~20:46 EAT at business.pesapal.com
+(UG), login ahumuzamark21213@gmail.com, display name "Fitlifesolutions" (to be renamed to the legal name).
+Dashboard "Getting started": 1 Verify business (transaction limit 0 until documents) -> 2 bank details -> 3 receive
+payments -> 4 withdraw. Uganda sole-proprietor documents (Pesapal blog): ID, business permit (trading licence),
+URSB registration, URA TIN, bank letter/statement/cancelled cheque (business vs personal account NOT specified - ask).
+API credentials are under Developers on the dashboard; integration = new adapter beside webPayments.js.
