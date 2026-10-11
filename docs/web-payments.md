@@ -114,3 +114,13 @@ Final wording: app + website both run by AHUMUZA FITLIFE SOLUTIONS; customer bas
 5-star reviews, early stage" (no user count - a 30,000 figure was removed: Play shows real installs); volume
 "USD 5m+ per year is our target". FitLife ebook store deliberately NOT mentioned (owner). Next: wait for the
 team they route us to; they will likely ask for URSB docs + ID.
+
+### Oct 11 2026 - Flutterwave DECLINED
+
+Reply 15:13Z (Oluwafolakemi A, same thread; addressed "Fatima Abubakar" - their template slip): "our products in
+Uganda are built specifically to support enterprise-level businesses, so we're unable to onboard your business just
+yet ... I'll proceed to close this request." Details saved on their side. Nothing changes for users: web payments
+stay OFF for everyone except `FLW_TEST_UIDS` (test keys). The page/webhook code is provider-specific
+(`backend/webPayments.js`); a different provider means a new adapter, not a rewrite of upgrade.html's plans/prices.
+Next: pick a Uganda provider that onboards sole proprietors (candidates to check: Pesapal, DPO Pay, Yo! Payments,
+Relworx) before building anything.
