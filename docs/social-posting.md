@@ -376,3 +376,15 @@ the openId from a PREVIOUS owner's connectedAccounts. The old link-code path sta
 older builds; a page with no session now says "Almost done… connect again" instead of "Connected!".
 ConnectAccounts now re-reads TikTok on return to the app. Live-tested: 401 without token, signed URL -> TikTok,
 `who` not sent to TikTok, forged `who` ignored. OTA update a07f73a6. Backup `~/ytshots/server.js.bak-2026-10-10-tiktok`.
+
+### Oct 11 2026 - "The access token is invalid" a day after reconnecting
+
+Owner reconnected @tonefy.ai Oct 10 09:26Z (linked to the right account - the Oct 10 fix worked); next day the
+Post to TikTok sheet showed TikTok's raw "The access token is invalid or not found in the request." Cause: the OAuth
+callback cached the new token in memory WITHOUT `expiresAt`, and `tiktokTokenFresh` treats a token with no expiry
+as fresh, so after 24h the server kept using the dead cached token and never refreshed (only a pm2 restart cleared
+it). Fixed: the callback caches `expiresAt`; `saveTikTokToken` now writes with `merge: true` (the plain `set` wiped
+the server-written `uid`, so `linkTikTokAccount` could not see the previous owner and left a stale copy on the
+owner's ahumuzamark254@ account - removed by hand); `/tiktok/creator-info` no longer shows TikTok's raw text - on
+`access_token_invalid` it drops the cache and says "Your TikTok connection has expired. Please reconnect TikTok in
+Profile." Verified live: creator-info 200 as the owner, token refreshed (expires Oct 12), `uid` intact.
