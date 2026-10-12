@@ -152,6 +152,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## Current state (Oct 4 2026)
 
+**Oct 12 2026: Play REMOVED the app (AI-Generated Content policy: no in-app report of offensive AI content).** Fixed same day: `ReportContentSheet` on every AI result -> `/api/report-content` -> `contentReports` + owner email; vc14 for resubmission (`docs/play-store.md`). **Every AI surface must carry a ReportLink.**
+
 **Play / builds.** Production, alpha and internal all on **vc13** (released Oct 3; adds Google's
 in-app review sheet). Runtime `1.1.0`. Title "Tonefy AI: AI Video Generator", 8 screenshots, no promo
 video (deliberate). Category Video Players & Editors. **First public reviews: 3 x 5 stars (Oct 3-4, all

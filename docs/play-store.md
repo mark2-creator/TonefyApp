@@ -287,3 +287,18 @@ show the replies for a while afterwards - `reviews.get` per review did. Reply to
 **Oct 6 2026 - reviews public on the listing.** The owner confirmed on the Play Store that
 Tonefy AI's reviews (the three 5-star reviews of Oct 3-4, with their developer replies) now
 show publicly on the listing - the first time store visitors can see ratings.
+
+## Oct 12 2026 - APP REMOVED: AI-Generated Content policy (no in-app reporting)
+
+Email 08:26Z "Action Required: Your app is not compliant" - App Status **Removed**. Issue: "Your app lacks in-app
+features for users to report or flag offensive content" (vc13, evidence IN_APP_EXPERIENCE-9485.png = Idea to Video:
+settings, script, voiceover, "Your Video is Ready"). Policy: AI apps must let users report/flag offensive content to
+the developer without leaving the app, and use reports for moderation.
+Fix (same day): `components/ReportContentSheet.js` (8 reasons + optional note, green Send) + `ReportLink` (neutral
+flag) on: Idea/Script/Url to Video finished screens ("Report this content"), the AI script step in Idea to Video
+("Report this script"), AudioResultScreen (voiceover + script), My Videos player (closes the player modal first).
+Backend `POST /api/report-content` (behind verifyToken, 30/day limit) -> Admin-only `contentReports` + email to the
+owner (`REPORT_ALERT_EMAIL` || AI_SCENE_ALERT_EMAIL || EMAIL_USER); purged on account delete; privacy policy 2.1
+updated. Live test with a throwaway account: 401 no token, 400 bad reason, 200 stored (cleaned up). OTA update
+`812026d9-cdd9-49ca-96f4-af984cfc1ff2`; native build vc14 started (EAS build 3374ed8c) for resubmission.
+**Any future AI surface (new generator, AI captions, AI images) must carry a ReportLink.**
