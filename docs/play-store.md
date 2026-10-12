@@ -307,3 +307,6 @@ updated. Live test with a throwaway account: 401 no token, 400 bad reason, 200 s
 **API gotcha for a removed/under-review app:** `edits.commit` refuses with "Changes cannot be sent for review
 automatically" - commit with `changesNotSentForReview: true` (and do NOT pass it to `edits.validate`, which rejects
 the field; skip validate). The owner then presses **Send changes for review** in Play Console -> Publishing overview.
+**Submitted for review Oct 12 2026 13:19 EAT** by the owner - Play Console Submission 14 (Production + Closed testing
+Alpha, vc14), status "In review"; Policy status page: "Reviews typically take up to seven days". Do NOT appeal (the
+fix is in review). Watch the 21213@ inbox for the decision.

@@ -152,7 +152,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## Current state (Oct 4 2026)
 
-**Oct 12 2026: Play REMOVED the app (AI-Generated Content policy: no in-app report of offensive AI content).** Fixed same day: `ReportContentSheet` on every AI result -> `/api/report-content` -> `contentReports` + owner email; **vc14 on production/alpha/internal Oct 12; owner must press Send changes for review in Console** (`docs/play-store.md`). The installed build is now vc14 from commit `035e0b49` once approved. **Every AI surface must carry a ReportLink.**
+**Oct 12 2026: Play REMOVED the app (AI-Generated Content policy: no in-app report of offensive AI content).** Fixed same day: `ReportContentSheet` on every AI result -> `/api/report-content` -> `contentReports` + owner email; **vc14 on production/alpha/internal Oct 12; SUBMITTED for review 13:19 EAT (Submission 14, "In review", up to 7 days)** (`docs/play-store.md`). The installed build is now vc14 from commit `035e0b49` once approved. **Every AI surface must carry a ReportLink.**
 
 **Play / builds.** Production, alpha and internal all on **vc13** (released Oct 3; adds Google's
 in-app review sheet). Runtime `1.1.0`. Title "Tonefy AI: AI Video Generator", 8 screenshots, no promo
