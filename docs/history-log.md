@@ -2940,3 +2940,9 @@ record of when they were written; CLAUDE.md holds the current state.
       log). The other `exec()` calls build commands only from server-made paths and numbers
       (`buildCaptionFilter`, the one with user text in a drawtext, is dead code) - convert
       them to execFile as a follow-up.
+
+47. **"Fade · undefined" transition label fixed (Oct 12 2026).** Seen in Google's own review
+    screenshot of Idea to Video. The Idea/Script/Url setting rows printed
+    `selectedTransition.category`, but transitions carry `group` (captions are the ones with
+    `category`). Fixed on all three screens; OTA update group `b8aa921d-36bf-4ffe-9959-0df1dca99cae`
+    on `production` (runtime 1.1.0, no native change vs vc14 `035e0b49`).
