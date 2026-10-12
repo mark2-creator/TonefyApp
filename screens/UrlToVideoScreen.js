@@ -22,6 +22,7 @@ import { transitionSpec, resolveTransition } from '../constants/transitions';
 import { usePlan } from '../constants/plan';
 import AiScenesRow from '../components/AiScenesRow';
 import { showAlert } from '../components/BrandedAlert';
+import ReportContentSheet, { ReportLink } from '../components/ReportContentSheet';
 import { saveVideoToDevice } from '../utils/saveVideo';
 import ProgressButton from '../components/ProgressButton';
 import { createEta } from '../utils/eta';
@@ -344,6 +345,8 @@ function OptionModal({ visible, title, options, selectedId, onSelect, onClose })
 }
 
 export default function UrlToVideoScreen({ navigation }) {
+  // Google Play AI-Generated Content policy: report from where the content is shown.
+  const [reportOpen, setReportOpen] = useState(null); // 'video' | null
   // Gates the locked tiles in the transition sheet, the same way the editor does.
   const { isPremium } = usePlan();
   // How many opening scenes the server generates with AI; 0 = all stock footage.
@@ -684,6 +687,7 @@ export default function UrlToVideoScreen({ navigation }) {
           <TouchableOpacity style={[styles.btn, styles.btnPurple]} onPress={resetAll}>
             <Text style={[styles.btnText, { color: '#fff' }]}>Create Another Video</Text>
           </TouchableOpacity>
+          <ReportLink onPress={() => setReportOpen('video')} />
         </View>
       )}
 
@@ -708,6 +712,14 @@ export default function UrlToVideoScreen({ navigation }) {
         onSelect={(id) => { setTransition(id); setModal(null); }}
         onLocked={() => setModal(null)}
         onClose={() => setModal(null)}
+      />
+      <ReportContentSheet
+        visible={!!reportOpen}
+        onClose={() => setReportOpen(null)}
+        kind="video"
+        contentUrl={fullVideoUrl}
+        contentText={script || null}
+        screen="UrlToVideo"
       />
     </View>
   );

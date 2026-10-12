@@ -16,6 +16,7 @@ import ProgressRing from '../components/ProgressRing';
 import ProgressButton from '../components/ProgressButton';
 import { measureVideoDuration } from '../utils/videoDuration';
 import { friendlyError } from '../utils/friendlyError';
+import ReportContentSheet, { ReportLink } from '../components/ReportContentSheet';
 
 // Prompts the backend writes itself when there is no real one. They are records of
 // how a video got here, never something a person would caption a post with.
@@ -113,6 +114,9 @@ export default function MyVideosScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState(null);
+  // Google Play AI-Generated Content policy. Its own state, because the player modal
+  // closes first (never a Modal inside a Modal) and closing clears `selected`.
+  const [reportTarget, setReportTarget] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   const modalPlayer = useVideoPlayer(selected?.downloadUrl || selected?.localUrl || '', (p) => {
@@ -381,9 +385,22 @@ export default function MyVideosScreen({ navigation }) {
                 onPress={() => selected && handleDownload(selected)}
               />
             </View>
+            <ReportLink onPress={() => {
+              const v = selected;
+              closeModal();
+              setTimeout(() => setReportTarget(v), 350);
+            }} />
           </View>
         </View>
       </Modal>
+      <ReportContentSheet
+        visible={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        kind="video"
+        contentUrl={reportTarget?.downloadUrl || null}
+        contentText={reportTarget?.prompt || null}
+        screen="MyVideos"
+      />
     </View>
   );
 }

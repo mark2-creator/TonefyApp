@@ -14,6 +14,7 @@ import { saveAudioToDevice } from '../utils/saveVideo';
 import { showAlert } from '../components/BrandedAlert';
 import { recordWinAndMaybeAsk } from '../utils/rateApp';
 import { friendlyError } from '../utils/friendlyError';
+import ReportContentSheet, { ReportLink } from '../components/ReportContentSheet';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const BARS = 60;
@@ -28,6 +29,7 @@ export default function AudioResultScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { audioUrl, script = '', title = '', voiceId = 'gtts-us' } = route.params || {};
+  const [reportOpen, setReportOpen] = useState(false); // Play AI-Generated Content policy
   const voice = VOICES.find(v => v.id === voiceId);
 
   const soundRef = useRef(null);
@@ -310,8 +312,17 @@ export default function AudioResultScreen({ navigation, route }) {
           <Text style={[styles.transcriptText, { color: theme.text }]}>{script || 'No script available.'}</Text>
         </View>
 
+        <ReportLink onPress={() => setReportOpen(true)} />
         <View style={{ height: 40 }} />
       </ScrollView>
+      <ReportContentSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        kind="audio"
+        contentUrl={audioUrl || null}
+        contentText={script || null}
+        screen="AudioResult"
+      />
     </View>
   );
 }
