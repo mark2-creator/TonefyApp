@@ -604,7 +604,7 @@ export default function ScriptToVideoScreen({ navigation }) {
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <SelectorRow icon="subtitles" label="Captions" value={`${selectedCaption.label} · ${selectedCaption.category}`} onPress={() => setModal('caption')} />
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <SelectorRow icon="movie-filter" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.category}`} onPress={() => setModal('transition')} />
+            <SelectorRow icon="movie-filter" label="Transition" value={`${selectedTransition.label} · ${selectedTransition.group}`} onPress={() => setModal('transition')} />
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <SelectorRow icon="speed" label="Speed" value={selectedSpeed.label + ' · ' + selectedSpeed.desc} onPress={() => setModal('speed')} />
             <AiScenesRow value={aiScenes} onChange={setAiScenes} />
