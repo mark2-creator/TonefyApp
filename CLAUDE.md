@@ -65,7 +65,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   native module must be `require`d lazily inside a `try` with every entry point a no-op when absent
   (`utils/notifications.js`, `utils/rateApp.js`) - a top-level import of a missing native module
   throws at launch and takes the whole app down (`expo-secure-store`, history item 29). The installed
-  build is **vc13, cut from commit `c6281028`** (its only new native module vs vc12 is expo-store-review;
+  build is **vc14, cut from commit `035e0b49`** (Oct 12 2026; no new native module vs vc13 `c6281028`;
   vc12 was `20fafb14`).
 - **`npx expo install`, never `npm install`, for Expo packages.** Then **`git diff android/`**: expo
   tooling has silently rewritten `AndroidManifest.xml` twice (the `android/` folder is committed;
@@ -152,9 +152,9 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## Current state (Oct 4 2026)
 
-**Oct 12 2026: Play REMOVED the app (AI-Generated Content policy: no in-app report of offensive AI content).** Fixed same day: `ReportContentSheet` on every AI result -> `/api/report-content` -> `contentReports` + owner email; **vc14 on production/alpha/internal Oct 12; SUBMITTED for review 13:19 EAT (Submission 14, "In review", up to 7 days)** (`docs/play-store.md`). The installed build is now vc14 from commit `035e0b49` once approved. **Every AI surface must carry a ReportLink.**
+**Oct 12 2026: Play REMOVED the app (AI-Generated Content policy: no in-app report of offensive AI content).** Fixed same day: `ReportContentSheet` on every AI result -> `/api/report-content` -> `contentReports` + owner email; **vc14 on production/alpha/internal Oct 12; submitted 13:19 EAT (Submission 14); APPROVED - app back on the store the same evening (~20:30 EAT)** (`docs/play-store.md`). **Every AI surface must carry a ReportLink.**
 
-**Play / builds.** Production, alpha and internal all on **vc13** (released Oct 3; adds Google's
+**Play / builds.** Production, alpha and internal all on **vc14** (Oct 12, report button; vc13 Oct 3 added Google's
 in-app review sheet). Runtime `1.1.0`. Title "Tonefy AI: AI Video Generator", 8 screenshots, no promo
 video (deliberate). Category Video Players & Editors. **First public reviews: 3 x 5 stars (Oct 3-4, all
 on vc13), each answered with a developer reply Oct 4**; **the reviews became publicly visible on the Play listing

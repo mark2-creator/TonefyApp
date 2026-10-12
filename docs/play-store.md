@@ -310,3 +310,5 @@ the field; skip validate). The owner then presses **Send changes for review** in
 **Submitted for review Oct 12 2026 13:19 EAT** by the owner - Play Console Submission 14 (Production + Closed testing
 Alpha, vc14), status "In review"; Policy status page: "Reviews typically take up to seven days". Do NOT appeal (the
 fix is in review). Watch the 21213@ inbox for the decision.
+
+**Oct 12 2026 ~20:30 EAT: APPROVED - the app is back on the Play Store** (owner saw it live the same evening; public listing returns 200). vc14 is now the installed build on all three tracks. No approval email had arrived in the 21213@ inbox by then.
