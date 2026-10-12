@@ -302,3 +302,8 @@ owner (`REPORT_ALERT_EMAIL` || AI_SCENE_ALERT_EMAIL || EMAIL_USER); purged on ac
 updated. Live test with a throwaway account: 401 no token, 400 bad reason, 200 stored (cleaned up). OTA update
 `812026d9-cdd9-49ca-96f4-af984cfc1ff2`; native build vc14 started (EAS build 3374ed8c) for resubmission.
 **Any future AI surface (new generator, AI captions, AI images) must carry a ReportLink.**
+**vc14 uploaded Oct 12 2026 ~09:45Z** (EAS build 3374ed8c, `~/builds/tonefy-vc14.aab`, verified: "Report this script"
++ `report-content` in the bundle, runtime 1.1.0, no READ_MEDIA_*). production/alpha/internal all `completed` vc14.
+**API gotcha for a removed/under-review app:** `edits.commit` refuses with "Changes cannot be sent for review
+automatically" - commit with `changesNotSentForReview: true` (and do NOT pass it to `edits.validate`, which rejects
+the field; skip validate). The owner then presses **Send changes for review** in Play Console -> Publishing overview.
