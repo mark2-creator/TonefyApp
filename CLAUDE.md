@@ -187,7 +187,7 @@ Model `AI_SCENE_MODEL` = Seedance 1 Pro Fast 720p (~$0.0216/s; "720p" 9:16 is 70
 `FAL_KEY`. **Spend guards:** fal prepaid balance with auto top-up OFF (the real ceiling) → `$3/day`,
 `$1/hour` caps reserved in Firestore `aiSpend/{UTC day}` (admins recorded as `adminUsd`, uncapped) →
 per-user allowance; first cap trip per day emails the owner. App row `components/AiScenesRow.js`
-defaults to "First scene" for anyone with scenes to spend.
+defaults to "First scene" for anyone with scenes to spend. **Oct 17 2026: admin-only Gemini Omni Flash option built, OFF** until `GEMINI_API_KEY` + `AI_SCENE_ADMIN_MODEL=gemini-omni-1.1-flash` (~$0.10/s, own `OMNI_DAILY_USD_CAP` $3); never connect the main Google account to a Flow bridge (`docs/users-and-growth.md`).
 
 **Social posting** (details `docs/social-posting.md`). Paid-only (`/api/post-now` and the sweep refuse
 free). One registry `PUBLISHERS`; `/api/post-now` and `scheduledPostSweep` (5 min) share it. **Post Now is a

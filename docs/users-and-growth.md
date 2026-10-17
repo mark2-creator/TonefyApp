@@ -292,3 +292,27 @@ will help" (Reply-To is the owner), and a footer saying it is one-time with an u
 - **Dry run before going live** found 5 accounts created in the window: 3 had ALREADY made a video (a good
   sign for the activation work), 2 had not (both Google accounts). A preview went to the owner first, then
   the live sweep sent those 2 at 17:45 UTC; flags read `sent`, and a follow-up dry run would send 0.
+
+### Gemini Omni Flash - admin-only test option (Oct 17 2026)
+
+Owner: Omni Flash videos (made by hand in Google Flow for a month) are far better than Tonefy's
+Pexels/Seedance videos; integrate it when money allows. Facts checked Oct 17: Google Flow has NO API
+(its 50 free daily credits are website-only); third-party Flow bridges (useapi.net $15/mo, GitHub
+browser-automation MCPs) sign into the Google account and auto-solve reCAPTCHA - **never connect the
+owner's main Google account (Play Console, Firebase, Gmail) to one**; a separate throwaway Gmail at most.
+Omni via the Gemini API (`gemini-omni-1.1-flash`, Interactions API, paid tier only, no free tier) costs
+~$0.10/s at 720p (~5x Seedance) - a Ugandan Pro nets ~$7/month, so for users it can only ever be the
+hook scene or a Creator/paid extra.
+
+Built (backend `aiScenes.js`, commit on master Oct 17): model entry `gemini-omni-1.1-flash`
+(provider gemini, `generateGemini()`: POST `/v1beta/interactions`, `response_format {type:video,
+aspect_ratio 9:16|16:9, resolution 720p}`, store/background/stream false, mp4 base64 in
+`steps[].content[]`, 300s timeout). **Admins only**, via `modelFor(uid)` and env
+`AI_SCENE_ADMIN_MODEL=gemini-omni-1.1-flash`; needs `GEMINI_API_KEY` (billing-enabled AI Studio key).
+Unset/unknown/no key -> the normal fal model, so nothing changes for users. Omni has no duration
+input (3-10s, it chooses), so each scene reserves the 10s worst case ($1.01). Own admin cap
+`OMNI_DAILY_USD_CAP` (default $3 = 2 scenes/day) in `aiSpend/{day}.omniUsd`, cap email once/day;
+4xx releases the reservation. Offline test with fake Firestore/fetch passed (no key -> never called,
+non-admin never gets it, cache hit free, cap trips + alerts, 400 refunds). **Not yet run against the
+real API** - waiting for the owner's key. To switch on: add the two env lines, `pm2 restart`, make an
+Idea to Video with AI scenes on the admin account. Also set a budget alert in Google Cloud billing.
