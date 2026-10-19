@@ -156,3 +156,12 @@ name Flutterwave; the homepage has no visible link to Plans and there is no cont
 adapter replacing Flutterwave's in `backend/webPayments.js` (Pesapal API 3.0: auth token -> RegisterIPN ->
 SubmitOrderRequest -> redirect -> IPN + GetTransactionStatus); sandbox first. Play rule unchanged: the app never
 links to or mentions web payment.
+
+**Done 19 Oct 2026 (owner's go-ahead):** privacy 2.2, terms 7.2, refunds, upgrade, payment-done, profile and admin
+pages now name Pesapal (or "the payment provider" in code comments) - no page says Flutterwave; "Last updated" Oct 19
+on privacy/terms/refunds. Backups `~/ytshots/site-bak-2026-10-19/`. The backend adapter is still Flutterwave's and
+payments stay OFF until the Pesapal adapter exists. The Pesapal draft (r-1432189886051021290, still unsent - the owner
+sends it) now covers BOTH brands under one account: Tonefy AI passes and FitLife eBooks for East African mobile-money
+buyers (international eBook buyers stay on Digistore24). **FitLife risk:** Digistore24 forbids other payment systems
+on its sales pages (final warning) - a Pesapal checkout may only ever go on the WordPress store, never on
+`pages.fitlifesolutions.site` DS24 sales pages.

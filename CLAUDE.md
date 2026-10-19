@@ -283,7 +283,7 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   `_TEST` key only `FLW_TEST_UIDS` (owner's ahumuzamark254@ account) can pay - everyone else still sees "coming soon".
   **Sandbox payment PASSED end to end Oct 8** (page + webhook, granted once). **Play's price per country** (`offerFor`): local
   currency + mobile money in UG/RW/GH/ZM, bank transfer in NG, USD card elsewhere ($13.99 in Play's 44 doubled markets).
-  KE/TZ/francophone need Flutterwave to enable those currencies. **Oct 11 2026: Flutterwave DECLINED (Uganda = enterprise only); request closed.** Next: choose another Uganda provider that takes sole proprietors, then a new adapter.
+  KE/TZ/francophone need Flutterwave to enable those currencies. **Oct 11 2026: Flutterwave DECLINED (Uganda = enterprise only); request closed.** **Oct 19: Pesapal chosen** (account "Fitlifesolutions", one account for Tonefy + FitLife eBooks); website legal/plans pages now name Pesapal, never Flutterwave. Next: Pesapal verification, then a Pesapal adapter in `webPayments.js`.
   `docs/web-payments.md`.
 - Backend: convert the remaining `exec()` shell calls in `server.js` to `execFile` (no user text reaches
   them today, but one did - see history 46).
