@@ -143,3 +143,16 @@ Dashboard "Getting started": 1 Verify business (transaction limit 0 until docume
 payments -> 4 withdraw. Uganda sole-proprietor documents (Pesapal blog): ID, business permit (trading licence),
 URSB registration, URA TIN, bank letter/statement/cancelled cheque (business vs personal account NOT specified - ask).
 API credentials are under Developers on the dashboard; integration = new adapter beside webPayments.js.
+
+## 19 Oct 2026: Pesapal instead of Flutterwave (owner)
+Owner opened a Pesapal Business account "Fitlifesolutions" (Uganda, Merchant Dashboard 2.0) to take Tonefy's web
+payments (Flutterwave declined Uganda sole proprietors on 11 Oct). Tickets 9342162 (merchantsupport@pesapal.com, Leni
+Fiona: asked for a business description + website) and 9343049 (support@). Reply DRAFTED for the owner (Gmail draft
+r-1432189886051021290): Tonefy AI, 30-day Pro/Creator passes UGX 30,000 / 65,000, never auto-renew, MTN/Airtel + card,
+links to the site, upgrade/refunds/terms/privacy pages, the Play listing, and that the eBooks go through Digistore24,
+not Pesapal. Verification needs the signed merchant agreement + ID, URSB certificate, TIN, bank letter/statement.
+**Before Pesapal's reviewer looks (owner's OK needed - publishing):** upgrade.html, terms 7.2/7.3 and privacy still
+name Flutterwave; the homepage has no visible link to Plans and there is no contact page. **After approval:** a Pesapal
+adapter replacing Flutterwave's in `backend/webPayments.js` (Pesapal API 3.0: auth token -> RegisterIPN ->
+SubmitOrderRequest -> redirect -> IPN + GetTransactionStatus); sandbox first. Play rule unchanged: the app never
+links to or mentions web payment.
