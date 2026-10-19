@@ -165,3 +165,11 @@ sends it) now covers BOTH brands under one account: Tonefy AI passes and FitLife
 buyers (international eBook buyers stay on Digistore24). **FitLife risk:** Digistore24 forbids other payment systems
 on its sales pages (final warning) - a Pesapal checkout may only ever go on the WordPress store, never on
 `pages.fitlifesolutions.site` DS24 sales pages.
+
+**19 Oct 2026, later (reviewer-readiness):** `contact.html` (hello@fitlifesolutions.site, +256 764 349 398 - the
+number already public on pages.fitlifesolutions.site/legal - and the registered address); homepage nav "Pricing" and
+footer "Plans & Pricing / Refund Policy / Contact Us" (footer "Contact Support" was a bare gmail mailto); Plans +
+Contact links in every legal footer. **upgrade.html no longer bounces signed-out visitors to login** - a reviewer
+could not see any price before. Signed out it shows the plans with "Sign in to buy" and the visitor's country price
+from the new public `GET /web-pay/prices?loc=` (server.js, outside /api, `webPay.config(null, loc)` = price list only).
+Still true: the Pay buttons run the old Flutterwave adapter and payments stay OFF until the Pesapal adapter is built.
