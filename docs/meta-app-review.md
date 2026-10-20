@@ -168,3 +168,6 @@ the URSB papers; the NAME does not show AHUMUZA FITLIFE SOLUTIONS, so on its own
 mismatch). Advice given: (1) best - amend the TIN on the URA portal/office to add the business name + activity, then
 upload the reissued certificate; (2) meanwhile it may be tried TOGETHER with the URSB certificate (name + proprietor
 Ahumuza Mark) to link name and address. Trading licence remains the fallback. The TIN also serves Pesapal.
+URSB nature of business (Statement of Particulars): Information and communication > Publishing activities >
+Publishing of books, periodicals and other publishing activities (ISIC J 58.1). Owner told to choose exactly this on
+the URA TIN amendment (main activity), optionally software publishing (J 5820) as a second one for Tonefy.
