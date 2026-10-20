@@ -159,3 +159,12 @@ Upload the same recording to each permission of that platform.
    "Coming soon" to everyone. `META_REVIEWER_UIDS` can then be removed.
 
 Review usually takes several days to two weeks. If rejected, paste the rejection text to Claude.
+
+## 20 Oct 2026: URA TIN certificate as the address document?
+Owner has a URA Certificate of Registration (Notice DT-1112, 19 Oct 2026): TIN 1040051408, legal name "MR. MARK
+AHUMUZA", **Business Name "-"**, address Muliro Zone / Luwero Central Ward / Luweero Town Council / Luweero (County
+Katikamu North), TIN Individual + Income Tax since 30 Oct 2023, Section C (nature of business) empty. Address matches
+the URSB papers; the NAME does not show AHUMUZA FITLIFE SOLUTIONS, so on its own Meta will likely reject it (name
+mismatch). Advice given: (1) best - amend the TIN on the URA portal/office to add the business name + activity, then
+upload the reissued certificate; (2) meanwhile it may be tried TOGETHER with the URSB certificate (name + proprietor
+Ahumuza Mark) to link name and address. Trading licence remains the fallback. The TIN also serves Pesapal.
