@@ -171,3 +171,11 @@ Ahumuza Mark) to link name and address. Trading licence remains the fallback. Th
 URSB nature of business (Statement of Particulars): Information and communication > Publishing activities >
 Publishing of books, periodicals and other publishing activities (ISIC J 58.1). Owner told to choose exactly this on
 the URA TIN amendment (main activity), optionally software publishing (J 5820) as a second one for Tonefy.
+
+## 20 Oct 2026: BUSINESS VERIFICATION APPROVED
+Owner amended the TIN himself (URA toll-free said: portal Registration -> Amendments). New URA Certificate of
+Registration (Notice DT-1112, 20 Oct 2026): Business Name AHUMUZA FITLIFE SOLUTIONS, Section C "J - Information and
+communication", Luweero address. Uploaded with the URSB certificate; email-code check to hello@fitlifesolutions.site
+(Meta codes 20 Oct 13:06-13:47 UTC). Security Center shows "Verification for AHUMUZA FITLIFE SOLUTIONS - Verified on
+Oct 20, 2026". Meta sent no "approved" email (normal - the Security Center status is the record).
+Next: App Review with exactly the 5 permissions (sections 4-5 above), then Live + `META_LIVE=true`.

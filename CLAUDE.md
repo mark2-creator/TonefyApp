@@ -255,6 +255,7 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   reply (nothing asked) and the Oct 12 follow-up is dropped. Never resubmit the form; change nothing in
   the YouTube/OAuth setup; keep the reviewer login working. On approval: confirm the quota in Cloud
   Console, then lift forced-PRIVATE uploads.
+- **Meta Business Verification APPROVED Oct 20 2026** (URA TIN certificate amended to show the business name + URSB certificate). **Next: App Review** (5 permissions, screencasts - `docs/meta-app-review.md`), then Live + `META_LIVE=true`. History below.
 - **Meta go-live: URSB registration DONE Oct 8 2026** - **AHUMUZA FITLIFE SOLUTIONS**, reg. no. 80043893223863,
   sole proprietorship, Muliro Zone, Luwero Central, Luwero Town Council, Luweero District (commenced Oct 5).
   Website legal pages now name it; `data-deletion.html` added; reviewer login allowed via `META_REVIEWER_UIDS`.
