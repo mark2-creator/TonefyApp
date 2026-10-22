@@ -110,6 +110,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 - **User text meeting a command line:** all binaries via `execFile` + arg arrays (never a shell); make
   text safe for EACH tool's syntax at the boundary (ffmpeg filter commas, ImageMagick `%` escapes via
   `imText()`, ASS braces/newlines). Motions must use ops in `MOTION_ALLOWED_OPS` or they silently don't render.
+- **Facebook `/me/accounts` omits Pages reached through a business portfolio** -> use `debug_token` granular_scopes target_ids (fixed Oct 22 2026 in `metaFetchPages`).
 - **Unbounded text beside a `flex: 1` sibling in a row** squeezes that sibling to 0 (it then wraps
   letter by letter - a tall row) and pushes trailing buttons off screen. Give long text its own
   truncating line in a `flex:1, minWidth:0` column. **Layout bugs can be reproduced off-device with

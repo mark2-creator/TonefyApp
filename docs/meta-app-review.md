@@ -179,3 +179,10 @@ communication", Luweero address. Uploaded with the URSB certificate; email-code 
 (Meta codes 20 Oct 13:06-13:47 UTC). Security Center shows "Verification for AHUMUZA FITLIFE SOLUTIONS - Verified on
 Oct 20, 2026". Meta sent no "approved" email (normal - the Security Center status is the record).
 Next: App Review with exactly the 5 permissions (sections 4-5 above), then Live + `META_LIVE=true`.
+
+## 22 Oct 2026: Facebook connect "No Facebook Page was found" - FIXED
+Owner disconnected + reconnected for the screencast: login and the Page picker worked, but `/me/accounts` came back
+EMPTY (Page "Fit life solutions" 944030155454496 is reached through the business portfolio since verification).
+Fix (backend commit "Facebook connect: find portfolio-owned Pages..."): when `/me/accounts` is empty, read
+`debug_token` granular_scopes (pages_show_list / pages_manage_posts target_ids) and fetch each Page's token
+directly. Same 3 permissions. Log confirmed 13:00Z: "/me/accounts empty; grant names 1 Page(s)" -> connected.
