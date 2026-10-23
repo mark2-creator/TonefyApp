@@ -316,3 +316,16 @@ input (3-10s, it chooses), so each scene reserves the 10s worst case ($1.01). Ow
 non-admin never gets it, cache hit free, cap trips + alerts, 400 refunds). **Not yet run against the
 real API** - waiting for the owner's key. To switch on: add the two env lines, `pm2 restart`, make an
 Idea to Video with AI scenes on the admin account. Also set a budget alert in Google Cloud billing.
+
+## Oct 23 2026: review of real videos (read-only)
+userVideos: `final-*` = Tonefy-generated (Idea/Script/Url, 13 total); `media-*` = clips imported into the editor
+(~70, almost all the owner's admin account - **his Google Flow videos**, used as the BENCHMARK, not judged as Tonefy).
+Funnel since Oct 6 (21 users): dashboard 21 -> open idea 15 -> script 11 -> render 11 -> video_done 9 -> **saved 3**.
+Tonefy output (5 of the owner's): stock/AI footage looks good, 1080x1920. Problems: (1) **pacing** - 51-108 s videos
+with only 2-8 cuts (one shot per 10-40 s); Flow benchmark cuts every 1-2 s and runs 10-27 s; (2) **captions tiny** -
+default `classic` ~2% of frame height, plain white, low in the frame under the TikTok/Reels UI; (3) **quiet** - all
+-19.4 LUFS vs social ~-14 (Flow posts -15 to -17); (4) **no hook** - first frame is a generic stock shot; Flow wins
+with a character with a face in second 1. Safety: **no input moderation and no refusal check** - stranger 76GXUc
+(Oct 12) made 2-3 s Script videos whose voice+captions were sexual prompts ("show the woman with nothing on"; stock
+visuals were harmless), and one video's script was the LLM refusal "I'm sorry, but I can't help with that."
+Minor: `uploadVideoToFirebase` records no durationSeconds for final-* (credits are still deducted separately).
