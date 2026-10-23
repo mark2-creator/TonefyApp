@@ -7,8 +7,9 @@
 //   used to answer "no" for everyone; it is the creator's legal declaration to make. The
 //   answer is remembered on the account, so it is a one-time question, not a toll.
 //
-// Uploads are forced PRIVATE until Google's API review passes - said here, before posting,
-// so the result is not a surprise.
+// - WHO CAN SEE IT (public / unlisted / private). Google's API review was approved on
+//   Oct 22 2026; before that every upload was forced private. Public is the default because
+//   posting means publishing; the choice is remembered on the phone.
 
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
@@ -22,16 +23,24 @@ export function youtubeTitleFrom(caption) {
   return first.replace(/(^|\s)#[^\s#]+/g, ' ').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100);
 }
 
-export default function YouTubePostSheet({ visible, onClose, onConfirm, caption, madeForKids, posting = false, mode = 'post' }) {
+const PRIVACY = [
+  ['public', 'Public', 'Anyone on YouTube can find and watch it.'],
+  ['unlisted', 'Unlisted', 'Only people with the link can watch it.'],
+  ['private', 'Private', 'Only you can see it, in YouTube Studio.'],
+];
+
+export default function YouTubePostSheet({ visible, onClose, onConfirm, caption, madeForKids, privacy: privacyIn = 'public', posting = false, mode = 'post' }) {
   const sheetInset = useSheetInset();
   const [title, setTitle] = useState('');
   const [kids, setKids] = useState(null);
+  const [privacy, setPrivacy] = useState('public');
 
   useEffect(() => {
     if (!visible) return;
     setTitle(youtubeTitleFrom(caption));
     setKids(typeof madeForKids === 'boolean' ? madeForKids : null);
-  }, [visible, caption, madeForKids]);
+    setPrivacy(PRIVACY.some(([v]) => v === privacyIn) ? privacyIn : 'public');
+  }, [visible, caption, madeForKids, privacyIn]);
 
   const canGo = !posting && kids !== null && (mode === 'settings' || title.trim().length > 0);
 
@@ -49,7 +58,7 @@ export default function YouTubePostSheet({ visible, onClose, onConfirm, caption,
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.sheet, sheetInset]}>
-          <SheetHeader title={mode === 'post' ? 'Post to YouTube' : 'YouTube audience'} onClose={onClose} />
+          <SheetHeader title={mode === 'post' ? 'Post to YouTube' : 'YouTube settings'} onClose={onClose} />
           <View style={styles.brand}>
             <YouTubeLogo size={20} />
             <Text style={styles.brandName}>YouTube</Text>
@@ -70,18 +79,20 @@ export default function YouTubePostSheet({ visible, onClose, onConfirm, caption,
             <Text style={styles.hint}>YouTube asks every creator this. We remember your answer.</Text>
             {option(false, 'No, it is not made for kids', 'The usual answer for most creators.')}
             {option(true, 'Yes, it is made for kids', 'Comments and some features are turned off on YouTube.')}
-            {mode === 'post' && (
-              <View style={styles.note}>
-                <MaterialIcons name="lock-outline" size={16} color="#888" />
-                <Text style={styles.noteText}>
-                  While our YouTube app is under Google's review, uploads arrive as private. Open it in YouTube Studio to make it public.
-                </Text>
-              </View>
-            )}
+            <Text style={styles.section}>Who can see it</Text>
+            {PRIVACY.map(([value, label, desc]) => (
+              <TouchableOpacity key={value} style={styles.row} onPress={() => setPrivacy(value)}>
+                <MaterialIcons name={privacy === value ? 'radio-button-checked' : 'radio-button-unchecked'} size={20} color={privacy === value ? '#2ECC71' : '#555'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optText, privacy === value && styles.optOn]}>{label}</Text>
+                  <Text style={styles.optDesc}>{desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
           <TouchableOpacity
             style={[styles.postBtn, !canGo && styles.postBtnOff]} disabled={!canGo}
-            onPress={() => onConfirm({ title: title.trim(), madeForKids: kids })}
+            onPress={() => onConfirm({ title: title.trim(), madeForKids: kids, privacy })}
           >
             {posting ? <ActivityIndicator color="#000" />
               : <Text style={styles.postBtnText}>{mode === 'post' ? 'Upload to YouTube' : 'Save'}</Text>}
@@ -105,8 +116,6 @@ const styles = StyleSheet.create({
   optText: { color: '#eee', fontSize: 15 },
   optOn: { color: '#fff', fontWeight: '700' },
   optDesc: { color: '#888', fontSize: 12, marginTop: 2 },
-  note: { flexDirection: 'row', gap: 8, backgroundColor: '#181818', borderRadius: 12, padding: 12, marginTop: 12 },
-  noteText: { color: '#bbb', fontSize: 13, lineHeight: 18, flex: 1 },
   postBtn: { backgroundColor: '#2ECC71', borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 },
   postBtnOff: { backgroundColor: '#2a2a2a' },
   postBtnText: { color: '#000', fontSize: 15, fontWeight: '700' },

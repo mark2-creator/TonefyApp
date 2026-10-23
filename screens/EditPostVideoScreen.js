@@ -67,6 +67,7 @@ function VideoPreview({ url }) {
 
 const PIN_BOARDS_KEY = 'tonefy.pinterestBoards';
 const YT_KIDS_KEY = 'tonefy.youtubeMadeForKids';
+const YT_PRIVACY_KEY = 'tonefy.youtubePrivacy';
 
 // The profile is the only TikTok link there is: a direct post's publish id is not a video id.
 const tiktokUrl = (username) => (username ? `https://www.tiktok.com/@${username}` : 'https://www.tiktok.com/');
@@ -201,6 +202,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   };
   // YouTube: the audience answer (remembered on the account) and which sheet mode is open.
   const [ytKids, setYtKids] = useState(null);
+  const [ytPrivacy, setYtPrivacy] = useState('public');
   const [ytSheet, setYtSheet] = useState(null);   // null | 'post' | 'settings'
   const pendingPostNow = useRef(false);
   // TikTok's sheet now serves single posts, Post Now and scheduling.
@@ -210,6 +212,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
   useEffect(() => {
     (async () => {
       try { const raw = await AsyncStorage.getItem(YT_KIDS_KEY); if (raw !== null) setYtKids(raw === 'true'); } catch { /* ask */ }
+      try { const p = await AsyncStorage.getItem(YT_PRIVACY_KEY); if (p) setYtPrivacy(p); } catch { /* public */ }
       try {
         const uid = auth.currentUser?.uid;
         const v = uid ? (await getDoc(doc(db, 'users', uid))).data()?.youtubeMadeForKids : undefined;
@@ -217,6 +220,10 @@ export default function EditPostVideoScreen({ navigation, route }) {
       } catch { /* the phone copy stands */ }
     })();
   }, []);
+  function rememberYtPrivacy(v) {
+    setYtPrivacy(v);
+    AsyncStorage.setItem(YT_PRIVACY_KEY, v).catch(() => {});
+  }
   function rememberYtKids(v) {
     setYtKids(v);
     AsyncStorage.setItem(YT_KIDS_KEY, String(v)).catch(() => {});
@@ -365,8 +372,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
     setYtSheet('post');
   }
 
-  async function confirmYouTube({ title, madeForKids }) {
+  async function confirmYouTube({ title, madeForKids, privacy }) {
     rememberYtKids(madeForKids);
+    rememberYtPrivacy(privacy);
     if (ytSheet === 'settings') {
       setYtSheet(null);
       // The audience was asked for because Post Now needed it - carry on with that post.
@@ -380,17 +388,17 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'], youtube: { title, madeForKids } }),
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'], youtube: { title, madeForKids, privacy } }),
       });
       const d = await r.json();
       const result = d.results?.[0];
       if (!result) throw new Error(d.error || 'The upload failed.');
       if (!result.ok) throw new Error(result.error);
-      // Said here rather than discovered later: the video really is on the channel, and
-      // it really is private until Google's audit clears.
       markPosted('youtube', result.url);
       showAlert('Posted to YouTube',
-        'It is on your channel as a private video while our YouTube app is under review. Open it in YouTube Studio to make it public.',
+        privacy === 'private' ? 'It is on your channel as a private video. Only you can see it, in YouTube Studio.'
+          : privacy === 'unlisted' ? 'It is on your channel. Anyone with the link can watch it.'
+          : 'It is live on your channel.',
         doneButtons(result.url));
     } catch (e) {
       showAlert('YouTube', friendlyError(e, 'The upload failed.'));
@@ -661,7 +669,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           async: true, videoUrl: `${BACKEND}${videoPath}`, caption, platforms, ...pinterestBody(),
-          youtube: { title: youtubeTitleFrom(caption) || undefined, madeForKids: ytKids === true },
+          youtube: { title: youtubeTitleFrom(caption) || undefined, madeForKids: ytKids === true, privacy: ytPrivacy },
           ...(ttOptions ? { tiktok: { ...tiktokOptions, caption: ttCaption } } : {}),
           ...(Object.keys(accounts).length ? { accounts } : {}),
         }),
@@ -771,7 +779,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
     try {
       await addDoc(collection(db, 'scheduledPosts'), {
         userId: user.uid, caption, videoUrl: videoUrl || '', ...pinterestBody(),
-        youtube: { title: youtubeTitleFrom(caption) || null, madeForKids: ytKids === true },
+        youtube: { title: youtubeTitleFrom(caption) || null, madeForKids: ytKids === true, privacy: ytPrivacy },
         ...(ttOptions ? { tiktok: { ...tiktokOptions, caption: ttCaption } } : {}),
         ...(Object.keys(accounts).length ? { accounts } : {}),
         platforms,
@@ -1070,6 +1078,7 @@ export default function EditPostVideoScreen({ navigation, route }) {
         onConfirm={confirmYouTube}
         caption={caption}
         madeForKids={ytKids}
+        privacy={ytPrivacy}
         posting={ytPosting}
       />
 

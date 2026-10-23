@@ -537,11 +537,6 @@ export default function ConnectAccountsScreen({ navigation }) {
                       <Text style={[styles.permText, { color: theme.subtext }]}>{p}</Text>
                     </View>
                   ))}
-                  {/* Said plainly here rather than discovered as a bug: until Google's
-                      API audit clears, every upload through the API is forced private. */}
-                  <Text style={[styles.permText, { color: theme.subtext, marginTop: 8, fontStyle: 'italic' }]}>
-                    Uploads start as private while our YouTube app is under review.
-                  </Text>
                 </View>
                 <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#FF0000' }]} onPress={connectYouTube} disabled={ytBusy}>
                   {ytBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnConnectText}>Connect YouTube Channel</Text>}
