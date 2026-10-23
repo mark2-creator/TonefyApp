@@ -186,3 +186,18 @@ EMPTY (Page "Fit life solutions" 944030155454496 is reached through the business
 Fix (backend commit "Facebook connect: find portfolio-owned Pages..."): when `/me/accounts` is empty, read
 `debug_token` granular_scopes (pages_show_list / pages_manage_posts target_ids) and fetch each Page's token
 directly. Same 3 permissions. Log confirmed 13:00Z: "/me/accounts empty; grant names 1 Page(s)" -> connected.
+
+## 23 Oct 2026: APP REVIEW SUBMITTED (~15:27 EAT)
+Status "Review in progress" ("most submissions are reviewed within 20 days"). Requested: instagram_business_content_publish,
+instagram_business_basic, pages_manage_posts, pages_show_list, pages_read_engagement, public_profile (default, agree only).
+Screencasts: owner's own recordings (FB connect + post to "Fit life solutions" Page; IG connect + Reel), fresh API test
+calls made 22 Oct. Data handling: processors Google Cloud (Firebase, Belgium - Firestore europe-west1) and Contabo GmbH
+(France, Lauterbourg); responsible entity AHUMUZA FITLIFE SOLUTIONS, Uganda; no national-security disclosures; policies =
+legality review + data minimisation. Reviewer instructions: Android = download from Google Play, Facebook Login Yes,
+login youtube.audit@tonefyai.app; Website = no Meta APIs, Facebook Login No.
+App settings changes the same day: Android platform added (package com.ahumuza21213.TonefyApp, class
+.MainActivity, 3 key hashes = the Firebase-registered SHA-1s), Website platform added (Site URL
+https://tonefy-ai.fitlifesolutions.site/) - Meta refused to save ANY settings change until a Site URL backed the app
+domain. Owner told to keep fitlifesolutions.site as an app domain too.
+**Do not change the Meta app settings, scopes or the reviewer account while in review.** On approval: switch the app to
+Live, then `META_LIVE=true` in backend/.env + restart (section 6). On rejection: paste the text to Claude.
