@@ -201,7 +201,7 @@ platforms have an account picker. LinkedIn captions are escaped as little text.
 | TikTok | yes | production app, **Direct Post audit approved Sep 24**; **app connect links via `/api/tiktok/connect` (signed uid) since Oct 10 - before, it used the BROWSER's sign-in**; **Oct 11: callback cached tokens without `expiresAt` → dead token after 24h; fixed, token save now merges**; `TikTokPostSheet` (caption, privacy, disclosure) now opens for single posts, **Post Now AND Save to queue** - without it the server defaults to SELF_ONLY |
 | Pinterest | yes | Standard access; `PinterestBoardSheet`: choose/**create (public only)**/search boards, optional link, 5 cover frames; row always shows the board + Change; choice saved to `users/{uid}.pinterestBoards` |
 | LinkedIn | yes | member profile only; `LI_VERSION` must be current (`202606`); captions unescaped (TODO) |
-| YouTube | yes, private uploads | **uploads forced PRIVATE until the YouTube API Services audit passes** (OAuth verification passed Oct 4 - a different review); `YouTubePostSheet`: own title + made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`) |
+| YouTube | yes | **API Services audit APPROVED Oct 22 2026** (public uploads allowed; videos.insert 200/day for 6 months, then reapply/audit). `YouTubePostSheet`: own title, made-for-kids (remembered, `users/{uid}.youtubeMadeForKids`), **who can see it - Public (default)/Unlisted/Private, remembered on the phone** (OTA Oct 23 `fe16fbd2`); a request with no choice (old build / old queued post) still uploads private |
 | Facebook / Instagram | no | Meta dev mode; URSB registered Oct 8, Business Verification + App Review next (`docs/meta-app-review.md`). **"Coming soon" to everyone except admins and `META_REVIEWER_UIDS`** until `META_LIVE=true`; IG uses Instagram Login (`instagram_business_*` scopes) |
 | X | not built | paid API |
 
@@ -230,7 +230,7 @@ success, max every 60 days. **Reminders**: 19 local notifications at 18:00 (days
 after a day; OFF is remembered.
 
 **Google reviews** (`docs/google-verifications.md`): Play identity ✅ Aug 11, payments ✅ Sep 7,
-**YouTube API Services audit OPEN - use case accepted Oct 5, awaiting the completion notice**,
+**YouTube API Services audit APPROVED Oct 22 2026** (quota 200/day for 6 months),
 **OAuth app verification APPROVED Oct 4** for `youtube.upload` (consent screen now shows Tonefy AI, no
 "unverified app" warning, 100-user cap lifted). **Any new scope or ANY change to the OAuth consent
 screen needs a NEW verification** - don't touch it casually. Watch both ...21213@ and ...254@ inboxes. Reviewer login `youtube.audit@tonefyai.app` (Creator, re-tested Oct 2).
@@ -250,12 +250,14 @@ to the app, Play Store fallback). In the privacy policy; `emailPrefs` purged on 
   first-steps log - see Users and growth). **Read Admin -> FIRST STEPS after a week of new installs** and fix
   the biggest drop. **Email signups now go straight in (Oct 6)** with a "Confirm your email" card. **Next-day
   reminder email LIVE Oct 6** (owner's go-ahead; first 2 sent that day).
-- Google: YouTube API Services audit decision (the one that lifts forced-private uploads). Submitted
-  Aug 27; **Oct 5 2026 reply (`youtube-disputes` thread): "submitted details sufficiently justify the
-  stated use case", no more info needed, they will notify on completion** - not yet the approval. Do NOT
-  reply (nothing asked) and the Oct 12 follow-up is dropped. Never resubmit the form; change nothing in
-  the YouTube/OAuth setup; keep the reviewer login working. On approval: confirm the quota in Cloud
-  Console, then lift forced-PRIVATE uploads.
+- **YouTube API Services audit APPROVED Oct 22 2026** (email in the `youtube-disputes` thread): API client marked
+  compliant, public uploads allowed, videos.insert +100 -> 200/day **for 6 months (to ~Apr 22 2027)** - then a
+  compliance audit or reapply; a changed use case needs a new quota request. Forced-private lifted in code + OTA Oct 23.
+  **Before ~Apr 2027:** check the quota grant and reapply if asked. Keep the reviewer login working.
+- **Pesapal (Oct 23):** documents with Leni (merchantsupport, ticket 9342162); Oct 19 she handed onboarding to
+  **Michael Ntale** (michael.ntale@pesapal.com), who had not written by Oct 23. The TIN certificate sent Oct 19 was the
+  OLD one (no business name); a follow-up with the amended Oct 20 certificate is DRAFTED (r-8875436823971544382) for
+  the owner to send. Ticket 9343049 (support@) is a duplicate.
 - **Meta Business Verification APPROVED Oct 20 2026** (URA TIN certificate amended to show the business name + URSB certificate). **App Review SUBMITTED Oct 23 2026** (5 permissions + public_profile; "within 20 days"); don't touch Meta app settings/scopes/reviewer account meanwhile. On approval: Live + `META_LIVE=true` (`docs/meta-app-review.md`). History below.
 - **Meta go-live: URSB registration DONE Oct 8 2026** - **AHUMUZA FITLIFE SOLUTIONS**, reg. no. 80043893223863,
   sole proprietorship, Muliro Zone, Luwero Central, Luwero Town Council, Luweero District (commenced Oct 5).

@@ -232,3 +232,12 @@ additional information from you. We will notify you if we need additional inform
 we've completed our review." Not the final approval. No reply sent (nothing was asked); the
 planned ~Oct 12 follow-up is dropped. Uploads stay forced PRIVATE until the completion notice;
 then check the project's YouTube Data API quota in Cloud Console and lift the private override.
+
+## Oct 22 2026: YouTube API Services audit APPROVED
+youtube-disputes thread 1a068e503c143510: "Your application has been approved"; project 527163602306 videos.insert
++100 -> 200 units/day for 6 months; API client marked compliant, public uploads allowed (up to 72h to propagate);
+earlier uploads stay private (re-upload to make public). May be asked for a compliance audit or to reapply at the end of
+the grant; a changed use case needs a new quota request. Do not reply to that email (it says so).
+Oct 23: forced-private lifted - server takes `youtube.privacy` (public|unlisted|private; missing -> private for old
+builds/queued posts), returns a youtu.be link unless private; app sheet asks "Who can see it" (Public default,
+remembered on the phone); "under review" notes removed. OTA fe16fbd2-b58a-44a0-90b7-8f09f5814d09.
