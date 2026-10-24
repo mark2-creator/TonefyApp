@@ -3052,3 +3052,21 @@ record of when they were written; CLAUDE.md holds the current state.
     - Verified with real renders on a disposable account (purged): v2 crossfade + music + 1.5x,
       v2 custom `flashwhite`, media-to-video (two trims + fade, text overlay, remote audio track,
       watermark), edit-video caption burn. All -14.1 to -14.6 LUFS.
+
+52. **ffmpeg input hardening (Oct 24 2026).** Tonefy-react `80d388d7`, from the automated review of
+    `bd530bd4`. A stored file that is really a playlist (`.m3u8` - uploads kept the user's own
+    extension) makes ffmpeg open each entry: local files or `http://127.0.0.1:<port>`.
+    - `run()` (every ffmpeg/ffprobe call) adds `-format_whitelist <MEDIA_DEMUXERS>` before each
+      input without an explicit `-f` (our lavfi/concat inputs keep theirs).
+    - `resolveMediaPath` refuses non-media extensions (`MEDIA_EXTENSIONS`); `/api/upload-media`
+      stores off-list extensions as `.bin` - which also stops an uploaded `.html` being served
+      as a page from the API origin (multer's mimetype filter trusts the client's label).
+    - `downloadToFile`: 500 MB cap (content-length + streamed count), 180 s timeout, partial file
+      deleted. Editor audio tracks are registered for cleanup before downloading.
+    - Verified live: renders pass; `.m3u8`/`.html` uploads labelled video/mp4 + image/png were
+      stored as `.bin` and served `application/octet-stream`; rendering the playlist failed.
+    - Also in that commit: the first half of the Tonefy API refactor - `generateScriptText`,
+      `synthesizeVoiceover`, `splitIntoSegments` pulled out of their routes (`publicFail(status,
+      code, message)` for user-facing errors). Routes verified unchanged live (script + cache hit,
+      blocked idea 422, missing prompt 400, paid voice 403, blocked segments 422).
+    - Note: media-to-video marks a failed job `status: 'error'`, the generation routes `'failed'`.

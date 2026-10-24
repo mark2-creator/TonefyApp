@@ -38,5 +38,7 @@ Queue, in order:
 - [ ] C. Remaining Open items I can do without the owner: review CLAUDE.md Open list again after B.
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
-Done so far: A done + verified + pushed (bd530bd4, history 51).
-Next: B1 (refactor).
+Done so far: A done (bd530bd4, history 51). Review follow-up done (80d388d7, history 52). B1 half done:
+  generateScriptText / synthesizeVoiceover / splitIntoSegments extracted + verified (in 80d388d7).
+Next: B1 second half - extract the idea-to-video-v2 render body into runV2Render(jobId, params, allowed,
+  userId); re-run render test; commit. Then B2.
