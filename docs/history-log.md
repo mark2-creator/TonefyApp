@@ -3070,3 +3070,31 @@ record of when they were written; CLAUDE.md holds the current state.
       code, message)` for user-facing errors). Routes verified unchanged live (script + cache hit,
       blocked idea 422, missing prompt 400, paid voice 403, blocked segments 422).
     - Note: media-to-video marks a failed job `status: 'error'`, the generation routes `'failed'`.
+
+53. **Tonefy API v1 for Pro/Creator (Oct 24 2026).** Step 3 of the Oct 23 plan. Backend
+    `2653ab89` (refactor) + `4a76aaaa` (API); website `857a08e`. No app change.
+    - **Refactor first:** `generateScriptText`, `synthesizeVoiceover`, `splitIntoSegments`,
+      `startV2Render(userId, body, {jobId})` + `runV2Render` - the app routes and the API run the
+      same code. User-facing failures are `publicFail(status, code, message)`.
+    - **Keys** (`backend/apiKeys.js`): `tfy_live_` + 32 random bytes, shown once; stored only as
+      sha256 = doc id in `apiKeys/` (server-only: firestore.rules denies unlisted collections).
+      Max 3 active. Made/listed/revoked from website Profile via `/api/api-keys`. Purged in
+      `/api/account/delete`. The plan is re-checked on EVERY call, so a lapsed plan's keys stop.
+    - **Endpoints** (`/v1`, outside `/api`, so `v1Auth` is the only gate): `GET /v1/me`,
+      `GET /v1/voices`, `POST /v1/videos {idea|script, voice, aspect_ratio, caption_style, music}`
+      -> 202 + job, `GET /v1/videos/:id` -> processing/done/failed + `video_url` + `script`.
+      Errors `{error:{code,message}}`. Idea/script screened and credits checked before 202.
+      60 req/min per key, 20 videos/hour per account. AI scenes 0 and no posting in v1.
+    - **Website:** `api-docs.html` (curl examples, fields, errors), Profile "Tonefy API" section
+      (create/copy-once/revoke; free users see a gold upgrade row), API line on both paid plan cards.
+    - **Verified live** (disposable Pro account, purged): free can't make keys (403); stored doc holds
+      no key; 401 no/bad/revoked key; 403 after downgrade; 400/422/404 shapes; idea -> paid voice ->
+      video in 52 s, 1 credit taken; own script at 1:1 rendered.
+
+54. **Paid voices were failing - edge-tts moved to a venv (Oct 24 2026).** Found by the API test:
+    Microsoft's endpoint answered edge-tts 7.2.8 with 403, so EVERY Edge (paid) voice failed in the
+    app and website too (4 such errors in the current pm2 error log, 1 of them a test). System
+    pip is PEP 668-locked and the override flag was refused, so edge-tts 7.3.1 lives in
+    `backend/.venv-tts` (gitignored); `EDGE_PYTHON` in server.js uses it for voiceovers and
+    translations, falling back to `python3` if absent. **When paid voices fail again:**
+    `backend/.venv-tts/bin/pip install -U edge-tts`, then `pm2 restart tonefy-backend`.

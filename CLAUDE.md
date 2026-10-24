@@ -174,6 +174,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   until `META_LIVE=true`. TikTok keeps `'Created with Tonefy AI'` fallback by owner's decision. `docs/social-posting.md`.
 - **Users:** ~32 accounts, few strangers. Funnel since Oct 6 (21 users): dashboard 21 -> script 11 -> video 9 ->
   **saved 3**. Activation work shipped Oct 6 (first-video card, funnel log, next-day email, email signup without wall).
+- **Voices:** Edge (paid) voices run from `backend/.venv-tts` (edge-tts pinned). If they fail with 403:
+  `backend/.venv-tts/bin/pip install -U edge-tts` + restart (history 54).
 - **Content safety (Oct 24):** `backend/contentSafety.js` screens every idea/script/voiceover/AI-scene text
   (blocklist -> Groq gpt-oss-safeguard-20b -> gpt-oss-20b/120b on 429; cached; fails OPEN) and rejects LLM
   refusals; 422 `content_blocked`/`refusal`; blocks logged to `safetyBlocks` (purged on account delete). **Any
@@ -184,9 +186,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## Open / waiting (Oct 24 2026)
 
-- **NEXT (agreed Oct 23):** ~~(1) safety~~ and ~~(2) video quality~~ DONE Oct 24 (history 48, 50: 30 s hook-first
-  scripts, a cut every ~2.5 s, face-first opening, 2x captions at 28% height, -14 LUFS - backend only); (3) **Tonefy API for Pro/Creator** (hashed keys from website Profile, plan checked per use, same
-  credits, POST/GET /v1/videos, no posting in v1). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
+- **Oct 23 plan DONE Oct 24:** safety (history 48), video quality (50), **Tonefy API v1** for Pro/Creator (53: `/v1`,
+  keys on website Profile, `api-docs.html`, same credits, no posting). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
   not as the engine; maybe later for animated intro/end cards only.
 - **Meta App Review SUBMITTED Oct 23** (5 permissions + public_profile, "within 20 days"). Don't touch Meta app
   settings/scopes/reviewer account meanwhile. On approval: app Live + `META_LIVE=true`. `docs/meta-app-review.md`.

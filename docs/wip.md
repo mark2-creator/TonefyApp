@@ -13,7 +13,7 @@ Queue, in order:
       backslashes; `'...'` inside filters is ffmpeg quoting and stays. Test: node --check, restart,
       a real v2 render (disposable account) + an editor export (media-to-video / edit-video) if one
       can be driven by API. Backup before editing: scratchpad/server.js.pre-execfile.
-- [ ] B. Step 3: Tonefy API for Pro/Creator (hashed keys from website Profile, plan checked per use,
+- [x] B. Step 3: Tonefy API for Pro/Creator (hashed keys from website Profile, plan checked per use,
       same credits, POST/GET /v1/videos, no posting in v1). Plan it in this file before coding.
       DESIGN (decided Oct 24):
       - Keys: `tfy_live_` + 32 random bytes (base64url). Stored ONLY as sha256 -> doc `apiKeys/{hash}`
@@ -34,10 +34,9 @@ Queue, in order:
       - Website: Profile "API keys" card (Pro/Creator; free sees what it is + upgrade link) and a docs
         page `api-docs.html` (curl examples). `scripts/check-website-js.py` after. App: no change.
       Steps: [x] B1 refactor + render test  [x] B2 apiKeys.js + key routes  [x] B3 /v1 routes + live test
-             [ ] B4 website Profile card + api-docs.html  [ ] B5 record + push
+             [x] B4 website Profile card + api-docs.html  [x] B5 record + push
 - [ ] C. Remaining Open items I can do without the owner: review CLAUDE.md Open list again after B.
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
-Done so far: A, review follow-up, B1, B2, B3 done + pushed (backend 4a76aaaa). Also fixed: Edge paid voices (venv).
-  History entries 53 (API) + 54 (edge venv) NOT yet written.
-Next: B4 - website Profile 'API keys' card + api-docs.html, check-website-js.py, git add specific pages. Then B5 records.
+Done so far: A, B done and recorded (history 51-54). Edge voices fixed (venv).
+Next: C - re-read CLAUDE.md Open list, do what needs no owner action, then clear this file.

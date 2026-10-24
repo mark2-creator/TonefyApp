@@ -123,3 +123,11 @@ corrected rather than the code.
 Reanimated worklets and gesture handlers that do not cross to the web, so it is a second
 product rather than a port. The split to aim for is ACCOUNT parity - one login, one plan,
 one set of connected accounts, one library - not feature parity.
+
+## Tonefy API pages (Oct 24 2026, history-log 53)
+- `api-docs.html` - public developer docs (styled like `contact.html`): keys, POST/GET /v1/videos,
+  /v1/me, /v1/voices, error table (402 out of credits). Keep it in step with the `/v1` routes in
+  `backend/server.js` ("Tonefy API" block).
+- `profile.html` "Tonefy API" section: `loadApiKeys`/`setupApiKeys` call `/api/api-keys` with the
+  Firebase ID token; a new key is shown once in `#apiNewKey`. Free accounts see the gold upgrade row.
+- `upgrade.html`: "Tonefy API" line on the Pro and Creator cards, linking to the docs.
