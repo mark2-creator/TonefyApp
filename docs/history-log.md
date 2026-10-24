@@ -2946,3 +2946,34 @@ record of when they were written; CLAUDE.md holds the current state.
     `selectedTransition.category`, but transitions carry `group` (captions are the ones with
     `category`). Fixed on all three screens; OTA update group `b8aa921d-36bf-4ffe-9959-0df1dca99cae`
     on `production` (runtime 1.1.0, no native change vs vc14 `035e0b49`).
+
+48. **Content safety: ideas/scripts screened, LLM refusals caught (Oct 24 2026).** Step 1 of the
+    Oct 23 plan. Backend only (`backend/contentSafety.js`, wired in `server.js`, Tonefy-react
+    commit `927f1874`); the app and website already show the server's `error` text, so no OTA.
+    - **Why:** stranger 76GXUc (Oct 12) had sexual prompts voiced + captioned via Script to Video,
+      and one video's script was the model's refusal "I'm sorry, but I can't help with that."
+    - **Screen** (`safety.screen`): narrow local blocklist (explicit sexual words only; instant,
+      works offline) -> Groq `openai/gpt-oss-safeguard-20b` with Tonefy's own short policy
+      (sexual, hate incl. tribe, violence, self-harm, illegal, harassment; SAFE list names
+      fitness, sexual-health education, history/genocide, news, casual swearing). That model is
+      only **2,000 tokens/min** on this account (policy ~350), so a 429 goes straight to
+      gpt-oss-20b then 120b (8,000/min) with `maxRetries: 0` - the SDK's default retry waits out
+      `retry-after: 20`, measured 20 s per check. 5 s timeout per call. Texts >3000 chars are
+      screened in chunks (max 4). 1000 requests/day per model on this tier.
+    - **Cost per video = one classifier call:** verdicts cached by hash (24 h, 5000), and text the
+      server wrote from a screened prompt is `markCleared` (generate-script output,
+      extract-segments `segmentsSafetyText`), so later steps are cache hits.
+    - **Fails OPEN** if no classifier answers (`[safety] unscreened` in pm2 logs, not cached) -
+      a Groq outage must not stop paying users; the blocklist still applies.
+    - **Where:** generate-script (idea in; refusal out, not cached), extract-url (script from the
+      page), generate-audio + /api/tts (the voicing step - covers typed scripts), extract-segments,
+      idea-to-video and idea-to-video-v2 (voiceover = captions; segment text+keywords = AI scene
+      prompts; checked before the job/credits), caption-suggest (context in, refusal out).
+      Not screened: text a user types over their own footage in the editor (their content).
+    - **Response:** 422 `{error, code:'content_blocked'|'refusal'}`, polite sentence shown as-is.
+    - **Records:** `safetyBlocks/{auto}` {uid, route, category, source, excerpt, at}; purged in
+      `/api/account/delete`. `pm2 logs tonefy-backend | grep '\[safety\]'`.
+    - **Verified live** with a disposable account: woman-with-nothing-on (blocklist), tribe insult
+      (hate), undressing script at generate-audio (sexual), pipe bomb at v2 (illegal, via 20b after
+      a real 429), refusal at generate-audio - all 422; a water-tips idea -> script -> audio ->
+      caption all 200 (~1 s for the screened script). Offline tests: `node test-content-safety.mjs`.

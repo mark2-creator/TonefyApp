@@ -168,14 +168,17 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   until `META_LIVE=true`. TikTok keeps `'Created with Tonefy AI'` fallback by owner's decision. `docs/social-posting.md`.
 - **Users:** ~32 accounts, few strangers. Funnel since Oct 6 (21 users): dashboard 21 -> script 11 -> video 9 ->
   **saved 3**. Activation work shipped Oct 6 (first-video card, funnel log, next-day email, email signup without wall).
+- **Content safety (Oct 24):** `backend/contentSafety.js` screens every idea/script/voiceover/AI-scene text
+  (blocklist -> Groq gpt-oss-safeguard-20b -> gpt-oss-20b/120b on 429; cached; fails OPEN) and rejects LLM
+  refusals; 422 `content_blocked`/`refusal`; blocks logged to `safetyBlocks` (purged on account delete). **Any
+  new route that voices, captions or generates from user text must call `safety.screen` first.** History 48.
 - **Email:** Brevo; any automated email must check `emailPrefs.optOut`.
 - **Firestore rules** (`backend/firestore.rules`, source of truth): clients may only write profile fields - **any new
   client-written `users` field must be added to `profileFields()` first**.
 
 ## Open / waiting (Oct 24 2026)
 
-- **NEXT (agreed Oct 23):** (1) safety - screen ideas/scripts before generating + detect LLM refusals (a stranger's
-  sexual prompts were voiced/captioned Oct 12; one video's script was "I'm sorry, but I can't help"); (2) video
+- **NEXT (agreed Oct 23):** ~~(1) safety~~ DONE Oct 24 (below); (2) video
   quality - shorter default (~20-40 s), a cut every 2-3 s, bigger captions placed higher, loudness ~-14 LUFS, strong
   first scene; (3) **Tonefy API for Pro/Creator** (hashed keys from website Profile, plan checked per use, same
   credits, POST/GET /v1/videos, no posting in v1). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
