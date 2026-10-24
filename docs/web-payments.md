@@ -173,3 +173,31 @@ Contact links in every legal footer. **upgrade.html no longer bounces signed-out
 could not see any price before. Signed out it shows the plans with "Sign in to buy" and the visitor's country price
 from the new public `GET /web-pay/prices?loc=` (server.js, outside /api, `webPay.config(null, loc)` = price list only).
 Still true: the Pay buttons run the old Flutterwave adapter and payments stay OFF until the Pesapal adapter is built.
+
+## 24 Oct 2026: Pesapal adapter BUILT (sandbox-tested), payments still OFF
+Backend `5546825a`, website `d0f5a44` (history-log 55). `backend/webPayments.js` now speaks Pesapal API 3.0;
+Flutterwave code is gone (old copy: git history before `5546825a`). Unchanged: passes, prices (Uganda UGX
+30,000 / 65,000; elsewhere USD $8.25/$17.69, $13.99/$29.99 in the 44 high markets), the 5-day renewal
+window, Play/admin blocks, the once-only Firestore grant, expiry sweep.
+- Flow: `RequestToken` (5-min token, cached per env + consumer key) -> `RegisterIPN` for
+  `https://api.fitlifesolutions.site/pesapal-ipn` (GET), or `PESAPAL_IPN_ID` -> `SubmitOrderRequest`
+  (id = our `tfy-...` ref, callback `payment-done.html`, cancellation `payment-done.html?status=cancelled`)
+  -> Pesapal's hosted page (mobile money / card) -> callback + IPN -> **`GetTransactionStatus` decides**.
+- Status codes: 1 COMPLETED -> grant (ref, currency, amount >= price checked); 0 INVALID = **unpaid, kept
+  pending** (Pesapal returns the details WITH a soft error `payment_details_not_found` "Pending Payment");
+  2 FAILED; 3 REVERSED -> record `reversed` / `reversed-after-grant` + loud log, the pass is NOT removed
+  automatically (owner decides).
+- IPN replies `{orderNotificationType, orderTrackingId, orderMerchantReference, status: 200|500}`. It is
+  unsigned by Pesapal's design, so it only triggers our own status call.
+- Countries: only Uganda in local currency. Both UGX and USD orders were accepted by the sandbox for a
+  Ugandan merchant; confirm USD on the live account before relying on it.
+- Test: `backend/test-web-payments.mjs` (31 checks: fake Pesapal for every branch + one REAL sandbox order
+  with Pesapal's public demo keys from developer.pesapal.com/api3-demo-keys.txt).
+
+### To switch on (owner, after Pesapal approves the account)
+1. Pesapal dashboard -> API keys: put `PESAPAL_CONSUMER_KEY=` and `PESAPAL_CONSUMER_SECRET=` in
+   `backend/.env` yourself (secrets never in chat). Optional: `PESAPAL_TEST_UIDS=<your uid>` to test first.
+2. Without `PESAPAL_ENV` it is the SANDBOX: only `PESAPAL_TEST_UIDS` can pay, with Pesapal test money.
+   `pm2 restart tonefy-backend`, buy a pass on the website, check Profile and Admin.
+3. Live: add `PESAPAL_ENV=live`, restart. The first checkout registers the IPN and logs its id - copy it into
+   `PESAPAL_IPN_ID=` so it is not re-registered on each restart. Then one small real purchase end to end.

@@ -191,10 +191,10 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   not as the engine; maybe later for animated intro/end cards only.
 - **Meta App Review SUBMITTED Oct 23** (5 permissions + public_profile, "within 20 days"). Don't touch Meta app
   settings/scopes/reviewer account meanwhile. On approval: app Live + `META_LIVE=true`. `docs/meta-app-review.md`.
-- **Web payments: Pesapal** replaces Flutterwave (declined Oct 11). Site pages name Pesapal; backend adapter still
-  Flutterwave, payments OFF. Onboarding contact Michael Ntale; follow-up with the amended URA certificate drafted for
-  the owner to send. Then: Pesapal adapter in `webPayments.js`, sandbox first. **The app must never mention web
-  payment** (Play rule). `docs/web-payments.md`.
+- **Web payments: Pesapal adapter BUILT Oct 24** (history 55, sandbox-tested), payments OFF until the owner puts
+  `PESAPAL_CONSUMER_KEY/SECRET` in `.env` after Pesapal approves (onboarding: Michael Ntale; amended URA certificate
+  follow-up drafted for the owner to send). Switch-on steps: `docs/web-payments.md` (24 Oct). **The app must never
+  mention web payment** (Play rule).
 - Business docs: URSB 80043893223863; URA TIN 1040051408 amended Oct 20 to show AHUMUZA FITLIFE SOLUTIONS.
 - VPS has no firewall: services must bind 127.0.0.1 (backend does since Oct 24). OpenClaw still on `0.0.0.0:18789`,
   owner's call (history 49).

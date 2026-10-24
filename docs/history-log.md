@@ -3098,3 +3098,11 @@ record of when they were written; CLAUDE.md holds the current state.
     `backend/.venv-tts` (gitignored); `EDGE_PYTHON` in server.js uses it for voiceovers and
     translations, falling back to `python3` if absent. **When paid voices fail again:**
     `backend/.venv-tts/bin/pip install -U edge-tts`, then `pm2 restart tonefy-backend`.
+
+55. **Pesapal web-payment adapter (Oct 24 2026).** Backend `5546825a`, website `d0f5a44`. Replaces the
+    Flutterwave adapter (Flutterwave declined Uganda sole proprietors Oct 11). Payments stay OFF until the
+    owner adds Pesapal keys. Built and tested against Pesapal's SANDBOX with its public demo keys before the
+    real account is approved. Details, status-code handling and the switch-on steps: `docs/web-payments.md`
+    (24 Oct section). Two real-API findings: an unpaid order returns its details plus a soft error
+    (`payment_details_not_found`) - treated as pending; the token cache must be keyed by consumer key
+    as well as environment. `/flw-webhook` removed; `/pesapal-ipn` (GET/POST) added.
