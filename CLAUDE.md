@@ -38,6 +38,10 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## How to work
 
+- **Interrupted work resumes itself.** For any multi-step task, write the plan to `docs/wip.md` FIRST and update it
+  after every step (done / next / uncommitted state); clear it when the task is recorded. An hourly scheduled task
+  ("Tonefy: resume interrupted work", `trig_01W9DWr4bSWuYspGxjMBbNDR`) tells this session to read it and carry on
+  after a usage limit - no reminder from the owner needed. On "continue" or that check: read `docs/wip.md`, act.
 - **Never do real work in `/tmp`** (a reboot wiped weeks of work once). Use the scratchpad for scratch.
 - **Commit early, push after every commit, both repos**: `git -C ~/tonefy-build push origin rebuild/phase-4`,
   `git -C ~/Tonefy-react push origin master`. `git rev-list --left-right --count HEAD...@{upstream}`
