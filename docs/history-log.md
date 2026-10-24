@@ -3033,3 +3033,8 @@ record of when they were written; CLAUDE.md holds the current state.
     - Not done: v1 `/api/idea-to-video` (no client uses it) keeps its single clip and old mix.
       A "3 habits" idea came back at 35 words covering two habits - 30 s is tight for listicles;
       watch real scripts before changing.
+    - **Follow-up, same day (`d898c381`):** automated review of `79fff398` flagged that
+      `videoSpeed` went from `req.body` straight into the final ffmpeg `exec` string
+      (`atempo=${videoSpeed}`) - shell injection for any signed-in user, pre-existing (not
+      introduced by step 2). Now `Number()` and clamped to 0.5-2, else 1. App offers 1-2x.
+      The wider fix is the open item: move the remaining `exec()` renders to `execFile`.
