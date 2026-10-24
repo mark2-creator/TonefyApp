@@ -3106,3 +3106,8 @@ record of when they were written; CLAUDE.md holds the current state.
     (24 Oct section). Two real-API findings: an unpaid order returns its details plus a soft error
     (`payment_details_not_found`) - treated as pending; the token cache must be keyed by consumer key
     as well as environment. `/flw-webhook` removed; `/pesapal-ipn` (GET/POST) added.
+    - **Follow-up, same day:** automated review of `5546825a` - confirm() now fails closed (record must be
+      provider pesapal, with a stored `orderTrackingId` equal to the one confirmed, from the current
+      sandbox/live mode; a failed order start marks the record `start-failed`), and reversed /
+      start-failed / already-granted (`grantedAt`) records are final - no second grant, no overwritten
+      reversal. Pesapal's sandbox keys are public, so a forged order carrying our reference was possible.
