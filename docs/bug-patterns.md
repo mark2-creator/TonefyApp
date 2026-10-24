@@ -444,3 +444,12 @@ device shows a new raw error.
 Found on the way: `JSON.stringify(text)` inside an `exec()` string is NOT shell quoting -
 `sh` still expands `$(...)` and backticks in double quotes. Anything carrying user input
 goes through `execFile` with an argument array (history item 46).
+
+## A URL from a user, fetched by the server (SSRF) - Oct 24 2026
+`/api/extract-url` and `downloadToFile` fetched whatever URL a signed-in user sent. On this VPS
+that reaches every localhost service (n8n 5678, MySQL 3306, pm2 apps) and the cloud metadata
+address, and both routes hand the response back (as a "script", or as a file under `/audios/`).
+Rule: any URL that a client can influence goes through `safeFetch` - public addresses only,
+ports 80/443, checked at DNS-lookup time and on every redirect. An allowlist (`isOwnMediaUrl`)
+is better still where only our own media is legitimate. Also: node-fetch v3 ignores a
+`timeout:` option - use `signal: AbortSignal.timeout(ms)`. Full entry: history-log 49.

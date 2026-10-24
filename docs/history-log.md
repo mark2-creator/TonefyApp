@@ -2977,3 +2977,25 @@ record of when they were written; CLAUDE.md holds the current state.
       (hate), undressing script at generate-audio (sexual), pipe bomb at v2 (illegal, via 20b after
       a real 429), refusal at generate-audio - all 422; a water-tips idea -> script -> audio ->
       caption all 200 (~1 s for the screened script). Offline tests: `node test-content-safety.mjs`.
+
+49. **SSRF closed: user URLs fetched only through `safeFetch` (Oct 24 2026).** Tonefy-react
+    `e6edbf1e`, backend only. `/api/extract-url` fetched any URL a signed-in user sent, and read
+    the reply back as a script - `http://127.0.0.1:5678` (n8n), MySQL's neighbours, pm2 services
+    and `169.254.169.254` were all reachable. `downloadToFile` had the same hole for every
+    user-given media URL (audioUrl, selectedVideo, audio-waveform/detect-beats `url`), with the
+    file then served from `/audios/`.
+    - `backend/safeFetch.js`: http/https, ports 80/443 only, no credentials in the URL, no
+      `localhost`/`.local`/`.internal`; the resolved IP must be public (net.BlockList of all
+      private/reserved v4+v6 ranges, v4-mapped v6 unwrapped). Checked inside the agent's DNS
+      `lookup`, so the checked address is the connected one (no DNS rebinding); IP literals
+      checked up front; redirects followed by hand, max 5, each hop re-checked.
+    - The VPS's own public IP is allowed on 80/443 (= nginx serving public sites), so our own
+      `https://api.fitlifesolutions.site/videos/...` links keep working.
+    - extract-url: 5 MB page cap, `AbortSignal.timeout(15000)` (node-fetch v3 silently ignores
+      `timeout:` - so does the old `downloadToFile` one, which was dropped), friendly 400s.
+      The four publisher `fetch(videoUrl)` reads also use it.
+    - Verified live: 127.0.0.1:5000, localhost:5678, metadata IP, and an httpbin redirect to
+      localhost all 400; a Wikipedia page -> script 200; Pexels CDN and our own host reachable.
+      `node test-safe-fetch.mjs` (needs internet).
+    - Not changed: port 5000, 8765 and 18789 listen on 0.0.0.0 - whether the firewall blocks
+      them from outside was not checked.

@@ -132,6 +132,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   (`utils/friendlyError.js`; offline/timeout/server get fixed sentences, raw text goes to logs). Backend:
   `publicError(e, fallback, tag)` (`backend/publicError.js`) for every `error:`/job message. A raw
   `Unable to resolve host ...` reached users until Oct 5 2026; ffmpeg/ENOENT/API text could too.
+- **A URL from a user is fetched only via `safeFetch` (`backend/safeFetch.js`)** - plain `fetch`/`downloadToFile`
+  on it let anyone read localhost services and the metadata IP until Oct 24 2026 (history 49).
 - **`JSON.stringify` is not shell quoting** - `sh` expands `$(...)` inside double quotes. `/api/generate-audio`
   was a command-injection hole for any signed-in user until Oct 5 2026 (`docs/history-log.md` 46).
 
