@@ -111,7 +111,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   with the space, or keep the space and change only its aspect.
 - **Flex:** a horizontal chip row needs `flexGrow:0, flexShrink:0` on style and `alignItems:'center'`
   + padding on `contentContainerStyle`; `flex:1` inside a `maxHeight` parent resolves to zero.
-- **User text meeting a command line:** all binaries via `execFile` + arg arrays (never a shell); make
+- **User text meeting a command line:** all binaries via `execFile` + arg arrays (`ffmpegRun`/`run`; `exec` is not imported); make
   text safe for EACH tool's syntax at the boundary (ffmpeg filter commas, ImageMagick `%` escapes via
   `imText()`, ASS braces/newlines). Motions must use ops in `MOTION_ALLOWED_OPS` or they silently don't render.
 - **Facebook `/me/accounts` omits Pages reached through a business portfolio** -> use `debug_token` granular_scopes target_ids (fixed Oct 22 2026 in `metaFetchPages`).
@@ -197,7 +197,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 - Business docs: URSB 80043893223863; URA TIN 1040051408 amended Oct 20 to show AHUMUZA FITLIFE SOLUTIONS.
 - VPS has no firewall: services must bind 127.0.0.1 (backend does since Oct 24). OpenClaw still on `0.0.0.0:18789`,
   owner's call (history 49).
-- Backend: convert remaining `exec()` calls in `server.js` to `execFile`. Rotate Brevo SMTP key + LinkedIn secret.
+- Backend: ~~convert `exec()` to `execFile`~~ DONE Oct 24 (history 51; use `ffmpegRun`, never a shell). Owner: rotate Brevo
+  SMTP key + LinkedIn secret.
 - Pinterest blocks links to `fitlifesolutions.site` (appeal is the owner's). Editor gaps: no timeline pinch-zoom;
   ~25 of 75 toolbar tools built - keep unbuilt ones visible.
 

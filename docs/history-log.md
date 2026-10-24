@@ -3038,3 +3038,17 @@ record of when they were written; CLAUDE.md holds the current state.
       (`atempo=${videoSpeed}`) - shell injection for any signed-in user, pre-existing (not
       introduced by step 2). Now `Number()` and clamped to 0.5-2, else 1. App offers 1-2x.
       The wider fix is the open item: move the remaining `exec()` renders to `execFile`.
+
+51. **No shell left in the backend (Oct 24 2026).** Tonefy-react `bd530bd4`. The 24 remaining
+    `exec()` calls in `server.js` (ffprobe helpers, v1/v2 renders incl. custom transitions and the
+    xfade chain, edit-video, and the editor export: clip prep, stabilise, xfade, overlays, audio
+    mix, watermark) now go through `ffmpegRun(args, {timeout, tag})` / `ffprobeOut(args)` -
+    `execFile` with argv arrays, 64 MB maxBuffer. The `exec` import is gone, so a new shell call
+    is a ReferenceError, not a quiet hole. Filters keep their ffmpeg-level `'...'` quoting; no
+    string relied on shell backslash handling (checked).
+    - Was reachable: `srcPath` (from the user's media URL) and editor audio-track URLs sat inside
+      shell strings. Editor audio tracks with an `http` URL were also handed to ffmpeg to fetch
+      itself (SSRF to localhost); they are now downloaded via `downloadToFile` -> `safeFetch`.
+    - Verified with real renders on a disposable account (purged): v2 crossfade + music + 1.5x,
+      v2 custom `flashwhite`, media-to-video (two trims + fade, text overlay, remote audio track,
+      watermark), edit-video caption burn. All -14.1 to -14.6 LUFS.

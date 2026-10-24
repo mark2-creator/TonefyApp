@@ -6,7 +6,7 @@ Resume = read this, check `git status` in both repos, carry on from "Next". Do n
 
 ## Task: Open-list run (owner, Oct 24 2026: "go ahead ... then the remaining items in claude.md list continues")
 Queue, in order:
-- [ ] A. Backend: convert every remaining shell `exec()` in `~/Tonefy-react/backend/server.js` to
+- [x] A. Backend: convert every remaining shell `exec()` in `~/Tonefy-react/backend/server.js` to
       `execFile`/`run` with argv arrays (24 calls: ffprobe helpers, v1 idea-to-video, v2 concat/xfade/
       custom transitions/final mix, ~6835 auto-caption render, ~7800-8170 editor export pipeline).
       Watch: inside a shell double-quoted string `\\` became `\` - check every converted string for
@@ -18,5 +18,5 @@ Queue, in order:
 - [ ] C. Remaining Open items I can do without the owner: review CLAUDE.md Open list again after B.
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
-Done so far: nothing yet.
-Next: A.
+Done so far: A done + verified + pushed (bd530bd4, history 51).
+Next: B - write the Tonefy API plan into this file, then build it.
