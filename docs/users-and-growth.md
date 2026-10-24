@@ -321,7 +321,7 @@ Idea to Video with AI scenes on the admin account. Also set a budget alert in Go
 userVideos: `final-*` = Tonefy-generated (Idea/Script/Url, 13 total); `media-*` = clips imported into the editor
 (~70, almost all the owner's admin account - **his Google Flow videos**, used as the BENCHMARK, not judged as Tonefy).
 Funnel since Oct 6 (21 users): dashboard 21 -> open idea 15 -> script 11 -> render 11 -> video_done 9 -> **saved 3**.
-Tonefy output (5 of the owner's): stock/AI footage looks good, 1080x1920. Problems: (1) **pacing** - 51-108 s videos
+Tonefy output (5 of the owner's; pacing/length/captions/loudness/hook FIXED Oct 24, history-log 50): stock/AI footage looks good, 1080x1920. Problems: (1) **pacing** - 51-108 s videos
 with only 2-8 cuts (one shot per 10-40 s); Flow benchmark cuts every 1-2 s and runs 10-27 s; (2) **captions tiny** -
 default `classic` ~2% of frame height, plain white, low in the frame under the TikTok/Reels UI; (3) **quiet** - all
 -19.4 LUFS vs social ~-14 (Flow posts -15 to -17); (4) **no hook** - first frame is a generic stock shot; Flow wins

@@ -3005,3 +3005,31 @@ record of when they were written; CLAUDE.md holds the current state.
       control UI with terminal, `allowedOrigins` includes `"*"`). Token auth is on, and nginx
       already proxies it at 127.0.0.1:18789 (mc.fitlifesolutions.site), so it could bind
       loopback - left to the owner because it restarts his agent gateway. 8765 is nginx (TLS).
+
+50. **Generated-video quality, step 2 of the Oct 23 plan (Oct 24 2026).** Tonefy-react `79fff398`,
+    backend only - app (Idea/Script/Url) and website get it without an OTA.
+    - **Pacing:** `buildSegmentShots` cuts each segment into shots of <=2.5 s
+      (`ceil(dur/2.5 - 0.15)`), each a different Pexels result for the segment's keywords. Still
+      ONE Pexels search per segment (`per_page` = shots+3, max 15) - Pexels allows 200 requests
+      an hour, so more searches per video would cap videos per hour. `pickMp4ForFrame` takes the
+      smallest rendition covering the frame (not "hd", which can be 4K). An AI clip plays through
+      as its segment's opening shots. Too few results: clips reused from a later moment. Failed
+      shots: survivors loop to the full duration (captions are timed to the voice). The black
+      fallback is now the real frame size (it was 720-based, mismatching 1080p xfade inputs).
+      Dropped idea: a per-segment `shots` keyword list (more searches).
+    - **Length + hook:** generate-script with no `targetSeconds` (all video callers) -> 30 s
+      (was min(90, 60% of cap)); Idea to Audio still sends its own length. System prompt: first
+      sentence is a hook under 10 words, never a greeting. extract-url: 60-90 s -> 30-45 s, hook.
+    - **Opening:** extract-segments asks for segment 1's keywords to be a close-up of a person's face.
+    - **Captions:** `buildAssFile(..., { social: true })` for idea-to-video(-v2) only: font 2x
+      (1.7x looked small on the first render), outline/shadow 1.4x, MarginV 28% of height on
+      portrait (12% otherwise), applied to the per-line MarginV too. The editor's auto-captions
+      call it without `social`, so editor exports still match the canvas.
+    - **Loudness:** final mix -> `LOUDNORM_SOCIAL` (`loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100`),
+      both music and no-music branches.
+    - **Measured** on two real renders (disposable accounts, purged): 24.4 s / 16.4 s (was 51-108),
+      -14.9 / -14.8 LUFS (was -19.4), ~7 different shots in 16 s, a face in second 1, captions
+      ~1/3 up the frame. Files: `~/ytshots/step2-oct24/` (test1/test2.mp4, contact sheet).
+    - Not done: v1 `/api/idea-to-video` (no client uses it) keeps its single clip and old mix.
+      A "3 habits" idea came back at 35 words covering two habits - 30 s is tight for listicles;
+      watch real scripts before changing.

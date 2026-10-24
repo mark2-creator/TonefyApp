@@ -184,9 +184,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 
 ## Open / waiting (Oct 24 2026)
 
-- **NEXT (agreed Oct 23):** ~~(1) safety~~ DONE Oct 24 (below); (2) video
-  quality - shorter default (~20-40 s), a cut every 2-3 s, bigger captions placed higher, loudness ~-14 LUFS, strong
-  first scene; (3) **Tonefy API for Pro/Creator** (hashed keys from website Profile, plan checked per use, same
+- **NEXT (agreed Oct 23):** ~~(1) safety~~ and ~~(2) video quality~~ DONE Oct 24 (history 48, 50: 30 s hook-first
+  scripts, a cut every ~2.5 s, face-first opening, 2x captions at 28% height, -14 LUFS - backend only); (3) **Tonefy API for Pro/Creator** (hashed keys from website Profile, plan checked per use, same
   credits, POST/GET /v1/videos, no posting in v1). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
   not as the engine; maybe later for animated intro/end cards only.
 - **Meta App Review SUBMITTED Oct 23** (5 permissions + public_profile, "within 20 days"). Don't touch Meta app
