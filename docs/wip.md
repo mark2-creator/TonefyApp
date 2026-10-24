@@ -39,6 +39,8 @@ Queue, in order:
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
 Done so far: A, B done and recorded (history 51-54). Edge voices fixed (venv).
-Next: C1 - Pesapal adapter in backend/webPayments.js (API 3.0, SANDBOX, payments stay OFF; Flutterwave
+Next: C1 (in progress) - sandbox probed OK with Pesapal's PUBLIC demo keys (developer.pesapal.com/api3-demo-keys.txt,
+  Ugandan merchant): UGX + USD orders accepted; unpaid = INVALID(0) -> pending; IPN registers (GET). Writing the
+  Pesapal adapter in backend/webPayments.js (API 3.0, SANDBOX, payments stay OFF; Flutterwave
   code kept switchable or replaced; same grant logic + test-web-payments.mjs style test with fake Pesapal).
   Then C2 editor gaps? (needs device testing - probably leave). Then clear this file.
