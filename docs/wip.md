@@ -33,12 +33,11 @@ Queue, in order:
         Routes keep behaviour; re-run the render test after the refactor BEFORE adding /v1.
       - Website: Profile "API keys" card (Pro/Creator; free sees what it is + upgrade link) and a docs
         page `api-docs.html` (curl examples). `scripts/check-website-js.py` after. App: no change.
-      Steps: [ ] B1 refactor + render test  [ ] B2 apiKeys.js + key routes  [ ] B3 /v1 routes + live test
+      Steps: [x] B1 refactor + render test  [ ] B2 apiKeys.js + key routes  [ ] B3 /v1 routes + live test
              [ ] B4 website Profile card + api-docs.html  [ ] B5 record + push
 - [ ] C. Remaining Open items I can do without the owner: review CLAUDE.md Open list again after B.
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
-Done so far: A done (bd530bd4, history 51). Review follow-up done (80d388d7, history 52). B1 half done:
-  generateScriptText / synthesizeVoiceover / splitIntoSegments extracted + verified (in 80d388d7).
-Next: B1 second half - extract the idea-to-video-v2 render body into runV2Render(jobId, params, allowed,
-  userId); re-run render test; commit. Then B2.
+Done so far: A (history 51), review follow-up (history 52), B1 done: generateScriptText, synthesizeVoiceover,
+  splitIntoSegments, startV2Render/runV2Render all in server.js, verified live, pushed.
+Next: B2 - backend/apiKeys.js + /api/api-keys routes + purge in account delete.
