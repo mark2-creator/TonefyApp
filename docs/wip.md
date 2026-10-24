@@ -39,4 +39,6 @@ Queue, in order:
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
 Done so far: A, B done and recorded (history 51-54). Edge voices fixed (venv).
-Next: C - re-read CLAUDE.md Open list, do what needs no owner action, then clear this file.
+Next: C1 - Pesapal adapter in backend/webPayments.js (API 3.0, SANDBOX, payments stay OFF; Flutterwave
+  code kept switchable or replaced; same grant logic + test-web-payments.mjs style test with fake Pesapal).
+  Then C2 editor gaps? (needs device testing - probably leave). Then clear this file.
