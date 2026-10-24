@@ -2997,5 +2997,11 @@ record of when they were written; CLAUDE.md holds the current state.
     - Verified live: 127.0.0.1:5000, localhost:5678, metadata IP, and an httpbin redirect to
       localhost all 400; a Wikipedia page -> script 200; Pexels CDN and our own host reachable.
       `node test-safe-fetch.mjs` (needs internet).
-    - Not changed: port 5000, 8765 and 18789 listen on 0.0.0.0 - whether the firewall blocks
-      them from outside was not checked.
+    - Follow-up the same day: the VPS has **no firewall** (no ufw). The backend listened on every
+      interface, so `173.212.232.182:5000` skipped nginx and let a caller set its own `X-Real-IP`
+      (the pre-auth rate-limit key). Now `app.listen` on `127.0.0.1` and `::1` only (nginx uses
+      `localhost:5000`). Verified: public IP :5000 refused; 127.0.0.1, ::1 and nginx answer.
+    - Still open, NOT Tonefy: OpenClaw gateway listens on `0.0.0.0:18789` (`customBindHost`,
+      control UI with terminal, `allowedOrigins` includes `"*"`). Token auth is on, and nginx
+      already proxies it at 127.0.0.1:18789 (mc.fitlifesolutions.site), so it could bind
+      loopback - left to the owner because it restarts his agent gateway. 8765 is nginx (TLS).

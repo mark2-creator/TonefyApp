@@ -192,6 +192,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   the owner to send. Then: Pesapal adapter in `webPayments.js`, sandbox first. **The app must never mention web
   payment** (Play rule). `docs/web-payments.md`.
 - Business docs: URSB 80043893223863; URA TIN 1040051408 amended Oct 20 to show AHUMUZA FITLIFE SOLUTIONS.
+- VPS has no firewall: services must bind 127.0.0.1 (backend does since Oct 24). OpenClaw still on `0.0.0.0:18789`,
+  owner's call (history 49).
 - Backend: convert remaining `exec()` calls in `server.js` to `execFile`. Rotate Brevo SMTP key + LinkedIn secret.
 - Pinterest blocks links to `fitlifesolutions.site` (appeal is the owner's). Editor gaps: no timeline pinch-zoom;
   ~25 of 75 toolbar tools built - keep unbuilt ones visible.
