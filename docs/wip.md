@@ -33,11 +33,11 @@ Queue, in order:
         Routes keep behaviour; re-run the render test after the refactor BEFORE adding /v1.
       - Website: Profile "API keys" card (Pro/Creator; free sees what it is + upgrade link) and a docs
         page `api-docs.html` (curl examples). `scripts/check-website-js.py` after. App: no change.
-      Steps: [x] B1 refactor + render test  [ ] B2 apiKeys.js + key routes  [ ] B3 /v1 routes + live test
+      Steps: [x] B1 refactor + render test  [x] B2 apiKeys.js + key routes  [x] B3 /v1 routes + live test
              [ ] B4 website Profile card + api-docs.html  [ ] B5 record + push
 - [ ] C. Remaining Open items I can do without the owner: review CLAUDE.md Open list again after B.
       Owner-only (do NOT do): Meta review (hands off), Pesapal (waiting on onboarding), rotate Brevo
       SMTP key + LinkedIn secret (consoles), Pinterest appeal, OpenClaw bind (asked owner).
-Done so far: A (history 51), review follow-up (history 52), B1 done: generateScriptText, synthesizeVoiceover,
-  splitIntoSegments, startV2Render/runV2Render all in server.js, verified live, pushed.
-Next: B2 - backend/apiKeys.js + /api/api-keys routes + purge in account delete.
+Done so far: A, review follow-up, B1, B2, B3 done + pushed (backend 4a76aaaa). Also fixed: Edge paid voices (venv).
+  History entries 53 (API) + 54 (edge venv) NOT yet written.
+Next: B4 - website Profile 'API keys' card + api-docs.html, check-website-js.py, git add specific pages. Then B5 records.
