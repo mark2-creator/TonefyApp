@@ -12,7 +12,7 @@ Found: 13 of 15 dashboard tiles were 404 links.
 Steps (mark [x] + commit website after each):
 1. [x] bottom nav (MainTabs) - every page
 2. [x] dashboard (DashboardScreen): app card list, coloured icon wells, plain sections, first-video card, settings?
-3. [ ] profile (ProfileScreen)
+3. [x] profile (ProfileScreen)
 4. [ ] content-calendar (CalendarScreen)
 5. [ ] my-videos (MyVideosScreen)
 6. [ ] idea-to-video (IdeaToVideoScreen)
