@@ -131,3 +131,23 @@ one set of connected accounts, one library - not feature parity.
 - `profile.html` "Tonefy API" section: `loadApiKeys`/`setupApiKeys` call `/api/api-keys` with the
   Firebase ID token; a new key is shown once in `#apiNewKey`. Free accounts see the gold upgrade row.
 - `upgrade.html`: "Tonefy API" line on the Pro and Creator cards, linking to the docs.
+
+## Wide-screen layout (Oct 25 2026)
+
+Owner's screenshots showed the whole signed-in site as a tiny strip in the middle of the screen.
+Cause: every app page carried `@media(min-width:600px){body{max-width:480px; margin:auto}}` - a
+"phone frame" for desktops. Any viewport of 600px or more got it, including a phone in Chrome's
+"Desktop site" mode (~980px layout, so the text was also tiny).
+- `assets/app-wide.css` (linked last in `<head>`) keeps the page full width and caps only the content
+  column (`.main`, and `.step` on idea-to-video) at `--page-w`, set on `<body style="--page-w:...">`:
+  dashboard 1040, my-videos/admin 960, the list and form pages 720. The header/navbar and bottom bar
+  span the screen but pad their contents to that column; the five tabs stay in a 560px group.
+- **A new app page links app-wide.css and sets --page-w; never re-add a body max-width.**
+  Login/signup/open/verified and the `*-success` pages keep their narrow centred card on purpose.
+- Dashboard: tool grid goes to 4 columns from 900px (my-videos too). The tool icons and the avatar
+  were browser link blue (visited: purple) because the `<a>` cards set no colour - now neutral
+  `#cfcfcf`. Sections got 16px padding (titles touched the border).
+- Content calendar drew its month only after Firestore answered, so on slow data the header sat
+  blank; `renderCalendar()` now runs once at load and again when the posts arrive.
+- Checked with Playwright at 393 / 980 / 1280 wide (scrollWidth = viewport on all nine pages), plus
+  `check-website-js.py`. Website commit "App pages use the full width on wide screens".
