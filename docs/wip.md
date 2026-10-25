@@ -16,7 +16,7 @@ Steps (mark [x] + commit website after each):
 4. [x] content-calendar (CalendarScreen)
 5. [x] my-videos (+ assets/report.js: ReportLink for the site) (MyVideosScreen)
 6. [x] idea-to-video (IdeaToVideoScreen)
-7. [ ] connect-accounts, edit-post-video
+7. [x] connect-accounts, edit-post-video (per-platform Post sheets NOT ported - follow-up)
 8. [ ] login/signup (AuthScreen), admin
 9. [ ] record in docs/website.md + CLAUDE.md, clear this
 Uncommitted: none yet.
