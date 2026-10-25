@@ -151,3 +151,37 @@ Cause: every app page carried `@media(min-width:600px){body{max-width:480px; mar
   blank; `renderCalendar()` now runs once at load and again when the posts arrive.
 - Checked with Playwright at 393 / 980 / 1280 wide (scrollWidth = viewport on all nine pages), plus
   `check-website-js.py`. Website commit "App pages use the full width on wide screens".
+
+## The website matches the app (Oct 25 2026, owner: "everything on the site should match the app")
+
+THE APP IS THE REFERENCE (tonefy-design). Each signed-in page was rebuilt or restyled from its
+screen; website commits of Oct 25 carry the detail. Summary:
+- **Tab bar** as `MainTabs` (#111, #888, 11px, current tab green). Five pages had TWO `class`
+  attributes on the current tab, so it was never highlighted.
+- **Dashboard** from `DashboardScreen`: gear + avatar header, first-name greeting, Make-your-first-
+  video card (only when we KNOW there is no video; example ideas prefill idea-to-video via `?prompt=`),
+  the app's 11 tools in coloured icon wells, Video Translator banner. **13 of 15 tiles were 404s.**
+  Tools not on the website: visible, dimmed, open a "Coming soon - in the app now" sheet with a Play link.
+- **Profile**: Plan & Credits first, app rows/sizes, Upgrade Plan row (hidden on Creator), the app's
+  not-connected wording. Its loads ran in sequence, so slow data left a page of dashes - now parallel.
+- **Calendar**: rebuilt from `CalendarScreen` (Posted stat, Sunday-first, Failed filter/status,
+  empty/error states, captions escaped - they were raw innerHTML).
+- **My Videos**: Post (green) + Download per card (the editor-only Use is not on the website), plain
+  cards, player with **Report this content**; client-side sort (an orderBy index failure read as "No videos").
+- **`assets/report.js`** - the app's ReportContentSheet for the website. Every AI surface must carry it
+  (Play policy); the site had none. Used on My Videos and Idea to Video (script + video).
+- **Idea to Video**: the app's step 1 (setting cards with coloured wells, hint, Generate waits for an
+  idea), **Speed and AI scenes added** (sent to idea-to-video-v2), Preview Voiceover, the app's
+  finished-step order. Bugs: option labels became "undefined Sarah ..."; Create Another left step 4
+  visible; raw `e.message` shown - now plain sentences.
+- **Connect Accounts**: every platform stacked as in the app (tab strip removed - hiding it also hid
+  the Instagram gradient def and blanked its logo), app button colours/labels/permission text; removed
+  the stale "uploads are private until Google's review" (approved Oct 22).
+- **Edit & Post**: When (As soon as possible / At a time), Goes-to line, caption from the idea.
+  **NOT ported: the app's per-platform Post buttons with the TikTok compliance sheet, YouTube audience
+  sheet and Pinterest board picker** - the website still posts by toggles + Post Now. Follow-up.
+- **Sign in / sign up** as `AuthScreen`; one green `#2ECC71` site-wide (#3ecf5a, #22c55e removed).
+- Not changed: Admin (owner-only, already mirrors AdminScreen), upgrade (website-only), landing page.
+- Checked: Playwright with Firebase stubbed (signed in / out) at 393 and 1280, full Idea-to-Video flow
+  against a stub backend (request body carries videoSpeed + aiScenes), report POST body,
+  `check-website-js.py` after every page. Generators: `scratchpad/gen_*.py`; icons: `scripts/website_icons.py`.

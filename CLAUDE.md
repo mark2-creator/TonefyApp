@@ -195,7 +195,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   `PESAPAL_CONSUMER_KEY/SECRET` in `.env` after Pesapal approves (onboarding: Michael Ntale; amended URA certificate
   follow-up drafted for the owner to send). Switch-on steps: `docs/web-payments.md` (24 Oct). **The app must never
   mention web payment** (Play rule).
-- Website app pages: full width since Oct 25 (`assets/app-wide.css`, `--page-w` per page; never a body max-width again). `docs/website.md`.
+- Website app pages: full width since Oct 25 (`assets/app-wide.css`, `--page-w` per page; never a body max-width again) and **rebuilt to match the app** Oct 25 (`assets/report.js` = ReportLink on site AI surfaces). Not yet: Edit & Post per-platform sheets (TikTok/YouTube/Pinterest); site tools beyond Idea to Video show Coming soon. `docs/website.md`.
 - Business docs: URSB 80043893223863; URA TIN 1040051408 amended Oct 20 to show AHUMUZA FITLIFE SOLUTIONS.
 - VPS has no firewall: services must bind 127.0.0.1 (backend does since Oct 24). OpenClaw still on `0.0.0.0:18789`,
   owner's call (history 49).
