@@ -187,7 +187,7 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
 ## Open / waiting (Oct 24 2026)
 
 - **Oct 23 plan DONE Oct 24:** safety (history 48), video quality (50), **Tonefy API v1** for Pro/Creator (53: `/v1`,
-  keys on website Profile, `api-docs.html`, same credits, no posting). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
+  keys on website Profile, `api-docs.html`, same credits, no posting). **Never TikTok posting via the API** (owner, Oct 25): TikTok's Direct Post rules need the person to pick privacy/interactions/disclosure and consent on screen before each upload; server-to-server posting breaks them and risks the audited access ALL users share. Other platforms only if asked, with per-user daily caps (YouTube quota is shared). Findings: `docs/users-and-growth.md` (Oct 23 review). Remotion:
   not as the engine; maybe later for animated intro/end cards only.
 - **Meta App Review SUBMITTED Oct 23** (5 permissions + public_profile, "within 20 days"). Don't touch Meta app
   settings/scopes/reviewer account meanwhile. On approval: app Live + `META_LIVE=true`. `docs/meta-app-review.md`.

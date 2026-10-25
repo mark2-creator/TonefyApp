@@ -3111,3 +3111,13 @@ record of when they were written; CLAUDE.md holds the current state.
       sandbox/live mode; a failed order start marks the record `start-failed`), and reversed /
       start-failed / already-granted (`grantedAt`) records are final - no second grant, no overwritten
       reversal. Pesapal's sandbox keys are public, so a forged order carrying our reference was possible.
+
+56. **Oct 25 2026 - decision: the Tonefy API never posts to TikTok.** Owner asked whether an API key
+    could post to TikTok. Checked TikTok's Content Sharing Guidelines: Direct Post requires the user
+    to manually pick privacy (no default), turn on interactions (none by default), see the commercial
+    disclosure toggle, and expressly consent before any upload. Developer Terms III.3(g) prohibit use
+    that "fails to comply with ... documentation, policies"; VI lets TikTok suspend "at any time ...
+    for any reason". An API key posting from a customer's server has no such screen, so it would
+    break the rules and risk the audited Direct Post access every Tonefy user depends on. Owner
+    agreed strongly. API users make videos via /v1 and post from the website/app (where the TikTok
+    sheet runs). YouTube/LinkedIn/Pinterest via API only if customers ask, with per-user daily caps.
