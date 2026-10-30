@@ -31,8 +31,8 @@ Steps:
        sweep passes youtube options on the multi path. node --check, restart, live test.
 2. [x] app (DONE, committed+pushed, not yet published): ConnectAccountsScreen YouTube card lists accounts + "Add another channel" (Creator);
        EditPostVideoScreen picks channel(s) like LinkedIn; ProfileScreen row. eslint/export checks.
-3. [ ] website: connect-accounts, edit-post-video, profile, content-calendar read accounts[];
+3. [x] website (DONE, pushed): connect-accounts, edit-post-video, profile, content-calendar read accounts[];
        check-website-js.py.
 4. [ ] eas update; docs (social-posting.md, CLAUDE.md state); push both repos + website.
 
-Uncommitted state: none. Next: step 3 (website).
+Uncommitted state: none. Next: step 4 (eas update + docs).
