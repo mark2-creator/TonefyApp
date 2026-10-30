@@ -38,13 +38,14 @@ export function tierUnlocksPremium(tier) {
 // what to gray out, what number to put in an upgrade prompt. The backend is
 // what actually enforces every one of these; nothing here is a security
 // boundary, only a description of one that lives server-side.
+// youtubeUploadsPerDay: all channels together, per Pacific day (YouTube's quota is shared).
 export const TIER_CAPS = {
   // 2 minutes, matching tiers.js on the backend - at 1 minute a free account
   // could not export anything at all from Idea-to-Video, because the generated
   // script read aloud runs past a minute. Credits remain the real ceiling.
-  [TIER_FREE]: { creditsPerCycle: 10, maxExportSeconds: 2 * 60, maxResolution: '720p', watermark: true },
-  [TIER_PRO]: { creditsPerCycle: 60, maxExportSeconds: 15 * 60, maxResolution: '1080p', watermark: false },
-  [TIER_CREATOR]: { creditsPerCycle: 300, maxExportSeconds: 40 * 60, maxResolution: '1080p', watermark: false },
+  [TIER_FREE]: { creditsPerCycle: 10, maxExportSeconds: 2 * 60, maxResolution: '720p', watermark: true, youtubeUploadsPerDay: 0 },
+  [TIER_PRO]: { creditsPerCycle: 60, maxExportSeconds: 15 * 60, maxResolution: '1080p', watermark: false, youtubeUploadsPerDay: 3 },
+  [TIER_CREATOR]: { creditsPerCycle: 300, maxExportSeconds: 40 * 60, maxResolution: '1080p', watermark: false, youtubeUploadsPerDay: 10 },
 };
 
 /**

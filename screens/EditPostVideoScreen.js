@@ -23,7 +23,7 @@ import PinterestBoardSheet, { loadPinterestBoards } from '../components/Pinteres
 import YouTubePostSheet, { youtubeTitleFrom } from '../components/YouTubePostSheet';
 import AccountPickerSheet from '../components/AccountPickerSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { friendlyError } from '../utils/friendlyError';
+import { friendlyError, friendlyText } from '../utils/friendlyError';
 
 const BACKEND = 'https://api.fitlifesolutions.site';
 const STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
@@ -195,6 +195,12 @@ export default function EditPostVideoScreen({ navigation, route }) {
   // Which accounts a multi-account platform posts to: { platform: [ids] }; absent = all.
   const [chosenAccts, setChosenAccts] = useState({});
   const [acctSheet, setAcctSheet] = useState(null);   // platform id whose picker is open
+  // YouTube channels with a name to show: a channel is unnamed until its first upload
+  // (youtube.upload cannot read which channel it is), so "YouTube channel N" until then.
+  // Memoised because AccountPickerSheet resets its ticks whenever this list changes identity.
+  const ytAccounts = useMemo(() => (youtube?.accounts || []).map(a => ({
+    accountId: a.accountId, name: a.name || `YouTube channel ${a.number}`,
+  })), [youtube]);
   const accountsBody = (ids) => {
     const a = {};
     for (const id of ids) if (chosenAccts[id]?.length) a[id] = chosenAccts[id];
@@ -388,18 +394,24 @@ export default function EditPostVideoScreen({ navigation, route }) {
       const r = await fetch(`${BACKEND}/api/post-now`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'], youtube: { title, madeForKids, privacy } }),
+        body: JSON.stringify({ videoUrl: `${BACKEND}${videoPath}`, caption, platforms: ['youtube'], youtube: { title, madeForKids, privacy }, ...accountsBody(['youtube']) }),
       });
       const d = await r.json();
-      const result = d.results?.[0];
-      if (!result) throw new Error(d.error || 'The upload failed.');
-      if (!result.ok) throw new Error(result.error);
-      markPosted('youtube', result.url);
+      // One result per channel (Creator can connect several since Oct 30 2026).
+      const results = d.results || [];
+      if (!results.length) throw new Error(d.error || 'The upload failed.');
+      const good = results.filter(x => x.ok);
+      if (!good.length) throw new Error(results[0].error);
+      markPosted('youtube', good[0].url);
+      const missed = results.find(x => !x.ok);
+      const several = results.length > 1;
       showAlert('Posted to YouTube',
-        privacy === 'private' ? 'It is on your channel as a private video. Only you can see it, in YouTube Studio.'
-          : privacy === 'unlisted' ? 'It is on your channel. Anyone with the link can watch it.'
-          : 'It is live on your channel.',
-        doneButtons(result.url));
+        (privacy === 'private' ? `It is on your channel${several ? 's' : ''} as a private video. Only you can see it, in YouTube Studio.`
+          : privacy === 'unlisted' ? `It is on your channel${several ? 's' : ''}. Anyone with the link can watch it.`
+          : `It is live on your channel${several ? 's' : ''}.`)
+        + (several ? `\n\nPosted to ${good.length} of ${results.length} channels.` : '')
+        + (missed ? ` ${friendlyText(missed.error, 'One channel could not be posted to.')}` : ''),
+        doneButtons(good[0].url));
     } catch (e) {
       showAlert('YouTube', friendlyError(e, 'The upload failed.'));
     } finally {
@@ -952,8 +964,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
               button is YouTube's own colour - a platform's identity, not one of ours. */}
           <PostRow
             Logo={YouTubeLogo} name="YouTube" color={theme.text} theme={theme}
-            connected={isPremium && youtube?.connected} connectedText="Connected"
-            sub={isPremium && youtube?.connected && typeof ytKids === 'boolean' ? {
+            connected={isPremium && youtube?.connected} connectedText={connectedLabel(youtube, 'channels')}
+            sub={isPremium && accountsLine('youtube', youtube, 'channels') ? accountsLine('youtube', youtube, 'channels')
+              : isPremium && youtube?.connected && typeof ytKids === 'boolean' ? {
               text: ytKids ? 'Made for kids' : 'Not made for kids', link: 'Change', onPress: () => setYtSheet('settings'),
             } : null}
             posted={posted.youtube} posting={ytPosting} isPremium={isPremium}
@@ -1087,9 +1100,9 @@ export default function EditPostVideoScreen({ navigation, route }) {
         onClose={() => setAcctSheet(null)}
         onConfirm={(ids) => { setChosenAccts(c => ({ ...c, [acctSheet]: ids || undefined })); setAcctSheet(null); }}
         label={acctSheet ? PLATFORM_LABELS[acctSheet] : ''}
-        color={{ facebook: '#1877F2', instagram: '#E4405F', linkedin: '#0A66C2', pinterest: '#E60023' }[acctSheet] || '#fff'}
-        Logo={{ facebook: FacebookLogo, instagram: InstagramLogo, linkedin: LinkedInLogo, pinterest: PinterestLogo }[acctSheet]}
-        accounts={({ facebook, instagram, linkedin, pinterest }[acctSheet])?.accounts || []}
+        color={{ facebook: '#1877F2', instagram: '#E4405F', linkedin: '#0A66C2', pinterest: '#E60023', youtube: '#FF0000' }[acctSheet] || '#fff'}
+        Logo={{ facebook: FacebookLogo, instagram: InstagramLogo, linkedin: LinkedInLogo, pinterest: PinterestLogo, youtube: YouTubeLogo }[acctSheet]}
+        accounts={acctSheet === 'youtube' ? ytAccounts : (({ facebook, instagram, linkedin, pinterest }[acctSheet])?.accounts || [])}
         selected={acctSheet ? chosenAccts[acctSheet] : null}
       />
 

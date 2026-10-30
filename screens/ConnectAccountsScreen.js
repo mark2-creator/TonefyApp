@@ -130,7 +130,9 @@ export default function ConnectAccountsScreen({ navigation }) {
 
   async function loadYouTube() {
     try {
-      setYoutube(await api('/api/youtube/status'));
+      const st = await api('/api/youtube/status');
+      setYoutube(st);
+      noteAddResult('youtube', 'YouTube', st?.accounts?.length || (st?.connected ? 1 : 0));
     } catch (e) {
       setYoutube(null);
     } finally {
@@ -155,15 +157,19 @@ export default function ConnectAccountsScreen({ navigation }) {
     }
   }
 
-  async function disconnectYouTube() {
-    showAlert('Disconnect YouTube', 'Tonefy will no longer be able to upload to your channel.', [
+  async function disconnectYouTube(accountId, label) {
+    showAlert('Disconnect YouTube', `Tonefy will no longer be able to upload to ${label || 'this channel'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect', style: 'destructive',
         onPress: async () => {
           try {
-            await api('/api/youtube/disconnect', { method: 'POST' });
-            setYoutube({ ...(youtube || {}), connected: false, channelTitle: null });
+            await api('/api/youtube/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(accountId ? { accountId } : {}),
+            });
+            await loadYouTube();
           } catch (e) { showAlert('YouTube', 'Could not disconnect.'); }
         },
       },
@@ -507,24 +513,38 @@ export default function ConnectAccountsScreen({ navigation }) {
               <ActivityIndicator color="#2ecc71" style={{ marginVertical: 20 }} />
             ) : youtube?.connected ? (
               <>
-                <View style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
-                  <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
-                    <YouTubeLogo size={26} />
+                {/* A channel's name is learned from its first upload: youtube.upload cannot read
+                    which channel a connection is, so until then it is "YouTube channel N". */}
+                {(youtube.accounts || [{ accountId: null, name: youtube.channelTitle, number: 1 }]).map((a) => (
+                  <View key={a.accountId || 'only'} style={[styles.connectedBox, { backgroundColor: isDark ? '#0d2018' : '#e0f5e9', borderColor: isDark ? '#1c3a2a' : '#bde5cd' }]}>
+                    <View style={[styles.connectedAvatar, { backgroundColor: '#000' }]}>
+                      <YouTubeLogo size={26} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.connectedName, { color: theme.text }]} numberOfLines={1}>
+                        {a.name || `YouTube channel ${a.number || 1}`}
+                      </Text>
+                      <Text style={[styles.connectedSub, { color: theme.subtext }]} numberOfLines={1}>
+                        {a.name ? 'YouTube · Connected' : 'Named after your first post'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => disconnectYouTube(a.accountId, a.name || `YouTube channel ${a.number || 1}`)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons name="close" size={20} color="#f87171" />
+                    </TouchableOpacity>
                   </View>
-                  <View>
-                    {/* channelTitle is often null: reading it needs youtube.readonly, a
-                        second sensitive scope not worth requesting for a label. */}
-                    <Text style={[styles.connectedName, { color: theme.text }]}>
-                      {youtube.channelTitle || 'Your channel'}
-                    </Text>
-                    <Text style={[styles.connectedSub, { color: theme.subtext }]}>YouTube · Connected</Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.btnDisconnect, { backgroundColor: isDark ? '#2a1212' : '#ffe5e5', borderColor: isDark ? '#3a1a1a' : '#ffcccc' }]}
-                  onPress={disconnectYouTube}>
-                  <Text style={styles.btnDisconnectText}>Disconnect YouTube</Text>
-                </TouchableOpacity>
+                ))}
+                {youtube.uploadsPerDay > 0 && (
+                  <Text style={[styles.cardDesc, { color: theme.subtext }]}>
+                    {`Posted to YouTube today: ${youtube.uploadsToday || 0} of ${youtube.uploadsPerDay}`}
+                  </Text>
+                )}
+                {(youtube.accounts?.length || 1) < accountCap ? (
+                  <TouchableOpacity style={[styles.btnConnect, { backgroundColor: '#FF0000' }]} onPress={() => { addPending.current = { platform: 'youtube', label: 'YouTube', before: youtube?.accounts?.length || 1 }; connectYouTube(); }} disabled={ytBusy}>
+                    {ytBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnConnectText}>+ Add another channel</Text>}
+                  </TouchableOpacity>
+                ) : (
+                  capNote()
+                )}
               </>
             ) : (
               <>

@@ -87,7 +87,9 @@ export default function ProfileScreen({ navigation }) {
       setTiktok(ttArr.length
         ? { connected: true, label: ttArr.length > 1 ? `${ttArr.length} accounts` : `@${ttArr[0].label || ttArr[0].displayName || 'Connected'}` }
         : { connected: false, label: 'Not connected' });
-      setYoutube({ connected: !!acc.youtube, channelTitle: acc.youtube?.channelTitle || null });
+      // youtube is an ARRAY since Oct 30 2026 (multi-account); tolerant of the old object.
+      const ytArr = Array.isArray(acc.youtube) ? acc.youtube : (acc.youtube ? [acc.youtube] : []);
+      setYoutube({ connected: ytArr.length > 0, channelTitle: ytArr.length > 1 ? `${ytArr.length} channels` : (ytArr[0]?.label || ytArr[0]?.channelTitle || null) });
       // facebook is now an ARRAY of Pages (multi-account); tolerant of the old object.
       // Reading !!acc.facebook would report an emptied array as connected.
       const fbArr = Array.isArray(acc.facebook) ? acc.facebook : (acc.facebook ? [acc.facebook] : []);
