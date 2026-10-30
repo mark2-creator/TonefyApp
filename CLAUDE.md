@@ -170,7 +170,8 @@ cut from 377k to this on Oct 4 2026; every original line is preserved verbatim i
   spend caps $3/day $1/hour in `aiSpend/{day}`. Gemini Omni admin option built, OFF. `docs/users-and-growth.md`.
 - **Social posting** (paid only; one `PUBLISHERS` registry for Post Now + `scheduledPostSweep`): TikTok, Pinterest,
   LinkedIn, **YouTube (API audit APPROVED Oct 22; user picks Public/Unlisted/Private, OTA `fe16fbd2`; quota 200/day
-  until ~Apr 2027 - reapply/audit then)**. Facebook/Instagram: "Coming soon" except admins + `META_REVIEWER_UIDS`
+  until ~Apr 2027 - reapply/audit then; multi-channel since Oct 30 (Creator 5) with a per-user daily cap pro 3 /
+  creator 10, history 57)**. Facebook/Instagram: "Coming soon" except admins + `META_REVIEWER_UIDS`
   until `META_LIVE=true`. TikTok keeps `'Created with Tonefy AI'` fallback by owner's decision. `docs/social-posting.md`.
 - **Users:** ~32 accounts, few strangers. Funnel since Oct 6 (21 users): dashboard 21 -> script 11 -> video 9 ->
   **saved 3**. Activation work shipped Oct 6 (first-video card, funnel log, next-day email, email signup without wall).

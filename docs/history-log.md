@@ -3121,3 +3121,21 @@ record of when they were written; CLAUDE.md holds the current state.
     break the rules and risk the audited Direct Post access every Tonefy user depends on. Owner
     agreed strongly. API users make videos via /v1 and post from the website/app (where the TikTok
     sheet runs). YouTube/LinkedIn/Pinterest via API only if customers ask, with per-user daily caps.
+
+57. **YouTube multi-account + per-user daily upload cap (Oct 30 2026).** Backend `e92dab72`, app `56a283d2`, website
+    `f7346d9`, OTA `33f1d772-6209-4248-912f-de32a7e8412c`. Owner asked how many YouTube channels a Creator can
+    connect: the answer was ONE (youtubeTokens/{uid} was a single record; a second connect replaced the
+    first) although ACCOUNT_CAPS says 5. Now: `youtubeTokens/{uid}.accounts[connId]`,
+    `connectedAccounts.youtube` an array, Pro 1 (reconnect replaces) / Creator 5, chosen per post with
+    AccountPickerSheet. **No channel identity at connect:** youtube.upload cannot call channels.list
+    (insufficientPermissions) and tokeninfo carries no `sub` (both probed live), so connIds are ours and a
+    channel is "YouTube channel N" until its first upload, whose videos.insert snippet names it
+    (`learnYouTubeChannel`; the same channel connected twice is de-duplicated then). Deliberately NO new
+    scope (openid / youtube.readonly would touch the verified consent screen and the API audit). Pre-multi
+    record migrates lazily to connId = uid, so posts queued before still resolve. **Daily cap:** the
+    200/day quota is shared by all users, so `tiers.js youtubeUploadsPerDay` free 0 / pro 3 / creator 10
+    per Pacific day across all channels, admins exempt; `youtubeUploads/{uid}_{day}` (transaction), slot
+    returned when the upload fails; purged on account delete. Live-tested 15/15 with a disposable Creator
+    account (migration, 5-cap refusal, per-channel disconnect, chosen-channel post, refund, cap message,
+    all-channels default, Pro caps, purge). NOT tested: a real upload naming a channel (would post to a
+    real channel) - first real Creator post will exercise learnYouTubeChannel; check `[youtube]` logs.

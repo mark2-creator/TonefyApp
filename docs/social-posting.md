@@ -388,3 +388,12 @@ the server-written `uid`, so `linkTikTokAccount` could not see the previous owne
 owner's ahumuzamark254@ account - removed by hand); `/tiktok/creator-info` no longer shows TikTok's raw text - on
 `access_token_invalid` it drops the cache and says "Your TikTok connection has expired. Please reconnect TikTok in
 Profile." Verified live: creator-info 200 as the owner, token refreshed (expires Oct 12), `uid` intact.
+
+## YouTube multi-account and the daily upload cap (Oct 30 2026)
+
+Creator connects up to 5 YouTube channels, Pro 1 (connecting again replaces it), like every other
+platform. The upload-only scope cannot read which channel a connection is, so each is "YouTube channel N"
+until its first upload names it. Every user's uploads are capped per Pacific day across all their
+channels - Pro 3, Creator 10, admins exempt - because YouTube's 200 uploads/day quota is shared by
+all Tonefy users until about Apr 2027. A failed upload does not use up a slot. Change the numbers in
+`backend/tiers.js` (`youtubeUploadsPerDay`) and mirror them in `constants/plan.js`. Full story: history 57.
