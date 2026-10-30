@@ -25,7 +25,7 @@ resets midnight PT), counted across all the user's channels, in youtubeUploads/{
 (transaction; refunded when the upload fails). Admins exempt. In tiers.js TIERS + constants/plan.js.
 
 Steps:
-1. [ ] backend: storage (accounts map + legacy), connect/callback with canAddPlatformAccount,
+1. [x] backend (DONE, live-tested 15/15, Tonefy-react commit pushed): storage (accounts map + legacy), connect/callback with canAddPlatformAccount,
        token refresh per account, status (accounts[] + back-compat), disconnect one/all, account
        delete revokes all, publish per account + cap + learn channel name, registry multiAccount,
        sweep passes youtube options on the multi path. node --check, restart, live test.
@@ -35,4 +35,4 @@ Steps:
        check-website-js.py.
 4. [ ] eas update; docs (social-posting.md, CLAUDE.md state); push both repos + website.
 
-Uncommitted state: none yet.
+Uncommitted state: none. Next: step 2 (app).
