@@ -92,17 +92,19 @@ export default function ProfileScreen({ navigation }) {
       setYoutube({ connected: ytArr.length > 0, channelTitle: ytArr.length > 1 ? `${ytArr.length} channels` : (ytArr[0]?.label || ytArr[0]?.channelTitle || null) });
       // facebook is now an ARRAY of Pages (multi-account); tolerant of the old object.
       // Reading !!acc.facebook would report an emptied array as connected.
+      // needsReconnect is set by the server when a platform refuses the token (or it ran
+      // out); the row then says Reconnect and leads to Connect Accounts (Oct 31 2026).
       const fbArr = Array.isArray(acc.facebook) ? acc.facebook : (acc.facebook ? [acc.facebook] : []);
-      setFacebook({ connected: fbArr.length > 0, pageName: fbArr[0]?.label || fbArr[0]?.pageName || null, count: fbArr.length });
+      setFacebook({ connected: fbArr.length > 0, pageName: fbArr[0]?.label || fbArr[0]?.pageName || null, count: fbArr.length, stale: fbArr.some(a => a?.needsReconnect) });
       const igArr = Array.isArray(acc.instagram) ? acc.instagram : (acc.instagram ? [acc.instagram] : []);
-      setInstagram({ connected: igArr.length > 0, username: igArr[0]?.label || igArr[0]?.username || null, count: igArr.length });
+      setInstagram({ connected: igArr.length > 0, username: igArr[0]?.label || igArr[0]?.username || null, count: igArr.length, stale: igArr.some(a => a?.needsReconnect) });
       // pinterest is now an ARRAY (multi-account); tolerant of the old object. As with
       // facebook, !!acc.pinterest would report an emptied array as connected.
       const pinArr = Array.isArray(acc.pinterest) ? acc.pinterest : (acc.pinterest ? [acc.pinterest] : []);
-      setPinterest({ connected: pinArr.length > 0, username: pinArr[0]?.label || pinArr[0]?.username || null, count: pinArr.length });
+      setPinterest({ connected: pinArr.length > 0, username: pinArr[0]?.label || pinArr[0]?.username || null, count: pinArr.length, stale: pinArr.some(a => a?.needsReconnect) });
       // linkedin is now an ARRAY of accounts (multi-account); tolerant of the old object.
       const liArr = Array.isArray(acc.linkedin) ? acc.linkedin : (acc.linkedin ? [acc.linkedin] : []);
-      setLinkedin({ connected: liArr.length > 0, name: liArr[0]?.label || liArr[0]?.name || null, count: liArr.length });
+      setLinkedin({ connected: liArr.length > 0, name: liArr[0]?.label || liArr[0]?.name || null, count: liArr.length, stale: liArr.some(a => a?.needsReconnect) });
     } catch (e) {
       setTiktok({ connected: false, label: 'Not connected' });
       setYoutube({ connected: false, channelTitle: null });
@@ -552,7 +554,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
               <View style={facebook.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={facebook.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
-                  {facebook.connected ? 'Connected' : 'Connect'}
+                  {facebook.connected ? (facebook.stale ? 'Reconnect' : 'Connected') : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -570,7 +572,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
               <View style={instagram.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={instagram.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
-                  {instagram.connected ? 'Connected' : 'Connect'}
+                  {instagram.connected ? (instagram.stale ? 'Reconnect' : 'Connected') : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -588,7 +590,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
               <View style={pinterest.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={pinterest.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
-                  {pinterest.connected ? 'Connected' : 'Connect'}
+                  {pinterest.connected ? (pinterest.stale ? 'Reconnect' : 'Connected') : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -606,7 +608,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity onPress={() => navigation.navigate('ConnectAccounts')}>
               <View style={linkedin.connected ? styles.badgeConnected : [styles.badgeSoon, { backgroundColor: theme.divider, borderColor: theme.border }]}>
                 <Text style={linkedin.connected ? styles.badgeConnectedText : [styles.badgeSoonText, { color: theme.subtext }]}>
-                  {linkedin.connected ? 'Connected' : 'Connect'}
+                  {linkedin.connected ? (linkedin.stale ? 'Reconnect' : 'Connected') : 'Connect'}
                 </Text>
               </View>
             </TouchableOpacity>

@@ -104,6 +104,31 @@ export default function ConnectAccountsScreen({ navigation }) {
     )
   );
 
+  // A connection's health, from the status routes (Oct 31 2026). needsReconnect = the platform
+  // refused the token (expired, revoked, password changed); expiresAt = a date only the user
+  // can extend (LinkedIn gives apps no refresh, so its 60-day token simply ends). Reconnecting
+  // the same account replaces its token and clears the flag - the server allows it at any cap.
+  const RECONNECT_WARN_DAYS = 10;
+  const connStatus = (label, a, reconnect, busy) => {
+    const daysLeft = a.expiresAt ? Math.ceil((a.expiresAt - Date.now()) / 86400000) : null;
+    const expiring = !a.needsReconnect && daysLeft != null && daysLeft <= RECONNECT_WARN_DAYS;
+    if (!a.needsReconnect && !expiring) {
+      return <Text style={[styles.connectedSub, { color: theme.subtext }]}>{label} · Connected</Text>;
+    }
+    return (
+      <>
+        <Text style={[styles.connectedSub, { color: a.needsReconnect ? '#f87171' : theme.subtext }]}>
+          {a.needsReconnect
+            ? `${label} · Connection expired`
+            : `${label} · Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+        </Text>
+        <TouchableOpacity style={styles.btnReconnect} onPress={() => reconnect()} disabled={busy}>
+          {busy ? <ActivityIndicator size="small" color="#2ecc71" /> : <Text style={styles.btnReconnectText}>Reconnect</Text>}
+        </TouchableOpacity>
+      </>
+    );
+  };
+
   useEffect(() => {
     loadTikTok();
     loadYouTube();
@@ -586,7 +611,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.connectedName, { color: theme.text }]}>{a.name || 'Your Page'}</Text>
-                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Facebook · Connected</Text>
+                      {connStatus('Facebook', a, connectFacebook, fbBusy)}
                     </View>
                     <TouchableOpacity onPress={() => disconnectFacebook(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <MaterialIcons name="close" size={20} color="#f87171" />
@@ -643,7 +668,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.connectedName, { color: theme.text }]}>{a.name ? '@' + a.name : 'Your account'}</Text>
-                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Instagram · Connected</Text>
+                      {connStatus('Instagram', a, connectInstagram, igBusy)}
                     </View>
                     <TouchableOpacity onPress={() => disconnectInstagram(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <MaterialIcons name="close" size={20} color="#f87171" />
@@ -699,7 +724,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.connectedName, { color: theme.text }]}>{a.name ? '@' + a.name : 'Your account'}</Text>
-                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>Pinterest · Connected</Text>
+                      {connStatus('Pinterest', a, connectPinterest, pinBusy)}
                     </View>
                     <TouchableOpacity onPress={() => disconnectPinterest(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <MaterialIcons name="close" size={20} color="#f87171" />
@@ -752,7 +777,7 @@ export default function ConnectAccountsScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.connectedName, { color: theme.text }]}>{a.name || 'Your profile'}</Text>
-                      <Text style={[styles.connectedSub, { color: theme.subtext }]}>LinkedIn · Connected</Text>
+                      {connStatus('LinkedIn', a, connectLinkedIn, liBusy)}
                     </View>
                     <TouchableOpacity onPress={() => disconnectLinkedIn(a.accountId, a.name)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <MaterialIcons name="close" size={20} color="#f87171" />
@@ -828,6 +853,8 @@ const styles = StyleSheet.create({
   connectedAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1a4a2a', justifyContent: 'center', alignItems: 'center' },
   connectedName: { color: '#fff', fontSize: 15, fontWeight: '600' },
   connectedSub: { color: '#888', fontSize: 12, marginTop: 2 },
+  btnReconnect: { alignSelf: 'flex-start', marginTop: 6, borderWidth: 1, borderColor: '#2ecc71', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4, minHeight: 26, justifyContent: 'center' },
+  btnReconnectText: { color: '#2ecc71', fontSize: 12, fontWeight: '700' },
   btnDisconnect: { width: '100%', backgroundColor: '#2a1212', borderWidth: 1, borderColor: '#5a2020', borderRadius: 25, padding: 14, alignItems: 'center' },
   btnDisconnectText: { color: '#f87171', fontSize: 15, fontWeight: '600' },
   comingSoonCard: { backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#2a2a4a', borderRadius: 14, padding: 20, alignItems: 'center', marginBottom: 12 },
