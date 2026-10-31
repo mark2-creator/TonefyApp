@@ -16,4 +16,5 @@ Steps:
 3. Website connect-accounts.html: same.
 4. Checks, publish OTA, docs (history 58), push both repos.
 Done: 1 (backend commit pushed, live; IG sweep flagged owner IG = 190 checkpoint "log in to instagram.com")
-Next: step 2 app ConnectAccountsScreen
+Done 2: app + Profile Reconnect, OTA f518d120; backend mirrors needsReconnect + expiry sweep
+Next: step 3 website
