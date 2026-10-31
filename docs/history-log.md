@@ -3139,3 +3139,25 @@ record of when they were written; CLAUDE.md holds the current state.
     account (migration, 5-cap refusal, per-channel disconnect, chosen-channel post, refund, cap message,
     all-channels default, Pro caps, purge). NOT tested: a real upload naming a channel (would post to a
     real channel) - first real Creator post will exercise learnYouTubeChannel; check `[youtube]` logs.
+
+58. **Social connections that expire (Oct 31 2026).** Backend a475d1f1 8618e9f5 , app `df8f65e3` (OTA `f518d120`), website `3c82b6c`.
+    Owner asked whether Tonefy renews connections. Audit: YouTube (refresh token, every upload) and TikTok
+    (24h token refreshed before posting, rotated refresh token saved) were fine; Facebook Page tokens from a
+    long-lived user token do not expire. **Broken:** Instagram's 60-day token was never renewed (every IG
+    connection would stop posting on day 60 while showing Connected); LinkedIn's 60-day `expiresAt` was written
+    but never read (LinkedIn gives ordinary apps no refresh token - only the user can renew); Pinterest's
+    refresh did not save the rotated refresh token. Fixed: `igRefreshSweep` (6-hourly + 60s after boot) renews
+    any IG token a week old via `graph.instagram.com/refresh_access_token`; a token a platform refuses (Graph
+    190, LinkedIn 401, Pinterest refused refresh) or one past `expiresAt` with no refresh token
+    (`expiredConnectionSweep`, LinkedIn/IG) is flagged `expired` on its token record AND `needsReconnect` on its
+    `connectedAccounts` entry; each connect callback writes `expired:false` and `appendPlatformAccount` rewrites
+    the entry, so reconnecting clears both. Status routes return per-account `needsReconnect` + `expiresAt`
+    (only where the user must act). App Connect Accounts + website show "Connection expired" / "Expires in N
+    days" (<=10) with a Reconnect button; Profile badge says Reconnect. Publishers refuse an expired account with
+    "Your X connection has expired. Please reconnect X in Profile, under Connected Accounts". Live-tested
+    status routes with a disposable account (IG flagged, LinkedIn past/5-days, Pinterest with refresh token =
+    fine), deleted after. **Found on first run:** the owner's own Instagram (@fitlifesolutions.site) token is
+    refused with 190 "log in to www.instagram.com and follow the instructions" - an Instagram account check, not
+    expiry; owner must log in on instagram.com, then Reconnect. LinkedIn tokens: owner's expires ~Nov 28, one
+    other user's ~Nov 14 - both will now see the warning. Not done: an email before LinkedIn expiry (would need
+    `emailPrefs.optOut`); Facebook flagged only on a failed post (no proactive check).
